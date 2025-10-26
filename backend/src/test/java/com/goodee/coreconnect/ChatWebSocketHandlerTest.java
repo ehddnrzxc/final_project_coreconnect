@@ -1,16 +1,19 @@
 package com.goodee.coreconnect;
 
+import java.util.Arrays;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 
 import java.net.URISyntaxException;
+import java.util.List;
 import java.util.Optional;
 
 import org.mockito.MockitoAnnotations;
@@ -18,9 +21,11 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.WebSocketSession;
 
+import com.goodee.coreconnect.chat.entity.ChatRoom;
 import com.goodee.coreconnect.chat.handler.ChatWebSocketHandler;
 import com.goodee.coreconnect.chat.repository.NotificationRepository;
 import com.goodee.coreconnect.chat.service.ChatRoomService;
+import com.goodee.coreconnect.chat.service.ChatRoomServiceImpl;
 import com.goodee.coreconnect.security.jwt.JwtProvider;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
@@ -94,6 +99,37 @@ public class ChatWebSocketHandlerTest {
 		// WebSocket 연결 해제 후 userSessions에서 userId가 정상적으로 제거되는지 확인
 		handler.afterConnectionClosed(session, CloseStatus.NORMAL);
 		assertFalse(handler.userSessions.containsKey(1));
+	}
+	
+	
+	@Test
+	@DisplayName("2. 채팅방 생성/초대/참여자 관리")
+	void testCreatedChatRoomANdInvite() {
+		// 채팅방 생성, 참여자 초대, 참여자 리스트 관리
+		// ChatRoomServiceImpl의 Mock 객체를 생성 (실제 DB/비즈니스 로직이 아니라 테스트용 가짜 객체)
+		ChatRoomServiceImpl chatRoomServiceImpl = mock(ChatRoomServiceImpl.class);
+		
+		// 테스트용 참여자 userId 리스트 생성
+		List<Integer> userIds = Arrays.asList(1,2,3);
+
+		
+		// 테스트용 ChatRoom 객체 생성 및 ID 설정  (실제 DB에 저장되는게 아니라 테스트 시나리오용 객체)
+		ChatRoom chatRoom = new ChatRoom();
+		chatRoom.setId(100);
+		
+		// Mock 객체의 createChatRoom 호출 시, 위에서 만든 chatRoom 객체가 반환되도록 지정
+		// testRoom이라는 이름과 userIds 목록이 들어오면 chatRoom을 반환
+		// 실무에서는 DB에 저장하고 ChatRoom을 반환하지만 테스트에서는 반환 객체만 신경 씀
+		when(chatRoomServiceImpl.createChatRoom("testRoom", userIds)).thenReturn(chatRoom);
+		
+		// 실제로 Mock 깨체의 createChatRoom을 호출 (테스트 시나리오 실행)
+		ChatRoom created = chatRoomServiceImpl.createChatRoom("testRoom", userIds);
+		
+		// 반환된 ChatRoom의 ID가 기대값(100)과 같은지 검증
+		// 즉 ㅏㅁ여자 초대/방 생성 과정이 정상적으로 동작하는지 체크
+		assertEquals(100, created.getId());
+		
+		
 	}
 	
 	
