@@ -9,15 +9,25 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 
-import java.net.URISyntaxException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import javax.sql.DataSource;
+
 import org.mockito.MockitoAnnotations;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.WebSocketSession;
 
@@ -30,15 +40,20 @@ import com.goodee.coreconnect.security.jwt.JwtProvider;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * WebSocketHandler 및 채팅/알림 비즈니스 로직 테스트
  * */
+@Slf4j
+@SpringBootTest
+@TestPropertySource(locations = "classpath:application.properties")
 public class ChatWebSocketHandlerTest {
 
-	@Mock
+	@Autowired
 	ChatRoomService chatRoomService;
 	
-	@Mock
+	@Autowired
 	UserRepository userRepository;
 	
 	@Mock
@@ -48,6 +63,55 @@ public class ChatWebSocketHandlerTest {
 	NotificationRepository notificationRepository;
 	
 	ChatWebSocketHandler handler;
+	
+	
+	@Autowired
+	DataSource dataSource;
+
+	@Test
+	void testDatabaseConnectionInfo() throws Exception {
+	    try (Connection conn = dataSource.getConnection()) {
+	        String dbUrl = conn.getMetaData().getURL();                    // 실제 접속한 DB의 URL
+	        String dbUser = conn.getMetaData().getUserName();              // 접속한 DB의 사용자명
+	        String dbProduct = conn.getMetaData().getDatabaseProductName();// DB 종류 (MySQL 등)
+	        String dbVersion = conn.getMetaData().getDatabaseProductVersion();// DB 버전
+
+	        System.out.println("DB 연결 성공!");
+	        System.out.println("DB URL: " + dbUrl);
+	        System.out.println("DB User: " + dbUser);
+	        System.out.println("DB Product: " + dbProduct);
+	        System.out.println("DB Version: " + dbVersion);
+
+	        assertNotNull(conn);
+	        assertNotNull(dbUrl);
+	        assertNotNull(dbUser);
+	    }
+	}
+	
+	 @Test
+    void testPrintAllUsers() throws Exception {
+        try (Connection conn = dataSource.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT * FROM users")) {
+             System.out.println("----- users 테이블 전체 데이터 -----");
+             int count = 0;
+             while (rs.next()) {
+                // 필요한 컬럼명에 맞게 출력 (예시: user_id, user_email, user_name 등)
+                int id = rs.getInt("user_id");
+                String email = rs.getString("user_email");
+                String name = rs.getString("user_name");
+                String role = rs.getString("user_role");
+                String status = rs.getString("user_status");
+                System.out.printf("user_id=%d, user_email=%s, user_name=%s, user_role=%s, user_status=%s\n",
+                        id, email, name, role, status);
+                count++;
+             }
+             System.out.println("총 " + count + "명의 사용자 데이터가 조회되었습니다.");
+        }
+    }
+	
+	
+	
 	
 	// 각 테스트 메서드 실행 전에 항상 이 메서드를 먼저 실행함 (테스트 준비)
 	@BeforeEach
@@ -131,6 +195,81 @@ public class ChatWebSocketHandlerTest {
 		
 		
 	}
+	
+	
+	@Test
+	@DisplayName("실제 DB에 채팅방 생성/참여자 저장 테스트")
+	void testCreateChatRoomAndInviteRealDb() {
+		// 이미 DB에 존재하는 이메일로 User 조회
+		//User user1 = userRepository.findByEmail("yoochun8128@gmail.com").orElseThrow();
+		//User user2 = userRepository.findByEmail("choimeeyoung2@gmail.com").orElseThrow();
+		User user3 = userRepository.findByEmail("ehddnras@gmail.com").orElseThrow();
+		
+	
+		List<Integer> userIds = Arrays.asList(  user3.getId());
+		
+		// 실제 방 생성
+		ChatRoom chatRoom = chatRoomService.createChatRoom("testRoom", userIds);
+		
+		// PK는 자동생성! 직접 setId() 안함
+		assertNotNull(chatRoom.getId());
+		log.info("생성된 채팅방 PK: " + chatRoom.getId());
+		
+		// DB에서 직접 조회
+		ChatRoom foundRoom = chatRoomService.findById(chatRoom.getId());
+		assertEquals("testRoom", foundRoom.getRoomName());
+	}
+	
+	
+	@Test
+    void testJPASelectQueryEmail() throws Exception {
+        String targetEmail = "ehddnras@gmail.com";
+        try (Connection conn = dataSource.getConnection()) {
+            // DB 정보 출력
+            System.out.println(">>> 현재 연결된 DB 정보");
+            System.out.println("DB URL: " + conn.getMetaData().getURL());
+            System.out.println("DB User: " + conn.getMetaData().getUserName());
+            System.out.println("DB Product: " + conn.getMetaData().getDatabaseProductName());
+            System.out.println("DB Version: " + conn.getMetaData().getDatabaseProductVersion());
+
+            // 현재 DB(스키마) 이름 확인 (MySQL 기준)
+            try (PreparedStatement stmt = conn.prepareStatement("SELECT DATABASE()")) {
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        String dbName = rs.getString(1);
+                        System.out.println("현재 DB 스키마 이름: " + dbName);
+                    }
+                }
+            }
+
+            // 실제 쿼리와 결과 확인
+            String sql = "SELECT * FROM users WHERE user_email = ?";
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setString(1, targetEmail);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    System.out.println("실행한 쿼리: " + sql.replace("?", "'" + targetEmail + "'"));
+                    boolean found = false;
+                    while (rs.next()) {
+                        found = true;
+                        int id = rs.getInt("user_id");
+                        String email = rs.getString("user_email");
+                        String name = rs.getString("user_name");
+                        String role = rs.getString("user_role");
+                        String status = rs.getString("user_status");
+                        System.out.printf("조회 결과 - user_id=%d, user_email=%s, user_name=%s, user_role=%s, user_status=%s\n",
+                                id, email, name, role, status);
+                    }
+                    if (!found) {
+                        System.out.println("해당 이메일(" + targetEmail + ")의 유저는 DB에 존재하지 않습니다.");
+                    }
+                }
+            }
+        }
+    }
+	
+	
+	
+	
 	
 	
 	

@@ -104,6 +104,13 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 		}
 		return chatRoom;		
 	}
+
+	@Override
+	public ChatRoom findById(Integer id) {
+		// JPA의 ChatRoomRepository를 통해 PK(id)로 채팅방을 조회
+		return chatRoomRepository.findById(id)
+				.orElseThrow(() -> new IllegalArgumentException("채팅방 없음: " + id));
+	}
 	
 	
 	
