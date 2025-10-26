@@ -18,7 +18,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.goodee.coreconnect.chat.entity.Notification;
-import com.goodee.coreconnect.chat.repository.AlarmRepository;
+import com.goodee.coreconnect.chat.repository.NotificationRepository;
 import com.goodee.coreconnect.chat.service.ChatRoomService;
 import com.goodee.coreconnect.security.jwt.JwtProvider;
 import com.goodee.coreconnect.user.entity.User;
@@ -39,7 +39,7 @@ import lombok.extern.slf4j.Slf4j;
 public class ChatWebSocketHandler extends TextWebSocketHandler {
 	
 	// 사용자ID와 세션 매핑 (추후 Redis로 확장 가능)
-	private final Map<Integer, WebSocketSession> userSessions = new ConcurrentHashMap<>();
+	public final Map<Integer, WebSocketSession> userSessions = new ConcurrentHashMap<>();
 	
 	private final JwtProvider jwtProvider;
 	
@@ -47,13 +47,19 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 		
 	private final ChatRoomService chatRoomService;
 	
-	private final AlarmRepository alarmRepository;
+	private final NotificationRepository alarmRepository;
 	
 	// JSON 파싱용 ObjectMapper
 	private final ObjectMapper objectMapper = new ObjectMapper();
 	
 	// 사용자별 구독 중인 채팅방 목록을 관리 (userId -> List of roomIds)
 	private final Map<Integer, List<Integer>> userSubscriptions = new ConcurrentHashMap<>();
+	
+	public Map<Integer, WebSocketSession> getUserSessions() {
+		return userSessions;
+	}
+	
+	
 	
 	// 클라이언트 연결 시 사용자 세션 저장
 	@Override

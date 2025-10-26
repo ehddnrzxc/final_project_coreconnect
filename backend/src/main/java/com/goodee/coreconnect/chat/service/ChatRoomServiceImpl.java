@@ -12,7 +12,7 @@ import com.goodee.coreconnect.chat.entity.Notification;
 import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
 import com.goodee.coreconnect.chat.entity.ChatRoomUser;
-import com.goodee.coreconnect.chat.repository.AlarmRepository;
+import com.goodee.coreconnect.chat.repository.NotificationRepository;
 import com.goodee.coreconnect.chat.repository.ChatRepository;
 import com.goodee.coreconnect.chat.repository.ChatRoomRepository;
 import com.goodee.coreconnect.chat.repository.ChatRoomUserRepository;
@@ -28,7 +28,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	private final ChatRoomUserRepository chatRommUserRepository;
 	private final ChatRoomRepository chatRoomRepository;
 	private final ChatRepository chatRepository;
-	private final AlarmRepository alarmRepository;
+	private final NotificationRepository alarmRepository;
 	private final UserRepository userRepository;
 
 	// 채팅방의 참여자 user_id 리스트 조회
