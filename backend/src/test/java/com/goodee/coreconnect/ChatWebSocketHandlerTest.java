@@ -268,6 +268,19 @@ public class ChatWebSocketHandlerTest {
     }
 	
 	
+	@Test
+	@DisplayName("Service/Repository로 2번방 roomType을 alone으로 변경")
+	void testUpdateRoomTypeToAloneWithService() {
+		// 1. 기존 1번 방 조회
+		ChatRoom room = chatRoomService.findById(2);
+		assertNotNull(room, "2번 방이 존재해야 함");
+		log.info("변경전 roomType: " + room.getRoomType());
+		
+		// 2. 방의 roomType을 alone으로 변경
+		ChatRoom updatedRoom = chatRoomService.updateRoomType(2, "alone");
+		assertEquals("alone", updatedRoom.getRoomType());
+		log.info("변경후 roomType: " + updatedRoom.getRoomType());		
+	}
 	
 	
 	

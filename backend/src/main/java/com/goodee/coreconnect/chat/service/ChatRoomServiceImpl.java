@@ -111,6 +111,23 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 		return chatRoomRepository.findById(id)
 				.orElseThrow(() -> new IllegalArgumentException("채팅방 없음: " + id));
 	}
+
+	@Override
+	@Transactional
+	public ChatRoom updateRoomType(int roomId, String roomType) {
+		// 1. 기존 채팅방 조회 (없으면 예외)
+		ChatRoom chatRoom = chatRoomRepository.findById(roomId)
+				.orElseThrow(() -> new IllegalArgumentException("채팅방 없음: " + roomId));
+		
+		// 2. roomType 값 변경
+		chatRoom.setRoomType(roomType);
+		
+		// 3. DB에 저장 (JPA save는 변경 감지 시 자동 반영이므로 save 생략 가능하지만 명시적으로 호출해도 안전 )
+		ChatRoom updatedRoom = chatRoomRepository.save(chatRoom);
+		
+		// 4. 변경된 객체 반환
+		return updatedRoom;
+	}
 	
 	
 	

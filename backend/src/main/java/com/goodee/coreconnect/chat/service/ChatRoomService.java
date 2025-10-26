@@ -18,4 +18,6 @@ public interface ChatRoomService {
 	ChatRoom createChatRoom(String string, List<Integer> userIds);
 
 	ChatRoom findById(Integer id);
+
+	ChatRoom updateRoomType(int i, String string);
 }
