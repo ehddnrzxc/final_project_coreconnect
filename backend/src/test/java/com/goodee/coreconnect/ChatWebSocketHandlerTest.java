@@ -31,8 +31,11 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.WebSocketSession;
 
+import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
+import com.goodee.coreconnect.chat.entity.Notification;
 import com.goodee.coreconnect.chat.handler.ChatWebSocketHandler;
+import com.goodee.coreconnect.chat.repository.ChatRepository;
 import com.goodee.coreconnect.chat.repository.NotificationRepository;
 import com.goodee.coreconnect.chat.service.ChatRoomService;
 import com.goodee.coreconnect.chat.service.ChatRoomServiceImpl;
@@ -56,14 +59,16 @@ public class ChatWebSocketHandlerTest {
 	@Autowired
 	UserRepository userRepository;
 	
-	@Mock
+	@Autowired
 	JwtProvider jwtProvider;
 	
-	@Mock
+	@Autowired
 	NotificationRepository notificationRepository;
 	
-	ChatWebSocketHandler handler;
-	
+	@Autowired
+	ChatRepository chatRepository;
+		
+	ChatWebSocketHandler handler;	
 	
 	@Autowired
 	DataSource dataSource;
@@ -282,7 +287,33 @@ public class ChatWebSocketHandlerTest {
 		log.info("변경후 roomType: " + updatedRoom.getRoomType());		
 	}
 	
+	@Test
+	@DisplayName("3. 메시지 전송/알림 전송/수신자 전달 - 실제 DB 테스트")
+	void testSendMessageAndAlarm() {
+		// 채팅방과 참여자 준비
+		// 1. DB에 저장된 모든 사용자(User) 정보를 전부 가져온다
+		List<User> users = userRepository.findAll();
+
+		// 2. 가져온 사용자 중 앞에서 최대 3명까지의 ID만 추린다
+		// stream을 쓰면 여러가지 연산 (map, filter, collect등)을 연결해서 한번에 처리할 수 있다
+		// ::의미 : 메서드 참조
+		List<Integer> userIds = users.subList(0, Math.min(users.size(), 4)).stream().map(User::getId).toList();
 	
+		// 3. 채팅방을 하나 새로 만든다
+		ChatRoom chatRoom = chatRoomService.createChatRoom("alarmTestRoom2", userIds);
+		
+		// 메시지 저장 및 알림 생성
+		chatRoomService.saveMessageAndAlarm(chatRoom.getId(), userIds.get(0), "실제 메시지 전송 테스트2");
+		
+		//메시지가 저장됐는지 확인
+		List<Chat> chats = chatRepository.findByChatRoomId(chatRoom.getId());
+		assertFalse(chats.isEmpty(), "메시지가 DB에 저장되어야 함");
+		
+		// 알림이 생성됐는지 확인
+		List<Notification> nofiNotifications = notificationRepository.findByChatId(chats.get(0).getId());
+		assertEquals(userIds.size(), nofiNotifications.size(), "알림이 참여자 수만큼 생성되어야 함");	
+	
+	}
 	
 	
 	

@@ -42,7 +42,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	}
 
 	// 메시지 저장 및 알람 생성
-	@Transactional(readOnly = true)
+	@Transactional
 	@Override
 	public void saveMessageAndAlarm(Integer roomId, Integer senderId, String chatContent) {
 		ChatRoom chatRoom = chatRoomRepository.findById(roomId)
@@ -91,6 +91,14 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	public ChatRoom createChatRoom(String name, List<Integer> userIds) {
 		ChatRoom chatRoom = new ChatRoom();
 		chatRoom.setRoomName(name);
+		
+		// 참여자 수에 따라 roomType 설정
+		if (userIds.size() == 1) {
+			chatRoom.setRoomType("alone"); // 참여자가 1명이라면 "alone"
+		} else {
+			chatRoom.setRoomType("group"); // 2명 이상이면 "group"
+		}
+		
 		chatRoomRepository.save(chatRoom);
 		
 		for (Integer userID : userIds) {
