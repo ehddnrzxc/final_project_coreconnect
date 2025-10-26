@@ -8,7 +8,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.goodee.coreconnect.chat.entity.Alarm;
+import com.goodee.coreconnect.chat.entity.Notification;
 import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
 import com.goodee.coreconnect.chat.entity.ChatRoomUser;
@@ -64,7 +64,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 		List<ChatRoomUser> participants = chatRommUserRepository.findByChatRoomId(roomId);
 		for (ChatRoomUser participant: participants) {
 			User receiver = participant.getUser();
-			Alarm alarm = new Alarm();
+			Notification alarm = new Notification();
 			alarm.setChat(chat);
 			alarm.setAlarmType("1:1");
 			alarm.setAlarmSentYn(false);

@@ -17,7 +17,7 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.goodee.coreconnect.chat.entity.Alarm;
+import com.goodee.coreconnect.chat.entity.Notification;
 import com.goodee.coreconnect.chat.repository.AlarmRepository;
 import com.goodee.coreconnect.chat.service.ChatRoomService;
 import com.goodee.coreconnect.security.jwt.JwtProvider;
@@ -243,9 +243,9 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 	public void updateAlarmSentYn(Integer alarmId, boolean sentSuccess) {
 		if (alarmId == null) return;
 		try {
-			Optional<Alarm> alarmOpt = alarmRepository.findById(alarmId);
+			Optional<Notification> alarmOpt = alarmRepository.findById(alarmId);
 			if (alarmOpt.isPresent()) {
-				Alarm alarm = alarmOpt.get();
+				Notification alarm = alarmOpt.get();
 				alarm.setAlarmSentYn(sentSuccess); // 알람 전송 성공/실패
 				alarm.setAlarmSentAt(LocalDateTime.now()); // 전송 시각
 				alarmRepository.save(alarm);

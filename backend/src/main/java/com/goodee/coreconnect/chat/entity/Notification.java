@@ -23,8 +23,8 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "alarm")
-public class Alarm {
+@Table(name = "notification")
+public class Notification {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -60,7 +60,7 @@ public class Chat {
 	// 1 : N 관계 (알람 테이블과 매핑)
 	// 알람은 Chat에 종속된 데이터여서 Chat이 없으면 의미가 없어서 고아 데이터가 된느 것을 방지하기 위해 cascadeType.ALL을 쓴다
 	@OneToMany(mappedBy = "chat", cascade = CascadeType.ALL)
-	private List<Alarm> alarms = new ArrayList<>();
+	private List<Notification> alarms = new ArrayList<>();
 	
 	// N : 1 관계 (user 테이블과 매핑, 메시지의 발신자)
 	@ManyToOne(fetch = FetchType.LAZY)
