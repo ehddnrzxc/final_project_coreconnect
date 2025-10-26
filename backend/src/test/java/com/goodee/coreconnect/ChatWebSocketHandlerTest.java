@@ -34,6 +34,7 @@ import org.springframework.web.socket.WebSocketSession;
 import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
 import com.goodee.coreconnect.chat.entity.Notification;
+import com.goodee.coreconnect.chat.enums.NotificationType;
 import com.goodee.coreconnect.chat.handler.ChatWebSocketHandler;
 import com.goodee.coreconnect.chat.repository.ChatRepository;
 import com.goodee.coreconnect.chat.repository.NotificationRepository;
@@ -300,10 +301,10 @@ public class ChatWebSocketHandlerTest {
 		List<Integer> userIds = users.subList(0, Math.min(users.size(), 4)).stream().map(User::getId).toList();
 	
 		// 3. 채팅방을 하나 새로 만든다
-		ChatRoom chatRoom = chatRoomService.createChatRoom("alarmTestRoom2", userIds);
+		ChatRoom chatRoom = chatRoomService.createChatRoom("alarmTestRoom3", userIds);
 		
 		// 메시지 저장 및 알림 생성
-		chatRoomService.saveMessageAndAlarm(chatRoom.getId(), userIds.get(0), "실제 메시지 전송 테스트2");
+		chatRoomService.saveNotification(chatRoom.getId(), userIds.get(0), "실제 메시지 전송 테스트3", NotificationType.CHAT);
 		
 		//메시지가 저장됐는지 확인
 		List<Chat> chats = chatRepository.findByChatRoomId(chatRoom.getId());
@@ -314,6 +315,8 @@ public class ChatWebSocketHandlerTest {
 		assertEquals(userIds.size(), nofiNotifications.size(), "알림이 참여자 수만큼 생성되어야 함");	
 	
 	}
+	
+
 	
 	
 	
