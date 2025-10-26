@@ -23,7 +23,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
   @Override
   protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
       throws ServletException, IOException {
-    String auth = req.getHeader("Authorization");
+    
+	  String uri = req.getRequestURI();
+	  
+	  // WebSocket handshake 요청인 인증 없이 통과시키기 (핸들러 경로와 일치시킬것!)
+	  if (uri.startsWith("/ws/chat")) {
+		  chain.doFilter(req, res);
+		  return;
+	  }
+	  
+	  // 나머지 요청은 기존 JWT 인증 로직 적용
+	  String auth = req.getHeader("Authorization");
     if (auth != null && auth.startsWith("Bearer ")) {
       String token = auth.substring(7);
       try {

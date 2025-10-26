@@ -20,16 +20,24 @@ import java.sql.Statement;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 import javax.sql.DataSource;
 
 import org.mockito.MockitoAnnotations;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
+import org.springframework.web.socket.client.standard.StandardWebSocketClient;
+import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
@@ -50,7 +58,7 @@ import lombok.extern.slf4j.Slf4j;
  * WebSocketHandler 및 채팅/알림 비즈니스 로직 테스트
  * */
 @Slf4j
-@SpringBootTest
+@SpringBootTest(webEnvironment  = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestPropertySource(locations = "classpath:application.properties")
 public class ChatWebSocketHandlerTest {
 
@@ -73,6 +81,9 @@ public class ChatWebSocketHandlerTest {
 	
 	@Autowired
 	DataSource dataSource;
+	
+	@LocalServerPort
+	int port;
 
 	@Test
 	void testDatabaseConnectionInfo() throws Exception {
@@ -314,6 +325,53 @@ public class ChatWebSocketHandlerTest {
 		List<Notification> nofiNotifications = notificationRepository.findByChatId(chats.get(0).getId());
 		assertEquals(userIds.size(), nofiNotifications.size(), "알림이 참여자 수만큼 생성되어야 함");	
 	
+	}
+	
+	@Test
+	@DisplayName("실제 사용자 JWT로 WebSocket 연결 및 메시지 전송/수신 테스트")
+	void testWebSocketRealTimeMessageSend() throws Exception {
+		
+		
+		// 1. 테스트 사용자 준비: DB에 있는 계정 사용
+		String email = "choimeeyoung2@gmail.com";
+		User user = userRepository.findByEmail(email).orElseThrow();
+		
+		// 2. JWT 토큰 발급
+		String accessToken = jwtProvider.createAccess(email, 60); // 60분짜리 액세스 토큰
+
+		// 3. WebSocket 클라이언트 준비
+		BlockingQueue<String> receivedMessages = new LinkedBlockingQueue<>();
+		TextWebSocketHandler clientHandler = new TextWebSocketHandler() {
+			 @Override
+	            public void handleTextMessage(WebSocketSession session, TextMessage message) {
+	                receivedMessages.add(message.getPayload());
+	            }
+		};
+		
+		// 4. 서버에 WebSocket 연결 (accessToken 쿼리파라미터로 전달)
+        String wsUri = "ws://localhost:" + port + "/ws/chat?accessToken=" + accessToken;
+        StandardWebSocketClient client = new StandardWebSocketClient();
+        WebSocketSession session = client.doHandshake(clientHandler, wsUri).get();
+
+        // 5. WebSocket 메시지 전송
+        String payload = "{ \"type\": \"CHAT\", \"roomId\": 6, \"content\": \"웹소켓 통합 테스트 메시지\" }";
+        session.sendMessage(new TextMessage(payload));
+
+        // 6. 서버에서 발송된 응답/알림 메시지 수신 및 검증 (5초 이내 도착)
+        String response = receivedMessages.poll(5, TimeUnit.SECONDS);
+        System.out.println("서버 응답: " + response);
+
+        assertNotNull(response, "서버로부터 응답 메시지를 받아야 합니다.");
+        assertTrue(response.contains("웹소켓 통합 테스트 메시지"));
+		
+		
+		
+		
+		
+		
+		
+		
+		
 	}
 	
 

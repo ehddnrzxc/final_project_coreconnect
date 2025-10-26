@@ -48,7 +48,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	// 채팅방의 참여자 email 리스트 조회
 	@Override
 	public List<String> getParticipantEmail(Integer roomId) {
-		List<ChatRoomUser> users = chatRoomUserRepository.findByChatRoomId(roomId);
+		List<ChatRoomUser> users = chatRoomUserRepository.findByChatRoomIdWithUser(roomId);
 		return users.stream()
 				.map(chatRoomUser -> chatRoomUser.getUser().getEmail())
 				.collect(Collectors.toList());

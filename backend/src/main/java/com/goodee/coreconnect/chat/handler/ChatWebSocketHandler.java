@@ -184,10 +184,12 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 		
 		// 4. 참여자에게만 메시지 전송
 		for (Integer user : participantIds) {
-			WebSocketSession userSession = userSessions.get(user);
-			if (userSession != null && userSession.isOpen()) {
-				userSession.sendMessage(new TextMessage(chatContent));
-			}
+		    WebSocketSession userSession = userSessions.get(user);
+		    log.info("user {} session: {}", user, userSession);
+		    if (userSession != null && userSession.isOpen()) {
+		        userSession.sendMessage(new TextMessage(chatContent));
+		        log.info("메시지 전송: user_id={}, content={}", user, chatContent);
+		    }
 		}
 		
 		
