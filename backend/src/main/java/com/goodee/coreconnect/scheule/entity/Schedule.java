@@ -16,10 +16,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
@@ -65,7 +62,12 @@ public class Schedule {
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "user_id")
   private User user;
- 
+  
+  // N:1 (ScheduleCategory 테이블과 매핑)
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "sch_category_id")
+  private ScheduleCategory category;
+  
   
   protected Schedule() {};
   
@@ -76,17 +78,17 @@ public class Schedule {
                                           LocalDateTime end,
                                           String location,
                                           ScheduleVisibility visibility) {
-  Schedule schedule = new Schedule();
-  schedule.user = user;
-  schedule.title = title;
-  schedule.content = content;
-  schedule.startDateTime = start;
-  schedule.endDateTime = end;
-  schedule.location = location;
-  schedule.visibility = visibility;
-  schedule.deletedYn = false;
-  schedule.createdAt = LocalDateTime.now();
-  return schedule;
+    Schedule schedule = new Schedule();
+    schedule.user = user;
+    schedule.title = title;
+    schedule.content = content;
+    schedule.startDateTime = start;
+    schedule.endDateTime = end;
+    schedule.location = location;
+    schedule.visibility = visibility;
+    schedule.deletedYn = false;
+    schedule.createdAt = LocalDateTime.now();
+    return schedule;
   }
   
 }
