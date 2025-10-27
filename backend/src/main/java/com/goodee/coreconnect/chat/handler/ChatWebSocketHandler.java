@@ -187,8 +187,30 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 		    WebSocketSession userSession = userSessions.get(user);
 		    log.info("user {} session: {}", user, userSession);
 		    if (userSession != null && userSession.isOpen()) {
-		        userSession.sendMessage(new TextMessage(chatContent));
-		        log.info("메시지 전송: user_id={}, content={}", user, chatContent);
+		    	// SCHEDULE 등은 알림 메시지(notificationMessage)로 push
+		    	String messageToSend = null;
+		    	if (notificationType == NotificationType.CHAT) {
+		    		messageToSend = chatContent;
+		    	} else {
+		    		// SCHEDULE, EMAIL 등은 notificationMessage(알림 메시지)로 push
+		    		messageToSend = notifications.stream()
+		    				.filter(n -> n.getUser().getId().equals(user))
+		    				.findFirst()
+		    				.map(Notification::getNotificationMessage)
+		    				.orElse(null);
+		    	}
+		    	
+		    	
+		    	// null이면 메시지 push 하지 않음
+		    	if (messageToSend != null && !messageToSend.isEmpty()) {
+		    		 userSession.sendMessage(new TextMessage(chatContent));
+				     log.info("메시지 전송: user_id={}, content={}", user, chatContent);
+		    	} else {
+		    		log.info("메시지 전송하지 않음: user_id={}, content=null or empty", user);
+		    	}
+		    	
+		    	
+		       
 		    }
 		}
 		
@@ -233,7 +255,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 			log.error("[extractChatContent] content 필드가 없습니다. payload: " + payload);
 			e.printStackTrace();
 		}
-		return null;
+		return "";
 	}
 	
 	
@@ -259,7 +281,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 			json.put("alarmType", alarmType); // mail, message, calendar, board, schedule, approval
 			json.put("recipientId", userId); // 알람 수신자
 			json.put("title", title); // "전자결개 승인 요청이 있습니다", "새로운 일정이 등록되었습니다", "채팅 메시지가 도착했습니다", "이메일이 도착했습니다", "공지가 등록되었습니다."
-			json.put("message", message);    
+			json.put("message", message);  //  
 			json.put("alarmId", alarmId);
 			try {
 				

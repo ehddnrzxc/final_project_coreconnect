@@ -158,7 +158,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 			switch (notificationType) {
 				
 				case CHAT:
-					message = sender.getName() + "님으로부터 새로운 채팅 메시지가 도착했습니다.";
+					message = sender.getName() + "님으로부터 새로운 채팅 메시지가 도착했습니다: " + chatContent;
 					break;
 				case EMAIL:
 					message = sender.getName() + "님으로부터 이메일이 도착했습니다.";
