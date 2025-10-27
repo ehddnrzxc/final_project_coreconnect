@@ -2,11 +2,16 @@ package com.goodee.coreconnect.chat.entity;
 
 import java.time.LocalDateTime;
 
+import com.goodee.coreconnect.user.entity.User;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -18,12 +23,12 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "alarm")
-public class Alarm {
+@Table(name = "notification")
+public class Notification {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
+	private Integer id;
 	
 	@Column(name = "alarm_read_yn")
 	private Boolean alarmReadYn;
@@ -41,8 +46,16 @@ public class Alarm {
 	private Boolean alarmSentYn;
 	
 	
+	// N : 1 관계 (채팅메시지 테이블과 매핑)
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "chat_message_id")
+	private Chat chat;
 	
-	
+	// N : 1 관계 (user 테이블과 매핑)
+	// 알림 수신자
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "user_id")
+	private User user; 
 	
 	
 }
