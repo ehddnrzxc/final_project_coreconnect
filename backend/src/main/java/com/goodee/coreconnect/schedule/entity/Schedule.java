@@ -74,6 +74,13 @@ public class Schedule {
   private ScheduleCategory category;
   
   /**
+   * N:1 (meetingRoom 테이블과 매핑)
+   */
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "mt_id")
+  private MeetingRoom meetingRoom;
+  
+  /**
    * N:1 (department 테이블과 매핑)
    */
   @ManyToOne(fetch = FetchType.LAZY)
