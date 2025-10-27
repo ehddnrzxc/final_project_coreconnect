@@ -23,14 +23,15 @@ public class MeetingRoomDTO {
 
   /** Entity → DTO 변환 */
   public static MeetingRoomDTO toDTO(MeetingRoom entity) {
-      MeetingRoomDTO dto = new MeetingRoomDTO();
-      dto.setId(entity.getId());
-      dto.setName(entity.getName());
-      dto.setLocation(entity.getLocation());
-      dto.setCapacity(entity.getCapacity());
-      dto.setDeletedYn(entity.getDeletedYn());
-      dto.setAvailableYn(entity.getAvailableYn());
-      return dto;
+    
+    MeetingRoomDTO dto = new MeetingRoomDTO();
+    dto.setId(entity.getId());
+    dto.setName(entity.getName());
+    dto.setLocation(entity.getLocation());
+    dto.setCapacity(entity.getCapacity());
+    dto.setDeletedYn(entity.getDeletedYn());
+    dto.setAvailableYn(entity.getAvailableYn());
+    return dto;
   }
   
 }

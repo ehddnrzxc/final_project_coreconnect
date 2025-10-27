@@ -16,7 +16,11 @@ public class RequestScheduleCategoryDTO {
 
   /** DTO → Entity 변환 */
   public ScheduleCategory toEntity(User user) {
-      return ScheduleCategory.createScheduleCategory(user, name, defaultYn);
+    
+    return ScheduleCategory.createScheduleCategory(user,
+                                                    name,
+                                                    defaultYn);
+    
   }
 
   

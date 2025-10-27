@@ -19,14 +19,17 @@ public class ResponseScheduleCategoryDTO {
 
   /** Entity → DTO 변환 */
   public static ResponseScheduleCategoryDTO toDTO(ScheduleCategory entity) {
-      ResponseScheduleCategoryDTO dto = new ResponseScheduleCategoryDTO();
-      dto.setId(entity.getId());
-      dto.setName(entity.getName());
-      dto.setDefaultYn(entity.getDefaultYn());
-      dto.setCreatedAt(entity.getCreatedAt());
-      if (entity.getUser() != null)
-          dto.setUserName(entity.getUser().getName());
-      return dto;
+    
+    ResponseScheduleCategoryDTO dto = new ResponseScheduleCategoryDTO();
+    
+    dto.setId(entity.getId());
+    dto.setName(entity.getName());
+    dto.setDefaultYn(entity.getDefaultYn());
+    dto.setCreatedAt(entity.getCreatedAt());
+    
+    if (entity.getUser() != null)
+        dto.setUserName(entity.getUser().getName());
+    return dto;
   }
   
 }

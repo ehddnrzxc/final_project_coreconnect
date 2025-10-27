@@ -18,11 +18,10 @@ public class RequestScheduleParticipantDTO {
 
   /** DTO → Entity 변환 */
   public ScheduleParticipant toEntity(Schedule schedule, User user) {
-      return ScheduleParticipant.createParticipant(
-              schedule,
-              user,
-              role != null ? role : ScheduleRole.MEMBER
-      );
+    
+    return ScheduleParticipant.createParticipant(schedule,
+                                                  user,
+                                                  role != null ? role : ScheduleRole.MEMBER);
   }
   
 }

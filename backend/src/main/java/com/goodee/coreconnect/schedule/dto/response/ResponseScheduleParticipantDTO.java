@@ -22,19 +22,22 @@ public class ResponseScheduleParticipantDTO {
 
   /** Entity → DTO 변환 */
   public static ResponseScheduleParticipantDTO toDTO(ScheduleParticipant entity) {
-      ResponseScheduleParticipantDTO dto = new ResponseScheduleParticipantDTO();
-      dto.setId(entity.getId());
-      if (entity.getSchedule() != null) {
-          dto.setScheduleId(entity.getSchedule().getId());
-          dto.setScheduleTitle(entity.getSchedule().getTitle());
-      }
-      if (entity.getUser() != null) {
-          dto.setUserId(entity.getUser().getId());
-          dto.setUserName(entity.getUser().getName());
-      }
-      dto.setRole(entity.getRole());
-      dto.setCreatedAt(entity.getCreatedAt());
-      return dto;
+    
+    ResponseScheduleParticipantDTO dto = new ResponseScheduleParticipantDTO();
+    
+    dto.setId(entity.getId());
+    
+    if (entity.getSchedule() != null) {
+        dto.setScheduleId(entity.getSchedule().getId());
+        dto.setScheduleTitle(entity.getSchedule().getTitle());
+    }
+    if (entity.getUser() != null) {
+        dto.setUserId(entity.getUser().getId());
+        dto.setUserName(entity.getUser().getName());
+    }
+    dto.setRole(entity.getRole());
+    dto.setCreatedAt(entity.getCreatedAt());
+    return dto;
   }
   
 }

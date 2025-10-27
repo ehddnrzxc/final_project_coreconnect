@@ -29,6 +29,7 @@ public class ResponseScheduleDTO {
   public static ResponseScheduleDTO toDTO(Schedule entity) {
     
     ResponseScheduleDTO dto = new ResponseScheduleDTO();
+    
     dto.setId(entity.getId());
     dto.setTitle(entity.getTitle());
     dto.setContent(entity.getContent());
@@ -46,7 +47,6 @@ public class ResponseScheduleDTO {
         dto.setCategoryName(entity.getCategory().getName());
     if (entity.getMeetingRoom() != null)
         dto.setMeetingRoomName(entity.getMeetingRoom().getName());
-
     return dto;
   }
     

@@ -28,9 +28,9 @@ public class RequestScheduleDTO {
 
     /** DTO → Entity 변환 */
     public Schedule toEntity(User user,
-                             Department department,
-                             MeetingRoom meetingRoom,
-                             ScheduleCategory category) {
+                              Department department,
+                              MeetingRoom meetingRoom,
+                              ScheduleCategory category) {
       
       return Schedule.createSchedule(user,
                                       department,
