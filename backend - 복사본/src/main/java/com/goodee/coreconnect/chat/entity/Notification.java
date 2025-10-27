@@ -48,7 +48,7 @@ public class Notification {
    private LocalDateTime notificationSentAt;
    
    @Column(name = "notification_deleted_yn")
-   private Boolean notificationDeletedYn = false;
+   private Boolean notificationDeletedYn;
    
    @Column(name = "notification_sent_yn")
    private Boolean notificationSentYn;

@@ -146,7 +146,6 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	            notification.setNotificationSentAt(LocalDateTime.now());
 	            notification.setNotificationReadAt(null);
 	            notification.setUser(participant.getUser());
-	            notification.setNotificationDeletedYn(Boolean.FALSE);  // <--- 추가!
 	            String message = sender.getName() + "님으로부터 새로운 채팅 메시지가 도착했습니다: " + chatContent;
 	            notification.setNotificationMessage(message);
 	            notificationRepository.save(notification);
@@ -160,8 +159,6 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	        notification.setNotificationSentAt(LocalDateTime.now());
 	        notification.setNotificationReadAt(null);
 	        notification.setUser(sender); // senderId로 알림 수신자 지정
-	        notification.setNotificationDeletedYn(Boolean.FALSE); // <--- 추가!
-
 
 	        // 문서 연계
 	        if ((notificationType == NotificationType.APPROVAL || notificationType == NotificationType.SCHEDULE) && document != null) {

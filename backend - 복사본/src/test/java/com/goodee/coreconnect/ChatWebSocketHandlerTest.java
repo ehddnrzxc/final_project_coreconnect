@@ -34,11 +34,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpHeaders;
-import org.springframework.test.annotation.Commit;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
@@ -98,9 +95,6 @@ public class ChatWebSocketHandlerTest {
 	
 	@Autowired
 	DocumentRepository documentRepository;
-	
-	@Autowired
-	private PlatformTransactionManager transactionManager;
 	
 	@LocalServerPort
 	int port;
@@ -453,9 +447,10 @@ public class ChatWebSocketHandlerTest {
 
 	@Test
 	@DisplayName("전자결재 문서 등록/알림 생성 & 삭제/알림 soft-delete 통합 테스트")
-	void testApprovalDocumentWebSocketLifecycle2() throws Exception {
+	@Transactional
+	void testApprovalDocumentWebSocketLifecycle() throws Exception {
 		// 1. 실제 사용자 계정 준비
-		User user = userRepository.findAll().get(4); // 첫 번째 계정 사용
+		User user = userRepository.findAll().get(0); // 첫 번째 계정 사용
 		String email = user.getEmail();
 		
 		// 2. JWT 토큰 발급
@@ -474,22 +469,21 @@ public class ChatWebSocketHandlerTest {
 	    WebSocketSession session = client.doHandshake(clientHandler, wsUri).get();
 		
 	    // 4. 전자결재 문서 등록 요청 (WebSocket)
-		String docTitle = "테스트 결재 문서1";
-		String docContent = "결재 문서 내용1";
+		String docTitle = "테스트 결재 문서";
+		String docContent = "결재 문서 내용";
 		
-//		// Template 생성
-//		Template template = Template.createTemplate("기본 결재 템플릿1", "템플릿 내용1", user);
-//		template = templateRepository.save(template);
-//		
-//		// Document 생성
-//		Document document = Document.createDocument(template, user, docTitle, docContent);
-//		document.setDocDeletedYn(false);
-//		Document savedDocument = documentRepository.save(document);
-//		documentRepository.flush();
+		// Template 생성
+		Template template = Template.createTemplate("기본 결재 템플릿", "템플릿 내용", user);
+		template = templateRepository.save(template);
+		
+		// Document 생성
+		Document document = Document.createDocument(template, user, docTitle, docContent);
+		document.setDocDeletedYn(false);
+		Document savedDocument = documentRepository.save(document);
 	    
 		// 5. WwbSocket으로 APPROVAL 알림 전송
 		String approvalPayload = String.format(
-			"{ \"type\": \"APPROVAL\", \"docId\": %d }", 9
+			"{ \"type\": \"APPROVAL\", \"docId\": %d }", document.getId()
 		);
 		
 		session.sendMessage(new TextMessage(approvalPayload));
@@ -504,19 +498,18 @@ public class ChatWebSocketHandlerTest {
 	    Notification approvalNotification = notifications.stream()
 	        .filter(n -> n.getNotificationType() == NotificationType.APPROVAL
 	            && n.getDocument() != null
-	            && n.getDocument().getId().equals(9)
+	            && n.getDocument().getId().equals(document.getId())
 	            && n.getNotificationDeletedYn() != Boolean.TRUE)
 	        .findFirst()
 	        .orElseThrow(() -> new AssertionError("APPROVAL 알림이 DB에 저장되어야 함"));
 
-	    String expectedMessage = user.getName() + "님이 전자결재 문서를 등록했습니다.";
-	    assertEquals(expectedMessage, approvalNotification.getNotificationMessage());
+	    assertEquals("전자결재 문서를 등록했습니다.", approvalNotification.getNotificationMessage());
 
 	    // 8. 문서 삭제 요청 (서비스 직접 호출)
-	    chatRoomService.deleteDocumentAndNotification(9);
+	    chatRoomService.deleteDocumentAndNotification(document.getId());
 
 	    // 9. 문서 삭제 상태 검증
-	    Document deletedDoc = documentRepository.findById(9).orElseThrow();
+	    Document deletedDoc = documentRepository.findById(document.getId()).orElseThrow();
 	    assertTrue(deletedDoc.getDocDeletedYn(), "문서가 삭제 상태여야 함");
 
 	    // 10. 알림 soft-delete 상태 검증 (알림이 비활성화되어야 함)
@@ -525,28 +518,5 @@ public class ChatWebSocketHandlerTest {
 
 	}
 	
-	@Test
-	@DisplayName("통합 테스트")
-	void testApprovalDocumentWebSocketLifecycle() throws Exception {
-	    // 1. 실제 사용자 계정 준비
-	    User user = userRepository.findAll().get(2);
-
-	    // 2. 문서/템플릿 저장을 별도 트랜잭션으로 실행
-	    TransactionTemplate txTemplate = new TransactionTemplate(transactionManager);
-	    Document savedDocument = txTemplate.execute(status -> {
-	        Template template = Template.createTemplate("기본 결재 템플릿3", "템플릿 내용3", user);
-	        template = templateRepository.save(template);
-	        templateRepository.flush();
-
-	        Document document = Document.createDocument(template, user, "테스트 결재 문서3", "결재 문서 내용3");
-	        document.setDocDeletedYn(false);
-	        Document savedDoc = documentRepository.save(document);
-	        documentRepository.flush();
-
-	        return savedDoc;
-	    });
-
-	    // 3. WebSocket 및 검증 (이제 DB에 데이터가 있음)
-	    // ... 이하 기존 코드에서 savedDocument.getId() 사용 ...
-	}
+	
 }
