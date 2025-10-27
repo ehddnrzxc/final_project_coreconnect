@@ -22,18 +22,10 @@ public class BoardCategory {
     @Column(name = "board_category_order_no")
     private Integer orderNo;
 
-    /**
-     * N:1 관계 매핑 (user 테이블과 매핑)
-     */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
-    private User user;
-    
     protected BoardCategory() {};
     
     public static BoardCategory createCategory(User user, String name, Integer orderNo) {
       BoardCategory category = new BoardCategory();
-      category.user = user;
       category.name = name;
       category.orderNo = orderNo != null ? orderNo : 0;
       return category;
