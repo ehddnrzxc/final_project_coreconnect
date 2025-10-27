@@ -1,28 +1,19 @@
-const API_BASE = "http://localhost:8080/api/auth";
+// src/api/Auth.api.js (또는 authAPI.js)
+import http from "./http";
 
+// 로그인
 export async function login(email, password) {
-  const res = await fetch(`${API_BASE}/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include", // ✅ Refresh 쿠키 받기
-    body: JSON.stringify({ email, password }),
-  });
-  if (!res.ok) throw new Error("로그인 실패");
-  return await res.json(); // { accessToken, user: {...} }
+  const { data } = await http.post("/auth/login", { email, password });
+  return data; // { accessToken, user }
 }
 
+// 액세스 재발급
 export async function refreshAccessToken() {
-  const res = await fetch(`${API_BASE}/refresh`, {
-    method: "POST",
-    credentials: "include", // ✅ Refresh 쿠키 전송
-  });
-  if (!res.ok) throw new Error("재발급 실패");
-  return await res.json();
+  const { data } = await http.post("/auth/refresh", {}); // 쿠키 자동 포함
+  return data; // { accessToken }
 }
 
+// 로그아웃
 export async function logout() {
-  await fetch(`${API_BASE}/logout`, {
-    method: "POST",
-    credentials: "include",
-  });
+  await http.post("/auth/logout", {}); // 쿠키 자동 포함
 }

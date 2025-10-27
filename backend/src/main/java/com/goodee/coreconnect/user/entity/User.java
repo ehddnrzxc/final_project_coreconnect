@@ -8,6 +8,7 @@ import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.approval.entity.Template;
 import com.goodee.coreconnect.board.entity.Board;
 import com.goodee.coreconnect.chat.entity.ChatRoomUser;
+import com.goodee.coreconnect.department.entity.Department;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -93,5 +94,13 @@ public class User {
    */
   @OneToMany(mappedBy = "user", cascade = CascadeType.PERSIST, orphanRemoval = true)
   private List<Board> boards = new ArrayList<>();
+    
+  /**
+   * 부서 테이블과 N:1 매핑
+   * dept_id: FK 칼럼명(users 테이블에 생성됨)
+   */
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "dept_id")
+  private Department department;
 
 }
