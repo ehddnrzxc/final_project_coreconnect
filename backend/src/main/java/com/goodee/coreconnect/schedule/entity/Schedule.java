@@ -1,8 +1,9 @@
-package com.goodee.coreconnect.scheule.entity;
+package com.goodee.coreconnect.schedule.entity;
 
 import java.time.LocalDateTime;
 
-import com.goodee.coreconnect.scheule.enums.ScheduleVisibility;
+import com.goodee.coreconnect.department.entity.Department;
+import com.goodee.coreconnect.schedule.enums.ScheduleVisibility;
 import com.goodee.coreconnect.user.entity.User;
 
 import jakarta.persistence.Column;
@@ -28,7 +29,7 @@ public class Schedule {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "sch_id")
-  private Long id;
+  private Integer id;
 
   @Column(name = "sch_title", length = 100, nullable = false)
   private String title;
@@ -58,15 +59,33 @@ public class Schedule {
   @Column(name = "sch_updated_at")
   private LocalDateTime updatedAt;
 
-  // N:1 (user 테이블과 매핑)
+  /**
+   * N:1 (user 테이블과 매핑)
+   */
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "user_id")
   private User user;
   
-  // N:1 (ScheduleCategory 테이블과 매핑)
+  /**
+   * N:1 (scheduleCategory 테이블과 매핑)
+   */
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "sch_category_id")
   private ScheduleCategory category;
+  
+  /**
+   * N:1 (meetingRoom 테이블과 매핑)
+   */
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "mt_id")
+  private MeetingRoom meetingRoom;
+  
+  /**
+   * N:1 (department 테이블과 매핑)
+   */
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "dept_id")
+  private Department department;
   
   
   protected Schedule() {};

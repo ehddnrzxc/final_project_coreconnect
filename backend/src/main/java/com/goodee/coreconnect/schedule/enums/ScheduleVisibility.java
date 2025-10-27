@@ -1,4 +1,4 @@
-package com.goodee.coreconnect.scheule.enums;
+package com.goodee.coreconnect.schedule.enums;
 
 public enum ScheduleVisibility {
   

@@ -1,4 +1,4 @@
-package com.goodee.coreconnect.scheule.entity;
+package com.goodee.coreconnect.schedule.entity;
 
 import java.time.LocalDate;
 
@@ -25,7 +25,7 @@ public class ScheduleCategory {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "sch_category_id")
-  private Long id;
+  private Integer id;
 
   @Column(name = "sch_category_name", length = 50, nullable = false)
   private String name;
@@ -39,6 +39,9 @@ public class ScheduleCategory {
   @Column(name = "sch_category_updated_at")
   private LocalDate updatedAt;
 
+  /**
+   * N:1 (user 테이블과 매핑)
+   */
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "user_id")
   private User user;
