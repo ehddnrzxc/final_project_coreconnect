@@ -51,4 +51,17 @@ public class ScheduleParticipant {
   @JoinColumn(name = "sch_id")
   private Schedule schedule;
   
+  protected ScheduleParticipant() {}
+
+  public static ScheduleParticipant createParticipant(Schedule schedule, 
+                                                        User user, 
+                                                        ScheduleRole role) {
+    ScheduleParticipant participant = new ScheduleParticipant();
+    participant.schedule = schedule;
+    participant.user = user;
+    participant.role = role != null ? role : ScheduleRole.MEMBER;
+    participant.createdAt = LocalDateTime.now();
+    return participant;
+  }
+  
 }

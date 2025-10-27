@@ -10,32 +10,13 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import com.goodee.coreconnect.user.entity.User;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EntityListeners;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.OrderBy;
-import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import jakarta.persistence.*;
+import lombok.*;
 
 @Entity
 @Table(name = "board")
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 @EntityListeners(AuditingEntityListener.class)
 @Where(clause = "board_deleted_yn = false")
 public class Board {
@@ -52,13 +33,13 @@ public class Board {
     private String content;
 
     @Column(name = "board_notice_yn", nullable = false)
-    private Boolean noticeYn;
+    private Boolean noticeYn = false;
 
     @Column(name = "board_private_yn", nullable = false)
-    private Boolean privateYn;
+    private Boolean privateYn = false;
 
     @Column(name = "board_view_count")
-    private Integer viewCount;
+    private Integer viewCount = 0;
 
     @CreatedDate
     @Column(name = "board_created_at", updatable = false)
@@ -69,7 +50,7 @@ public class Board {
     private LocalDateTime updatedAt;
 
     @Column(name = "board_deleted_yn")
-    private Boolean deletedYn;
+    private Boolean deletedYn = false;
 
     /**
      * N:1 관계 매핑 (user 테이블과 매핑)
@@ -97,4 +78,19 @@ public class Board {
      */
     @OneToMany(mappedBy = "board", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<BoardFile> files;
+    
+    protected Board() {};
+    
+    public static Board createBoard(User user, BoardCategory category, String title, String content, Boolean noticeYn, Boolean privateYn) {
+      Board board = new Board();
+      board.user = user;
+      board.category = category;
+      board.title = title;
+      board.content = content;
+      board.noticeYn = noticeYn != null ? noticeYn : false;
+      board.privateYn = privateYn != null ? privateYn : false;
+      board.createdAt = LocalDateTime.now();
+      return board;
+  }
+    
 }

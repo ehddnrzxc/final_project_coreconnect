@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.List;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
@@ -16,34 +17,53 @@ import jakarta.servlet.http.HttpServletResponse;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
-  private final JwtProvider jwt;
 
-  public JwtAuthFilter(JwtProvider jwt){ this.jwt = jwt; }
+    private final JwtProvider jwtProvider;
 
-  @Override
-  protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
-      throws ServletException, IOException {
-    
-	  String uri = req.getRequestURI();
-	  
-	  // WebSocket handshake 요청인 인증 없이 통과시키기 (핸들러 경로와 일치시킬것!)
-	  if (uri.startsWith("/ws/chat")) {
-		  chain.doFilter(req, res);
-		  return;
-	  }
-	  
-	  // 나머지 요청은 기존 JWT 인증 로직 적용
-	  String auth = req.getHeader("Authorization");
-    if (auth != null && auth.startsWith("Bearer ")) {
-      String token = auth.substring(7);
-      try {
-        String username = jwt.getSubject(token);
-        UsernamePasswordAuthenticationToken at =
-            new UsernamePasswordAuthenticationToken(username, null, List.of());
-        at.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
-        SecurityContextHolder.getContext().setAuthentication(at);
-      } catch (Exception ignored) {}
+    public JwtAuthFilter(JwtProvider jwtProvider) {
+        this.jwtProvider = jwtProvider;
     }
-    chain.doFilter(req, res);
-  }
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
+            throws ServletException, IOException {
+
+        final String uri = req.getRequestURI();
+
+        // ✅ WebSocket 요청은 인증 없이 통과
+        if (uri.startsWith("/ws/chat")) {
+            chain.doFilter(req, res);
+            return;
+        }
+
+        final String authHeader = req.getHeader("Authorization");
+
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            final String token = authHeader.substring(7);
+
+            try {
+                final String username = jwtProvider.getSubject(token);
+                final String role = jwtProvider.getRole(token); // role 클레임 추출 (JwtProvider에 구현 필요)
+
+                // ✅ 권한 설정
+                final List<SimpleGrantedAuthority> authorities = 
+                    (role != null)
+                        ? List.of(new SimpleGrantedAuthority("ROLE_" + role))
+                        : List.of();
+
+                // ✅ 인증 토큰 생성
+                final UsernamePasswordAuthenticationToken authentication =
+                    new UsernamePasswordAuthenticationToken(username, null, authorities);
+
+                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+
+            } catch (Exception e) {
+                // JWT 검증 실패 시 로그만 남기고 통과 (인증 실패 상태 유지)
+                System.err.println("[JWT] Invalid token: " + e.getMessage());
+            }
+        }
+
+        chain.doFilter(req, res);
+    }
 }

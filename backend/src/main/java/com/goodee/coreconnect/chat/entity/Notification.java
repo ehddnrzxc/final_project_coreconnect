@@ -29,7 +29,7 @@ import lombok.Setter;
 @Entity
 @Table(name = "notification")
 public class Notification {
-
+  
    @Id
    @GeneratedValue(strategy = GenerationType.IDENTITY)
    private Integer id;
@@ -64,15 +64,14 @@ public class Notification {
          columnDefinition = "INT UNSIGNED"
    ) 
    private Chat chat;
-   
+  
    @ManyToOne(fetch = FetchType.LAZY)
-   @JoinColumn(name = "doc_id")
-   private Document document;
+	 @JoinColumn(name = "doc_id")
+	 private Document document;
    
    // N : 1 관계 (user 테이블과 매핑)
    // 알림 수신자
    @ManyToOne(fetch = FetchType.LAZY)
    @JoinColumn(name = "user_id")
    private User user;
-   
 }

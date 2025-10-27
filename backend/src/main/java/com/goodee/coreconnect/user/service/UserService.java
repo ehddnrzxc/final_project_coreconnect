@@ -2,8 +2,10 @@ package com.goodee.coreconnect.user.service;
 
 import java.io.IOException;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.goodee.coreconnect.common.S3Service;
 import com.goodee.coreconnect.user.entity.User;
@@ -16,37 +18,32 @@ import lombok.RequiredArgsConstructor;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final S3Service s3Service;
+    private final S3Service s3Service; // ✅ 기존 S3Service 주입
 
-    /**
-     * 이미지 업로드
-     * S3에 이미지를 업로드하고, 사용자 엔터티에 profileImageKey를 저장.
-     * MultipartFile을 받아 S3에 업로드하므로, 프론트엔드에서 multifile/form-data로 파일을 전송해야 함.
-     * 
-     * @param email
-     * @param file
-     * @throws IOException
-     */
+    // 프로필 이미지 업로드
     public void updateProfileImage(String email, MultipartFile file) throws IOException {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("유저를 찾을 수 없습니다."));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND"));
 
-        // S3에 업로드
-        String key = s3Service.uploadProfileImage(file, user.getName());
+        // 1️⃣ S3에 업로드 → key 반환
+        String key = s3Service.uploadProfileImage(file, user.getEmail());
+
+        // 2️⃣ DB에 key 저장
         user.setProfileImageKey(key);
-
         userRepository.save(user);
     }
 
-    /**
-     * 이미지 URL 조회
-     * 사용자의 profileImageKey를 기반으로 S3 URL을 반환하거나, 기본 이미지(/images/default.png) 반환.
-     *
-     * @param user
-     * @return
-     */
-    public String getProfileImageUrl(User user) {
-        if (user.getProfileImageKey() == null) return "/images/default.png";
-        return s3Service.getFileUrl(user.getProfileImageKey());
+    // 프로필 이미지 URL 반환
+    public String getProfileImageUrlByEmail(String email) {
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND"));
+
+        String key = user.getProfileImageKey();
+        if (key == null || key.isBlank()) {
+            return ""; // 기본 이미지 없으면 빈문자열 or 기본 URL 리턴
+        }
+
+        // 3️⃣ S3Service 통해 공개 URL 반환
+        return s3Service.getFileUrl(key);
     }
 }
