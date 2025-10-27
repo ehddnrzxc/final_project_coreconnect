@@ -16,18 +16,16 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 
 @Entity
 @Getter
-@NoArgsConstructor
 @Table(name = "template")
 public class Template {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "temp_id")
-  private Long id;
+  private Integer id;
   
   @Column(name = "temp_name", nullable = false, length = 100)
   private String templateName;
@@ -45,5 +43,15 @@ public class Template {
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "user_id")
   private User user;
+  
+  protected Template() {};
+  
+  public static Template createTemplate(String templateName, String templateContent, User user) {
+    Template t = new Template();
+    t.templateName = templateName;
+    t.templateContent = templateContent;
+    t.user = user;
+    return t;
+  }
   
 }

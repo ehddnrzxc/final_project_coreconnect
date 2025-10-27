@@ -32,7 +32,7 @@ public class Document {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "doc_id")
-  private Long id;
+  private Integer id;
 
   @Column(name = "doc_title", nullable = false, length = 30)
   private String documentTitle;

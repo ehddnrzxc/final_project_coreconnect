@@ -10,18 +10,16 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 
 @Entity
 @Getter
-@NoArgsConstructor
 @Table(name = "file")
 public class File {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "file_id")
-  private Long id;
+  private Integer id;
   
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "doc_id", nullable = false)
@@ -35,5 +33,16 @@ public class File {
   
   @Column(name = "file_size", nullable = false)
   private long fileSize;
+  
+  protected File() {};
+  
+  public static File createFile(Document document, String originalFileName, String storedFilePath, long fileSize) {
+    File f = new File();
+    f.document = document;
+    f.originalFileName = originalFileName;
+    f.storedFilePath = storedFilePath;
+    f.fileSize = fileSize;
+    return f;
+  }
 
 }

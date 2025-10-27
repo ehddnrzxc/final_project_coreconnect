@@ -26,7 +26,7 @@ public class ApprovalLine {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "line_id")
-  private Long id;
+  private Integer id;
   
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "doc_id", nullable = false)
@@ -34,7 +34,7 @@ public class ApprovalLine {
   
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "user_id", nullable = false)
-  private User user;
+  private User approver;
   
   @Column(name = "line_order")
   private int approvalLineOrder;
@@ -54,10 +54,10 @@ public class ApprovalLine {
   
   protected ApprovalLine() {};
   
-  public static ApprovalLine createApprovalLine(Document document, User user, int approvalLineOrder) {
+  public static ApprovalLine createApprovalLine(Document document, User approver, int approvalLineOrder) {
     ApprovalLine a = new ApprovalLine();
     a.document = document;
-    a.user = user;
+    a.approver = approver;
     a.approvalLineOrder = approvalLineOrder;
     return a;
   }
