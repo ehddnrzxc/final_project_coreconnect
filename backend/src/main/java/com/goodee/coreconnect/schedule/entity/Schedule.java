@@ -91,6 +91,9 @@ public class Schedule {
   protected Schedule() {};
   
   public static Schedule createSchedule(User user,
+                                          Department department,
+                                          MeetingRoom meetingRoom,
+                                          ScheduleCategory category,
                                           String title,
                                           String content,
                                           LocalDateTime start,
@@ -99,6 +102,9 @@ public class Schedule {
                                           ScheduleVisibility visibility) {
     Schedule schedule = new Schedule();
     schedule.user = user;
+    schedule.department = department;
+    schedule.meetingRoom = meetingRoom;
+    schedule.category = category;
     schedule.title = title;
     schedule.content = content;
     schedule.startDateTime = start;

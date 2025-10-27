@@ -335,7 +335,7 @@ public class ChatWebSocketHandlerTest {
 		
 		
 		// 1. 테스트 사용자 준비: DB에 있는 계정 사용
-		String email = "choimeeyoung2@gmail.com";
+		String email = "109kms@naver.com";
 		User user = userRepository.findByEmail(email).orElseThrow();
 		
 		// 2. JWT 토큰 발급
@@ -368,7 +368,7 @@ public class ChatWebSocketHandlerTest {
         WebSocketSession session = client.doHandshake(clientHandler, wsUri).get();
 
         // 5. WebSocket 메시지 전송
-        NotificationType type = NotificationType.SCHEDULE;
+        NotificationType type = NotificationType.EMAIL;
    
         /**
          * SCHEDULE 타입의 알림 메시지를 서버에 전송. content는 포함하지 않음(비즈니스 규칙).
@@ -376,7 +376,7 @@ public class ChatWebSocketHandlerTest {
          * */
         String schedulePayload = String.format(
         		"{ \"type\": \"%s\", \"roomId\": 6 }",
-        	    type.name() // "SCHEDULE"
+        	    type.name() // "APPROVAL"
         	    
         	);
        
@@ -401,18 +401,18 @@ public class ChatWebSocketHandlerTest {
 		List<Notification> notifications = notificationRepository.findByUserId(user.getId());
 		// SCHEDULE 검증
 		boolean foundSchedule = notifications.stream()
-		    .filter(n -> n.getNotificationType() != null)
-		    .anyMatch(n -> "SCHEDULE".equalsIgnoreCase(n.getNotificationType()) 
-		        && n.getNotificationMessage() != null
-		        && n.getNotificationMessage().contains("일정을 등록했습니다"));
-		assertTrue(foundSchedule, "DB에 SCHEDULE 알림 메시지가 올바르게 저장되어야 합니다.");
+			    .filter(n -> n.getNotificationType() != null)
+			    .anyMatch(n -> n.getNotificationType() == NotificationType.EMAIL
+			        && n.getNotificationMessage() != null
+			        && n.getNotificationMessage().contains("이메일이 도착했습니다."));
+		assertTrue(foundSchedule, "DB에 APPROVAL 알림 메시지가 올바르게 저장되어야 합니다.");
 		
 		// 8. CHAT 타입 메시지 전송 및 검증
 		/**
 		 * CHAT 타입 메시지를 서버에 전송. content에 실제 채팅 메시지가 포함됨.
            서버가 실시간으로 메시지를 push하면 정상적으로 수신되는지 검증.
 		 * */
-		String chatContent = "채팅 테스트 메시지6";
+		String chatContent = "채팅 테스트 메시지7";
 		String chatPayload = "{ \"type\": \"CHAT\", \"roomId\": 6, \"content\": \"" + chatContent + "\" }";
 		session.sendMessage(new TextMessage(chatPayload));
 		
@@ -425,14 +425,11 @@ public class ChatWebSocketHandlerTest {
 	    notifications = notificationRepository.findByUserId(user.getId());
 	    // CHAT 검증
 	    boolean foundChat = notifications.stream()
-	        .filter(n -> n.getNotificationType() != null)
-	        .anyMatch(n -> "CHAT".equalsIgnoreCase(n.getNotificationType())
-	            && n.getNotificationMessage() != null
-	            && n.getNotificationMessage().contains(chatContent));
+	    	    .filter(n -> n.getNotificationType() != null)
+	    	    .anyMatch(n -> n.getNotificationType() == NotificationType.CHAT
+	    	        && n.getNotificationMessage() != null
+	    	        && n.getNotificationMessage().contains(chatContent));
 	    assertTrue(foundChat, "DB에 CHAT 알림 메시지에 사용자 메시지(content)가 포함되어야 합니다.");
-		
-		
-		
 	}
 	
 
