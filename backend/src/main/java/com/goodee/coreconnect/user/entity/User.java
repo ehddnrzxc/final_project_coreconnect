@@ -1,5 +1,10 @@
 package com.goodee.coreconnect.user.entity;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import com.goodee.coreconnect.chat.entity.ChatRoomUser;
+
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -42,16 +47,17 @@ public class User {
 
     @Column(name = "user_join_date")
     private LocalDateTime joinDate;
-    
-    @Column(name = "profile_image_key")
-    private String profileImageKey;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "user_status", length = 20, nullable = false)
     private Status status; // ACTIVE, INACTIVE 등
 
-    // 역할: 최고관리자/중간관리자/유저
     public enum Role { ADMIN, MANAGER, USER }
-    // 유저 상태: 활성화/비활성화
-    public enum Status { ACTIVE, INACTIVE }
+    public enum Status { ACTIVE, INACTIVE, SUSPENDED }
+    
+    
+    // 1:N 관계 매핑 (chat_room_user 테이과 매핑)
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    private List<ChatRoomUser> chatRoomUsers = new ArrayList<>();
+
 }
