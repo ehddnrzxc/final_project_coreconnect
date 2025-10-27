@@ -27,12 +27,14 @@ public class BoardFile {
     private String fileExtension;
 
     @Column(name = "board_file_size")
-    private Double fileSize;
+    private Long fileSize;
 
     @Column(name = "board_s3_object_key", columnDefinition = "TEXT")
     private String s3ObjectKey;
 
-    // 게시판 연결
+    /**
+     * N:1 관계 매핑 (board 테이블과 매핑)
+     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "board_id")
     private Board board;
