@@ -9,29 +9,13 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import com.goodee.coreconnect.user.entity.User;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EntityListeners;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import jakarta.persistence.*;
+import lombok.*;
 
 @Entity
 @Table(name = "board_reply")
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 @EntityListeners(AuditingEntityListener.class)
 @Where(clause = "board_reply_deleted_yn = false")
 public class BoardReply {
@@ -53,8 +37,11 @@ public class BoardReply {
     private LocalDateTime updatedAt;
 
     @Column(name = "board_reply_deleted_yn", nullable = false)
-    private Boolean deletedYn;
+    private Boolean deletedYn = false;
 
+    /**
+     * N:1 관계 매핑 (user 테이블과 매핑)
+     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
@@ -73,4 +60,17 @@ public class BoardReply {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "board_id")
     private Board board;
+    
+    protected BoardReply() {};
+    
+    public static BoardReply createReply(User user, Board board, BoardReply parentReply, String content) {
+      BoardReply reply = new BoardReply();
+      reply.user = user;
+      reply.board = board;
+      reply.parentReply = parentReply;
+      reply.content = content;
+      reply.createdAt = LocalDateTime.now();
+      return reply;
+  }
+    
 }

@@ -7,9 +7,6 @@ import lombok.*;
 @Table(name = "board_file")
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class BoardFile {
 
     @Id
@@ -38,4 +35,17 @@ public class BoardFile {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "board_id")
     private Board board;
+    
+    protected BoardFile() {};
+    
+    public static BoardFile createFile(Board board, String fileName, String fileUrl, String fileExtension, Long fileSize, String s3ObjectKey) {
+      BoardFile file = new BoardFile();
+      file.board = board;
+      file.fileName = fileName;
+      file.fileUrl = fileUrl;
+      file.fileExtension = fileExtension;
+      file.fileSize = fileSize;
+      file.s3ObjectKey = s3ObjectKey;
+      return file;
+  }
 }

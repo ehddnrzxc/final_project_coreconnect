@@ -9,9 +9,6 @@ import lombok.*;
 @Table(name = "board_category")
 @Getter
 @Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class BoardCategory {
 
     @Id
@@ -31,4 +28,15 @@ public class BoardCategory {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
+    
+    protected BoardCategory() {};
+    
+    public static BoardCategory createCategory(User user, String name, Integer orderNo) {
+      BoardCategory category = new BoardCategory();
+      category.user = user;
+      category.name = name;
+      category.orderNo = orderNo != null ? orderNo : 0;
+      return category;
+  }
+    
 }
