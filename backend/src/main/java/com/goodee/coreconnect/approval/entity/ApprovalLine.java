@@ -3,6 +3,7 @@ package com.goodee.coreconnect.approval.entity;
 import java.time.LocalDateTime;
 
 import com.goodee.coreconnect.approval.enums.ApprovalLineStatus;
+import com.goodee.coreconnect.approval.enums.ApprovalLineType;
 import com.goodee.coreconnect.user.entity.User;
 
 import jakarta.persistence.Column;
@@ -39,12 +40,13 @@ public class ApprovalLine {
   @Column(name = "line_order")
   private int approvalLineOrder;
   
+  @Enumerated(EnumType.STRING)
   @Column(name = "line_type")
-  private String approvalLineType;
+  private ApprovalLineType approvalLineType;
   
   @Enumerated(EnumType.STRING)
   @Column(name = "line_status", nullable = false, length = 20)
-  private ApprovalLineStatus status = ApprovalLineStatus.WAITING;  // 대기 (스키마 기본값) - WAITING, 승인 - APPROVED, 반려 - REJECTED
+  private ApprovalLineStatus approvalLineStatus = ApprovalLineStatus.WAITING;  // 대기 (스키마 기본값) - WAITING, 승인 - APPROVED, 반려 - REJECTED
   
   @Column(name = "line_comment", length = 255)
   private String approvalLineComment;
@@ -54,11 +56,23 @@ public class ApprovalLine {
   
   protected ApprovalLine() {};
   
-  public static ApprovalLine createApprovalLine(Document document, User approver, int approvalLineOrder) {
+  public static ApprovalLine createApprovalLine(Document document, User approver, int approvalLineOrder, ApprovalLineType approvalLineType) {
     ApprovalLine a = new ApprovalLine();
     a.document = document;
     a.approver = approver;
     a.approvalLineOrder = approvalLineOrder;
+    a.approvalLineType = approvalLineType;
+    return a;
+  }
+  
+  public static ApprovalLine processApprovalLine(ApprovalLineStatus newStatus, String comment) {
+    ApprovalLine a = new ApprovalLine();
+    if (a.approvalLineStatus != ApprovalLineStatus.WAITING) {
+      throw new IllegalStateException("이미 처리된 결재 항목입니다.");
+    }
+    a.approvalLineStatus = newStatus;
+    a.approvalLineComment = comment;
+    a.approvalLineProcessedAt = LocalDateTime.now();
     return a;
   }
 

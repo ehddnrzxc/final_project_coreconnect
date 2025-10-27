@@ -1,51 +1,67 @@
 package com.goodee.coreconnect.config;
 
-import java.util.List;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import com.goodee.coreconnect.security.jwt.JwtAuthFilter;
+
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 
 
 @Configuration
 @EnableMethodSecurity
+@RequiredArgsConstructor // ✅ 이 한 줄이면 아래 생성자 필요 없음
 public class SecurityConfig {
-  @Bean
-  SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-    http
-      .csrf(csrf -> csrf.disable()) // Access 헤더 방식이면 CSRF 비활성화(쿠키 Access 쓰면 별도 CSRF 보호 필요)
-      .cors(cors -> {})             // 아래 CORS 설정 Bean 사용
-      .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-      .authorizeHttpRequests(auth -> auth
-          .requestMatchers("/api/auth/**", "/ws/chat" ,"/ws/chat/**").permitAll() // websocket 엔드포인트 허용
-          .anyRequest().authenticated()
-      );
-    return http.build();
-  }
 
-  @Bean
-  CorsConfigurationSource corsConfigurationSource() {
-    CorsConfiguration c = new CorsConfiguration();
-    c.setAllowedOrigins(List.of("http://localhost:5173")); // 프론트 주소
-    c.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
-    c.setAllowedHeaders(List.of("*"));
-    c.setAllowCredentials(true); // 쿠키 전송 허용
-    UrlBasedCorsConfigurationSource s = new UrlBasedCorsConfigurationSource();
-    s.registerCorsConfiguration("/**", c);
-    return s;
-  }
-  
-  // ✅ 비밀번호 암호화기 Bean 등록
-  @Bean
-  public PasswordEncoder passwordEncoder() {
-      return new BCryptPasswordEncoder();
-  }
+    private final JwtAuthFilter jwtAuthFilter; // ← 반드시 final 이어야 함
+
+    @Bean
+    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+            .csrf(csrf -> csrf.disable())
+            .cors(cors -> {})
+            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .exceptionHandling(ex -> ex
+              .authenticationEntryPoint((req, res, e) -> {
+                System.out.println("[SECURITY] 401 AuthenticationEntryPoint: " + e.getMessage());
+                res.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+              })
+              .accessDeniedHandler((req, res, e) -> {
+                System.out.println("[SECURITY] 403 AccessDeniedHandler: " + e.getMessage());
+                res.sendError(HttpServletResponse.SC_FORBIDDEN);
+              })
+            )
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/auth/**", "/ws/chat", "/ws/chat/**").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/user/profile-image").authenticated()
+                .anyRequest().authenticated()
+            )
+            .addFilterBefore(jwtAuthFilter,
+                org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
+
+    @Bean
+    CorsConfigurationSource corsConfigurationSource() {
+        var c = new org.springframework.web.cors.CorsConfiguration();
+        c.setAllowedOrigins(java.util.List.of("http://localhost:5173"));
+        c.setAllowedMethods(java.util.List.of("GET","POST","PUT","DELETE","OPTIONS"));
+        c.setAllowedHeaders(java.util.List.of("Authorization","Content-Type"));
+        c.setAllowCredentials(true);
+        var s = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
+        s.registerCorsConfiguration("/**", c);
+        return s;
+    }
+
+    @Bean
+    public org.springframework.security.crypto.password.PasswordEncoder passwordEncoder() {
+        return new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
+    }
 }

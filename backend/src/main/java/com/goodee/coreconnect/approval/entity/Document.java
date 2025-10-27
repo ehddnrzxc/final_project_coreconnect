@@ -89,4 +89,24 @@ public class Document {
     return d;
   }
   
+  public static Document submitDocument() {
+    Document d = new Document();
+    d.documentStatus = DocumentStatus.IN_PROGRESS;
+    return d;
+  }
+  
+  public static Document completeDocument() {
+    Document d = new Document();
+    d.documentStatus = DocumentStatus.COMPLETED;
+    d.completedAt = LocalDateTime.now();
+    return d;
+  }
+  
+  public static Document rejectDocument() {
+    Document d = new Document();
+    d.documentStatus = DocumentStatus.REJECTED;
+    d.completedAt = LocalDateTime.now();
+    return d;
+  }
+  
 }

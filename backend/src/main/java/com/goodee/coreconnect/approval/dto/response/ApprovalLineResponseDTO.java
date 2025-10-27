@@ -24,7 +24,7 @@ public class ApprovalLineResponseDTO {
     return ApprovalLineResponseDTO.builder()
         .lineId(line.getId())
         .approvalOrder(line.getApprovalLineOrder())
-        .approvalStatus(line.getStatus())
+        .approvalStatus(line.getApprovalLineStatus())
         .approvalComment(line.getApprovalLineComment())
         .processedAt(line.getApprovalLineProcessedAt())
         .approver(UserInfoResponseDTO.toDTO(line.getApprover()))

@@ -1,10 +1,17 @@
 package com.goodee.coreconnect.department.entity;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import com.goodee.coreconnect.user.entity.User;
+
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -28,5 +35,12 @@ public class Department {
   
   @Column(name = "dept_order_no", nullable = false)
   private Integer deptOrderNo;
+  
+  /**
+   * users 테이블과 1:N 연관관계 매핑
+   * User 엔티티의 필드명: department
+   */
+  @OneToMany(mappedBy = "department")
+  private List<User> users = new ArrayList<>();
 
 }

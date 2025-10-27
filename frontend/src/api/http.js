@@ -1,19 +1,74 @@
 import axios from "axios";
 
 const http = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8080",
-  withCredentials: true, // 쿠키 쓰면 유지, 아니면 상관없음
+  baseURL: "/api",
+  withCredentials: true,
 });
 
 http.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token") || localStorage.getItem("accessToken");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  } else {
-    // 디버깅 도움: 토큰이 없으면 로그로 확인
-    console.warn("[HTTP] No token in localStorage (token/accessToken).");
-  }
+  config.headers = config.headers || {};
+  const token = localStorage.getItem("accessToken");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
+
+// 401 처리 상태
+let isRefreshing = false;
+let waiters = [];
+
+function onRefreshed(newToken) {
+  waiters.forEach((cb) => cb(newToken));
+  waiters = [];
+}
+
+http.interceptors.response.use(
+  (res) => res,
+  async (error) => {
+    const { response, config } = error;
+    if (!response) throw error;
+
+    // 리프레시에 다시 리프레시 걸리지 않게 가드
+    if (config?.url?.includes("/auth/refresh")) {
+      return Promise.reject(error);
+    }
+
+    if (response.status === 401 && !config._retry) {
+      config._retry = true;
+
+      if (!isRefreshing) {
+        isRefreshing = true;
+        try {
+          const r = await http.post("/auth/refresh", {});
+          const newAccess = r.data.accessToken;
+          localStorage.setItem("accessToken", newAccess);
+
+          // ✅ 원요청 헤더를 새 토큰으로 갱신 후 재시도
+          config.headers = config.headers || {};
+          config.headers.Authorization = `Bearer ${newAccess}`;
+
+          onRefreshed(newAccess);
+          return http(config);
+        } catch (e) {
+          waiters = [];
+          localStorage.removeItem("accessToken");
+          return Promise.reject(e);
+        } finally {
+          isRefreshing = false;
+        }
+      }
+
+      // 리프레시 진행 중이면 대기 -> 토큰 받으면 재시도
+      return new Promise((resolve) => {
+        waiters.push((token) => {
+          config.headers = config.headers || {};
+          config.headers.Authorization = `Bearer ${token}`;
+          resolve(http(config));
+        });
+      });
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 export default http;

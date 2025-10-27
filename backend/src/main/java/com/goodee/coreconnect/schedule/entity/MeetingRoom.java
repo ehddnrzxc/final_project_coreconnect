@@ -35,5 +35,18 @@ public class MeetingRoom {
   @Column(name = "mt_available_yn")
   private Boolean availableYn;
 
+  protected MeetingRoom() {}
+
+  public static MeetingRoom createMeetingRoom(String name, 
+                                                String location, 
+                                                Integer capacity) {
+    MeetingRoom room = new MeetingRoom();
+    room.name = name;
+    room.location = location;
+    room.capacity = capacity;
+    room.deletedYn = false;
+    room.availableYn = true;
+    return room;
+  }
   
 }
