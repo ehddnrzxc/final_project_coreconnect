@@ -18,7 +18,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.goodee.coreconnect.chat.entity.Notification;
-import com.goodee.coreconnect.chat.repository.AlarmRepository;
+import com.goodee.coreconnect.chat.enums.NotificationType;
+import com.goodee.coreconnect.chat.repository.NotificationRepository;
 import com.goodee.coreconnect.chat.service.ChatRoomService;
 import com.goodee.coreconnect.security.jwt.JwtProvider;
 import com.goodee.coreconnect.user.entity.User;
@@ -39,7 +40,7 @@ import lombok.extern.slf4j.Slf4j;
 public class ChatWebSocketHandler extends TextWebSocketHandler {
 	
 	// 사용자ID와 세션 매핑 (추후 Redis로 확장 가능)
-	private final Map<Integer, WebSocketSession> userSessions = new ConcurrentHashMap<>();
+	public final Map<Integer, WebSocketSession> userSessions = new ConcurrentHashMap<>();
 	
 	private final JwtProvider jwtProvider;
 	
@@ -47,13 +48,19 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 		
 	private final ChatRoomService chatRoomService;
 	
-	private final AlarmRepository alarmRepository;
+	private final NotificationRepository alarmRepository;
 	
 	// JSON 파싱용 ObjectMapper
 	private final ObjectMapper objectMapper = new ObjectMapper();
 	
 	// 사용자별 구독 중인 채팅방 목록을 관리 (userId -> List of roomIds)
 	private final Map<Integer, List<Integer>> userSubscriptions = new ConcurrentHashMap<>();
+	
+	public Map<Integer, WebSocketSession> getUserSessions() {
+		return userSessions;
+	}
+	
+	
 	
 	// 클라이언트 연결 시 사용자 세션 저장
 	@Override
@@ -127,8 +134,17 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 			return;
 		}
 		
-		String type = node.has("type") ? node.get("type").asText() : "";
-				
+		// 2. 알림 타입 추출 (기본값: CHAT)
+		String typeStr = node.has("type") ? node.get("type").asText() : "CHAT";
+		NotificationType notificationType;
+
+		try {
+			notificationType = NotificationType.valueOf(typeStr.toUpperCase());
+		} catch (Exception e) {
+			log.warn("알림 타입 파싱 오류: {}", typeStr);
+			notificationType = NotificationType.CHAT; // 기본값
+		}		
+		
 		// payload에서 roomId 추출
 		Long roomId = extractRoomId(payload);
 		
@@ -148,7 +164,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 		
 		
 		//  구독 요청 처리
-		if ("subscribe".equals(type)) {
+		if ("subscribe".equals(typeStr)) {
 			roomId = node.has("roomId") ? node.get("roomId").asLong() : null;
 			if (userId != null && roomId != null) {
 				userSubscriptions.computeIfAbsent(userId, key -> new ArrayList<>()).add(roomId.intValue());
@@ -156,19 +172,36 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 		}
 		
 		
-		// 3. 메시지 저장, 알람 생성 
-		chatRoomService.saveMessageAndAlarm(
-				roomId != null ? roomId.intValue() : null, 
-				senderId != null ? senderId.intValue() : null, 
-				chatContent);
+		// 3. 메시지/알림/이메일/공지/일정 등 다양한 타입별 저장 처리
+		List<Notification> notifications = chatRoomService.saveNotification(
+	        roomId != null ? roomId.intValue() : null,
+	        senderId != null ? senderId.intValue() : null,
+	        chatContent,
+	        notificationType
+	    );
+		
+		
 		
 		// 4. 참여자에게만 메시지 전송
 		for (Integer user : participantIds) {
-			WebSocketSession userSession = userSessions.get(user);
-			if (userSession != null && userSession.isOpen()) {
-				userSession.sendMessage(new TextMessage(chatContent));
-			}
+		    WebSocketSession userSession = userSessions.get(user);
+		    log.info("user {} session: {}", user, userSession);
+		    if (userSession != null && userSession.isOpen()) {
+		        userSession.sendMessage(new TextMessage(chatContent));
+		        log.info("메시지 전송: user_id={}, content={}", user, chatContent);
+		    }
 		}
+		
+		
+		// 5. 각 수신자에게 알림 실시간 push
+		for (Notification notification : notifications) {
+		    Integer receiverId = notification.getUser().getId();
+		    String alarmType = notification.getNotificationType();
+		    String messageText = notification.getNotificationMessage(); // Notification 엔티티에 message 필드
+		    Integer alarmId = notification.getId();
+		    sendAlarmToUser(receiverId, alarmType, messageText, alarmId);
+		}
+
 	}
 	
 	
@@ -243,11 +276,11 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 	public void updateAlarmSentYn(Integer alarmId, boolean sentSuccess) {
 		if (alarmId == null) return;
 		try {
-			Optional<Notification> alarmOpt = alarmRepository.findById(alarmId);
-			if (alarmOpt.isPresent()) {
-				Notification alarm = alarmOpt.get();
-				alarm.setAlarmSentYn(sentSuccess); // 알람 전송 성공/실패
-				alarm.setAlarmSentAt(LocalDateTime.now()); // 전송 시각
+			Optional<Notification> notificationOpt = alarmRepository.findById(alarmId);
+			if (notificationOpt.isPresent()) {
+				Notification alarm = notificationOpt.get();
+				alarm.setNotificationSentYn(sentSuccess); // 알람 전송 성공/실패
+				alarm.setNotificationSentAt(LocalDateTime.now()); // 전송 시각
 				alarmRepository.save(alarm);
 			}
 			

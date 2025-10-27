@@ -25,7 +25,7 @@ public class SecurityConfig {
       .cors(cors -> {})             // 아래 CORS 설정 Bean 사용
       .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
       .authorizeHttpRequests(auth -> auth
-          .requestMatchers("/api/auth/**").permitAll()
+          .requestMatchers("/api/auth/**", "/ws/chat" ,"/ws/chat/**").permitAll() // websocket 엔드포인트 허용
           .anyRequest().authenticated()
       );
     return http.build();

@@ -30,25 +30,31 @@ public class Notification {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Integer id;
 	
-	@Column(name = "alarm_read_yn")
-	private Boolean alarmReadYn;
+	@Column(name = "notification_read_yn")
+	private Boolean notificationReadYn;
 	
-	@Column(name = "alarm_type")
-	private String alarmType;
+	@Column(name = "notification_type")
+	private String notificationType;
 	
-	@Column(name = "alarm_read_at")
-	private LocalDateTime alarmReadAt;
+	@Column(name = "notification_read_at")
+	private LocalDateTime notificationReadAt;
 	
-	@Column(name = "alarm_sent_at")
-	private LocalDateTime alarmSentAt;
+	@Column(name = "notification_sent_at")
+	private LocalDateTime notificationSentAt;
 	
-	@Column(name = "alarm_sent_yn")
-	private Boolean alarmSentYn;
+	@Column(name = "notification_sent_yn")
+	private Boolean notificationSentYn;
+	
+	@Column(name = "notification_message")
+	private String notificationMessage;
 	
 	
 	// N : 1 관계 (채팅메시지 테이블과 매핑)
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "chat_message_id")
+	@JoinColumn(
+			name = "chat_message_id",
+			columnDefinition = "INT UNSIGNED"
+	) 
 	private Chat chat;
 	
 	// N : 1 관계 (user 테이블과 매핑)
