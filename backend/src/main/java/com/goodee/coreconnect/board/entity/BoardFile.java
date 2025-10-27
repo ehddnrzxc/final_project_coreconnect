@@ -28,6 +28,9 @@ public class BoardFile {
 
     @Column(name = "board_s3_object_key", columnDefinition = "TEXT")
     private String s3ObjectKey;
+    
+    @Column(name = "board_file_deleted_yn", nullable = false)
+    private Boolean deletedYn = false;
 
     /**
      * N:1 관계 매핑 (board 테이블과 매핑)
@@ -47,5 +50,9 @@ public class BoardFile {
       file.fileSize = fileSize;
       file.s3ObjectKey = s3ObjectKey;
       return file;
-  }
+    }
+    
+    public void delete() {
+      this.deletedYn = true;
+    }
 }
