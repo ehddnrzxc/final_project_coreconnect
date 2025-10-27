@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { NavLink, Link } from "react-router-dom";
+import { getMyProfileImage, uploadMyProfileImageByEmail } from "../api/userAPI";
 import "../app.css";
 
 /* ─ helpers ─ */
@@ -34,8 +35,13 @@ const Sidebar = () => {
       <div className="sidebar__brand">CoreConnect</div>
       <nav className="sidebar__nav">
         {items.map((it) => (
-          <NavLink key={it.to} to={it.to}
-            className={({ isActive }) => "nav__item" + (isActive ? " nav__item--active" : "")}>
+          <NavLink
+            key={it.to}
+            to={it.to}
+            className={({ isActive }) =>
+              "nav__item" + (isActive ? " nav__item--active" : "")
+            }
+          >
             <span className="nav__emoji">{it.emoji}</span>
             <span>{it.label}</span>
           </NavLink>
@@ -45,7 +51,8 @@ const Sidebar = () => {
     </aside>
   );
 };
-const Topbar = ({ onLogout }) => (
+
+const Topbar = ({ onLogout, avatarUrl }) => (
   <header className="topbar">
     <div className="topbar__inner">
       <div className="search">
@@ -55,15 +62,18 @@ const Topbar = ({ onLogout }) => (
       <div className="topbar__actions">
         <button className="icon-btn">🎁</button>
         <button className="icon-btn">🔔</button>
-        <img className="avatar" src="https://i.pravatar.cc/40?img=67" alt="me" />
-        <button className="btn btn--ghost" onClick={onLogout}>로그아웃</button>
+        <img className="avatar" src={avatarUrl} alt="me" />
+        <button className="btn btn--ghost" onClick={onLogout}>
+          로그아웃
+        </button>
       </div>
     </div>
   </header>
 );
-const Shell = ({ children, onLogout }) => (
+
+const Shell = ({ children, onLogout, avatarUrl }) => (
   <div className="app">
-    <Topbar onLogout={onLogout} />
+    <Topbar onLogout={onLogout} avatarUrl={avatarUrl} />
     <div className="layout">
       <Sidebar />
       <main className="content">{children}</main>
@@ -73,24 +83,117 @@ const Shell = ({ children, onLogout }) => (
 
 /* ─ page ─ */
 export default function Home({ onLogout }) {
-
   // ✅ 저장된 유저 읽기 (없으면 비어있는 객체)
   const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+  const email = storedUser.email || ""; // 업로드 시 사용할 이메일
   const displayName = storedUser.name || storedUser.email || "사용자";
 
-  return (
-    <Shell onLogout={() => {
-      // ✅ 로그아웃 시 user도 정리
-      localStorage.removeItem("user");
-      onLogout();
-    }}>
-      <div className="container">
+  // 프로필 이미지 상태
+  const [profileImage, setProfileImage] = useState("https://i.pravatar.cc/80?img=12"); // 기본
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
+  // 프로필 이미지 조회
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const url = await getMyProfileImage();
+        setProfileImage(url);
+      } catch (err) {
+        console.error("프로필 이미지 조회 실패:", err?.response?.data || err);
+        setError("프로필 이미지를 불러오지 못했습니다.");
+      }
+    };
+    if (email) load();
+  }, [email]);
+
+  // 파일 선택 핸들러
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file && file.type.startsWith("image/")) {
+      setSelectedFile(file);
+      setError(null);
+    } else {
+      setError("이미지 파일을 선택해주세요.");
+      setSelectedFile(null);
+    }
+  };
+
+  // 이미지 업로드 핸들러
+  const handleUpload = async () => {
+  if (!selectedFile) {
+    setError("업로드할 파일을 선택해주세요.");
+    return;
+  }
+  if (!email) {
+    setError("로그인 정보가 없습니다. 다시 로그인해주세요.");
+    return;
+  }
+
+  try {
+    setLoading(true);
+      // 업로드
+      await uploadMyProfileImageByEmail(email, selectedFile);
+      // 최신 URL 재조회
+      const newUrl = await getMyProfileImage();
+      setProfileImage(newUrl);
+
+    // localStorage에 사용자 정보 업데이트
+    localStorage.setItem(
+      "user",
+      JSON.stringify({ ...storedUser, imageUrl: newUrl })
+    );
+
+    setLoading(false);
+    setSelectedFile(null);
+  } catch (err) {
+    setError("이미지 업로드에 실패했습니다.");
+    setLoading(false);
+    console.error("이미지 업로드 실패:", err?.response?.data || err);
+  }
+};
+
+  return (
+    <Shell
+      onLogout={() => {
+        localStorage.removeItem("user");
+        localStorage.removeItem("token");
+        onLogout();
+      }}
+      avatarUrl={profileImage}
+    >
+      <div className="container">
         {/* Row 1 */}
         <div className="grid grid--3">
           <Card title="프로필">
             <div className="profile">
-              <img src="https://i.pravatar.cc/80?img=12" className="profile__avatar" />
+              <div className="profile__avatar-wrapper">
+                <img
+                  src={profileImage}
+                  className="profile__avatar"
+                  alt="프로필 이미지"
+                />
+                <label className="btn btn--ghost btn--small profile__edit-btn">
+                  수정
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    onChange={handleFileChange}
+                  />
+                </label>
+                {selectedFile && (
+                  <button
+                    className="btn btn--primary btn--small"
+                    onClick={handleUpload}
+                    disabled={loading}
+                  >
+                    {loading ? "업로드 중..." : "업로드"}
+                  </button>
+                )}
+              </div>
+              {error && <p className="text--danger">{error}</p>}
               <div className="profile__meta">
                 <div className="profile__dept">전산/보안</div>
                 <div className="profile__name">{displayName}</div>
@@ -137,7 +240,9 @@ export default function Home({ onLogout }) {
                 <button className="btn btn--primary">퇴근하기</button>
               </div>
             </div>
-            <div className="progress"><div className="progress__bar" style={{ width: "60%" }} /></div>
+            <div className="progress">
+              <div className="progress__bar" style={{ width: "60%" }} />
+            </div>
           </Card>
         </div>
 
@@ -182,7 +287,9 @@ export default function Home({ onLogout }) {
 
             <Card title="메일함 바로가기">
               <div className="mail-shortcut">
-                <div className="text--muted">받은메일함 1 • 오늘메일함 0 • 중요메일함 0</div>
+                <div className="text--muted">
+                  받은메일함 1 • 오늘메일함 0 • 중요메일함 0
+                </div>
                 <button className="btn btn--primary">이동</button>
               </div>
             </Card>
@@ -192,11 +299,18 @@ export default function Home({ onLogout }) {
             <Card title="캘린더" right={"2025.10"}>
               <div className="calendar">
                 <div className="calendar__head">
-                  {["일","월","화","수","목","금","토"].map((d) => <div key={d}>{d}</div>)}
+                  {["일", "월", "화", "수", "목", "금", "토"].map((d) => (
+                    <div key={d}>{d}</div>
+                  ))}
                 </div>
                 <div className="calendar__body">
                   {Array.from({ length: 31 }, (_, i) => i + 1).map((n) => (
-                    <div key={n} className={"calendar__cell" + (n===24 ? " is-today" : "")}>{n}</div>
+                    <div
+                      key={n}
+                      className={"calendar__cell" + (n === 24 ? " is-today" : "")}
+                    >
+                      {n}
+                    </div>
                   ))}
                 </div>
               </div>
@@ -220,9 +334,18 @@ export default function Home({ onLogout }) {
               <button className="btn btn--ghost">영수증 제출</button>
             </div>
             <div className="tile-grid">
-              <div className="tile"><div className="text--muted">미결재</div><div className="text--bold">2건</div></div>
-              <div className="tile"><div className="text--muted">결재중</div><div className="text--bold">0건</div></div>
-              <div className="tile"><div className="text--muted">결재완료</div><div className="text--bold">1건</div></div>
+              <div className="tile">
+                <div className="text--muted">미결재</div>
+                <div className="text--bold">2건</div>
+              </div>
+              <div className="tile">
+                <div className="text--muted">결재중</div>
+                <div className="text--bold">0건</div>
+              </div>
+              <div className="tile">
+                <div className="text--muted">결재완료</div>
+                <div className="text--bold">1건</div>
+              </div>
             </div>
           </Card>
 
@@ -230,13 +353,14 @@ export default function Home({ onLogout }) {
             <div className="vehicle">
               <div>
                 <div className="text--bold">영업 3 (소나타)</div>
-                <div className="text--muted">미결재된 운행일지가 1건 있습니다</div>
+                <div className="text--muted">
+                  미결재된 운행일지가 1건 있습니다
+                </div>
               </div>
               <button className="btn btn--ghost">결재 요청하기</button>
             </div>
           </Card>
         </div>
-
       </div>
     </Shell>
   );
