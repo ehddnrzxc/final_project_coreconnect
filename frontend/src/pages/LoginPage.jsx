@@ -13,7 +13,7 @@ export default function LoginPage({ setIsLoggedIn }) {
   return (
     <div className="login-container">
       <div className="login-box">
-        <h2>CoreConnect 로그인</h2>
+        <h2>코어커넥트 로그인</h2>
         <LoginForm onLoginSuccess={handleLoginSuccess} />
       </div>
     </div>
