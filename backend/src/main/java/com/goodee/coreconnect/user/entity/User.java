@@ -51,9 +51,12 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(name = "user_status", length = 20, nullable = false)
     private Status status; // ACTIVE, INACTIVE 등
+    
+    @Column(name = "profile_image_key")
+    private String profileImageKey;
 
     public enum Role { ADMIN, MANAGER, USER }
-    public enum Status { ACTIVE, INACTIVE, SUSPENDED }
+    public enum Status { ACTIVE, INACTIVE }
     
     
     // 1:N 관계 매핑 (chat_room_user 테이과 매핑)
