@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { NavLink, Link } from "react-router-dom";
-import { getMyProfileImage, uploadMyProfileImageByEmail } from "../api/userAPI";
+import { getMyProfileImage, uploadMyProfileImage } from "../api/userAPI";
 import "../app.css";
 
 /* ─ helpers ─ */
@@ -134,7 +134,7 @@ export default function Home({ onLogout }) {
   try {
     setLoading(true);
       // 업로드
-      await uploadMyProfileImageByEmail(email, selectedFile);
+      await uploadMyProfileImage(email, selectedFile);
       // 최신 URL 재조회
       const newUrl = await getMyProfileImage();
       setProfileImage(newUrl);

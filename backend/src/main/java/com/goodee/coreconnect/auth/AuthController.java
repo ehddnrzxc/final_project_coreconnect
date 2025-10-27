@@ -88,6 +88,7 @@ public class AuthController {
       String newAccess = jwt.createAccess(username, 10);
       return ResponseEntity.ok(Map.of("accessToken", newAccess));
     } catch (Exception e) {
+      e.printStackTrace();
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
     }
   }
