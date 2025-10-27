@@ -3,6 +3,7 @@ package com.goodee.coreconnect.user.entity;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.chat.entity.ChatRoomUser;
 
 import jakarta.persistence.*;
@@ -59,8 +60,11 @@ public class User {
     public enum Status { ACTIVE, INACTIVE }
     
     
-    // 1:N 관계 매핑 (chat_room_user 테이과 매핑)
+    // 1:N 관계 매핑 (chat_room_user 테이블과 매핑)
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     private List<ChatRoomUser> chatRoomUsers = new ArrayList<>();
+    
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    private List<Document> documents = new ArrayList<>();
 
 }
