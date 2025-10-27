@@ -218,10 +218,10 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 		// 5. 각 수신자에게 알림 실시간 push
 		for (Notification notification : notifications) {
 		    Integer receiverId = notification.getUser().getId();
-		    String alarmType = notification.getNotificationType();
+		    NotificationType alarmType = notification.getNotificationType();
 		    String messageText = notification.getNotificationMessage(); // Notification 엔티티에 message 필드
 		    Integer alarmId = notification.getId();
-		    sendAlarmToUser(receiverId, alarmType, messageText, alarmId);
+		    sendAlarmToUser(receiverId, alarmType.name(), messageText, alarmId);
 		}
 
 	}
@@ -301,7 +301,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 			Optional<Notification> notificationOpt = alarmRepository.findById(alarmId);
 			if (notificationOpt.isPresent()) {
 				Notification alarm = notificationOpt.get();
-				alarm.setNotificationSentYn(sentSuccess); // 알람 전송 성공/실패
+				//alarm.setNotificationSentYn(sentSuccess); // 알람 전송 성공/실패
 				alarm.setNotificationSentAt(LocalDateTime.now()); // 전송 시각
 				alarmRepository.save(alarm);
 			}
