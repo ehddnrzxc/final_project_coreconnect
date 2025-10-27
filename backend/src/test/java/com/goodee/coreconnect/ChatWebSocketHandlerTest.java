@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.setExtractBareNamePropertyMethods;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -48,6 +49,7 @@ import com.goodee.coreconnect.chat.repository.ChatRepository;
 import com.goodee.coreconnect.chat.repository.NotificationRepository;
 import com.goodee.coreconnect.chat.service.ChatRoomService;
 import com.goodee.coreconnect.chat.service.ChatRoomServiceImpl;
+import com.goodee.coreconnect.common.notification.NotificationSender;
 import com.goodee.coreconnect.security.jwt.JwtProvider;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
@@ -337,9 +339,16 @@ public class ChatWebSocketHandlerTest {
 		User user = userRepository.findByEmail(email).orElseThrow();
 		
 		// 2. JWT 토큰 발급
-		String accessToken = jwtProvider.createAccess(email, 60); // 60분짜리 액세스 토큰
+		String accessToken = jwtProvider.createAccess(email, 10); // 10분짜리 액세스 토큰
 
 		// 3. WebSocket 클라이언트 준비
+		/**
+		 * 테스트에서 서버로부터 오는 WebSocket 메시지를 받을 수 있도록 핸들러를 등록.
+		   메시지가 오면 Queue에 저장해서 이후 검증할 수 있게 설계.
+		 * 
+		 * 
+		 * 
+		 * */
 		BlockingQueue<String> receivedMessages = new LinkedBlockingQueue<>();
 		TextWebSocketHandler clientHandler = new TextWebSocketHandler() {
 			 @Override
@@ -349,26 +358,78 @@ public class ChatWebSocketHandlerTest {
 		};
 		
 		// 4. 서버에 WebSocket 연결 (accessToken 쿼리파라미터로 전달)
+		/**
+		 * 로컬 테스트 서버에 WebSocket으로 직접 연결.
+		   accessToken을 쿼리파라미터로 전달해 인증.
+           실제 서비스와 동일한 방식으로 채팅/알림 서버에 접속.
+		 * */
         String wsUri = "ws://localhost:" + port + "/ws/chat?accessToken=" + accessToken;
         StandardWebSocketClient client = new StandardWebSocketClient();
         WebSocketSession session = client.doHandshake(clientHandler, wsUri).get();
 
         // 5. WebSocket 메시지 전송
-        String payload = "{ \"type\": \"CHAT\", \"roomId\": 6, \"content\": \"웹소켓 통합 테스트 메시지\" }";
-        session.sendMessage(new TextMessage(payload));
+        NotificationType type = NotificationType.SCHEDULE;
+   
+        /**
+         * SCHEDULE 타입의 알림 메시지를 서버에 전송. content는 포함하지 않음(비즈니스 규칙).
+           실제 일정 등록/알림 등과 똑같은 데이터 구조로 메시지 전송.
+         * */
+        String schedulePayload = String.format(
+        		"{ \"type\": \"%s\", \"roomId\": 6 }",
+        	    type.name() // "SCHEDULE"
+        	    
+        	);
+       
+        session.sendMessage(new TextMessage(schedulePayload));
 
         // 6. 서버에서 발송된 응답/알림 메시지 수신 및 검증 (5초 이내 도착)
+        /**
+         * 서버가 WebSocket을 통해 클라이언트에게 실시간 메시지를 push하면, 클라이언트가 해당 메시지를 수신.
+           메시지가 정상적으로 수신되는지 5초 내에 검증.
+         * */
         String response = receivedMessages.poll(5, TimeUnit.SECONDS);
         System.out.println("서버 응답: " + response);
 
         assertNotNull(response, "서버로부터 응답 메시지를 받아야 합니다.");
-        assertTrue(response.contains("웹소켓 통합 테스트 메시지"));
+        
 		
+		// 7. DB에서 알림 메시지 검증 (SCHEDULE 타입)
+        /**
+         * 알림(Notification) 테이블에서 해당 사용자에게 전송된 알림이 제대로 저장됐는지 검증.
+           SCHEDULE 타입은 비즈니스 로직대로 알림 메시지가 content 없이 생성됐는지 체크.
+         * */
+		List<Notification> notifications = notificationRepository.findByUserId(user.getId());
+		// SCHEDULE 검증
+		boolean foundSchedule = notifications.stream()
+		    .filter(n -> n.getNotificationType() != null)
+		    .anyMatch(n -> "SCHEDULE".equalsIgnoreCase(n.getNotificationType()) 
+		        && n.getNotificationMessage() != null
+		        && n.getNotificationMessage().contains("일정을 등록했습니다"));
+		assertTrue(foundSchedule, "DB에 SCHEDULE 알림 메시지가 올바르게 저장되어야 합니다.");
 		
+		// 8. CHAT 타입 메시지 전송 및 검증
+		/**
+		 * CHAT 타입 메시지를 서버에 전송. content에 실제 채팅 메시지가 포함됨.
+           서버가 실시간으로 메시지를 push하면 정상적으로 수신되는지 검증.
+		 * */
+		String chatContent = "채팅 테스트 메시지6";
+		String chatPayload = "{ \"type\": \"CHAT\", \"roomId\": 6, \"content\": \"" + chatContent + "\" }";
+		session.sendMessage(new TextMessage(chatPayload));
 		
+		String chatResponse = receivedMessages.poll(5, TimeUnit.SECONDS);
+		System.out.println("채팅 응답: " + chatResponse);
+		assertNotNull(chatResponse, "서버로부터 채팅 응답 메시지를 받아야 합니다.");
 		
-		
-		
+		// 9. DB에서 알림 메시지 검증 (CHAT 타입: content 포함)
+		// DB에서 chatContent(사용자 메시지)가 알림 메시지에 제대로 포함되어 있는지 검증.
+	    notifications = notificationRepository.findByUserId(user.getId());
+	    // CHAT 검증
+	    boolean foundChat = notifications.stream()
+	        .filter(n -> n.getNotificationType() != null)
+	        .anyMatch(n -> "CHAT".equalsIgnoreCase(n.getNotificationType())
+	            && n.getNotificationMessage() != null
+	            && n.getNotificationMessage().contains(chatContent));
+	    assertTrue(foundChat, "DB에 CHAT 알림 메시지에 사용자 메시지(content)가 포함되어야 합니다.");
 		
 		
 		

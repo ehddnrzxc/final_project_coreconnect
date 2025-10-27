@@ -33,7 +33,7 @@ public class Notification {
 	@Column(name = "notification_read_yn")
 	private Boolean notificationReadYn;
 	
-	@Column(name = "notification_type")
+	@Column(name = "notification_type", nullable = false)
 	private String notificationType;
 	
 	@Column(name = "notification_read_at")

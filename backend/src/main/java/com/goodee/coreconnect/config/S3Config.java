@@ -1,4 +1,4 @@
-package com.goodee.coreconnect.common;
+package com.goodee.coreconnect.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
