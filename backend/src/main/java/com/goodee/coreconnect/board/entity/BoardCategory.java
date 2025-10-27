@@ -1,5 +1,7 @@
 package com.goodee.coreconnect.board.entity;
 
+import com.goodee.coreconnect.user.entity.User;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -23,7 +25,10 @@ public class BoardCategory {
     @Column(name = "board_category_order_no")
     private Integer orderNo;
 
-    // 게시판 작성자
-    @Column(name = "user_id")
-    private Integer userId;
+    /**
+     * N:1 관계 매핑 (user 테이블과 매핑)
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
 }

@@ -1,5 +1,5 @@
 package com.goodee.coreconnect.board.repository;
 
-public class BoardReplyRepository {
+public interface BoardReplyRepository {
 
 }
