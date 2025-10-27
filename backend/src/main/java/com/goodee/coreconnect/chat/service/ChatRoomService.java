@@ -2,6 +2,7 @@ package com.goodee.coreconnect.chat.service;
 
 import java.util.List;
 
+import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.chat.dto.request.NotificationRequestDTO;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
 import com.goodee.coreconnect.chat.entity.Notification;
@@ -25,7 +26,12 @@ public interface ChatRoomService {
 	ChatRoom updateRoomType(int i, String string);
 
 	List<Notification> saveNotification(
-            Integer roomId, Integer senderId, String chatContent, NotificationType notificationType);
+            Integer roomId, Integer senderId, String chatContent, NotificationType notificationType,  Document document);
 	
 	void sendNotification(NotificationRequestDTO dto);
+	
+	/**
+	 * 전자결재 문서 삭제시 알림 삭제
+	 * */
+	void deleteDocumentAndNotification(Integer documentId);
 }

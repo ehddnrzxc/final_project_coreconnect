@@ -17,6 +17,8 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.goodee.coreconnect.approval.entity.Document;
+import com.goodee.coreconnect.approval.repository.DocumentRepository;
 import com.goodee.coreconnect.chat.entity.Notification;
 import com.goodee.coreconnect.chat.enums.NotificationType;
 import com.goodee.coreconnect.chat.repository.NotificationRepository;
@@ -49,6 +51,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 	private final ChatRoomService chatRoomService;
 	
 	private final NotificationRepository alarmRepository;
+	
+	private final DocumentRepository documentRepository;
 	
 	// JSON 파싱용 ObjectMapper
 	private final ObjectMapper objectMapper = new ObjectMapper();
@@ -118,112 +122,88 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 	
 	@Override
 	protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-		// 1. 메시지 파싱 (JSON -> DTO 변환)
-		// payload(문자열)는 일반적으로 JSON 형태의 채팅 메시지 데이터
-		// 예) { "roomId": 123, "senderId": 456, "content": "안녕하세요!" }
-		// 이 데이터 에서 채팅방ID, 메시지내용 등을 추출할때 사용하는게 extractRoomId, extractChatContent 메서드
-		String payload = message.getPayload();
-		
-		// 1. 한번만 JSON 파싱
-		JsonNode node = null;
-		try {
-			node = objectMapper.readTree(payload);
-		} catch (Exception e) {
-			log.error("[handleTextMessage] JSON 파싱 오류: " + e.getMessage());
-			e.printStackTrace();
-			return;
-		}
-		
-		// 2. 알림 타입 추출 (기본값: CHAT)
-		String typeStr = node.has("type") ? node.get("type").asText() : "CHAT";
-		NotificationType notificationType;
+	    String payload = message.getPayload();
 
-		try {
-			notificationType = NotificationType.valueOf(typeStr.toUpperCase());
-		} catch (Exception e) {
-			log.warn("알림 타입 파싱 오류: {}", typeStr);
-			notificationType = NotificationType.CHAT; // 기본값
-		}		
-		
-		// payload에서 roomId 추출
-		Long roomId = extractRoomId(payload);
-		
-		// JWT에서 userId/email 추출
-		Integer senderId = getUserIdFromSession(session);
-		
-		// payload에서 메시지 내용 추출
-		String chatContent = extractChatContent(payload);
+	    JsonNode node;
+	    try {
+	        node = objectMapper.readTree(payload);
+	    } catch (Exception e) {
+	        log.error("[handleTextMessage] JSON 파싱 오류: " + e.getMessage());
+	        e.printStackTrace();
+	        return;
+	    }
 
-		// 2.  채팅방의 참여자 userID 리스트 조회
-		List<Integer> participantIds = chatRoomService.getParticipantIds(roomId != null ? roomId.intValue() : null);
-		
-		// email로도 관리 하므로 email 정보도 조회
-		List<String> participatnEmails = chatRoomService.getParticipantEmail(roomId != null ? roomId.intValue() : null);
-		
-		Integer userId = getUserIdFromSession(session);
-		
-		
-		//  구독 요청 처리
-		if ("subscribe".equals(typeStr)) {
-			roomId = node.has("roomId") ? node.get("roomId").asLong() : null;
-			if (userId != null && roomId != null) {
-				userSubscriptions.computeIfAbsent(userId, key -> new ArrayList<>()).add(roomId.intValue());
-			}
-		}
-		
-		
-		// 3. 메시지/알림/이메일/공지/일정 등 다양한 타입별 저장 처리
-		List<Notification> notifications = chatRoomService.saveNotification(
+	    String typeStr = node.has("type") ? node.get("type").asText() : "CHAT";
+	    NotificationType notificationType;
+	    try {
+	        notificationType = NotificationType.valueOf(typeStr.toUpperCase());
+	    } catch (Exception e) {
+	        log.warn("알림 타입 파싱 오류: {}", typeStr);
+	        notificationType = NotificationType.CHAT;
+	    }
+
+	    Long roomId = extractRoomId(payload);
+	    Integer senderId = getUserIdFromSession(session);
+	    String chatContent = extractChatContent(payload);
+	    Integer userId = senderId; // 실제로는 senderId와 userId가 동일하게 추출됨
+
+	    // 채팅방 참여자 리스트 (CHAT일 때만)
+	    List<Integer> participantIds = (notificationType == NotificationType.CHAT && roomId != null)
+	        ? chatRoomService.getParticipantIds(roomId.intValue())
+	        : new ArrayList<>();
+	    
+	    Document document = null;
+	    if (notificationType == NotificationType.APPROVAL || notificationType == NotificationType.SCHEDULE) {
+	        // docId가 payload에 포함되어 있다고 가정
+	        Integer docId = node.has("docId") ? node.get("docId").asInt() : null;
+	        if (docId != null) {
+	            document = documentRepository.findById(docId)
+	                .orElseThrow(() -> new IllegalArgumentException("문서 없음: " + docId));
+	        }
+	    }
+	    
+
+	    // 알림 저장
+	    List<Notification> notifications = chatRoomService.saveNotification(
 	        roomId != null ? roomId.intValue() : null,
-	        senderId != null ? senderId.intValue() : null,
+	        senderId,
 	        chatContent,
-	        notificationType
+	        notificationType,
+	        document
 	    );
-		
-		
-		
-		// 4. 참여자에게만 메시지 전송
-		for (Integer user : participantIds) {
-		    WebSocketSession userSession = userSessions.get(user);
-		    log.info("user {} session: {}", user, userSession);
-		    if (userSession != null && userSession.isOpen()) {
-		    	// SCHEDULE 등은 알림 메시지(notificationMessage)로 push
-		    	String messageToSend = null;
-		    	if (notificationType == NotificationType.CHAT) {
-		    		messageToSend = chatContent;
-		    	} else {
-		    		// SCHEDULE, EMAIL 등은 notificationMessage(알림 메시지)로 push
-		    		messageToSend = notifications.stream()
-		    				.filter(n -> n.getUser().getId().equals(user))
-		    				.findFirst()
-		    				.map(Notification::getNotificationMessage)
-		    				.orElse(null);
-		    	}
-		    	
-		    	
-		    	// null이면 메시지 push 하지 않음
-		    	if (messageToSend != null && !messageToSend.isEmpty()) {
-		    		 userSession.sendMessage(new TextMessage(chatContent));
-				     log.info("메시지 전송: user_id={}, content={}", user, chatContent);
-		    	} else {
-		    		log.info("메시지 전송하지 않음: user_id={}, content=null or empty", user);
-		    	}
-		    	
-		    	
-		       
-		    }
-		}
-		
-		
-		// 5. 각 수신자에게 알림 실시간 push
-		for (Notification notification : notifications) {
-		    Integer receiverId = notification.getUser().getId();
-		    NotificationType alarmType = notification.getNotificationType();
-		    String messageText = notification.getNotificationMessage(); // Notification 엔티티에 message 필드
-		    Integer alarmId = notification.getId();
-		    sendAlarmToUser(receiverId, alarmType.name(), messageText, alarmId);
-		}
 
+	    if (notificationType == NotificationType.CHAT) {
+	        // CHAT: 채팅방 참여자에게 메시지 push
+	        for (Integer user : participantIds) {
+	            WebSocketSession userSession = userSessions.get(user);
+	            log.info("user {} session: {}", user, userSession);
+	            if (userSession != null && userSession.isOpen() && chatContent != null && !chatContent.isEmpty()) {
+	                userSession.sendMessage(new TextMessage(chatContent));
+	                log.info("메시지 전송: user_id={}, content={}", user, chatContent);
+	            }
+	        }
+	    } else {
+	        // SCHEDULE/NOTICE/APPROVAL/EMAIL: 알림 수신자(userId)에게만 알림 push
+	        for (Notification notification : notifications) {
+	            Integer receiverId = notification.getUser().getId();
+	            String messageText = notification.getNotificationMessage();
+	            WebSocketSession userSession = userSessions.get(receiverId);
+	            log.info("알림 전송: type={}, user_id={}, session={}", notificationType, receiverId, userSession);
+	            if (userSession != null && userSession.isOpen() && messageText != null && !messageText.isEmpty()) {
+	                userSession.sendMessage(new TextMessage(messageText));
+	                log.info("알림 메시지 전송: user_id={}, message={}", receiverId, messageText);
+	            }
+	        }
+	    }
+
+	    // 필요시 DB 상태 업데이트 등(알림 전송 상태, 시각)
+	    for (Notification notification : notifications) {
+	        Integer receiverId = notification.getUser().getId();
+	        NotificationType alarmType = notification.getNotificationType();
+	        String messageText = notification.getNotificationMessage();
+	        Integer alarmId = notification.getId();
+	        sendAlarmToUser(receiverId, alarmType.name(), messageText, alarmId);
+	    }
 	}
 	
 	

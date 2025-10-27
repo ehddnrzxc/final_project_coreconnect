@@ -47,6 +47,9 @@ public class Notification {
    @Column(name = "notification_sent_at")
    private LocalDateTime notificationSentAt;
    
+   @Column(name = "notification_deleted_yn")
+   private Boolean notificationDeletedYn;
+   
    @Column(name = "notification_sent_yn")
    private Boolean notificationSentYn;
    
@@ -70,7 +73,6 @@ public class Notification {
    // 알림 수신자
    @ManyToOne(fetch = FetchType.LAZY)
    @JoinColumn(name = "user_id")
-   private User user; 
-   
+   private User user;
    
 }

@@ -12,6 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.goodee.coreconnect.chat.entity.Notification;
 import com.goodee.coreconnect.chat.enums.NotificationType;
+import com.goodee.coreconnect.approval.entity.Document;
+import com.goodee.coreconnect.approval.repository.DocumentRepository;
 import com.goodee.coreconnect.chat.dto.request.NotificationRequestDTO;
 import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
@@ -34,6 +36,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	private final ChatRepository chatRepository;
 	private final NotificationRepository notificationRepository;
 	private final UserRepository userRepository;
+	private final DocumentRepository documentRepository;
 
 	// 채팅방의 참여자 user_id 리스트 조회
 	@Transactional(readOnly = true)
@@ -107,87 +110,111 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 		return updatedRoom;
 	}
 
-	// 알림 생성 및 알림 타입별 메시지 생성
 	@Transactional
 	@Override
-	public List<Notification> saveNotification(Integer roomId, Integer senderId, String chatContent, NotificationType notificationType) {
-		
-		ChatRoom chatRoom = null;
-		if (roomId != null) {
-			chatRoom = chatRoomRepository.findById(roomId)
-					.orElseThrow(() -> new IllegalArgumentException("채팅방 없음: " + roomId));
-		}
-		
-		User sender = userRepository.findById(senderId)
-				.orElseThrow(() -> new IllegalArgumentException("사용자 없음: " + senderId));
-		
-		List<ChatRoomUser> participants = (roomId != null)
-				? chatRoomUserRepository.findByChatRoomId(roomId)
-			    : new ArrayList<>();
-		
-		List<Notification> notifications = new ArrayList<>();
-		
-		// 채팅 메시지 저장 (CHAT 타입일 때만)
-		Chat chat = null;
-		if (notificationType == NotificationType.CHAT && chatRoom != null) {
-			chat = new Chat();
-			chat.setChatRoom(chatRoom);
-			chat.setMessageContent(chatContent);
-			chat.setSendAt(LocalDateTime.now());
-			chat.setFileYn(false);
-			chat.setSender(sender);
-			chat = chatRepository.save(chat);
-		}
+	public List<Notification> saveNotification(Integer roomId, Integer senderId, String chatContent, NotificationType notificationType,  Document document) {
 
-		// 참여주 수에 따라 groupType 결정
-		String groupType = (participants.size() == 1) ? "alone" : "group";
-		
-		// Notification 생성 및 타입멸 메시지 생성
-		for (ChatRoomUser participant : participants) {
-			Notification notification = new Notification();
-			notification.setChat(chat); // CHAT 타입일 떄만 chat 연결, 아니면 null
-			notification.setNotificationType(notificationType);
-			//notification.setNotificationSentYn(false);
-			notification.setNotificationReadYn(false);
-			notification.setNotificationSentAt(LocalDateTime.now());
-			notification.setNotificationReadAt(null);
-			notification.setUser(participant.getUser());
-			
-			// 타입별 알림 메시지 생성
-			String message;
-			switch (notificationType) {
-				
-				case CHAT:
-					message = sender.getName() + "님으로부터 새로운 채팅 메시지가 도착했습니다: " + chatContent;
-					break;
-				case EMAIL:
-					message = sender.getName() + "님으로부터 이메일이 도착했습니다.";
-					break;
-				case NOTICE:
-					message = sender.getName() + "님이 공지를 등록했습니다.";
-					break;
-				case APPROVAL:
-                    message = sender.getName() + "님이 전자결재 문서를 등록했습니다.";
-                    break;
-                case SCHEDULE:
-                    message = sender.getName() + "님이 일정을 등록했습니다.";
-                    break;
-                default:
-                    message = sender.getName() + "님으로부터 새로운 알림이 있습니다.";
-                    break;	
-			}
-			notification.setNotificationMessage(message);
-			
-			notificationRepository.save(notification);
-			notifications.add(notification);
-		}
-		
-		return notifications;
+	    ChatRoom chatRoom = null;
+	    if (roomId != null) {
+	        chatRoom = chatRoomRepository.findById(roomId)
+	            .orElseThrow(() -> new IllegalArgumentException("채팅방 없음: " + roomId));
+	    }
+
+	    User sender = userRepository.findById(senderId)
+	        .orElseThrow(() -> new IllegalArgumentException("사용자 없음: " + senderId));
+
+	    List<Notification> notifications = new ArrayList<>();
+
+	    // 1. CHAT 타입(채팅방 참여자 모두에게 알림)
+	    if (notificationType == NotificationType.CHAT && chatRoom != null) {
+	        // 채팅 메시지 저장
+	        Chat chat = new Chat();
+	        chat.setChatRoom(chatRoom);
+	        chat.setMessageContent(chatContent);
+	        chat.setSendAt(LocalDateTime.now());
+	        chat.setFileYn(false);
+	        chat.setSender(sender);
+	        chat = chatRepository.save(chat);
+
+	        // 채팅방 참여자에게 알림 생성
+	        List<ChatRoomUser> participants = chatRoomUserRepository.findByChatRoomId(roomId);
+	        for (ChatRoomUser participant : participants) {
+	            Notification notification = new Notification();
+	            notification.setChat(chat);
+	            notification.setNotificationType(NotificationType.CHAT);
+	            notification.setNotificationReadYn(false);
+	            notification.setNotificationSentAt(LocalDateTime.now());
+	            notification.setNotificationReadAt(null);
+	            notification.setUser(participant.getUser());
+	            String message = sender.getName() + "님으로부터 새로운 채팅 메시지가 도착했습니다: " + chatContent;
+	            notification.setNotificationMessage(message);
+	            notificationRepository.save(notification);
+	            notifications.add(notification);
+	        }
+	    } else {
+	        // 2. 단일 알림(전자결재, 공지, 이메일, 일정 등)
+	        Notification notification = new Notification();
+	        notification.setNotificationType(notificationType);
+	        notification.setNotificationReadYn(false);
+	        notification.setNotificationSentAt(LocalDateTime.now());
+	        notification.setNotificationReadAt(null);
+	        notification.setUser(sender); // senderId로 알림 수신자 지정
+
+	        // 문서 연계
+	        if ((notificationType == NotificationType.APPROVAL || notificationType == NotificationType.SCHEDULE) && document != null) {
+	            notification.setDocument(document);
+	        }
+	        
+	        // 타입별 메시지 생성
+	        String message;
+	        switch (notificationType) {
+	            case EMAIL:
+	                message = sender.getName() + "님으로부터 이메일이 도착했습니다.";
+	                break;
+	            case NOTICE:
+	                message = sender.getName() + "님이 공지를 등록했습니다.";
+	                break;
+	            case APPROVAL:
+	                message = sender.getName() + "님이 전자결재 문서를 등록했습니다.";
+	                break;
+	            case SCHEDULE:
+	                message = sender.getName() + "님이 일정을 등록했습니다.";
+	                break;
+	            default:
+	                message = sender.getName() + "님으로부터 새로운 알림이 있습니다.";
+	                break;
+	        }
+	        notification.setNotificationMessage(message);
+	        notificationRepository.save(notification);
+	        notifications.add(notification);
+	    }
+
+	    return notifications;
 	}
 
 	@Override
 	public void sendNotification(NotificationRequestDTO dto) {
 		// TODO Auto-generated method stub
+		
+	}
+
+	/**
+	 * 전자결재 문서 삭제시 알림 삭제
+	 * */
+	@Override
+	public void deleteDocumentAndNotification(Integer documentId) {
+		// 1. 문서 삭제 상태 변경
+		Document document = documentRepository.findById(documentId)
+				.orElseThrow(() -> new IllegalArgumentException("문서 없음: " + documentId));
+		document.setDocDeletedYn(true);
+		documentRepository.save(document);
+		
+		// 2. 관련 알림 soft-delete (notification_deleted_yn 필드가 있다고 가정)
+		List<Notification> notifications = notificationRepository.findByDocumentId(documentId);
+		for (Notification notification : notifications) {
+			notification.setNotificationDeletedYn(true);
+			notificationRepository.save(notification);
+		}
 		
 	}
 

@@ -23,7 +23,9 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.Getter;
+import lombok.Setter;
 
+@Setter
 @Entity
 @Getter
 @Table(name = "document")
