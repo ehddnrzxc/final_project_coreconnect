@@ -3,7 +3,9 @@ package com.goodee.coreconnect.user.entity;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.goodee.coreconnect.approval.entity.ApprovalLine;
 import com.goodee.coreconnect.approval.entity.Document;
+import com.goodee.coreconnect.approval.entity.Template;
 import com.goodee.coreconnect.chat.entity.ChatRoomUser;
 
 import jakarta.persistence.*;
@@ -64,7 +66,25 @@ public class User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     private List<ChatRoomUser> chatRoomUsers = new ArrayList<>();
     
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    /**
+     * 사용자가 '작성한(상신한)' 문서 목록입니다.
+     * (Document 엔티티의 'user' 필드와 매핑)
+     */
+    @OneToMany(mappedBy = "user")
     private List<Document> documents = new ArrayList<>();
+    
+    /**
+     * 사용자가 '결재해야 하거나 결재한' 결재선 목록입니다.
+     * (ApprovalLine 엔티티의 'approver' 필드와 매핑)
+     */
+    @OneToMany(mappedBy = "approver")
+    private List<ApprovalLine> approvalLines = new ArrayList<>();
+    
+    /**
+     * 사용자가 '생성한' 결재 양식(템플릿) 목록입니다.
+     * (Template 엔티티의 'user' 필드와 매핑)
+     */
+    @OneToMany(mappedBy = "user")
+    private List<Template> templates = new ArrayList<>();
 
 }
