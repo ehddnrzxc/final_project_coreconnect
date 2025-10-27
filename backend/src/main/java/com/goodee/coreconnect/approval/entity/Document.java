@@ -50,7 +50,10 @@ public class Document {
 
   @Column(name = "completed_at")
   private LocalDateTime completedAt;
-
+  
+  @Column(name = "doc_deleted_yn")
+  private Boolean docDeletedYn;
+  
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "user_id", nullable = false)
   private User user;

@@ -146,8 +146,8 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 		for (ChatRoomUser participant : participants) {
 			Notification notification = new Notification();
 			notification.setChat(chat); // CHAT 타입일 떄만 chat 연결, 아니면 null
-			notification.setNotificationType(notificationType.name().toLowerCase());
-			notification.setNotificationSentYn(false);
+			notification.setNotificationType(notificationType);
+			//notification.setNotificationSentYn(false);
 			notification.setNotificationReadYn(false);
 			notification.setNotificationSentAt(LocalDateTime.now());
 			notification.setNotificationReadAt(null);
@@ -167,7 +167,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 					message = sender.getName() + "님이 공지를 등록했습니다.";
 					break;
 				case APPROVAL:
-                    message = sender.getName() + "님이 결재 요청을 보냈습니다.";
+                    message = sender.getName() + "님이 전자결재 문서를 등록했습니다.";
                     break;
                 case SCHEDULE:
                     message = sender.getName() + "님이 일정을 등록했습니다.";
