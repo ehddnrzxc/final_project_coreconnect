@@ -17,12 +17,10 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
-import lombok.Setter;
 
 @Entity
 @Table(name = "schedule_participant")
 @Getter
-@Setter
 public class ScheduleParticipant {
 
   @Id
@@ -34,7 +32,7 @@ public class ScheduleParticipant {
   @Column(name = "sch_part_role", length = 10)
   private ScheduleRole role;  // OWNER / MEMBER
 
-  @Column(name = "sch_part_created_at")
+  @Column(name = "sch_part_created_at", nullable = false)
   private LocalDateTime createdAt;
 
   /**
@@ -62,6 +60,11 @@ public class ScheduleParticipant {
     participant.role = role != null ? role : ScheduleRole.MEMBER;
     participant.createdAt = LocalDateTime.now();
     return participant;
+  }
+  
+  /** 참여자 역할 변경 */
+  public void changeRole(ScheduleRole role) {
+    this.role = role;
   }
   
 }

@@ -14,8 +14,11 @@ import io.lettuce.core.dynamic.annotation.Param;
 
 public interface ScheduleRepository extends JpaRepository<Schedule, Integer> {
 
-  /** 특정 유저의 일정 목록 조회 */
-  List<Schedule> getByUser(User user);
+  /** 특정 유저의 일정 목록 (삭제 제외) */
+  List<Schedule> getByUserAndDeletedYnFalse(User user);
+
+  /** 특정 회의실의 일정 목록 (삭제 제외) */
+  List<Schedule> getByMeetingRoomAndDeletedYnFalse(MeetingRoom meetingRoom);
 
   /**
    * 같은 회의실에서 겹치는 시간대가 있는 일정이 존재하는지 확인
