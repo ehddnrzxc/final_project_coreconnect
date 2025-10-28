@@ -1,5 +1,6 @@
 package com.goodee.coreconnect.chat.handler;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +20,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.approval.repository.DocumentRepository;
+import com.goodee.coreconnect.chat.dto.response.ChatResponseDTO;
+import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.chat.entity.Notification;
 import com.goodee.coreconnect.chat.enums.NotificationType;
 import com.goodee.coreconnect.chat.repository.NotificationRepository;
@@ -64,6 +67,56 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 		return userSessions;
 	}
 	
+	/**
+	 * 서버(예: REST 컨트롤러)에서 DB에 Chat을 저장한 후에, 연결된 WebSocket 클라이언트들에게
+	 * 실시간으로 메시지를 푸시하려면 이 메서드를 호출하세요.
+	 *
+	 * @param chat         저장된 Chat 엔티티 (JPA에서 반환된 상태)
+	 * @param recipientIds 푸시할 대상 사용자 ID 리스트 (sender 제외 등 필터는 호출자가 처리)
+	 */
+	public void pushChatToRecipients(Chat chat, List<Integer> recipientIds) {
+		if (chat == null || recipientIds == null || recipientIds.isEmpty()) {
+			return;
+		}
+
+		ChatResponseDTO dto = ChatResponseDTO.builder()
+				.id(chat.getId())
+				.messageContent(chat.getMessageContent())
+				.sendAt(chat.getSendAt())
+				.fileYn(chat.getFileYn())
+				.fileUrl(chat.getFileUrl())
+				.roomId(chat.getChatRoom() != null ? chat.getChatRoom().getId() : null)
+				.senderId(chat.getSender() != null ? chat.getSender().getId() : null)
+				.senderName(chat.getSender() != null ? chat.getSender().getName() : null)
+				.notificationType(NotificationType.CHAT.name())
+				.build();
+
+		String payload;
+		try {
+			payload = objectMapper.writeValueAsString(dto);
+		} catch (Exception e) {
+			log.error("Failed to serialize ChatResponseDTO for chatId={}: {}", chat.getId(), e.getMessage(), e);
+			return;
+		}
+
+		TextMessage textMessage = new TextMessage(payload);
+
+		for (Integer userId : recipientIds) {
+			try {
+				WebSocketSession sess = userSessions.get(userId);
+				if (sess != null && sess.isOpen()) {
+					sess.sendMessage(textMessage);
+					log.debug("Pushed chatId={} to userId={}", chat.getId(), userId);
+				} else {
+					log.debug("No open WS session for userId={} (chatId={})", userId, chat.getId());
+				}
+			} catch (IOException ioe) {
+				log.warn("Failed to push chatId={} to userId={}: {}", chat.getId(), userId, ioe.getMessage());
+			} catch (Exception ex) {
+				log.error("Unexpected error while pushing chatId={} to userId={}: {}", chat.getId(), userId, ex.getMessage(), ex);
+			}
+		}
+	}
 	
 	
 	// 클라이언트 연결 시 사용자 세션 저장
