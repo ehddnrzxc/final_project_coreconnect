@@ -3,9 +3,11 @@ package com.goodee.coreconnect.approval.entity;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.hibernate.annotations.CreationTimestamp;
 
+import com.goodee.coreconnect.approval.enums.ApprovalLineStatus;
 import com.goodee.coreconnect.approval.enums.DocumentStatus;
 import com.goodee.coreconnect.user.entity.User;
 
@@ -23,9 +25,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.Getter;
-import lombok.Setter;
 
-@Setter
 @Entity
 @Getter
 @Table(name = "document")
@@ -52,10 +52,10 @@ public class Document {
 
   @Column(name = "completed_at")
   private LocalDateTime completedAt;
-  
+
   @Column(name = "doc_deleted_yn")
   private Boolean docDeletedYn;
-  
+
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "user_id", nullable = false)
   private User user;
@@ -69,17 +69,17 @@ public class Document {
 
   @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<File> files = new ArrayList<>();
-  
+
   protected Document() {};
 
-  // new Document()
-  
-  // public Document(Template template, User user, String documentTitle, String documentContent) {
-  //   this.template = template;
-  // }
-  
-  // Document.createDocument()
-  
+  /**
+   * 생성 메소드
+   * @param template
+   * @param user
+   * @param documentTitle
+   * @param documentContent
+   * @return
+   */
   public static Document createDocument(Template template, User user, String documentTitle, String documentContent) {
     Document d = new Document();
     d.template = template;
@@ -88,25 +88,73 @@ public class Document {
     d.documentContent = documentContent;
     return d;
   }
-  
-  public static Document submitDocument() {
-    Document d = new Document();
-    d.documentStatus = DocumentStatus.IN_PROGRESS;
-    return d;
+
+  /**
+   * 문서를 상신하는 메소드
+   */
+  public void submit() {
+    if (this.documentStatus != DocumentStatus.DRAFT)
+      throw new IllegalStateException("임시 저장 상태의 문서만 상신할 수 있습니다.");
+    if (this.approvalLines.isEmpty())
+      throw new IllegalStateException("결재선이 지정되지 않은 문서는 상신할 수 없습니다.");
+    this.documentStatus = DocumentStatus.IN_PROGRESS;
   }
-  
-  public static Document completeDocument() {
-    Document d = new Document();
-    d.documentStatus = DocumentStatus.COMPLETED;
-    d.completedAt = LocalDateTime.now();
-    return d;
+
+  /**
+   * 문서를 회수하는 메소드 (기안자가 사용)
+   */
+  public void cancel() {
+    if (this.documentStatus != DocumentStatus.IN_PROGRESS)
+      throw new IllegalStateException("진행 중인 문서만 회수할 수 있습니다.");
+    this.documentStatus = DocumentStatus.DRAFT;
+    this.approvalLines.forEach(ApprovalLine::cancel);
   }
-  
-  public static Document rejectDocument() {
-    Document d = new Document();
-    d.documentStatus = DocumentStatus.REJECTED;
-    d.completedAt = LocalDateTime.now();
-    return d;
+
+  /**
+   * 문서를 반려 처리하는 메소드
+   */
+  public void reject() {
+    if (this.documentStatus != DocumentStatus.IN_PROGRESS)
+      throw new IllegalStateException("진행 중인 문서가 아닙니다");
+    this.documentStatus = DocumentStatus.REJECTED;
+    this.completedAt = LocalDateTime.now();
   }
-  
+
+  /**
+   * 결재 승인 후 문서 상태 변경 메소드
+   */
+  public void updateStatusAfterApproval() {
+    if (this.documentStatus != DocumentStatus.IN_PROGRESS) return;
+    boolean allApproved = this.approvalLines.stream()
+        .allMatch(line -> line.getApprovalLineStatus() == ApprovalLineStatus.APPROVED);
+    if (allApproved) this.complete();
+  }
+
+  /**
+   * 문서를 완료 처리하는 메소드 (updateStatusAfterApproval 메소드에서 사용됨)
+   */
+  private void complete() {
+    this.documentStatus = DocumentStatus.COMPLETED;
+    this.completedAt = LocalDateTime.now();
+  }
+
+  /**
+   * 문서에 결재선을 추가합니다.
+   * 서비스 레이어에서 이 메소드를 사용.
+   */
+  public void addApprovalLine(ApprovalLine line) {
+    if (line.getDocument() != null && !Objects.equals(line.getDocument(), this)) {
+      throw new IllegalArgumentException("결재선이 이미 다른 문서에 속해있습니다.");
+    }
+    this.approvalLines.add(line);
+  }
+
+  /**
+   * 문서 삭제 상태 변경 메소드
+   * @param deleted
+   */
+  public void markDeleted(boolean deleted) {
+    this.docDeletedYn = deleted;
+  }
+
 }
