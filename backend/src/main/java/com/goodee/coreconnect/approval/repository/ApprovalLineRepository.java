@@ -14,7 +14,7 @@ public interface ApprovalLineRepository extends JpaRepository<ApprovalLine, Inte
   /**
    * 내가 결재할 문서 조회
    * @param approver 결재자
-   * @param status 'PENDING' 상태 (결재대기)
+   * @param status 'WAITING' 상태 (결재대기)
    * @return 결재 대기 중인 결재선 목록
    */
   List<ApprovalLine> findByApproverAndApprovalLineStatusOrderByDocumentCreatedAt(User approver, ApprovalLineStatus status);
