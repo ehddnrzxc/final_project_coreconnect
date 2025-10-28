@@ -56,6 +56,14 @@ public class ApprovalLine {
   
   protected ApprovalLine() {};
   
+  /**
+   * 생성 메소드 (정적 팩토리 메소드)
+   * @param document
+   * @param approver
+   * @param approvalLineOrder
+   * @param approvalLineType
+   * @return
+   */
   public static ApprovalLine createApprovalLine(Document document, User approver, int approvalLineOrder, ApprovalLineType approvalLineType) {
     ApprovalLine a = new ApprovalLine();
     a.document = document;
@@ -65,15 +73,41 @@ public class ApprovalLine {
     return a;
   }
   
-  public static ApprovalLine processApprovalLine(ApprovalLineStatus newStatus, String comment) {
-    ApprovalLine a = new ApprovalLine();
-    if (a.approvalLineStatus != ApprovalLineStatus.WAITING) {
+  /**
+   * 결재를 승인하는 비즈니스 로직
+   * @param comment
+   */
+  public void approve(String comment) {
+    if (this.approvalLineStatus != ApprovalLineStatus.WAITING) {
       throw new IllegalStateException("이미 처리된 결재 항목입니다.");
     }
-    a.approvalLineStatus = newStatus;
-    a.approvalLineComment = comment;
-    a.approvalLineProcessedAt = LocalDateTime.now();
-    return a;
+    this.approvalLineStatus = ApprovalLineStatus.APPROVED;
+    this.approvalLineComment = comment;
+    this.approvalLineProcessedAt = LocalDateTime.now();
+  }
+  
+  /**
+   * 결재를 반려하는 비즈니스 로직
+   * @param comment
+   */
+  public void reject(String comment) {
+    if (this.approvalLineStatus != ApprovalLineStatus.WAITING)
+      throw new IllegalStateException("이미 처리된 결재 항목입니다.");
+    this.approvalLineStatus = ApprovalLineStatus.APPROVED;
+    this.approvalLineComment = comment;
+    this.approvalLineProcessedAt = LocalDateTime.now();
+  }
+  
+  /**
+   * 결재 처리를 취소하는 로직
+   * 결재 상태를 다시 WAITING으로 초기화
+   */
+  public void cancel() {
+    if (this.approvalLineStatus != ApprovalLineStatus.WAITING) {
+      this.approvalLineStatus = ApprovalLineStatus.WAITING;
+      this.approvalLineComment = null;
+      this.approvalLineProcessedAt = null;
+    }
   }
 
 }
