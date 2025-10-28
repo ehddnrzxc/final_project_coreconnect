@@ -46,12 +46,44 @@ public class Template {
   
   protected Template() {};
   
+  /**
+   * 새로운 템플릿(양식)을 생성하는 메소드
+   * @param templateName
+   * @param templateContent
+   * @param user
+   * @return
+   */
   public static Template createTemplate(String templateName, String templateContent, User user) {
     Template t = new Template();
     t.templateName = templateName;
     t.templateContent = templateContent;
     t.user = user;
     return t;
+  }
+  
+  /**
+   * 템플릿(양식)의 이름과 내용을 수정하는 메소드
+   * @param newName
+   * @param newContent
+   */
+  public void updateTemplate(String newName, String newContent) {
+    this.templateName = newName;
+    this.templateContent = newContent;
+  }
+  
+  /**
+   * 템플릿(양식)을 비활성화 상태로 변경하는 메소드
+   * (더 이상 문서 작성 시 양식 목록에 나타나지 않음)
+   */
+  public void deactivate() {
+    this.activeYn = false;
+  }
+  
+  /**
+   * 템플릿(양식)을 활성 상태로 변경하는 메소드
+   */
+  public void activate() {
+    this.activeYn = true;
   }
   
 }

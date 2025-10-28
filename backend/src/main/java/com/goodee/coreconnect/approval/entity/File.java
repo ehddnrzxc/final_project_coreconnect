@@ -1,5 +1,7 @@
 package com.goodee.coreconnect.approval.entity;
 
+import java.util.Objects;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -36,12 +38,22 @@ public class File {
   
   protected File() {};
   
+  /**
+   * 생성 메소드
+   * @param document
+   * @param originalFileName
+   * @param storedFilePath
+   * @param fileSize
+   * @return
+   */
   public static File createFile(Document document, String originalFileName, String storedFilePath, long fileSize) {
     File f = new File();
+    Objects.requireNonNull(document, "파일이 속할 문서는 null일 수 없습니다.");
     f.document = document;
     f.originalFileName = originalFileName;
     f.storedFilePath = storedFilePath;
     f.fileSize = fileSize;
+    document.getFiles().add(f);  // 양방향 연관관계 설정: Document의 files 리스트에도 File을 추가
     return f;
   }
 

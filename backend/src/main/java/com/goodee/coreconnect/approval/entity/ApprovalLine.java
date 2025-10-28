@@ -70,6 +70,7 @@ public class ApprovalLine {
     a.approver = approver;
     a.approvalLineOrder = approvalLineOrder;
     a.approvalLineType = approvalLineType;
+    document.addApprovalLine(a);
     return a;
   }
   
@@ -93,7 +94,7 @@ public class ApprovalLine {
   public void reject(String comment) {
     if (this.approvalLineStatus != ApprovalLineStatus.WAITING)
       throw new IllegalStateException("이미 처리된 결재 항목입니다.");
-    this.approvalLineStatus = ApprovalLineStatus.APPROVED;
+    this.approvalLineStatus = ApprovalLineStatus.REJECTED;
     this.approvalLineComment = comment;
     this.approvalLineProcessedAt = LocalDateTime.now();
   }
