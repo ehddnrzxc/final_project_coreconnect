@@ -47,6 +47,9 @@ public class JwtProvider {
 
     /** subject(email) 추출 */
     public String getSubject(String token) {
+    	if (token == null || token.trim().isEmpty()) {
+            throw new IllegalArgumentException("JWT token must not be null or empty");
+        }
         return getAllClaims(token).getSubject();
     }
 
@@ -57,6 +60,9 @@ public class JwtProvider {
 
     /** 공통: 모든 클레임 파싱 */
     private Claims getAllClaims(String token) {
+    	if (token == null || token.trim().isEmpty()) {
+            throw new IllegalArgumentException("JWT token must not be null or empty");
+        }
         return Jwts.parserBuilder()
                 .setSigningKey(key)
                 .build()

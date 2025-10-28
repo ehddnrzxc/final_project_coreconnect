@@ -26,12 +26,6 @@ public class MessageFile {
 	@Column(name = "file_name")
 	private String fileName;
 	
-	@Column(name = "file_url")
-	private String fileUrl;
-	
-	@Column(name = "file_extension")
-	private String fileExtenstion;
-	
 	@Column(name ="file_size")
 	private Double fileSize;
 	
@@ -45,11 +39,10 @@ public class MessageFile {
 	
 	protected MessageFile() {}
 	
-    public static MessageFile createMessageFile(String fileName, String fileUrl, String fileExtension, Double fileSize, String s3ObjectKey, Chat chat) {
+    public static MessageFile createMessageFile(String fileName, Double fileSize, String s3ObjectKey, Chat chat) {
         MessageFile file = new MessageFile();
         file.fileName = fileName;
-        file.fileUrl = fileUrl;
-        file.fileExtenstion = fileExtension;
+    
         file.fileSize = fileSize;
         file.S3ObjectKey = s3ObjectKey;
         file.chat = chat;
