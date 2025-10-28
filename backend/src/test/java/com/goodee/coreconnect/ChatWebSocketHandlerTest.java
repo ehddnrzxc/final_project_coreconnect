@@ -363,9 +363,10 @@ public class ChatWebSocketHandlerTest {
 		// 1. 테스트 사용자 준비: DB에 있는 계정 사용
 		String email = "109kms@naver.com";
 		User user = userRepository.findByEmail(email).orElseThrow();
+		Role role = user.getRole();
 		
 		// 2. JWT 토큰 발급
-		String accessToken = jwtProvider.createAccess(email, 10); // 10분짜리 액세스 토큰
+		String accessToken = jwtProvider.createAccess(email, role, 10); // 10분짜리 액세스 토큰
 
 		// 3. WebSocket 클라이언트 준비
 		/**
@@ -467,7 +468,8 @@ public class ChatWebSocketHandlerTest {
 		String email = user.getEmail();
 		
 		// 2. JWT 토큰 발급
-		String accessToken = jwtProvider.createAccess(email, 10);
+		Role role = user.getRole();
+		String accessToken = jwtProvider.createAccess(email, role, 10);
 		
 		// 3. WebSocket 연결/클라이언트 준비
 		BlockingQueue<String> receivedMessages = new LinkedBlockingQueue<>();

@@ -8,7 +8,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.goodee.coreconnect.user.service.UserService;
+import com.goodee.coreconnect.user.service.UserServiceImpl;
 
 import lombok.RequiredArgsConstructor;
 
@@ -17,7 +17,7 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/user")
 public class UserController {
 
-    private final UserService userService;
+    private final UserServiceImpl userService;
 
     // 로그인된 사용자 본인 기준 업로드
     @PostMapping("/profile-image")
