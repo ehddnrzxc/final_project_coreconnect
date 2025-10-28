@@ -19,6 +19,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Inte
 	@Modifying
 	@Query("UPDATE Document d SET d.docDeletedYn = true WHERE d.id = :documentId")
 	void deleteByDocumentId(@Param("documentId") Integer documentId);
-  List<Notification> findByDocumentId(Integer documentId);
+	
+    List<Notification> findByDocumentId(Integer documentId);
 	
 }

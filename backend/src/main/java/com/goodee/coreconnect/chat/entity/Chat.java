@@ -23,9 +23,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
 @Entity
 @Table(name = "chat_message")
 public class Chat {
@@ -66,6 +63,19 @@ public class Chat {
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "sender_id")
 	private User sender;
+	
+	protected Chat() {}
+	
+	public static Chat createChat(ChatRoom chatRoom, User sender, String messageContent, Boolean fileYn, String fileUrl, LocalDateTime sendAt) {
+		Chat chat = new Chat();
+		chat.chatRoom = chatRoom;
+		chat.sender = sender;
+        chat.messageContent = messageContent;
+        chat.fileYn = fileYn;
+        chat.fileUrl = fileUrl;
+        chat.sendAt = sendAt;
+        return chat;
+	}
 	
 		
 }

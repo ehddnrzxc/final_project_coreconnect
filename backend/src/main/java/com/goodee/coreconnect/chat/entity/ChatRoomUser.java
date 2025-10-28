@@ -11,14 +11,12 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
 @Entity
 @Table(name = "chat_room_user")
 public class ChatRoomUser {
@@ -39,5 +37,12 @@ public class ChatRoomUser {
 	@JoinColumn(name = "chat_room_id")
 	private ChatRoom chatRoom;
 	
+	protected ChatRoomUser() {}
 	
+	public static ChatRoomUser createChatRoomUser(User user, ChatRoom chatRoom) {
+		ChatRoomUser chatRoomUser = new ChatRoomUser();
+		chatRoomUser.user = user;
+		chatRoomUser.chatRoom = chatRoom;
+		return chatRoomUser;
+	}
 }

@@ -280,10 +280,9 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 		try {
 			Optional<Notification> notificationOpt = alarmRepository.findById(alarmId);
 			if (notificationOpt.isPresent()) {
-				Notification alarm = notificationOpt.get();
-				//alarm.setNotificationSentYn(sentSuccess); // 알람 전송 성공/실패
-				alarm.setNotificationSentAt(LocalDateTime.now()); // 전송 시각
-				alarmRepository.save(alarm);
+				 Notification notification = notificationOpt.get();
+				 notification.markSent(LocalDateTime.now()); // setter 대신 메서드로 변경
+		            alarmRepository.save(notification);
 			}
 			
 		} catch (Exception e) {

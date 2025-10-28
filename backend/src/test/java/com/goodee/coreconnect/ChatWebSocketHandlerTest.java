@@ -44,7 +44,7 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
-
+import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.approval.entity.Template;
 import com.goodee.coreconnect.approval.repository.DocumentRepository;
@@ -173,7 +173,7 @@ public class ChatWebSocketHandlerTest {
 		
 		
 		// 세션에서 핸드셰이크 헤더를 반환하도록 설정 (accessToken 포함)
-		// Mockito로 만든 Mock 객체 session의 메서드 호출 결과를 ㅣㅁ리 지정하기 위해 when 사용
+		// Mockito로 만든 Mock 객체 session의 메서드 호출 결과를 미리 지정하기 위해 when 사용
 		/*
 		 * ChatWebSocketHandler에서 getUserIdFromSession(session)을 호출하면 내부적으로 session.getUri()를 사용해 accessToken을 추출함
 		 * 내가 원하는 URI 값이 반환되어야 이후 JWT 토큰 파싱, 사용자 인증 등이 올바르게 동작함
@@ -186,9 +186,14 @@ public class ChatWebSocketHandlerTest {
 		when(jwtProvider.getSubject(anyString())).thenReturn("choimeeyoung2@gmail.com");
 		
 		// 테스트용 User 객체 생성 및 id, email 설정
-//		User user = new User();
-//		user.setId(1);
-//		user.setEmail("choimeeyoung2@gmail.com");
+		User user = User.createUser(
+		    "dummyPassword",               // password
+		    "최미영",                      // name
+		    Role.ADMIN,   // 내부 클래스라면 이렇게
+		    "choimeeyoung2@gmail.com",     // email
+		    "010-1111-1111",               // phone
+		    null                           // department
+		);
 		
 		// UserRepository가 findByEmail 호출 시 위 user 객체를 반환하도록 설정
 //		when(userRepository.findByEmail("choimeeyoung2@gmail.com")).thenReturn(Optional.of(user));
@@ -214,9 +219,12 @@ public class ChatWebSocketHandlerTest {
 		List<Integer> userIds = Arrays.asList(1,2,3);
 
 		
-		// 테스트용 ChatRoom 객체 생성 및 ID 설정  (실제 DB에 저장되는게 아니라 테스트 시나리오용 객체)
-		ChatRoom chatRoom = new ChatRoom();
-		chatRoom.setId(100);
+		// 채팅방 생성: 빌더 없이 createChatRoom 메서드 사용
+		String roomName = "testRoom";
+		String roomType = userIds.size() == 1 ? "alone" : "group";
+		Boolean favoriteStatus = false; // 기본값
+
+		ChatRoom chatRoom = ChatRoom.createChatRoom(roomName, roomType, favoriteStatus);
 		
 		// Mock 객체의 createChatRoom 호출 시, 위에서 만든 chatRoom 객체가 반환되도록 지정
 		// testRoom이라는 이름과 userIds 목록이 들어오면 chatRoom을 반환
@@ -227,7 +235,7 @@ public class ChatWebSocketHandlerTest {
 		ChatRoom created = chatRoomServiceImpl.createChatRoom("testRoom", userIds);
 		
 		// 반환된 ChatRoom의 ID가 기대값(100)과 같은지 검증
-		// 즉 ㅏㅁ여자 초대/방 생성 과정이 정상적으로 동작하는지 체크
+		// 즉 참여자 초대/방 생성 과정이 정상적으로 동작하는지 체크
 		assertEquals(100, created.getId());
 		
 		
@@ -455,7 +463,7 @@ public class ChatWebSocketHandlerTest {
 	@DisplayName("전자결재 문서 등록/알림 생성 & 삭제/알림 soft-delete 통합 테스트")
 	void testApprovalDocumentWebSocketLifecycle2() throws Exception {
 		// 1. 실제 사용자 계정 준비
-		User user = userRepository.findAll().get(4); // 첫 번째 계정 사용
+		User user = userRepository.findAll().get(3); // 첫 번째 계정 사용
 		String email = user.getEmail();
 		
 		// 2. JWT 토큰 발급
@@ -474,8 +482,8 @@ public class ChatWebSocketHandlerTest {
 	    WebSocketSession session = client.doHandshake(clientHandler, wsUri).get();
 		
 	    // 4. 전자결재 문서 등록 요청 (WebSocket)
-		String docTitle = "테스트 결재 문서1";
-		String docContent = "결재 문서 내용1";
+//		String docTitle = "테스트 결재 문서1";
+//		String docContent = "결재 문서 내용1";
 		
 //		// Template 생성
 //		Template template = Template.createTemplate("기본 결재 템플릿1", "템플릿 내용1", user);
@@ -489,7 +497,7 @@ public class ChatWebSocketHandlerTest {
 	    
 		// 5. WwbSocket으로 APPROVAL 알림 전송
 		String approvalPayload = String.format(
-			"{ \"type\": \"APPROVAL\", \"docId\": %d }", 9
+			"{ \"type\": \"APPROVAL\", \"docId\": %d }", 12
 		);
 		
 		session.sendMessage(new TextMessage(approvalPayload));
@@ -504,7 +512,7 @@ public class ChatWebSocketHandlerTest {
 	    Notification approvalNotification = notifications.stream()
 	        .filter(n -> n.getNotificationType() == NotificationType.APPROVAL
 	            && n.getDocument() != null
-	            && n.getDocument().getId().equals(9)
+	            && n.getDocument().getId().equals(12)
 	            && n.getNotificationDeletedYn() != Boolean.TRUE)
 	        .findFirst()
 	        .orElseThrow(() -> new AssertionError("APPROVAL 알림이 DB에 저장되어야 함"));
@@ -513,10 +521,10 @@ public class ChatWebSocketHandlerTest {
 	    assertEquals(expectedMessage, approvalNotification.getNotificationMessage());
 
 	    // 8. 문서 삭제 요청 (서비스 직접 호출)
-	    chatRoomService.deleteDocumentAndNotification(9);
+	    chatRoomService.deleteDocumentAndNotification(12);
 
 	    // 9. 문서 삭제 상태 검증
-	    Document deletedDoc = documentRepository.findById(9).orElseThrow();
+	    Document deletedDoc = documentRepository.findById(12).orElseThrow();
 	    assertTrue(deletedDoc.getDocDeletedYn(), "문서가 삭제 상태여야 함");
 
 	    // 10. 알림 soft-delete 상태 검증 (알림이 비활성화되어야 함)
@@ -534,12 +542,12 @@ public class ChatWebSocketHandlerTest {
 	    // 2. 문서/템플릿 저장을 별도 트랜잭션으로 실행
 	    TransactionTemplate txTemplate = new TransactionTemplate(transactionManager);
 	    Document savedDocument = txTemplate.execute(status -> {
-	        Template template = Template.createTemplate("기본 결재 템플릿3", "템플릿 내용3", user);
+	        Template template = Template.createTemplate("기본 결재 템플릿7", "템플릿 내용7", user);
 	        template = templateRepository.save(template);
 	        templateRepository.flush();
 
-	        Document document = Document.createDocument(template, user, "테스트 결재 문서3", "결재 문서 내용3");
-	        document.setDocDeletedYn(false);
+	        Document document = Document.createDocument(template, user, "테스트 결재 문서7", "결재 문서 내용7");
+	        document.markDeleted(false); 
 	        Document savedDoc = documentRepository.save(document);
 	        documentRepository.flush();
 
@@ -549,4 +557,8 @@ public class ChatWebSocketHandlerTest {
 	    // 3. WebSocket 및 검증 (이제 DB에 데이터가 있음)
 	    // ... 이하 기존 코드에서 savedDocument.getId() 사용 ...
 	}
+	
+
+	
+	
 }
