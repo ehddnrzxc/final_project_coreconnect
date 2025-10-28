@@ -2,6 +2,7 @@ package com.goodee.coreconnect.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -38,7 +39,9 @@ public class SecurityConfig {
               })
             )
             .authorizeHttpRequests(auth -> auth
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/auth/**", "/ws/chat", "/ws/chat/**").permitAll()
+                .requestMatchers("/api/admin/**").hasRole("ADMIN") // URL 레벨 보호(중복되도 OK)
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/user/profile-image").authenticated()
                 .anyRequest().authenticated()
             )
@@ -52,7 +55,7 @@ public class SecurityConfig {
     CorsConfigurationSource corsConfigurationSource() {
         var c = new org.springframework.web.cors.CorsConfiguration();
         c.setAllowedOrigins(java.util.List.of("http://localhost:5173"));
-        c.setAllowedMethods(java.util.List.of("GET","POST","PUT","DELETE","OPTIONS"));
+        c.setAllowedMethods(java.util.List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
         c.setAllowedHeaders(java.util.List.of("Authorization","Content-Type"));
         c.setAllowCredentials(true);
         var s = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
