@@ -7,8 +7,8 @@ import com.goodee.coreconnect.board.entity.BoardCategory;
 public interface BoardCategoryRepository extends JpaRepository<BoardCategory, Integer> {
 
     // 전체 카테고리 목록
-    List<BoardCategory> findCategories();
+    List<BoardCategory> findAllByOrderByOrderNoAsc();
 
     // 카테고리명 중복 여부 확인
-    boolean findAllByOrderBy(String name);
+    boolean existsByName(String name);
 }

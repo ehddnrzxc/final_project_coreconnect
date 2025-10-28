@@ -7,8 +7,8 @@ import com.goodee.coreconnect.board.entity.BoardFile;
 public interface BoardFileRepository extends JpaRepository<BoardFile, Integer> {
 
     // 게시글에 속한 파일 목록
-    List<BoardFile> findFilesByBoardId(Integer boardId);
+    List<BoardFile> findByBoardId(Integer boardId);
 
     // S3 ObjectKey로 파일 조회 (다운로드/삭제용)
-    BoardFile findFileByS3ObjectKey(String s3ObjectKey);
+    BoardFile findByS3ObjectKey(String s3ObjectKey);
 }
