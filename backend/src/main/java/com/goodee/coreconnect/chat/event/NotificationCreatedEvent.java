@@ -5,18 +5,19 @@ import java.util.List;
 import org.springframework.context.ApplicationEvent;
 
 import com.goodee.coreconnect.chat.entity.Notification;
+import com.goodee.coreconnect.common.notification.dto.NotificationPayload;
 
 public class NotificationCreatedEvent extends ApplicationEvent {
 	private static final long serialVersionUID = 1L;
 
-    private final List<Notification> notifications;
+    private final List<NotificationPayload> payloads;
 
-    public NotificationCreatedEvent(Object source, List<Notification> notifications) {
+    public NotificationCreatedEvent(Object source, List<NotificationPayload> payloads) {
         super(source);
-        this.notifications = notifications;
+        this.payloads = payloads;
     }
 
-    public List<Notification> getNotifications() {
-        return notifications;
+    public List<NotificationPayload> getPayloads() {
+        return payloads;
     }
 }
