@@ -33,11 +33,11 @@ public class Template {
   @Column(name = "temp_content", columnDefinition = "TEXT")
   private String templateContent;
   
-  @Column(name = "active_yn", nullable = false)
+  @Column(name = "temp_active_yn", nullable = false)
   private boolean activeYn = true;
   
   @CreationTimestamp
-  @Column(name = "created_at", nullable = false, updatable = false)
+  @Column(name = "temp_created_at", nullable = false, updatable = false)
   private LocalDateTime createdAt;
   
   @ManyToOne(fetch = FetchType.LAZY)

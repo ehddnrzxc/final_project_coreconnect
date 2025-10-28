@@ -20,7 +20,7 @@ public class FileResponseDTO {
   public static FileResponseDTO toDTO(File file) {
     return FileResponseDTO.builder()
         .fileId(file.getId())
-        .originalFileName(file.getOriginalFileName())
+        .originalFileName(file.getFileName())
         .fileSize(file.getFileSize())
         .build();
   }
