@@ -125,7 +125,8 @@ public class ChatWebSocketHandlerTest {
 	@Test
 	@DisplayName("1. WebSocket 연결/해제 정상 동작")
 	void testWebSocketConnection() throws Exception {
-	   String accessToken = jwtProvider.createAccess("choimeeyoung2@gmail.com", 10);
+		Role role = Role.valueOf("USER");
+	   String accessToken = jwtProvider.createAccess("choimeeyoung2@gmail.com", role, 10);
 	   log.info("accessToken: {}", accessToken);
 	   
 	   WebSocketSession session = mock(WebSocketSession.class);

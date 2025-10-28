@@ -1,6 +1,6 @@
 package com.goodee.coreconnect.chat.dto.request;
 
-public class UserSummaryDTO {
+public class UserSummaryRequestDTO {
 
 	private Integer userId;
 	private String userName;

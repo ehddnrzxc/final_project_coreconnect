@@ -1,4 +1,4 @@
-package com.goodee.coreconnect.common.dto.response;
+package com.goodee.coreconnect.chat.dto.request;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,9 +13,16 @@ import lombok.ToString;
 @AllArgsConstructor
 @Builder
 @ToString
-public class ResponseDTO<T> {
-
-	private int status;
-	private String message;
-	private T data;
-}	
+public class SendMessageRequestDTO {
+	
+	private Integer roomId;
+	private Integer senderId;
+	private String content;
+	private Boolean fileYn;
+	private String fileUrl;
+	
+	
+	
+	
+	
+}

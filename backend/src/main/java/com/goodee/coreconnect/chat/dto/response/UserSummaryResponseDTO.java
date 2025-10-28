@@ -1,4 +1,4 @@
-package com.goodee.coreconnect.common.dto.response;
+package com.goodee.coreconnect.chat.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,9 +13,9 @@ import lombok.ToString;
 @AllArgsConstructor
 @Builder
 @ToString
-public class ResponseDTO<T> {
-
-	private int status;
-	private String message;
-	private T data;
-}	
+public class UserSummaryResponseDTO {
+	
+	private Integer userId;
+	private String userEmail;
+	private String userName;
+}

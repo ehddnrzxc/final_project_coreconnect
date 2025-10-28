@@ -7,11 +7,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.goodee.coreconnect.chat.entity.Notification;
 import com.goodee.coreconnect.chat.enums.NotificationType;
+import com.goodee.coreconnect.chat.event.NotificationCreatedEvent;
 import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.approval.repository.DocumentRepository;
 import com.goodee.coreconnect.chat.dto.request.NotificationRequestDTO;
@@ -26,7 +28,9 @@ import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ChatRoomServiceImpl implements ChatRoomService {
@@ -38,6 +42,9 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	private final UserRepository userRepository;
 	private final DocumentRepository documentRepository;
 
+	// ApplicationEventPublisher 주입 (RequiredArgsConstructor로 자동 주입)
+    private final ApplicationEventPublisher eventPublisher;
+	
 	// 채팅방의 참여자 user_id 리스트 조회
 	@Transactional(readOnly = true)
 	@Override
@@ -109,100 +116,140 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	// 채팅방에 채팅메시지 저장
 	@Transactional
 	@Override
-	public List<Notification> saveNotification(Integer roomId, Integer senderId, String chatContent, NotificationType notificationType,  Document document) {
+	public List<Notification> saveNotification(Integer roomId, Integer senderId, String chatContent, NotificationType notificationType, Document document) {
 
 	    ChatRoom chatRoom = null;
 	    if (roomId != null) {
 	        chatRoom = chatRoomRepository.findById(roomId)
-	            .orElseThrow(() -> new IllegalArgumentException("채팅방 없음: " + roomId));
+	                .orElseThrow(() -> new IllegalArgumentException("채팅방 없음: " + roomId));
 	    }
 
 	    User sender = userRepository.findById(senderId)
-	        .orElseThrow(() -> new IllegalArgumentException("사용자 없음: " + senderId));
+	            .orElseThrow(() -> new IllegalArgumentException("사용자 없음: " + senderId));
 
 	    List<Notification> notifications = new ArrayList<>();
 
-	    // 1. CHAT 타입(채팅방 참여자 모두에게 알림)
+	    // 1) CHAT 타입: 채팅 메시지 저장 + 채팅방 참여자 모두에게 Notification 생성
 	    if (notificationType == NotificationType.CHAT && chatRoom != null) {
 	        // 채팅 메시지 저장
-	    	Chat chat = Chat.createChat(chatRoom, sender, chatContent, false, chatContent, LocalDateTime.now());
+	        Chat chat = Chat.createChat(chatRoom, sender, chatContent, false, chatContent, LocalDateTime.now());
 	        chat = chatRepository.save(chat);
 
-	        // 채팅방 참여자에게 알림 생성
+	        // 채팅방 참여자에게 알림 생성 (참여자 전원 또는 발신자 제외)
 	        List<ChatRoomUser> participants = chatRoomUserRepository.findByChatRoomId(roomId);
 	        for (ChatRoomUser participant : participants) {
-	        	String message = sender.getName() + "님으로부터 새로운 채팅 메시지가 도착했습니다: " + chatContent;
-	        	Notification notification = Notification.createNotification(
-	                    participant.getUser(),                // user
-	                    NotificationType.CHAT,                // type
-	                    chatContent,                              // message
-	                    chat,                                 // chat
-	                    null,                                 // document
-	                    false,                                // readYn
-	                    null,                                 // sentYn
-	                    false,                                // deletedYn
-	                    LocalDateTime.now(),                  // sentAt
-	                    null                                  // readAt
-	                );
-	        	
+	            User recipient = participant.getUser();
+	            if (recipient == null) continue;
+	            // (옵션) 발신자에게는 알림 생성하지 않음
+	            if (recipient.getId().equals(sender.getId())) continue;
+
+	            String message = sender.getName() + "님으로부터 새로운 채팅 메시지가 도착했습니다: " + chatContent;
+	            Notification notification = Notification.createNotification(
+	                    recipient,                     // 수신자
+	                    NotificationType.CHAT,
+	                    message,
+	                    chat,                          // chat 연결
+	                    null,                          // document 없음
+	                    false,                         // readYn
+	                    false,                         // sentYn (아직 전송 상태 아님)
+	                    false,                         // deletedYn
+	                    LocalDateTime.now(),
+	                    null
+	            );
 	            notificationRepository.save(notification);
 	            notifications.add(notification);
 	        }
+
 	    } else {
-	        // 2. 단일 알림(전자결재, 공지, 이메일, 일정 등)
-	    	// 타입별 메시지 생성
-	        String message;
-	        switch (notificationType) {
-	            case EMAIL:
-	                message = sender.getName() + "님으로부터 이메일이 도착했습니다.";
-	                break;
-	            case NOTICE:
-	                message = sender.getName() + "님이 공지를 등록했습니다.";
-	                break;
-	            case APPROVAL:
-	                message = sender.getName() + "님이 전자결재 문서를 등록했습니다.";
-	                break;
-	            case SCHEDULE:
-	                message = sender.getName() + "님이 일정을 등록했습니다.";
-	                break;
-	            default:
-	                message = sender.getName() + "님으로부터 새로운 알림이 있습니다.";
-	                break;
-	        }
-	    	
-	        Notification notification;
-	        if ((notificationType == NotificationType.APPROVAL || notificationType == NotificationType.SCHEDULE) && document != null) {
-	            // 문서 연계 알림만 document 주입
-	            notification = Notification.createNotification(
-	                sender,
-	                notificationType,
-	                message,
-	                null,        // chat
-	                document,    // document
-	                false,
-	                null,
-	                false,
-	                LocalDateTime.now(),
-	                null
-	            );
+	        // 2) 단일 알림 타입(EMAIL, NOTICE, APPROVAL, SCHEDULE 등)
+	        // 수신자 결정 전략:
+	        //  - roomId가 주어지면 해당 채팅방 참여자들을 수신자로 사용 (발신자는 제외)
+	        //  - roomId가 없으면 기본적으로 발신자 자신에게 알림을 생성 (정책 변경 가능)
+	        List<User> recipients = new ArrayList<>();
+	        if (chatRoom != null) {
+	            List<ChatRoomUser> participants = chatRoomUserRepository.findByChatRoomId(roomId);
+	            for (ChatRoomUser cru : participants) {
+	                User u = cru.getUser();
+	                if (u == null) continue;
+	                // 발신자 제외
+	                if (u.getId().equals(sender.getId())) continue;
+	                recipients.add(u);
+	            }
 	        } else {
-	            // 그 외 알림은 document에 null
-	            notification = Notification.createNotification(
-	                sender,
-	                notificationType,
-	                message,
-	                null,        // chat
-	                null,        // document
-	                false,
-	                null,
-	                false,
-	                LocalDateTime.now(),
-	                null
-	            );
+	            // 수신자 정보가 없는 경우: 기본적으로 발신자 본인에게 알림 생성
+	            recipients.add(sender);
 	        }
 
-	        notificationRepository.save(notification);
-	        notifications.add(notification);
+	        // 타입별 기본 메시지 생성
+	        String defaultMsg;
+	        switch (notificationType) {
+	            case EMAIL:
+	                defaultMsg = sender.getName() + "님으로부터 이메일이 도착했습니다.";
+	                break;
+	            case NOTICE:
+	                defaultMsg = sender.getName() + "님이 공지를 등록했습니다.";
+	                break;
+	            case APPROVAL:
+	                defaultMsg = sender.getName() + "님이 전자결재 문서를 등록했습니다.";
+	                break;
+	            case SCHEDULE:
+	                defaultMsg = sender.getName() + "님이 일정을 등록했습니다.";
+	                break;
+	            default:
+	                defaultMsg = sender.getName() + "님으로부터 새로운 알림이 있습니다.";
+	                break;
+	        }
+
+	        for (User recipient : recipients) {
+	            String messageToUse = defaultMsg;
+	            // 추가적인 커스터마이징: 예를 들어 chatContent가 있고 타입이 EMAIL이면 content 포함 등
+	            if (notificationType == NotificationType.EMAIL && chatContent != null && !chatContent.isBlank()) {
+	                messageToUse = chatContent; // 또는 sender + "님의 메일: " + chatContent 등
+	            }
+
+	            Notification notification;
+	            if ((notificationType == NotificationType.APPROVAL || notificationType == NotificationType.SCHEDULE) && document != null) {
+	                // 문서 연계 알림 (document 연결)
+	                notification = Notification.createNotification(
+	                        recipient,
+	                        notificationType,
+	                        messageToUse,
+	                        null,       // chat 없음
+	                        document,   // document 연결
+	                        false,
+	                        false,
+	                        false,
+	                        LocalDateTime.now(),
+	                        null
+	                );
+	            } else {
+	                // 그 외 알림
+	                notification = Notification.createNotification(
+	                        recipient,
+	                        notificationType,
+	                        messageToUse,
+	                        null,
+	                        null,
+	                        false,
+	                        false,
+	                        false,
+	                        LocalDateTime.now(),
+	                        null
+	                );
+	            }
+
+	            notificationRepository.save(notification);
+	            notifications.add(notification);
+	        }
+	    }
+
+	    // 이벤트 발행: NotificationCreatedEvent를 통해 WebSocket 푸시 리스너가 동작하도록 함.
+	    try {
+	        // NotificationCreatedEvent은 (source, notifications) 생성자 형태여야 함
+	        eventPublisher.publishEvent(new NotificationCreatedEvent(this, notifications));
+	    } catch (Exception e) {
+	        // 푸시 실패로 트랜잭션 롤백시키지 않도록 예외는 흡수(로그만 남김)
+	        log.warn("NotificationCreatedEvent publish failed: {}", e.getMessage(), e);
 	    }
 
 	    return notifications;

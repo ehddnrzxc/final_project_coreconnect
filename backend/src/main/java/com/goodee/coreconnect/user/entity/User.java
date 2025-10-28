@@ -4,12 +4,16 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
 import com.goodee.coreconnect.approval.entity.ApprovalLine;
 import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.approval.entity.Template;
 import com.goodee.coreconnect.board.entity.Board;
 import com.goodee.coreconnect.chat.entity.ChatRoomUser;
 import com.goodee.coreconnect.department.entity.Department;
+import com.goodee.coreconnect.user.repository.UserRepository;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -185,4 +189,38 @@ public class User {
     public void changePhone(String newPhone) {
         this.phone = newPhone;
     }
+    
+ // ─────────────── 편의(인증) 메서드 ───────────────
+
+    /**
+     * 현재 SecurityContext에 설정된 인증(Authentication)의 principal(name)을 반환합니다.
+     * 보통 principal은 사용자 이메일을 의미합니다.
+     *
+     * @return 인증된 principal (email) 또는 null (인증 정보가 없거나 anonymous)
+     */
+    public static String getAuthenticatedUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) return null;
+        String name = auth.getName();
+        if (name == null || name.trim().isEmpty()) return null;
+        return name;
+    }
+
+    /**
+     * 현재 인증된 사용자의 User 엔티티를 UserRepository를 통해 조회하여 반환합니다.
+     * 이 편의 메서드는 repository를 파라미터로 받아 사용하므로 엔티티 내부에서 스프링 빈을 직접 사용하지 않습니다.
+     *
+     * 사용 예:
+     *   User user = User.getAuthenticatedUser(userRepository);
+     *
+     * @param userRepository UserRepository 인스턴스
+     * @return User 엔티티 또는 null (인증 정보 없음 또는 DB에 사용자 없음)
+     */
+    public static User getAuthenticatedUser(UserRepository userRepository) {
+        String email = getAuthenticatedUser();
+        if (email == null) return null;
+        return userRepository.findByEmail(email).orElse(null);
+    }
+    
+    
 }
