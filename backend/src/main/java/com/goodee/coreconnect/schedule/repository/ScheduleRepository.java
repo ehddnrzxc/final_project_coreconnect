@@ -5,20 +5,21 @@ import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.goodee.coreconnect.schedule.entity.MeetingRoom;
 import com.goodee.coreconnect.schedule.entity.Schedule;
 import com.goodee.coreconnect.user.entity.User;
 
-import io.lettuce.core.dynamic.annotation.Param;
+
 
 public interface ScheduleRepository extends JpaRepository<Schedule, Integer> {
 
   /** 특정 유저의 일정 목록 (삭제 제외) */
-  List<Schedule> getByUserAndDeletedYnFalse(User user);
+  List<Schedule> findByUserAndDeletedYnFalse(User user);
 
   /** 특정 회의실의 일정 목록 (삭제 제외) */
-  List<Schedule> getByMeetingRoomAndDeletedYnFalse(MeetingRoom meetingRoom);
+  List<Schedule> findByMeetingRoomAndDeletedYnFalse(MeetingRoom meetingRoom);
 
   /**
    * 같은 회의실에서 겹치는 시간대가 있는 일정이 존재하는지 확인
@@ -28,7 +29,7 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Integer> {
          "WHERE s.meetingRoom = :meetingRoom " +
          "AND s.deletedYn = false " +
          "AND (:start < s.endDateTime AND :end > s.startDateTime)")
-  List<Schedule> getOverlappingSchedules(
+  List<Schedule> findOverlappingSchedules(
           @Param("meetingRoom") MeetingRoom meetingRoom,
           @Param("start") LocalDateTime start,
           @Param("end") LocalDateTime end
