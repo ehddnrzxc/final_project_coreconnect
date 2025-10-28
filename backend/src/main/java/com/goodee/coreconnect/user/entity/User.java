@@ -85,7 +85,7 @@ public class User {
     @OneToMany(mappedBy = "user")
     private List<Template> templates = new ArrayList<>();
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.PERSIST, orphanRemoval = true)
+    @OneToMany(mappedBy = "user")
     private List<Board> boards = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
