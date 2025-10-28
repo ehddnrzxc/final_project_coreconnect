@@ -23,8 +23,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
-@Setter
-@NoArgsConstructor
 @AllArgsConstructor
 @Entity
 @Table(name = "notification")
@@ -74,4 +72,48 @@ public class Notification {
    @ManyToOne(fetch = FetchType.LAZY)
    @JoinColumn(name = "user_id")
    private User user;
+   
+   protected Notification() {}
+   
+   public static Notification createNotification(
+           User user,
+           NotificationType notificationType,
+           String notificationMessage,
+           Chat chat,
+           Document document,
+           Boolean notificationReadYn,
+           Boolean notificationSentYn,
+           Boolean notificationDeletedYn,
+           LocalDateTime notificationSentAt,
+           LocalDateTime notificationReadAt
+   ) {
+       Notification notification = new Notification();
+       notification.user = user;
+       notification.notificationType = notificationType;
+       notification.notificationMessage = notificationMessage;
+       notification.chat = chat;
+       notification.document = document;
+       notification.notificationReadYn = notificationReadYn;
+       notification.notificationSentYn = notificationSentYn;
+       notification.notificationDeletedYn = notificationDeletedYn != null ? notificationDeletedYn : false;
+       notification.notificationSentAt = notificationSentAt;
+       notification.notificationReadAt = notificationReadAt;
+       return notification;
+   }
+   
+   // 알림 삭제시 사용하는 메서드
+   public void markDeleted() {
+	    this.notificationDeletedYn = true;
+	}
+   
+   /**
+    * 알림 전송 성공/실패 상태 및 시각을 변경하는 도메인 메서드
+    * @param sentAt 전송 시각
+    */
+   public void markSent(LocalDateTime sentAt) {
+       this.notificationSentYn = true;           // 성공: true, 필요시 파라미터로 받아도 됨
+       this.notificationSentAt = sentAt;
+   }
+   
+   
 }

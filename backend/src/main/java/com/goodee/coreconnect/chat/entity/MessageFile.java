@@ -15,9 +15,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
 @Entity
 @Table(name = "message_file")
 public class MessageFile {
@@ -46,9 +43,18 @@ public class MessageFile {
 	@JoinColumn(name = "chat_message_id")
 	private Chat chat;
 	
+	protected MessageFile() {}
 	
-	
-	
+    public static MessageFile createMessageFile(String fileName, String fileUrl, String fileExtension, Double fileSize, String s3ObjectKey, Chat chat) {
+        MessageFile file = new MessageFile();
+        file.fileName = fileName;
+        file.fileUrl = fileUrl;
+        file.fileExtenstion = fileExtension;
+        file.fileSize = fileSize;
+        file.S3ObjectKey = s3ObjectKey;
+        file.chat = chat;
+        return file;
+    }
 	
 	
 }

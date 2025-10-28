@@ -17,9 +17,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
 @Entity
 @Table(name = "chat_room")
 public class ChatRoom {
@@ -45,5 +42,22 @@ public class ChatRoom {
 	// 1:N 관계 매핑 (채팅메시지 테이블과 매핑)
 	@OneToMany(mappedBy = "chatRoom", cascade = CascadeType.ALL)
 	private List<Chat> chats = new ArrayList<>();
+	
+	protected ChatRoom() {}
+	
+	public static ChatRoom createChatRoom(String roomName, String roomType, Boolean favoriteStatus) {
+		 ChatRoom chatRoom = new ChatRoom();
+         chatRoom.roomName = roomName;
+         chatRoom.roomType = roomType;
+         chatRoom.favoriteStatus = favoriteStatus;
+         chatRoom.chatRoomUsers = new ArrayList<>();
+         chatRoom.chats = new ArrayList<>();
+         return chatRoom;
+	}
+	
+	// roomType 변경 메서드 추가
+	public void changeRoomType(String roomType) {
+		this.roomType = roomType;
+	}
 	
 }
