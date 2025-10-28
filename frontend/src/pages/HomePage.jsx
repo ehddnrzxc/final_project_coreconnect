@@ -6,13 +6,16 @@ import "../app.css";
 /* ─ helpers ─ */
 const Card = ({ title, right, children }) => (
   <div className="card">
-    <div className="card__header">
-      <h3 className="card__title">{title}</h3>
-      {right && <div className="card__right">{right}</div>}
-    </div>
+    {(title || right) && (
+      <div className="card__header">
+        {title && <h3 className="card__title">{title}</h3>}
+        {right && <div className="card__right">{right}</div>}
+      </div>
+    )}
     <div className="card__body">{children}</div>
   </div>
 );
+
 const Stat = ({ label, value }) => (
   <div className="stat">
     <span className="stat__label">{label}</span>
@@ -53,17 +56,24 @@ const Sidebar = () => {
   );
 };
 
+/* ─ Topbar ─ */
 const Topbar = ({ onLogout, avatarUrl }) => (
   <header className="topbar">
     <div className="topbar__inner">
       <div className="search">
-        <span className="search__icon">🔎</span>
+        <i className="fa-solid fa-magnifying-glass search__icon" />
         <input className="search__input" placeholder="검색어를 입력하세요" />
       </div>
       <div className="topbar__actions">
-        <button className="icon-btn">🎁</button>
-        <button className="icon-btn">🔔</button>
-        <img className="avatar" src={avatarUrl} alt="me" />
+        <button className="icon-btn" aria-label="Gifts">
+          <i className="fa-solid fa-gift" />
+        </button>
+        <button className="icon-btn" aria-label="Notifications">
+          <i className="fa-regular fa-bell" />
+        </button>
+        {avatarUrl ? (
+          <img className="avatar" src={avatarUrl || undefined} alt="me" />
+        ) : null}
         <button className="btn btn--ghost" onClick={onLogout}>
           로그아웃
         </button>
@@ -72,6 +82,7 @@ const Topbar = ({ onLogout, avatarUrl }) => (
   </header>
 );
 
+/* ─ Shell ─ */
 const Shell = ({ children, onLogout, avatarUrl }) => (
   <div className="app">
     <Topbar onLogout={onLogout} avatarUrl={avatarUrl} />
@@ -82,16 +93,17 @@ const Shell = ({ children, onLogout, avatarUrl }) => (
   </div>
 );
 
-/* ─ page ─ */
+/* ─ Page ─ */
 export default function Home({ onLogout }) {
-  // ✅ 저장된 유저 읽기 (없으면 비어있는 객체)
   const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
-  const email = storedUser.email || ""; // 업로드 시 사용할 이메일
+  const email = storedUser.email || "";
   const displayName = storedUser.name || storedUser.email || "사용자";
 
-  // 프로필 이미지 상태
-  const [profileImage, setProfileImage] = useState("https://i.pravatar.cc/80?img=12"); // 기본
-  const [selectedFile, setSelectedFile] = useState(null);
+  const DEFAULT_AVATAR = "https://i.pravatar.cc/80?img=12";
+  const withBust = (url) =>
+    url ? `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}` : url;
+
+  const [profileImage, setProfileImage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -99,112 +111,179 @@ export default function Home({ onLogout }) {
   useEffect(() => {
     const load = async () => {
       try {
-        const url = await getMyProfileImage();
-        setProfileImage(url);
+        const url = await getMyProfileImage(); // 서버 프로필 URL
+        const normalized = url && url.trim() !== "" ? withBust(url) : null;
+        setProfileImage(normalized);
       } catch (err) {
-        console.error("프로필 이미지 조회 실패:", err?.response?.data || err);
-        setError("프로필 이미지를 불러오지 못했습니다.");
+        console.warn(
+          "프로필 이미지 조회 실패:",
+          err?.response?.status,
+          err?.response?.data
+        );
+        setProfileImage(null);
       }
     };
     if (email) load();
   }, [email]);
 
-  // 파일 선택 핸들러
-  const handleFileChange = (event) => {
-    const file = event.target.files[0];
-    if (file && file.type.startsWith("image/")) {
-      setSelectedFile(file);
-      setError(null);
-    } else {
+  // 파일 선택 → 즉시 업로드
+  const handleFileChange = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
       setError("이미지 파일을 선택해주세요.");
-      setSelectedFile(null);
+      event.target.value = "";
+      return;
+    }
+    if (!email) {
+      setError("로그인 정보가 없습니다. 다시 로그인해주세요.");
+      event.target.value = "";
+      return;
+    }
+
+    try {
+      setError(null);
+      setLoading(true);
+
+      // 미리보기
+      const preview = URL.createObjectURL(file);
+      setProfileImage(preview);
+
+      // 업로드 실행
+      await uploadMyProfileImage(file);
+
+      // 업로드 후 서버 URL 재조회
+      const newUrl = await getMyProfileImage();
+      const normalized = newUrl && newUrl.trim() !== "" ? withBust(newUrl) : null;
+      setProfileImage(normalized);
+
+      // 새로고침 대비 저장(원본 URL 저장)
+      localStorage.setItem(
+        "user",
+        JSON.stringify({ ...storedUser, imageUrl: newUrl || "" })
+      );
+    } catch (err) {
+      console.error("이미지 업로드 실패:", err?.response?.data || err);
+      setError("이미지 업로드에 실패했습니다.");
+    } finally {
+      setLoading(false);
+      event.target.value = ""; // 같은 파일 재선택 가능
     }
   };
 
-  // 이미지 업로드 핸들러
-  const handleUpload = async () => {
-  if (!selectedFile) {
-    setError("업로드할 파일을 선택해주세요.");
-    return;
-  }
-  if (!email) {
-    setError("로그인 정보가 없습니다. 다시 로그인해주세요.");
-    return;
-  }
-
-  try {
-    setLoading(true);
-      // 업로드
-      await uploadMyProfileImage(email, selectedFile);
-      // 최신 URL 재조회
-      const newUrl = await getMyProfileImage();
-      setProfileImage(newUrl);
-
-    // localStorage에 사용자 정보 업데이트
-    localStorage.setItem(
-      "user",
-      JSON.stringify({ ...storedUser, imageUrl: newUrl })
-    );
-
-    setLoading(false);
-    setSelectedFile(null);
-  } catch (err) {
-    setError("이미지 업로드에 실패했습니다.");
-    setLoading(false);
-    console.error("이미지 업로드 실패:", err?.response?.data || err);
-  }
-};
+  // 안전한 아바타 경로 계산
+  const safeAvatarSrc =
+    (profileImage && profileImage.trim() !== "" ? profileImage : null) ||
+    (storedUser.imageUrl && storedUser.imageUrl.trim() !== ""
+      ? withBust(storedUser.imageUrl)
+      : null) ||
+    DEFAULT_AVATAR;
 
   return (
     <Shell
       onLogout={() => {
         localStorage.removeItem("user");
-        localStorage.removeItem("token");
+        localStorage.removeItem("accessToken");
         onLogout();
       }}
-      avatarUrl={profileImage}
+      avatarUrl={safeAvatarSrc}
     >
       <div className="container">
         {/* Row 1 */}
         <div className="grid grid--3">
-          <Card title="프로필">
-            <div className="profile">
-              <div className="profile__avatar-wrapper">
-                <img
-                  src={profileImage}
-                  className="profile__avatar"
-                  alt="프로필 이미지"
-                />
-                <label className="btn btn--ghost btn--small profile__edit-btn">
-                  수정
-                  <input
-                    type="file"
-                    accept="image/*"
-                    style={{ display: "none" }}
-                    onChange={handleFileChange}
-                  />
-                </label>
-                {selectedFile && (
-                  <button
-                    className="btn btn--primary btn--small"
-                    onClick={handleUpload}
-                    disabled={loading}
-                  >
-                    {loading ? "업로드 중..." : "업로드"}
-                  </button>
-                )}
-              </div>
-              {error && <p className="text--danger">{error}</p>}
-              <div className="profile__meta">
-                <div className="profile__dept">전산/보안</div>
-                <div className="profile__name">{displayName}</div>
-                <div className="profile__stats">
-                  <Stat label="오늘 온 메일" value="1" />
-                  <Stat label="오늘의 일정" value="2" />
-                </div>
-              </div>
+      <Card title="">
+        <div className="profile-card">
+          {/* 상단: 아바타/이름/부서 */}
+          <div className="profile-card__head">
+  {/* 왼쪽: 아바타 + 변경 링크 */}
+  <div className="profile-card__avatarCol">
+          {safeAvatarSrc ? (
+            <img
+              src={safeAvatarSrc || undefined}
+              className="profile-card__avatar"
+              alt="프로필 이미지"
+            />
+          ) : (
+            <div className="profile-card__avatar profile-card__avatar--placeholder">
+              <i className="fa-regular fa-user" />
             </div>
-          </Card>
+          )}
+
+          {/* 👇 사진 아래, 왼쪽 정렬 */}
+          <label
+            className="profile-card__editLink"
+            style={{ opacity: loading ? 0.6 : 1 }}
+          >
+            {loading ? (
+              <>
+                <i className="fa-solid fa-spinner fa-spin" /> 업로드 중...
+              </>
+            ) : (
+              <>
+                <i className="fa-regular fa-pen-to-square" /> 프로필 사진 변경
+              </>
+            )}
+            <input
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={handleFileChange}
+              disabled={loading}
+            />
+          </label>
+        </div>
+
+        {/* 오른쪽: 이름/부서 */}
+        <div className="profile-card__meta">
+          <div className="profile-card__name">{displayName || "사용자"}</div>
+          <div className="profile-card__dept">경영</div>
+        </div>
+      </div>
+
+          
+
+          {/* 가운데: 오늘의 일정 숫자 */}
+          <div className="profile-card__metric">
+            <div className="profile-card__metric-num">0</div>
+            <div className="profile-card__metric-label">오늘의 일정</div>
+          </div>
+
+          {/* 하단 리스트 */}
+          <ul className="profile-card__list">
+            <li>
+              <span>내 커뮤니티 새글</span>
+              <b>0</b>
+            </li>
+            <li>
+              <span>내 예약/대여 현황</span>
+              <b>0</b>
+            </li>
+            <li>
+              <span>참여할 설문</span>
+              <b className="is-blue">1</b>
+            </li>
+            <li>
+              <span>작성할 보고</span>
+              <b className="is-blue">14</b>
+            </li>
+            <li>
+              <span>결재할 문서</span>
+              <b className="is-blue">1</b>
+            </li>
+            <li>
+              <span>결재 수신 문서</span>
+              <b>0</b>
+            </li>
+            <li>
+              <span>내 잔여 연차</span>
+              <b className="is-blue">5d</b>
+            </li>
+          </ul>
+
+          {error && <p className="text--danger">{error}</p>}
+        </div>
+      </Card>
 
           <Card title="메일 리스트" right={<Link to="#">받은메일함</Link>}>
             <ul className="list list--divide">
