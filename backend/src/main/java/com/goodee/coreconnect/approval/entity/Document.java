@@ -136,7 +136,7 @@ public class Document {
   /**
    * 문서를 완료 처리하는 메소드 (updateStatusAfterApproval 메소드에서 사용됨)
    */
-  private void complete() {
+  public void complete() {
     this.documentStatus = DocumentStatus.COMPLETED;
     this.completedAt = LocalDateTime.now();
   }
