@@ -3,14 +3,17 @@ package com.goodee.coreconnect.board.entity;
 import com.goodee.coreconnect.user.entity.User;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "board_category")
 @Getter
-@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Table(name = "board_category")
 public class BoardCategory {
 
+    // ─────────────── 기본 속성 ───────────────
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "board_category_id")
@@ -20,15 +23,34 @@ public class BoardCategory {
     private String name;
 
     @Column(name = "board_category_order_no")
-    private Integer orderNo;
+    private Integer orderNo = 0;
 
-    protected BoardCategory() {};
-    
+    @Column(name = "board_category_deleted_yn", nullable = false)
+    private Boolean deletedYn = false;
+
+
+    // ─────────────── 생성 메서드 ───────────────
     public static BoardCategory createCategory(User user, String name, Integer orderNo) {
-      BoardCategory category = new BoardCategory();
-      category.name = name;
-      category.orderNo = orderNo != null ? orderNo : 0;
-      return category;
-  }
-    
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("카테고리명은 반드시 입력되어야 합니다.");
+        }
+
+        BoardCategory category = new BoardCategory();
+        category.name = name;
+        if (orderNo != null) category.orderNo = orderNo;
+        return category;
+    }
+
+
+    // ─────────────── 도메인 행위 ───────────────
+    /** 카테고리 수정 */
+    public void updateCategory(String name, Integer orderNo) {
+        if (name != null && !name.isBlank()) this.name = name;
+        if (orderNo != null) this.orderNo = orderNo;
+    }
+
+    /** Soft Delete */
+    public void delete() {
+        this.deletedYn = true;
+    }
 }

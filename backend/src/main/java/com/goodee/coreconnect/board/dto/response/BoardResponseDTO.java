@@ -12,47 +12,51 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+/**
+ * 게시글 응답 DTO
+ * - 게시글 상세 / 목록 조회 시 클라이언트로 반환되는 데이터
+ */
 public class BoardResponseDTO {
 
-    private Integer id;                 // 게시글 ID
-    private String title;               // 제목
-    private String content;             // 내용
-    private Boolean noticeYn;           // 공지 여부
-    private Boolean privateYn;          // 비공개 여부
-    private Integer viewCount;          // 조회수
-    private LocalDateTime createdAt;    // 작성일
-    private LocalDateTime updatedAt;    // 수정일
-    private Boolean deletedYn;          // 삭제 여부
-    private String writerName;          // 작성자 이름
-    private String categoryName;        // 카테고리 이름
+    private Integer id;                
+    private String title;              
+    private String content;            
+    private Boolean noticeYn;          
+    private Boolean privateYn;         
+    private Integer viewCount;         
+    private LocalDateTime createdAt;   
+    private LocalDateTime updatedAt;   
+    private Boolean deletedYn;         
+    private String writerName;         
+    private String categoryName;       
 
-    private List<BoardFileResponseDTO> files;    // 첨부파일 목록
-    private List<BoardReplyResponseDTO> replies; // 댓글 목록
+    private List<BoardFileResponseDTO> files;    
+    private List<BoardReplyResponseDTO> replies; 
+
 
     /**
-     * Entity -> DTO 변환
+     * Entity → DTO 변환
      */
     public static BoardResponseDTO toDTO(Board board) {
-        return BoardResponseDTO.builder()
-                .id(board.getId())
-                .title(board.getTitle())
-                .content(board.getContent())
-                .noticeYn(board.getNoticeYn())
-                .privateYn(board.getPrivateYn())
-                .viewCount(board.getViewCount())
-                .createdAt(board.getCreatedAt())
-                .updatedAt(board.getUpdatedAt())
-                .deletedYn(board.getDeletedYn())
-                .writerName(board.getUser() != null ? board.getUser().getName() : null)
-                .categoryName(board.getCategory() != null ? board.getCategory().getName() : null)
-                .files(board.getFiles() != null ? board.getFiles().stream()
-                                                        .map(file -> BoardFileResponseDTO.toDTO(file))
-                                                        .collect(Collectors.toList())
-                                                        : null)
-                .replies(board.getReplies() != null ? board.getReplies().stream()
-                                                            .map(file -> BoardReplyResponseDTO.toDTO(file))
-                                                            .collect(Collectors.toList())
-                                                            : null)
-                                                            .build();
+        if (board == null) return null;
+
+        return BoardResponseDTO.builder().id(board.getId())
+                                          .title(board.getTitle())
+                                          .content(board.getContent())
+                                          .noticeYn(board.getNoticeYn())
+                                          .privateYn(board.getPrivateYn())
+                                          .viewCount(board.getViewCount())
+                                          .createdAt(board.getCreatedAt())
+                                          .updatedAt(board.getUpdatedAt())
+                                          .deletedYn(board.getDeletedYn())
+                                          .writerName(board.getUser() != null ? board.getUser().getName() : null)
+                                          .categoryName(board.getCategory() != null ? board.getCategory().getName() : null)
+                                          .files(board.getFiles() != null ? board.getFiles().stream()
+                                                                                  .map(BoardFileResponseDTO::toDTO)
+                                                                                  .collect(Collectors.toList()) : List.of())
+                                          .replies(board.getReplies() != null ? board.getReplies().stream()
+                                                                                      .map(BoardReplyResponseDTO::toDTO)
+                                                                                      .collect(Collectors.toList()) : List.of())
+                                          .build();
     }
 }

@@ -12,15 +12,16 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 /**
- * 게시글 등록/수정 요청
+ * 게시글 등록/수정 요청 DTO
+ * - 게시글 작성 및 수정 시 클라이언트로부터 데이터 수신
  */
 public class BoardRequestDTO {
 
-    private Integer categoryId;   // 카테고리 ID
-    private String title;         // 제목
-    private String content;       // 내용
-    private Boolean noticeYn;     // 공지글 여부
-    private Boolean privateYn;    // 비공개 여부
+    private Integer categoryId;  
+    private String title;        
+    private String content;      
+    private Boolean noticeYn;    
+    private Boolean privateYn;   
 
     /**
      * DTO -> Entity 변환

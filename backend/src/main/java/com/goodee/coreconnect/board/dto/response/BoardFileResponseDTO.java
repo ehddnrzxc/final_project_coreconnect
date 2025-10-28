@@ -8,14 +8,17 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+/**
+ * 파일 응답 DTO
+ * - 게시글 상세 조회 시, 첨부파일 정보 전달용
+ */
 public class BoardFileResponseDTO {
 
-    private Integer id;            // 파일 ID
-    private String fileName;       // 파일 이름
-    private String fileUrl;        // 파일 경로 (S3 등)
-    private String fileExtension;  // 확장자
-    private Long fileSize;         // 파일 크기
-    private Boolean deletedYn;     // 삭제 여부
+    private Integer id;          
+    private String fileName;     
+    private Long fileSize;       
+    private String s3ObjectKey;  
+    private Boolean deletedYn;   
 
     /**
      * Entity -> DTO 변환
@@ -24,9 +27,8 @@ public class BoardFileResponseDTO {
         return BoardFileResponseDTO.builder()
                                     .id(file.getId())
                                     .fileName(file.getFileName())
-                                    .fileUrl(file.getFileUrl())
-                                    .fileExtension(file.getFileExtension())
                                     .fileSize(file.getFileSize())
+                                    .s3ObjectKey(file.getS3ObjectKey())
                                     .deletedYn(file.getDeletedYn())
                                     .build();
     }

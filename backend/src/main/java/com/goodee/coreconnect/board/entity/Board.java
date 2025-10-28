@@ -1,9 +1,9 @@
 package com.goodee.coreconnect.board.entity;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
-import org.hibernate.annotations.Where;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -11,16 +11,18 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import com.goodee.coreconnect.user.entity.User;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "board")
 @Getter
-@Setter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class)
-@Where(clause = "board_deleted_yn = false")
+@Table(name = "board")
 public class Board {
 
+    // ─────────────── 기본 속성 ───────────────
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "board_id")
@@ -38,7 +40,7 @@ public class Board {
     @Column(name = "board_private_yn", nullable = false)
     private Boolean privateYn = false;
 
-    @Column(name = "board_view_count")
+    @Column(name = "board_view_count", nullable = false)
     private Integer viewCount = 0;
 
     @CreatedDate
@@ -49,48 +51,66 @@ public class Board {
     @Column(name = "board_updated_at")
     private LocalDateTime updatedAt;
 
-    @Column(name = "board_deleted_yn")
+    @Column(name = "board_deleted_yn", nullable = false)
     private Boolean deletedYn = false;
 
-    /**
-     * N:1 관계 매핑 (user 테이블과 매핑)
-     */
+
+    // ─────────────── 연관관계 매핑 ───────────────
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    /**
-     * N:1 관계 매핑 (board_category 테이블과 매핑)
-     */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id")
+    @JoinColumn(name = "category_id", nullable = false)
     private BoardCategory category;
 
-    /**
-     * 1:N 관계 매핑 (board_reply 테이블과 매핑)
-     */
     @OneToMany(mappedBy = "board", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("createdAt ASC")
-    private List<BoardReply> replies;
+    private List<BoardReply> replies = new ArrayList<>();
 
-    /**
-     * 1:N 관계 매핑 (board_file 테이블과 매핑)
-     */
     @OneToMany(mappedBy = "board", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<BoardFile> files;
-    
-    protected Board() {};
-    
+    private List<BoardFile> files = new ArrayList<>();
+
+
+    // ─────────────── 생성 메서드 ───────────────
     public static Board createBoard(User user, BoardCategory category, String title, String content, Boolean noticeYn, Boolean privateYn) {
-      Board board = new Board();
-      board.user = user;
-      board.category = category;
-      board.title = title;
-      board.content = content;
-      board.noticeYn = noticeYn != null ? noticeYn : false;
-      board.privateYn = privateYn != null ? privateYn : false;
-      board.createdAt = LocalDateTime.now();
-      return board;
-  }
-    
+        if (user == null) throw new IllegalArgumentException("작성자는 반드시 지정되어야 합니다.");
+        if (category == null) throw new IllegalArgumentException("카테고리는 반드시 지정되어야 합니다.");
+        if (title == null || title.isBlank()) throw new IllegalArgumentException("게시글 제목은 비어 있을 수 없습니다.");
+
+        Board board = new Board();
+        board.user = user;
+        board.category = category;
+        board.title = title;
+        board.content = content;
+        if (noticeYn != null) board.noticeYn = noticeYn;
+        if (privateYn != null) board.privateYn = privateYn;
+        board.createdAt = LocalDateTime.now();
+        return board;
+    }
+
+
+    // ─────────────── 도메인 행위 ───────────────
+
+    /** 게시글 수정 */
+    public void updateBoard(BoardCategory category, String title, String content, Boolean noticeYn, Boolean privateYn) {
+        if (title == null || title.isBlank()) throw new IllegalArgumentException("게시글 제목은 비어 있을 수 없습니다.");
+        
+        this.category = (category != null) ? category : this.category;
+        this.title = title;
+        this.content = content;
+        if (noticeYn != null) this.noticeYn = noticeYn;
+        if (privateYn != null) this.privateYn = privateYn;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /** 조회수 증가 */
+    public void increaseViewCount() {
+        this.viewCount++;
+    }
+
+    /** Soft Delete */
+    public void delete() {
+        this.deletedYn = true;
+    }
 }

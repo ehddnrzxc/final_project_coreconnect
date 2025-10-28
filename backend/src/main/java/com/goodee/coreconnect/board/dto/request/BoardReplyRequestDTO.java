@@ -12,16 +12,18 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 /**
- * 댓글/대댓글 등록 요청
+ * 댓글 및 대댓글 등록 요청 DTO
+ * - 게시글 ID와 부모 댓글 ID를 포함하여 댓글 등록 요청을 처리
  */
 public class BoardReplyRequestDTO {
 
-    private Integer boardId;       // 게시글 ID
+    private Integer boardId;       
     private Integer parentReplyId; // 부모 댓글 ID (대댓글일 경우)
-    private String content;        // 댓글 내용
+    private String content;        
 
     /**
      * DTO -> Entity 변환
+     * Service 계층에서 user, board, parentReply를 주입받아 변환
      */
     public BoardReply toEntity(User user, Board board, BoardReply parentReply) {
         return BoardReply.createReply(user,

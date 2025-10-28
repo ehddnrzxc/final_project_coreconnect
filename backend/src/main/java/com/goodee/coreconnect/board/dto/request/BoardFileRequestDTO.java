@@ -11,26 +11,24 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 /**
- * 파일 업로드 요청
+ * 파일 업로드 요청 DTO
+ * - 프론트에서 업로드된 파일 메타정보를 받음
+ * - S3 업로드 후 반환된 key를 포함
  */
 public class BoardFileRequestDTO {
 
-    private Integer boardId;       // 게시글 ID
-    private String fileName;       // 파일 이름
-    private String fileUrl;        // S3 URL
-    private String fileExtension;  // 확장자
-    private Long fileSize;         // 크기(byte)
-    private String s3ObjectKey;    // S3 내부 key
+    private Integer boardId;    
+    private String fileName;    
+    private Long fileSize;      
+    private String s3ObjectKey; 
 
     /**
      * DTO -> Entity 변환
      */
     public BoardFile toEntity(Board board) {
         return BoardFile.createFile(board,
-                                     this.fileName,
-                                     this.fileUrl,
-                                     this.fileExtension,
-                                     this.fileSize,
-                                     this.s3ObjectKey);
+                                    this.fileName,
+                                    this.fileSize,
+                                    this.s3ObjectKey);
     }
 }
