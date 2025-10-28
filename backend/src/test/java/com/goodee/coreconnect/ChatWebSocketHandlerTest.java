@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -33,13 +34,21 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpHeaders;
+import org.springframework.test.annotation.Commit;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+import com.goodee.coreconnect.approval.entity.Document;
+import com.goodee.coreconnect.approval.entity.Template;
+import com.goodee.coreconnect.approval.repository.DocumentRepository;
+import com.goodee.coreconnect.approval.repository.TemplateRepository;
 import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
 import com.goodee.coreconnect.chat.entity.Notification;
@@ -83,6 +92,15 @@ public class ChatWebSocketHandlerTest {
 	
 	@Autowired
 	DataSource dataSource;
+	
+	@Autowired
+	TemplateRepository templateRepository;
+	
+	@Autowired
+	DocumentRepository documentRepository;
+	
+	@Autowired
+	private PlatformTransactionManager transactionManager;
 	
 	@LocalServerPort
 	int port;
@@ -140,7 +158,7 @@ public class ChatWebSocketHandlerTest {
 		
 		// 테스트용 ChatWebSocketHandler 인스턴스 생성
 		// 생성자에 필요한 의존성(Mock개체들)을 주입
-		handler = new ChatWebSocketHandler(jwtProvider, userRepository, chatRoomService, notificationRepository);
+		handler = new ChatWebSocketHandler(jwtProvider, userRepository, chatRoomService, notificationRepository, documentRepository);
 	}
 	
 	@Test
@@ -317,7 +335,7 @@ public class ChatWebSocketHandlerTest {
 		ChatRoom chatRoom = chatRoomService.createChatRoom("alarmTestRoom3", userIds);
 		
 		// 메시지 저장 및 알림 생성
-		chatRoomService.saveNotification(chatRoom.getId(), userIds.get(0), "실제 메시지 전송 테스트3", NotificationType.CHAT);
+		chatRoomService.saveNotification(chatRoom.getId(), userIds.get(0), "실제 메시지 전송 테스트3", NotificationType.CHAT, null);
 		
 		//메시지가 저장됐는지 확인
 		List<Chat> chats = chatRepository.findByChatRoomId(chatRoom.getId());
@@ -433,7 +451,102 @@ public class ChatWebSocketHandlerTest {
 	}
 	
 
+	@Test
+	@DisplayName("전자결재 문서 등록/알림 생성 & 삭제/알림 soft-delete 통합 테스트")
+	void testApprovalDocumentWebSocketLifecycle2() throws Exception {
+		// 1. 실제 사용자 계정 준비
+		User user = userRepository.findAll().get(4); // 첫 번째 계정 사용
+		String email = user.getEmail();
+		
+		// 2. JWT 토큰 발급
+		String accessToken = jwtProvider.createAccess(email, 10);
+		
+		// 3. WebSocket 연결/클라이언트 준비
+		BlockingQueue<String> receivedMessages = new LinkedBlockingQueue<>();
+	    TextWebSocketHandler clientHandler = new TextWebSocketHandler() {
+	        @Override
+	        public void handleTextMessage(WebSocketSession session, TextMessage message) {
+	            receivedMessages.add(message.getPayload());
+	        }
+	    };
+	    String wsUri = "ws://localhost:" + port + "/ws/chat?accessToken=" + accessToken;
+	    StandardWebSocketClient client = new StandardWebSocketClient();
+	    WebSocketSession session = client.doHandshake(clientHandler, wsUri).get();
+		
+	    // 4. 전자결재 문서 등록 요청 (WebSocket)
+		String docTitle = "테스트 결재 문서1";
+		String docContent = "결재 문서 내용1";
+		
+//		// Template 생성
+//		Template template = Template.createTemplate("기본 결재 템플릿1", "템플릿 내용1", user);
+//		template = templateRepository.save(template);
+//		
+//		// Document 생성
+//		Document document = Document.createDocument(template, user, docTitle, docContent);
+//		document.setDocDeletedYn(false);
+//		Document savedDocument = documentRepository.save(document);
+//		documentRepository.flush();
+	    
+		// 5. WwbSocket으로 APPROVAL 알림 전송
+		String approvalPayload = String.format(
+			"{ \"type\": \"APPROVAL\", \"docId\": %d }", 9
+		);
+		
+		session.sendMessage(new TextMessage(approvalPayload));
+		
+		// 6. 서버에서 수신한 알림 메시지 검증 (실시간 push)
+	    String approvalResponse = receivedMessages.poll(5, TimeUnit.SECONDS);
+	    System.out.println("전자결재 알림 응답: " + approvalResponse);
+	    assertNotNull(approvalResponse, "서버로부터 APPROVAL 알림 메시지를 받아야 합니다.");
+
+	    // 7. DB 알림(Notification) 생성 확인
+	    List<Notification> notifications = notificationRepository.findByUserId(user.getId());
+	    Notification approvalNotification = notifications.stream()
+	        .filter(n -> n.getNotificationType() == NotificationType.APPROVAL
+	            && n.getDocument() != null
+	            && n.getDocument().getId().equals(9)
+	            && n.getNotificationDeletedYn() != Boolean.TRUE)
+	        .findFirst()
+	        .orElseThrow(() -> new AssertionError("APPROVAL 알림이 DB에 저장되어야 함"));
+
+	    String expectedMessage = user.getName() + "님이 전자결재 문서를 등록했습니다.";
+	    assertEquals(expectedMessage, approvalNotification.getNotificationMessage());
+
+	    // 8. 문서 삭제 요청 (서비스 직접 호출)
+	    chatRoomService.deleteDocumentAndNotification(9);
+
+	    // 9. 문서 삭제 상태 검증
+	    Document deletedDoc = documentRepository.findById(9).orElseThrow();
+	    assertTrue(deletedDoc.getDocDeletedYn(), "문서가 삭제 상태여야 함");
+
+	    // 10. 알림 soft-delete 상태 검증 (알림이 비활성화되어야 함)
+	    Notification deletedNotification = notificationRepository.findById(approvalNotification.getId()).orElseThrow();
+	    assertTrue(deletedNotification.getNotificationDeletedYn(), "알림이 soft-delete 상태여야 함");
+
+	}
 	
-	
-	
+	@Test
+	@DisplayName("통합 테스트")
+	void testApprovalDocumentWebSocketLifecycle() throws Exception {
+	    // 1. 실제 사용자 계정 준비
+	    User user = userRepository.findAll().get(2);
+
+	    // 2. 문서/템플릿 저장을 별도 트랜잭션으로 실행
+	    TransactionTemplate txTemplate = new TransactionTemplate(transactionManager);
+	    Document savedDocument = txTemplate.execute(status -> {
+	        Template template = Template.createTemplate("기본 결재 템플릿3", "템플릿 내용3", user);
+	        template = templateRepository.save(template);
+	        templateRepository.flush();
+
+	        Document document = Document.createDocument(template, user, "테스트 결재 문서3", "결재 문서 내용3");
+	        document.setDocDeletedYn(false);
+	        Document savedDoc = documentRepository.save(document);
+	        documentRepository.flush();
+
+	        return savedDoc;
+	    });
+
+	    // 3. WebSocket 및 검증 (이제 DB에 데이터가 있음)
+	    // ... 이하 기존 코드에서 savedDocument.getId() 사용 ...
+	}
 }
