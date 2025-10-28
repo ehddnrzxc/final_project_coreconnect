@@ -69,7 +69,7 @@ public class User {
     @Column(name = "user_status", length = 20, nullable = false)
     private Status status; // ACTIVE, INACTIVE
 
-    @Column(name = "profile_image_key")
+    @Column(name = "user_profile_image_key")
     private String profileImageKey;
 
     // ─────────────── 연관관계 매핑 ───────────────

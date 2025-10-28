@@ -47,10 +47,10 @@ public class Document {
   private DocumentStatus documentStatus = DocumentStatus.DRAFT;
 
   @CreationTimestamp
-  @Column(name = "created_at", nullable = false, updatable = false)
+  @Column(name = "doc_created_at", nullable = false, updatable = false)
   private LocalDateTime createdAt;
 
-  @Column(name = "completed_at")
+  @Column(name = "doc_completed_at")
   private LocalDateTime completedAt;
 
   @Column(name = "doc_deleted_yn")
