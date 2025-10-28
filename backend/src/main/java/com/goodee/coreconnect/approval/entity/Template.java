@@ -6,6 +6,8 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import com.goodee.coreconnect.user.entity.User;
 
+import jakarta.persistence.Access;
+import jakarta.persistence.AccessType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -19,6 +21,7 @@ import lombok.Getter;
 
 @Entity
 @Getter
+@Access(AccessType.FIELD)
 @Table(name = "template")
 public class Template {
 
