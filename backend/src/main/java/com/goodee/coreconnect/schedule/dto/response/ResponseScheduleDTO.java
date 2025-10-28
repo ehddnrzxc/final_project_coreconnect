@@ -6,10 +6,12 @@ import com.goodee.coreconnect.schedule.entity.Schedule;
 import com.goodee.coreconnect.schedule.enums.ScheduleVisibility;
 
 import lombok.Getter;
-import lombok.Setter;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
 
+@NoArgsConstructor
 @Getter
-@Setter
+@ToString
 public class ResponseScheduleDTO {
   
   private Integer id;
@@ -27,26 +29,25 @@ public class ResponseScheduleDTO {
   
   /** Entity → DTO 변환 */
   public static ResponseScheduleDTO toDTO(Schedule entity) {
-    
     ResponseScheduleDTO dto = new ResponseScheduleDTO();
-    
-    dto.setId(entity.getId());
-    dto.setTitle(entity.getTitle());
-    dto.setContent(entity.getContent());
-    dto.setLocation(entity.getLocation());
-    dto.setStartDateTime(entity.getStartDateTime());
-    dto.setEndDateTime(entity.getEndDateTime());
-    dto.setVisibility(entity.getVisibility());
-    dto.setCreatedAt(entity.getCreatedAt());
+    dto.id = entity.getId();
+    dto.title = entity.getTitle();
+    dto.content = entity.getContent();
+    dto.location = entity.getLocation();
+    dto.startDateTime = entity.getStartDateTime();
+    dto.endDateTime = entity.getEndDateTime();
+    dto.visibility = entity.getVisibility();
+    dto.createdAt = entity.getCreatedAt();
 
     if (entity.getUser() != null)
-        dto.setUserName(entity.getUser().getName());
+      dto.userName = entity.getUser().getName();
     if (entity.getDepartment() != null)
-        dto.setDeptName(entity.getDepartment().getDeptName());
+      dto.deptName = entity.getDepartment().getDeptName();
     if (entity.getCategory() != null)
-        dto.setCategoryName(entity.getCategory().getName());
+      dto.categoryName = entity.getCategory().getName();
     if (entity.getMeetingRoom() != null)
-        dto.setMeetingRoomName(entity.getMeetingRoom().getName());
+      dto.meetingRoomName = entity.getMeetingRoom().getName();
+
     return dto;
   }
     

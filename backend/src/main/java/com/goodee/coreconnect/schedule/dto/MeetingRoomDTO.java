@@ -3,10 +3,12 @@ package com.goodee.coreconnect.schedule.dto;
 import com.goodee.coreconnect.schedule.entity.MeetingRoom;
 
 import lombok.Getter;
-import lombok.Setter;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
 
+@NoArgsConstructor
 @Getter
-@Setter
+@ToString
 public class MeetingRoomDTO {
 
   private Integer id;
@@ -23,14 +25,13 @@ public class MeetingRoomDTO {
 
   /** Entity → DTO 변환 */
   public static MeetingRoomDTO toDTO(MeetingRoom entity) {
-    
     MeetingRoomDTO dto = new MeetingRoomDTO();
-    dto.setId(entity.getId());
-    dto.setName(entity.getName());
-    dto.setLocation(entity.getLocation());
-    dto.setCapacity(entity.getCapacity());
-    dto.setDeletedYn(entity.getDeletedYn());
-    dto.setAvailableYn(entity.getAvailableYn());
+    dto.id = entity.getId();
+    dto.name = entity.getName();
+    dto.location = entity.getLocation();
+    dto.capacity = entity.getCapacity();
+    dto.deletedYn = entity.getDeletedYn();
+    dto.availableYn = entity.getAvailableYn();
     return dto;
   }
   

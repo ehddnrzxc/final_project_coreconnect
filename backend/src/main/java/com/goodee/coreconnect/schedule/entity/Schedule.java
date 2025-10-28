@@ -18,12 +18,10 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
-import lombok.Setter;
 
 @Entity
 @Table(name = "schedule")
 @Getter
-@Setter
 public class Schedule {
   
   @Id
@@ -37,10 +35,10 @@ public class Schedule {
   @Column(name = "sch_content", columnDefinition = "TEXT")
   private String content;
 
-  @Column(name = "sch_start_datetime")
+  @Column(name = "sch_start_datetime", nullable = false)
   private LocalDateTime startDateTime;
 
-  @Column(name = "sch_end_datetime")
+  @Column(name = "sch_end_datetime", nullable = false)
   private LocalDateTime endDateTime;
 
   @Column(name = "sch_location", length = 100)
@@ -50,10 +48,10 @@ public class Schedule {
   @Column(name = "sch_visibility", length = 20)
   private ScheduleVisibility visibility; // PUBLIC / PRIVATE
 
-  @Column(name = "sch_deleted_yn")
+  @Column(name = "sch_deleted_yn", nullable = false)
   private Boolean deletedYn;
 
-  @Column(name = "sch_created_at")
+  @Column(name = "sch_created_at", nullable = false)
   private LocalDateTime createdAt;
 
   @Column(name = "sch_updated_at")
@@ -110,10 +108,40 @@ public class Schedule {
     schedule.startDateTime = start;
     schedule.endDateTime = end;
     schedule.location = location;
-    schedule.visibility = visibility;
+    schedule.visibility = visibility != null ? visibility : ScheduleVisibility.PRIVATE;
     schedule.deletedYn = false;
     schedule.createdAt = LocalDateTime.now();
     return schedule;
+  }
+
+
+
+  /** 일정 정보 수정 */
+  public void update(String title,
+                      String content,
+                      String location,
+                      LocalDateTime start,
+                      LocalDateTime end,
+                      ScheduleVisibility visibility,
+                      MeetingRoom meetingRoom,
+                      ScheduleCategory category,
+                      Department department) {
+    this.title = title;
+    this.content = content;
+    this.location = location;
+    this.startDateTime = start;
+    this.endDateTime = end;
+    this.visibility = visibility;
+    this.meetingRoom = meetingRoom;
+    this.category = category;
+    this.department = department;
+    this.updatedAt = LocalDateTime.now();
+  }
+  
+  /** 일정 삭제(Delete) */
+  public void delete() {
+    this.deletedYn = true;
+    this.updatedAt = LocalDateTime.now();
   }
   
 }

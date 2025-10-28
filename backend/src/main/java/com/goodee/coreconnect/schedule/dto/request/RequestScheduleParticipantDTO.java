@@ -6,10 +6,12 @@ import com.goodee.coreconnect.schedule.enums.ScheduleRole;
 import com.goodee.coreconnect.user.entity.User;
 
 import lombok.Getter;
-import lombok.Setter;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
 
+@NoArgsConstructor
 @Getter
-@Setter
+@ToString
 public class RequestScheduleParticipantDTO {
 
   private Integer scheduleId;

@@ -11,7 +11,7 @@ public interface ScheduleService {
 
   ResponseScheduleDTO updateSchedule(Integer id, RequestScheduleDTO dto);
 
-  void DeleteSchedule(Integer id);
+  void deleteSchedule(Integer id);
 
   List<ResponseScheduleDTO> getUserSchedules(Integer userId);
 

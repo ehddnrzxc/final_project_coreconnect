@@ -7,12 +7,10 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Getter;
-import lombok.Setter;
 
 @Entity
 @Table(name = "meeting_room")
 @Getter
-@Setter
 public class MeetingRoom {
 
   @Id
@@ -29,10 +27,10 @@ public class MeetingRoom {
   @Column(name = "mt_capacity")
   private Integer capacity;
 
-  @Column(name = "mt_deleted_yn")
+  @Column(name = "mt_deleted_yn", nullable = false)
   private Boolean deletedYn;
 
-  @Column(name = "mt_available_yn")
+  @Column(name = "mt_available_yn", nullable = false)
   private Boolean availableYn;
 
   protected MeetingRoom() {}
@@ -47,6 +45,32 @@ public class MeetingRoom {
     room.deletedYn = false;
     room.availableYn = true;
     return room;
+  }
+  
+  /** 회의실 비활성화(삭제) */
+  public void delete() {
+    this.deletedYn = true;
+    this.availableYn = false;
+  }
+
+  /** 회의실 복구 */
+  public void restore() {
+    this.deletedYn = false;
+    this.availableYn = true;
+  }
+
+  /** 회의실 정보 수정 */
+  public void update(String name,
+                      String location, 
+                      Integer capacity) {
+    this.name = name;
+    this.location = location;
+    this.capacity = capacity;
+  }
+
+  /** 회의실 이용 가능 여부 변경 */
+  public void changeAvailability(boolean availableYn) {
+    this.availableYn = availableYn;
   }
   
 }

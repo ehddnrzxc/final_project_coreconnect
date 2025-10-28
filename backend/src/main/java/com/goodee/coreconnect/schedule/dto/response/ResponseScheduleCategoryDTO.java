@@ -5,10 +5,12 @@ import java.time.LocalDate;
 import com.goodee.coreconnect.schedule.entity.ScheduleCategory;
 
 import lombok.Getter;
-import lombok.Setter;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
 
+@NoArgsConstructor
 @Getter
-@Setter
+@ToString
 public class ResponseScheduleCategoryDTO {
 
   private Integer id;
@@ -22,13 +24,14 @@ public class ResponseScheduleCategoryDTO {
     
     ResponseScheduleCategoryDTO dto = new ResponseScheduleCategoryDTO();
     
-    dto.setId(entity.getId());
-    dto.setName(entity.getName());
-    dto.setDefaultYn(entity.getDefaultYn());
-    dto.setCreatedAt(entity.getCreatedAt());
+    dto.id = entity.getId();
+    dto.name = entity.getName();
+    dto.defaultYn = entity.getDefaultYn();
+    dto.createdAt = entity.getCreatedAt();
     
-    if (entity.getUser() != null)
-        dto.setUserName(entity.getUser().getName());
+    if (entity.getUser() != null) {
+      dto.userName = entity.getUser().getName();
+    }
     return dto;
   }
   
