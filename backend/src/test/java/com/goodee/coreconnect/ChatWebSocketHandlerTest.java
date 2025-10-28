@@ -186,12 +186,12 @@ public class ChatWebSocketHandlerTest {
 		when(jwtProvider.getSubject(anyString())).thenReturn("choimeeyoung2@gmail.com");
 		
 		// 테스트용 User 객체 생성 및 id, email 설정
-		User user = new User();
-		user.setId(1);
-		user.setEmail("choimeeyoung2@gmail.com");
+//		User user = new User();
+//		user.setId(1);
+//		user.setEmail("choimeeyoung2@gmail.com");
 		
 		// UserRepository가 findByEmail 호출 시 위 user 객체를 반환하도록 설정
-		when(userRepository.findByEmail("choimeeyoung2@gmail.com")).thenReturn(Optional.of(user));
+//		when(userRepository.findByEmail("choimeeyoung2@gmail.com")).thenReturn(Optional.of(user));
 		
 		// WebSocket 연결 후 userSessions에 userId가 정상적으로 저장되는지 확인
 		handler.afterConnectionEstablished(session);

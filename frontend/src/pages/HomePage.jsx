@@ -23,13 +23,14 @@ const Stat = ({ label, value }) => (
 /* ─ layout ─ */
 const Sidebar = () => {
   const items = [
-    { to: "/home", label: "홈", emoji: "🏠" },
-    { to: "/mail", label: "메일", emoji: "✉️" },
-    { to: "/e-approval", label: "전자결재", emoji: "🧾" },
-    { to: "/works", label: "Works", emoji: "🧰" },
-    { to: "/calendar", label: "캘린더", emoji: "📅" },
-    { to: "/board", label: "게시판", emoji: "📌" },
+    { to: "/home", label: "홈", icon: "fa-solid fa-house" },
+    { to: "/mail", label: "메일", icon: "fa-solid fa-envelope" },
+    { to: "/e-approval", label: "전자결재", icon: "fa-solid fa-file-signature" },
+    { to: "/works", label: "Works", icon: "fa-solid fa-briefcase" },
+    { to: "/calendar", label: "캘린더", icon: "fa-solid fa-calendar-days" },
+    { to: "/board", label: "게시판", icon: "fa-solid fa-thumbtack" },
   ];
+
   return (
     <aside className="sidebar">
       <div className="sidebar__brand">CoreConnect</div>
@@ -42,7 +43,7 @@ const Sidebar = () => {
               "nav__item" + (isActive ? " nav__item--active" : "")
             }
           >
-            <span className="nav__emoji">{it.emoji}</span>
+            <i className={it.icon + " nav__icon"}></i>
             <span>{it.label}</span>
           </NavLink>
         ))}

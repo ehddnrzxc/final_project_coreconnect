@@ -1,7 +1,7 @@
 package com.goodee.coreconnect.approval.dto.response;
 
 import com.goodee.coreconnect.user.entity.User;
-import com.goodee.coreconnect.user.entity.User.Role;
+import com.goodee.coreconnect.user.entity.Role;
 
 import lombok.Builder;
 import lombok.Getter;

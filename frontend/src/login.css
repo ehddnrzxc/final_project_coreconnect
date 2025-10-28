@@ -84,3 +84,23 @@ html, body, #root {
   color: var(--muted);
   margin-top: 24px;
 }
+
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-wrapper input {
+  width: 100%;
+  padding-right: 40px; /* 아이콘 공간 확보 */
+}
+
+.toggle-pw-btn {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+}

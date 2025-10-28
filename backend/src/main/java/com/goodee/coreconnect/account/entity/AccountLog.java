@@ -1,12 +1,17 @@
 package com.goodee.coreconnect.account.entity;
 
 import java.time.LocalDateTime;
-import jakarta.persistence.*;
-import lombok.*;
 
 import com.goodee.coreconnect.user.entity.User;
 
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 @Entity
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED) // ✅ 외부에서 new로 생성 방지
 @Table(
     name = "account_log",
     indexes = {
@@ -14,8 +19,6 @@ import com.goodee.coreconnect.user.entity.User;
         @Index(name = "idx_account_log_action", columnList = "log_action_type")
     }
 )
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor @Builder
 public class AccountLog {
 
     @Id
@@ -36,4 +39,23 @@ public class AccountLog {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id")
     private User user;
+
+    // ─────────────────────────────────────────────
+    // ✅ 정적 팩토리 메서드 (생성자 대체)
+    // ─────────────────────────────────────────────
+    public static AccountLog createAccountLog(User user, LogActionType actionType, String ipAddress) {
+        AccountLog log = new AccountLog();
+        log.user = user;
+        log.actionType = actionType;
+        log.ipAddress = ipAddress;
+        log.actionTime = LocalDateTime.now(); // 자동 시간 기록
+        return log;
+    }
+
+    // ─────────────────────────────────────────────
+    // ✅ 도메인 로직 (필요시 확장 가능)
+    // ─────────────────────────────────────────────
+    public void updateIp(String newIp) {
+        this.ipAddress = newIp;
+    }
 }

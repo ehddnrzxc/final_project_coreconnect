@@ -29,7 +29,7 @@ public class UserService {
         String key = s3Service.uploadProfileImage(file, user.getEmail());
 
         // 2️⃣ DB에 key 저장
-        user.setProfileImageKey(key);
+        user.updateProfileImage(key);
         userRepository.save(user);
     }
 
