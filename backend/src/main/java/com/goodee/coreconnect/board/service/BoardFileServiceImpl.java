@@ -1,5 +1,5 @@
-package com.goodee.coreconnect.board.service;
-
-public class BoardFileServiceImpl implements BoardFileService {
-
-}
+//package com.goodee.coreconnect.board.service;
+//
+//public class BoardFileServiceImpl implements BoardFileService {
+//
+//}
