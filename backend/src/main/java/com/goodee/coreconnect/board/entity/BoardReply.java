@@ -75,9 +75,8 @@ public class BoardReply {
 
 
     // ─────────────── 도메인 행위 ───────────────
-
     /** 댓글 수정 */
-    public void updateContent(String content) {
+    public void updateReply(String content) {
         if (content == null || content.isBlank()) throw new IllegalArgumentException("댓글 내용은 비어 있을 수 없습니다.");
         this.content = content;
         this.updatedAt = LocalDateTime.now();

@@ -1,7 +1,6 @@
 package com.goodee.coreconnect.board.dto.request;
 
 import com.goodee.coreconnect.board.entity.BoardCategory;
-import com.goodee.coreconnect.user.entity.User;
 
 import lombok.*;
 
@@ -21,11 +20,8 @@ public class BoardCategoryRequestDTO {
 
     /**
      * DTO -> Entity 변환
-     * - Service 계층에서 User 주입
      */
-    public BoardCategory toEntity(User user) {
-        return BoardCategory.createCategory(user,
-                                             this.name,
-                                             this.orderNo);
+    public BoardCategory toEntity() {
+        return BoardCategory.createCategory(this.name, this.orderNo);
     }
 }

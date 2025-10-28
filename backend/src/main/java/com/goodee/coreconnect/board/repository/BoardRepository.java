@@ -25,7 +25,6 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
     List<Board> findByNoticeYnTrueAndDeletedYnFalse();
 
     // ─────────────── 선택형 검색 ───────────────
-
     /** 제목으로 검색 */
     @Query("""
         SELECT b FROM Board b
