@@ -91,7 +91,6 @@ public class Board {
 
 
     // ─────────────── 도메인 행위 ───────────────
-
     /** 게시글 수정 */
     public void updateBoard(BoardCategory category, String title, String content, Boolean noticeYn, Boolean privateYn) {
         if (title == null || title.isBlank()) throw new IllegalArgumentException("게시글 제목은 비어 있을 수 없습니다.");

@@ -54,9 +54,19 @@ public class BoardFile {
     // ─────────────── 도메인 행위 ───────────────
     /** 파일 정보 수정 */
     public void updateFile(String fileName, Long fileSize, String s3ObjectKey) {
-        if (fileName != null && !fileName.isBlank()) this.fileName = fileName;
-        if (fileSize != null) this.fileSize = fileSize;
-        if (s3ObjectKey != null && !s3ObjectKey.isBlank()) this.s3ObjectKey = s3ObjectKey;
+      if (fileName == null || fileName.isBlank()) {
+          throw new IllegalArgumentException("파일명은 비어 있을 수 없습니다.");
+      }
+      if (fileSize == null || fileSize <= 0) {
+          throw new IllegalArgumentException("파일 크기는 0보다 커야 합니다.");
+      }
+      if (s3ObjectKey == null || s3ObjectKey.isBlank()) {
+          throw new IllegalArgumentException("S3 객체 키는 비어 있을 수 없습니다.");
+      }
+
+      this.fileName = fileName;
+      this.fileSize = fileSize;
+      this.s3ObjectKey = s3ObjectKey;
     }
 
     /** Soft Delete */
