@@ -57,10 +57,7 @@ public class Notification {
    
    // N : 1 관계 (채팅메시지 테이블과 매핑)
    @ManyToOne(fetch = FetchType.LAZY)
-   @JoinColumn(
-         name = "chat_message_id",
-         columnDefinition = "INT UNSIGNED"
-   ) 
+   @JoinColumn(name = "chat_message_id")
    private Chat chat;
   
    @ManyToOne(fetch = FetchType.LAZY)
