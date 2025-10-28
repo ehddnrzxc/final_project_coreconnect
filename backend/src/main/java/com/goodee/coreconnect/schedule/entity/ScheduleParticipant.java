@@ -34,6 +34,12 @@ public class ScheduleParticipant {
 
   @Column(name = "sch_part_created_at", nullable = false)
   private LocalDateTime createdAt;
+  
+  @Column(name = "sch_part_updated_at")
+  private LocalDateTime updatedAt;
+
+  @Column(name = "sch_part_deleted_yn", nullable = false)
+  private Boolean deletedYn = false;
 
   /**
    * N:1 (user 테이블과 매핑)
@@ -58,6 +64,7 @@ public class ScheduleParticipant {
     participant.schedule = schedule;
     participant.user = user;
     participant.role = role != null ? role : ScheduleRole.MEMBER;
+    participant.deletedYn = false;
     participant.createdAt = LocalDateTime.now();
     return participant;
   }
@@ -65,6 +72,12 @@ public class ScheduleParticipant {
   /** 참여자 역할 변경 */
   public void changeRole(ScheduleRole role) {
     this.role = role;
+  }
+  
+  /** Soft Delete 처리 */
+  public void delete() {
+    this.deletedYn = true;
+    this.updatedAt = LocalDateTime.now();
   }
   
 }

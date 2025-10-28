@@ -10,6 +10,6 @@ import com.goodee.coreconnect.user.entity.User;
 public interface ScheduleCategoryRepository extends JpaRepository<ScheduleCategory, Integer> {
 
   /** 특정 유저의 일정 카테고리 목록 조회 */
-  List<ScheduleCategory> getByUser(User user);
+  List<ScheduleCategory> findByUser(User user);
 
 }
