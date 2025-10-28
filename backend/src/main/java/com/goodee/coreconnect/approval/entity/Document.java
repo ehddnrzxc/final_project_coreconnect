@@ -11,6 +11,8 @@ import com.goodee.coreconnect.approval.enums.ApprovalLineStatus;
 import com.goodee.coreconnect.approval.enums.DocumentStatus;
 import com.goodee.coreconnect.user.entity.User;
 
+import jakarta.persistence.Access;
+import jakarta.persistence.AccessType;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -28,6 +30,7 @@ import lombok.Getter;
 
 @Entity
 @Getter
+@Access(AccessType.FIELD)
 @Table(name = "document")
 public class Document {
 
