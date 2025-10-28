@@ -7,6 +7,8 @@ export default function LoginForm({ onLoginSuccess }) {
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [error, setError] = useState("");
+  // 비밀번호 표시 여부 상태 추가
+  const [showPw, setShowPw] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,7 +25,25 @@ export default function LoginForm({ onLoginSuccess }) {
   return (
     <form className="login-form" onSubmit={handleSubmit}>
       <input type="text" placeholder="이메일" value={email} onChange={(e) => setEmail(e.target.value)} />
-      <input type="password" placeholder="비밀번호" value={pw} onChange={(e) => setPw(e.target.value)} />
+      <div className="password-wrapper">
+        <input
+          type={showPw ? "text" : "password"}
+          placeholder="비밀번호"
+          value={pw}
+          onChange={(e) => setPw(e.target.value)}
+        />
+
+        {pw.length > 0 && (
+          <button
+            type="button"
+            className="toggle-pw-btn"
+            onClick={() => setShowPw((prev) => !prev)}
+            aria-label={showPw ? "비밀번호 숨기기" : "비밀번호 보기"}
+          >
+            <i className={`fa-regular ${showPw ? "fa-eye-slash" : "fa-eye"}`} />
+          </button>
+        )}
+      </div>
       {error && <div className="error-msg">{error}</div>}
       <button type="submit" className="login-btn">로그인</button>
     </form>
