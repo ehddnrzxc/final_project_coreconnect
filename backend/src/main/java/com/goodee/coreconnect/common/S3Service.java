@@ -2,7 +2,7 @@ package com.goodee.coreconnect.common;
 
 import java.io.IOException;
 import java.net.URL;
-import java.time.Duration;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -50,5 +50,34 @@ public class S3Service {
 
         URL url = s3Client.utilities().getUrl(request);
         return url.toString();
+    }
+    
+    /**
+     * 결재 첨부파일 업로드
+     * @param file 업로드할 파일
+     * @return DB에 저장할 '전체 URL'
+     */
+    public String uploadApprovalFile(MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) {
+            return null;
+        }
+
+        // 1. 고유한 키 생성 (경로: approval/UUID_파일명)
+        String originalFileName = file.getOriginalFilename();
+        String uniqueFileName = UUID.randomUUID().toString() + "_" + originalFileName;
+        String key = "approval/" + uniqueFileName; // 결재파일은 'approval' 폴더에 저장
+
+        // 2. S3 업로드 요청 생성
+        PutObjectRequest request = PutObjectRequest.builder()
+                .bucket(bucket)
+                .key(key)
+                .contentType(file.getContentType())
+                .build();
+
+        // 3. 파일 업로드
+        s3Client.putObject(request, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+
+        // 4. DB에 저장할 'URL'을 반환 (File 엔티티가 fileUrl을 필요로 하므로)
+        return getFileUrl(key);
     }
 }
