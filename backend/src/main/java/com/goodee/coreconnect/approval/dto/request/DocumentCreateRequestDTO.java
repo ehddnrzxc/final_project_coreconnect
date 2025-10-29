@@ -42,9 +42,9 @@ public class DocumentCreateRequestDTO {
   @NotEmpty(message = "결재선은 최소 1명 이상 지정해야 합니다.") // List가 비어있으면 안 됨
   private List<Integer> approvalIds;
 
-  /**
-   * 첨부 파일
-   */
-  private List<MultipartFile> files;
+//  /**
+//   * 첨부 파일
+//   */
+//  private List<MultipartFile> files;
   
 }
