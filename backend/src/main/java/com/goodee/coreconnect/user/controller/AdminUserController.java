@@ -1,7 +1,10 @@
 package com.goodee.coreconnect.user.controller;
 
+import java.util.List;
+
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -10,8 +13,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.goodee.coreconnect.user.dto.request.CreateUserReq;
-import com.goodee.coreconnect.user.dto.response.UserDto;
+import com.goodee.coreconnect.user.dto.request.CreateUserReqDTO;
+import com.goodee.coreconnect.user.dto.response.UserDTO;
 import com.goodee.coreconnect.user.entity.Status;
 import com.goodee.coreconnect.user.service.UserService;
 
@@ -42,10 +45,10 @@ public class AdminUserController {
    * </pre>
    *
    * @param req 신규 사용자 생성 요청 DTO
-   * @return 생성된 사용자 정보를 담은 UserDto
+   * @return 생성된 사용자 정보를 담은 UserDTO
    */
   @PostMapping
-  public UserDto create(@Valid @RequestBody CreateUserReq req) {
+  public UserDTO create(@Valid @RequestBody CreateUserReqDTO req) {
     return userService.createUser(req);
   }
   
@@ -66,6 +69,11 @@ public class AdminUserController {
   @DeleteMapping("/{id}")
   public void changeStatus(@PathVariable("id") Integer id, @RequestParam("status") Status status) {
     userService.changeStatus(id, status);
+  }
+  
+  @GetMapping
+  public List<UserDTO> findAllUsers() {
+    return userService.findAllUsers();
   }
   
 }

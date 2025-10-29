@@ -1,0 +1,76 @@
+.user-form__wrapper {
+  max-width: 520px;
+  margin: 24px auto;
+  padding: 16px;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.user-form__title {
+  margin-bottom: 16px;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.user-form {
+  display: grid;
+  gap: 12px;
+}
+
+.user-form label {
+  display: flex;
+  flex-direction: column;
+  font-weight: 500;
+  gap: 4px;
+}
+
+.user-form input,
+.user-form select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.user-form button {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  background: #2563eb;
+  color: white;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.user-form button:hover:not(:disabled) {
+  background: #1e40af;
+}
+
+.user-form button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.msg {
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.msg--success {
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+.msg--error {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.msg--info {
+  background: #eef2ff;
+  color: #3730a3;
+}

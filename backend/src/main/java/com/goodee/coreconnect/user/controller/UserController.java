@@ -11,10 +11,12 @@ import org.springframework.web.multipart.MultipartFile;
 import com.goodee.coreconnect.user.service.UserServiceImpl;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/user")
+@Slf4j
 public class UserController {
 
     private final UserServiceImpl userService;
@@ -25,7 +27,7 @@ public class UserController {
             @AuthenticationPrincipal String email, 
             @RequestParam("file") MultipartFile file) throws IOException {
       
-        System.out.println("principal class = " + email.getClass().getName());
+        log.info("principal class = " + email.getClass().getName());
 
     
         userService.updateProfileImage(email, file);

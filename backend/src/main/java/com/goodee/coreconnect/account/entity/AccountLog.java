@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED) // ✅ 외부에서 new로 생성 방지
+@NoArgsConstructor(access = AccessLevel.PROTECTED) 
 @Table(
     name = "account_log",
     indexes = {
@@ -28,7 +28,7 @@ public class AccountLog {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "log_action_type", length = 20, nullable = false)
-    private LogActionType actionType;   // LOGIN, LOGOUT, FAIL 등
+    private LogActionType actionType;   // LOGIN, LOGOUT, REFRESH, FAIL
 
     @Column(name = "log_action_time", nullable = false)
     private LocalDateTime actionTime;
@@ -40,9 +40,9 @@ public class AccountLog {
     @JoinColumn(name = "user_id")
     private User user;
 
-    // ─────────────────────────────────────────────
-    // ✅ 정적 팩토리 메서드 (생성자 대체)
-    // ─────────────────────────────────────────────
+
+    // 정적 팩토리 메서드 (생성자 대체)
+ 
     public static AccountLog createAccountLog(User user, LogActionType actionType, String ipAddress) {
         AccountLog log = new AccountLog();
         log.user = user;
@@ -52,9 +52,9 @@ public class AccountLog {
         return log;
     }
 
-    // ─────────────────────────────────────────────
-    // ✅ 도메인 로직 (필요시 확장 가능)
-    // ─────────────────────────────────────────────
+
+    // 도메인 로직 (필요시 확장 가능)
+
     public void updateIp(String newIp) {
         this.ipAddress = newIp;
     }

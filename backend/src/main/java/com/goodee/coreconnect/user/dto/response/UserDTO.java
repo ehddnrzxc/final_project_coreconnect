@@ -6,7 +6,7 @@ import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.Status;
 import com.goodee.coreconnect.user.entity.User;
 
-public record UserDto(
+public record UserDTO(
     Integer id,
     String email,
     String name,
@@ -17,8 +17,8 @@ public record UserDto(
     String deptName,
     LocalDateTime joinDate
 ) {
-    public static UserDto from(User u) {
-        return new UserDto(
+    public static UserDTO from(User u) {
+        return new UserDTO(
             u.getId(),
             u.getEmail(),
             u.getName(),
