@@ -11,7 +11,7 @@ import com.goodee.coreconnect.board.dto.response.BoardResponseDTO;
 public interface BoardService {
 
     /** 게시글 등록 */
-    BoardResponseDTO createBoard(BoardRequestDTO dto, Integer userId);
+    BoardResponseDTO createBoard(BoardRequestDTO dto, String email);
 
     /** 게시글 수정 */
     BoardResponseDTO updateBoard(Integer boardId, BoardRequestDTO dto);
@@ -22,14 +22,14 @@ public interface BoardService {
     /** 게시글 상세 조회 */
     BoardResponseDTO getBoardById(Integer boardId);
 
-    /** 전체 게시글 목록 (페이지네이션 + SoftDelete 제외) */
+    /** 전체 게시글 목록 */
     Page<BoardResponseDTO> getAllBoards(Pageable pageable);
 
     /** 카테고리별 게시글 목록 */
     Page<BoardResponseDTO> getBoardsByCategory(Integer categoryId, Pageable pageable);
 
-    /** 사용자별 게시글 목록 */
-    Page<BoardResponseDTO> getBoardsByUser(Integer userId, Pageable pageable);
+    /** ✅ 사용자별 게시글 목록 (이메일 기반) */
+    Page<BoardResponseDTO> getBoardsByUser(String email, Pageable pageable);
 
     /** 공지글 목록 조회 */
     List<BoardResponseDTO> getNoticeBoards();
