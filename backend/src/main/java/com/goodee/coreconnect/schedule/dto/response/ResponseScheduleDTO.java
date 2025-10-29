@@ -22,11 +22,9 @@ public class ResponseScheduleDTO {
   private String content;
   
   private String location;
-  
-  @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")
+
   private LocalDateTime startDateTime;
   
-  @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")
   private LocalDateTime endDateTime;
   
   private ScheduleVisibility visibility;

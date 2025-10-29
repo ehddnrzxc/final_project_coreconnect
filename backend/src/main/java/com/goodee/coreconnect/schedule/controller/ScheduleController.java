@@ -36,32 +36,32 @@ public class ScheduleController {
 
   /** 일정 단일 조회 */
   @GetMapping(params = "id")
-  public ResponseScheduleDTO getById(@RequestParam Integer id) {
-    return scheduleService.getScheduleById(id);
+  public ResponseScheduleDTO getById(@RequestParam("id") Integer id) {
+      return scheduleService.getScheduleById(id);
   }
 
   /** 일정 수정 */
   @PutMapping("/{id}")
-  public ResponseScheduleDTO update(@PathVariable Integer id,
+  public ResponseScheduleDTO update(@PathVariable("id") Integer id,
                                     @Valid @RequestBody RequestScheduleDTO dto) {
     return scheduleService.updateSchedule(id, dto);
   }
 
   /** 일정 삭제 (Soft Delete) */
   @DeleteMapping("/{id}")
-  public void delete(@PathVariable Integer id) {
+  public void delete(@PathVariable("id") Integer id) {
     scheduleService.deleteSchedule(id);
   }
 
   /** 특정 유저의 일정 목록 조회 */
   @GetMapping(params = "userId")
-  public List<ResponseScheduleDTO> getUserSchedules(@RequestParam Integer userId) {
+  public List<ResponseScheduleDTO> getUserSchedules(@RequestParam("userId") Integer userId) {
     return scheduleService.getUserSchedules(userId);
   }
 
   /** 특정 회의실의 일정 목록 조회 */
   @GetMapping(params = "meetingRoomId")
-  public List<ResponseScheduleDTO> getSchedulesByMeetingRoom(@RequestParam Integer meetingRoomId) {
+  public List<ResponseScheduleDTO> getSchedulesByMeetingRoom(@RequestParam("meetingRoomId") Integer meetingRoomId) {
     return scheduleService.getSchedulesByMeetingRoom(meetingRoomId);
   }
 }

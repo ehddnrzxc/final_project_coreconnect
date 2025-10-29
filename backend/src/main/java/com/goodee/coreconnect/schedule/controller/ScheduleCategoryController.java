@@ -34,21 +34,30 @@ public class ScheduleCategoryController {
 
   /** 카테고리 수정 */
   @PutMapping("/{id}")
-  public ResponseScheduleCategoryDTO update(@PathVariable Integer id,
+  public ResponseScheduleCategoryDTO update(@PathVariable("id") Integer id,
                                             @Valid @RequestBody RequestScheduleCategoryDTO dto) {
     return scheduleCategoryService.updateCategory(id, dto);
   }
 
   /** 카테고리 삭제 */
   @DeleteMapping("/{id}")
-  public void delete(@PathVariable Integer id) {
+  public void delete(@PathVariable("id") Integer id) {
     scheduleCategoryService.deleteCategory(id);
   }
 
   /** 특정 유저의 카테고리 목록 조회 */
-  @GetMapping(params = "userId")
+
+  @GetMapping
   public List<ResponseScheduleCategoryDTO> getUserCategories(@AuthenticationPrincipal String email) {
     return scheduleCategoryService.getUserCategories(email);
   }
+  
+//  /** 특정 유저의 카테고리 목록 조회 (관리자) */
+//  @GetMapping(params = "userId")
+//  public List<ResponseScheduleCategoryDTO> getUserCategories(@RequestParam("userId") Integer userId) {
+//    return scheduleCategoryService.getUserCategories(email);
+//  }
+  
+
 }
 
