@@ -41,19 +41,18 @@ public class ScheduleCategoryServiceIntegrationTest {
   }
 
   @Test
-  @DisplayName("1️⃣카테고리 생성 테스트")
+  @DisplayName("1️⃣카테고리 생성 테스트 (이메일 기반)")
   void testCreateCategory() {
     RequestScheduleCategoryDTO dto = RequestScheduleCategoryDTO.builder()
-            .userId(testUser.getId())
             .name("개인 일정")
             .defaultYn(false)
             .build();
 
-    ResponseScheduleCategoryDTO response = categoryService.createCategory(dto);
+    ResponseScheduleCategoryDTO response = categoryService.createCategory(dto, testUser.getEmail());
 
     assertThat(response).isNotNull();
     assertThat(response.getName()).isEqualTo("개인 일정");
-    System.out.println("생성 성공: " + response);
+    System.out.println("카테고리 생성 성공: " + response);
   }
 
   @Test
@@ -65,7 +64,6 @@ public class ScheduleCategoryServiceIntegrationTest {
     RequestScheduleCategoryDTO dto = RequestScheduleCategoryDTO.builder()
             .name("변경된 일정")
             .defaultYn(true)
-            .userId(testUser.getId())
             .build();
 
     ResponseScheduleCategoryDTO response = categoryService.updateCategory(saved.getId(), dto);
@@ -76,12 +74,13 @@ public class ScheduleCategoryServiceIntegrationTest {
   }
 
   @Test
-  @DisplayName("3️⃣특정 유저의 카테고리 목록 조회 테스트")
+  @DisplayName("3️⃣특정 유저의 카테고리 목록 조회 테스트 (이메일 기반)")  
   void testGetUserCategories() {
     categoryRepository.save(ScheduleCategory.createScheduleCategory(testUser, "테스트1", false));
     categoryRepository.save(ScheduleCategory.createScheduleCategory(testUser, "테스트2", true));
 
-    List<ResponseScheduleCategoryDTO> list = categoryService.getUserCategories(testUser.getId());
+
+    List<ResponseScheduleCategoryDTO> list = categoryService.getUserCategories(testUser.getEmail());
 
     assertThat(list).isNotEmpty();
     System.out.println("유저 카테고리 목록 조회 성공: " + list.size() + "건");

@@ -7,7 +7,7 @@ import com.goodee.coreconnect.schedule.dto.response.ResponseScheduleParticipantD
 
 public interface ScheduleParticipantService {
   
-  ResponseScheduleParticipantDTO addParticipant(RequestScheduleParticipantDTO dto);
+  ResponseScheduleParticipantDTO addParticipant(RequestScheduleParticipantDTO dto, String email);
 
   List<ResponseScheduleParticipantDTO> getParticipantsBySchedule(Integer scheduleId);
 

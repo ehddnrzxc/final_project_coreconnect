@@ -25,9 +25,9 @@ public class ScheduleCategoryServiceImpl implements ScheduleCategoryService {
 
   /** 카테고리 생성 */
   @Override
-  public ResponseScheduleCategoryDTO createCategory(RequestScheduleCategoryDTO dto) {
+  public ResponseScheduleCategoryDTO createCategory(RequestScheduleCategoryDTO dto, String email) {
     
-    User user = userRepository.findById(dto.getUserId())
+    User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new IllegalArgumentException("유저가 존재하지 않습니다."));
 
     ScheduleCategory category = dto.toEntity(user);
@@ -62,9 +62,9 @@ public class ScheduleCategoryServiceImpl implements ScheduleCategoryService {
   /** 특정 유저의 카테고리 목록 조회 (삭제 제외) */
   @Override
   @Transactional(readOnly = true)
-  public List<ResponseScheduleCategoryDTO> getUserCategories(Integer userId) {
+  public List<ResponseScheduleCategoryDTO> getUserCategories(String email) {
     
-    User user = userRepository.findById(userId)
+    User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new IllegalArgumentException("유저가 존재하지 않습니다."));
 
     return scheduleCategoryRepository.findByUser(user)

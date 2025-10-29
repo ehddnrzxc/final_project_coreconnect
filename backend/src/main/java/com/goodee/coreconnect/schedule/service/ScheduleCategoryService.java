@@ -7,12 +7,12 @@ import com.goodee.coreconnect.schedule.dto.response.ResponseScheduleCategoryDTO;
 
 public interface ScheduleCategoryService {
 
-  ResponseScheduleCategoryDTO createCategory(RequestScheduleCategoryDTO dto);
+  ResponseScheduleCategoryDTO createCategory(RequestScheduleCategoryDTO dto, String email);
 
   ResponseScheduleCategoryDTO updateCategory(Integer id, RequestScheduleCategoryDTO dto);
 
   void deleteCategory(Integer id);
 
-  List<ResponseScheduleCategoryDTO> getUserCategories(Integer userId);
+  List<ResponseScheduleCategoryDTO> getUserCategories(String email);
   
 }

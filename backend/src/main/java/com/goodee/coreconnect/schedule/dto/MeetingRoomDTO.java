@@ -16,10 +16,15 @@ import lombok.ToString;
 public class MeetingRoomDTO {
 
   private Integer id;
+  
   private String name;
+  
   private String location;
+  
   private Integer capacity;
+  
   private Boolean deletedYn;
+  
   private Boolean availableYn;
 
   /** DTO → Entity 변환 */

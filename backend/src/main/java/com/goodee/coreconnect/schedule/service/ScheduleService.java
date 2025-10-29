@@ -7,7 +7,7 @@ import com.goodee.coreconnect.schedule.dto.response.ResponseScheduleDTO;
 
 public interface ScheduleService {
 
-  ResponseScheduleDTO createSchedule(RequestScheduleDTO dto);
+  ResponseScheduleDTO createSchedule(RequestScheduleDTO dto, String email);
 
   ResponseScheduleDTO updateSchedule(Integer id, RequestScheduleDTO dto);
 

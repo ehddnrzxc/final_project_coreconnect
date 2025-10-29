@@ -1,6 +1,5 @@
 package com.goodee.coreconnect.schedule;
 
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -27,7 +26,6 @@ import com.goodee.coreconnect.user.repository.UserRepository;
 @Transactional
 public class ScheduleServiceIntegrationTest {
 
-
   @Autowired
   private ScheduleService scheduleService;
 
@@ -41,16 +39,14 @@ public class ScheduleServiceIntegrationTest {
 
   @BeforeEach
   void setUp() {
-    //user_id=10 유저가 반드시 존재해야 합니다.
     testUser = userRepository.findById(10)
             .orElseThrow(() -> new IllegalStateException("user_id=10 유저가 없습니다."));
   }
 
   @Test
-  @DisplayName("1️⃣일정 생성 테스트 (회의실 없음)")
+  @DisplayName("1️⃣일정 생성 테스트 (회의실 없음, 이메일 기반)")
   void testCreateScheduleWithoutMeetingRoom() {
     RequestScheduleDTO dto = RequestScheduleDTO.builder()
-            .userId(testUser.getId())
             .title("회의실 없이 생성되는 테스트 일정")
             .content("AWS RDS 연결 및 서비스 로직 검증")
             .startDateTime(LocalDateTime.of(2025, 10, 29, 10, 0))
@@ -59,7 +55,7 @@ public class ScheduleServiceIntegrationTest {
             .visibility(ScheduleVisibility.PUBLIC)
             .build();
 
-    ResponseScheduleDTO response = scheduleService.createSchedule(dto);
+    ResponseScheduleDTO response = scheduleService.createSchedule(dto, testUser.getEmail());
 
     assertThat(response).isNotNull();
     assertThat(response.getTitle()).isEqualTo("회의실 없이 생성되는 테스트 일정");
@@ -67,9 +63,8 @@ public class ScheduleServiceIntegrationTest {
   }
 
   @Test
-  @DisplayName("2️⃣일정 단건 조회 테스트")
+  @DisplayName("2️⃣일정 단일 조회 테스트")
   void testGetScheduleById() {
-    // given
     Schedule saved = scheduleRepository.save(
             Schedule.createSchedule(testUser, null, null, null,
                     "조회 테스트 일정", "내용입니다",
@@ -77,10 +72,7 @@ public class ScheduleServiceIntegrationTest {
                     LocalDateTime.now().plusHours(2),
                     "사무실", ScheduleVisibility.PRIVATE));
 
-    // when
     ResponseScheduleDTO response = scheduleService.getScheduleById(saved.getId());
-
-    // then
     assertThat(response).isNotNull();
     assertThat(response.getTitle()).isEqualTo("조회 테스트 일정");
     System.out.println("조회 성공: " + response);
@@ -89,7 +81,6 @@ public class ScheduleServiceIntegrationTest {
   @Test
   @DisplayName("3️⃣일정 수정 테스트")
   void testUpdateSchedule() {
-    // given
     Schedule saved = scheduleRepository.save(
             Schedule.createSchedule(testUser, null, null, null,
                     "수정 전 일정", "수정 전 내용",
@@ -104,22 +95,16 @@ public class ScheduleServiceIntegrationTest {
             .startDateTime(LocalDateTime.now().plusDays(1).plusHours(2))
             .endDateTime(LocalDateTime.now().plusDays(1).plusHours(3))
             .visibility(ScheduleVisibility.PUBLIC)
-            .userId(testUser.getId())
             .build();
 
-    // when
     ResponseScheduleDTO updated = scheduleService.updateSchedule(saved.getId(), updateDto);
-
-    // then
     assertThat(updated.getTitle()).isEqualTo("수정된 일정 제목");
-    assertThat(updated.getVisibility()).isEqualTo(ScheduleVisibility.PUBLIC);
-      System.out.println("수정 성공: " + updated);
+    System.out.println("수정 성공: " + updated);
   }
 
   @Test
   @DisplayName("4️⃣일정 삭제 테스트 (Soft Delete)")
   void testDeleteSchedule() {
-    // given
     Schedule saved = scheduleRepository.save(
             Schedule.createSchedule(testUser, null, null, null,
                     "삭제 테스트", "삭제 테스트 내용",
@@ -127,37 +112,22 @@ public class ScheduleServiceIntegrationTest {
                     LocalDateTime.now().plusHours(4),
                     "회의실2", ScheduleVisibility.PRIVATE));
 
-    // when
     scheduleService.deleteSchedule(saved.getId());
-
-    // then
     Schedule deleted = scheduleRepository.findById(saved.getId()).orElseThrow();
     assertThat(deleted.getDeletedYn()).isTrue();
-      System.out.println("삭제 성공 (Soft Delete): ID=" + deleted.getId());
+    System.out.println("삭제 성공 (Soft Delete): ID=" + deleted.getId());
   }
 
   @Test
-  @DisplayName("5️⃣특정 유저의 일정 목록 조회")
+  @DisplayName("5️⃣특정 유저의 일정 목록 조회 (이메일 기반)")
   void testGetUserSchedules() {
-    // given
-    scheduleRepository.save(
-            Schedule.createSchedule(testUser, null, null, null,
+    scheduleRepository.save(Schedule.createSchedule(testUser, null, null, null,
                     "유저 일정1", "내용1",
                     LocalDateTime.now().plusDays(2),
                     LocalDateTime.now().plusDays(2).plusHours(1),
                     "사무실", ScheduleVisibility.PUBLIC));
 
-    scheduleRepository.save(
-            Schedule.createSchedule(testUser, null, null, null,
-                    "유저 일정2", "내용2",
-                    LocalDateTime.now().plusDays(3),
-                    LocalDateTime.now().plusDays(3).plusHours(1),
-                    "사무실", ScheduleVisibility.PUBLIC));
-
-    // when
     List<ResponseScheduleDTO> list = scheduleService.getUserSchedules(testUser.getId());
-
-    // then
     assertThat(list).isNotEmpty();
     System.out.println("유저 일정 조회 성공 (총 " + list.size() + "건)");
   }

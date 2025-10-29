@@ -34,9 +34,9 @@ public class ScheduleServiceImpl implements ScheduleService {
 
   /** 일정 생성 */
   @Override
-  public ResponseScheduleDTO createSchedule(RequestScheduleDTO dto) {
+  public ResponseScheduleDTO createSchedule(RequestScheduleDTO dto, String email) {
     
-    User user = userRepository.findById(dto.getUserId())
+    User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new IllegalArgumentException("유저가 존재하지 않습니다."));
 
     Department department = (dto.getDeptId() != null)
