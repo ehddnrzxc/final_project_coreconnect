@@ -2,11 +2,14 @@ package com.goodee.coreconnect.board;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,33 +45,33 @@ class BoardServiceTest {
 
     @BeforeEach
     void setUp() {
-        // ─────────────── 실제 DB 유저 중 1명 불러오기 ───────────────
+        boardRepository.deleteAll();
+      
+        // ─────────────── 테스트용 사용자 불러오기 ───────────────
         user = userRepository.findByEmail("admin@example.com")
                 .orElseThrow(() -> new IllegalStateException("테스트용 유저(admin@example.com)를 찾을 수 없습니다."));
-
         log.info("테스트 유저 로드 완료: {}", user.getName());
 
-        // ─────────────── 카테고리 자동 세팅 ───────────────
+        // ─────────────── 카테고리 세팅 ───────────────
         category = categoryRepository.findAll().stream()
                 .findFirst()
                 .orElseGet(() -> {
                     BoardCategory newCategory = BoardCategory.createCategory("테스트카테고리", 1);
                     return categoryRepository.save(newCategory);
                 });
-
         log.info("테스트 카테고리 사용: {}", category.getName());
     }
 
     @Test
-    @DisplayName("게시글 등록 성공")
+    @DisplayName("게시글 등록")
     void testCreateBoard() {
         BoardRequestDTO dto = BoardRequestDTO.builder()
-                .categoryId(category.getId())
-                .title("첫 게시글")
-                .content("내용입니다.")
-                .noticeYn(false)
-                .privateYn(false)
-                .build();
+                                             .categoryId(category.getId())
+                                             .title("첫 게시글")
+                                             .content("내용입니다.")
+                                             .noticeYn(false)
+                                             .privateYn(false)
+                                             .build();
 
         BoardResponseDTO response = boardService.createBoard(dto, user.getEmail());
 
@@ -80,13 +83,13 @@ class BoardServiceTest {
     }
 
     @Test
-    @DisplayName("게시글 수정 성공")
+    @DisplayName("게시글 수정")
     void testUpdateBoard() {
         BoardRequestDTO dto = BoardRequestDTO.builder()
-                .categoryId(category.getId())
-                .title("수정 전 제목")
-                .content("수정 전 내용")
-                .build();
+                                             .categoryId(category.getId())
+                                             .title("수정 전 제목")
+                                             .content("수정 전 내용")
+                                             .build();
 
         BoardResponseDTO created = boardService.createBoard(dto, user.getEmail());
 
@@ -103,7 +106,7 @@ class BoardServiceTest {
     }
 
     @Test
-    @DisplayName("게시글 Soft Delete 성공")
+    @DisplayName("게시글 Soft Delete")
     void testSoftDeleteBoard() {
         BoardRequestDTO dto = BoardRequestDTO.builder()
                 .categoryId(category.getId())
@@ -125,10 +128,10 @@ class BoardServiceTest {
     @DisplayName("게시글 상세 조회 (조회수 증가 포함)")
     void testGetBoardById() {
         BoardRequestDTO dto = BoardRequestDTO.builder()
-                .categoryId(category.getId())
-                .title("조회 테스트")
-                .content("내용입니다.")
-                .build();
+                                             .categoryId(category.getId())
+                                             .title("조회 테스트")
+                                             .content("내용입니다.")
+                                             .build();
 
         BoardResponseDTO created = boardService.createBoard(dto, user.getEmail());
 
@@ -140,7 +143,7 @@ class BoardServiceTest {
     }
 
     @Test
-    @DisplayName("전체 게시글 목록 조회 성공")
+    @DisplayName("전체 게시글 목록 조회")
     void testGetAllBoards() {
         for (int i = 1; i <= 3; i++) {
             BoardRequestDTO dto = BoardRequestDTO.builder()
@@ -152,9 +155,86 @@ class BoardServiceTest {
             boardService.createBoard(dto, user.getEmail());
         }
 
-        var page = boardService.getAllBoards(org.springframework.data.domain.PageRequest.of(0, 10));
+        var page = boardService.getAllBoards(PageRequest.of(0, 10));
 
         assertThat(page.getContent()).hasSize(3);
         log.info("전체목록 테스트 통과: {}개 게시글", page.getContent().size());
+    }
+
+    @Test
+    @DisplayName("카테고리별 게시글 목록 조회")
+    void testGetBoardsByCategory() {
+        for (int i = 1; i <= 3; i++) {
+            BoardRequestDTO dto = BoardRequestDTO.builder()
+                                                 .categoryId(category.getId())
+                                                 .title("카테고리 게시글 " + i)
+                                                 .content("내용 " + i)
+                                                 .build();
+            boardService.createBoard(dto, user.getEmail());
+        }
+
+        var page = boardService.getBoardsByCategory(category.getId(), PageRequest.of(0, 10));
+
+        assertThat(page.getContent()).hasSize(3);
+        assertThat(page.getContent().get(0).getCategoryName()).isEqualTo(category.getName());
+        log.info("카테고리별 조회 테스트 통과: {}개 게시글", page.getContent().size());
+    }
+
+    @Test
+    @DisplayName("사용자 이메일 기반 게시글 목록 조회")
+    void testGetBoardsByUser() {
+        for (int i = 1; i <= 2; i++) {
+            BoardRequestDTO dto = BoardRequestDTO.builder()
+                                                 .categoryId(category.getId())
+                                                 .title("유저 게시글 " + i)
+                                                 .content("유저 내용 " + i)
+                                                 .build();
+            boardService.createBoard(dto, user.getEmail());
+        }
+
+        var page = boardService.getBoardsByUser(user.getEmail(), PageRequest.of(0, 10));
+
+        assertThat(page.getContent()).hasSize(2);
+        assertThat(page.getContent().get(0).getWriterName()).isEqualTo(user.getName());
+        log.info("사용자별 조회 테스트 통과: {}개 게시글", page.getContent().size());
+    }
+
+    @Test
+    @DisplayName("공지글 목록 조회")
+    void testGetNoticeBoards() {
+        BoardRequestDTO noticeDto = BoardRequestDTO.builder()
+                                                   .categoryId(category.getId())
+                                                   .title("공지사항 게시글")
+                                                   .content("공지 내용입니다.")
+                                                   .noticeYn(true)
+                                                   .build();
+        boardService.createBoard(noticeDto, user.getEmail());
+
+        List<BoardResponseDTO> notices = boardService.getNoticeBoards();
+
+        assertThat(notices).isNotEmpty();
+        assertThat(notices.get(0).getNoticeYn()).isTrue();
+        log.info("공지글 조회 테스트 통과: {}", notices.get(0).getTitle());
+    }
+
+    @Test
+    @DisplayName("검색 기능 (제목, 내용, 작성자명) 테스트")
+    void testSearchBoards() {
+        boardService.createBoard(BoardRequestDTO.builder()
+                                                .categoryId(category.getId())
+                                                .title("검색용 제목 테스트")
+                                                .content("본문 내용입니다.")
+                                                .build(), user.getEmail());
+
+        var titleResult = boardService.searchBoards("title", "제목", PageRequest.of(0, 10));
+        var contentResult = boardService.searchBoards("content", "본문", PageRequest.of(0, 10));
+        var authorResult = boardService.searchBoards("author", user.getName(), PageRequest.of(0, 10));
+
+        assertThat(titleResult.getContent()).isNotEmpty();
+        assertThat(contentResult.getContent()).isNotEmpty();
+        assertThat(authorResult.getContent()).isNotEmpty();
+
+        log.info("검색 테스트 통과: 제목={}, 내용={}, 작성자={}",
+                titleResult.getTotalElements(), contentResult.getTotalElements(), authorResult.getTotalElements());
     }
 }
