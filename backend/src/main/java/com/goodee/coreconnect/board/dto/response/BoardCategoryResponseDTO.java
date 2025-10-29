@@ -10,7 +10,6 @@ import lombok.*;
 @Builder
 /**
  * 게시판 카테고리 응답 DTO
- * - 카테고리 목록 및 단일 조회 시 클라이언트로 반환
  */
 public class BoardCategoryResponseDTO {
 

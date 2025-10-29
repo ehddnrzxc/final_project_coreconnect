@@ -25,7 +25,7 @@ public class BoardCategoryServiceImpl implements BoardCategoryService {
     private final BoardCategoryRepository categoryRepository;
     private final UserRepository userRepository;
 
-    /** 🔒 관리자 권한 확인 메서드 */
+    /** 관리자 권한 확인 메서드 */
     private void checkAdminRole(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
@@ -34,7 +34,7 @@ public class BoardCategoryServiceImpl implements BoardCategoryService {
         }
     }
 
-    /** ✅ 카테고리 등록 (관리자 전용) */
+    /** 카테고리 등록 (관리자 전용) */
     @Override
     public BoardCategoryResponseDTO createCategory(BoardCategoryRequestDTO dto, String email) {
         checkAdminRole(email);
@@ -52,7 +52,7 @@ public class BoardCategoryServiceImpl implements BoardCategoryService {
         return BoardCategoryResponseDTO.toDTO(saved);
     }
 
-    /** ✅ 카테고리 수정 (관리자 전용) */
+    /** 카테고리 수정 (관리자 전용) */
     @Override
     public BoardCategoryResponseDTO updateCategory(Integer categoryId, BoardCategoryRequestDTO dto, String email) {
         checkAdminRole(email);
@@ -64,7 +64,7 @@ public class BoardCategoryServiceImpl implements BoardCategoryService {
         return BoardCategoryResponseDTO.toDTO(category);
     }
 
-    /** ✅ 카테고리 삭제 (Soft Delete, 관리자 전용) */
+    /** 카테고리 삭제 (Soft Delete, 관리자 전용) */
     @Override
     public void deleteCategory(Integer categoryId, String email) {
         checkAdminRole(email);

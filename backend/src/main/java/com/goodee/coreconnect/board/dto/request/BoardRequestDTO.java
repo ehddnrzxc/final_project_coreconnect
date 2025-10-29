@@ -12,8 +12,7 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 /**
- * 게시글 등록/수정 요청 DTO
- * - 게시글 작성 및 수정 시 클라이언트로부터 데이터 수신
+ * 게시글 요청 DTO
  */
 public class BoardRequestDTO {
 

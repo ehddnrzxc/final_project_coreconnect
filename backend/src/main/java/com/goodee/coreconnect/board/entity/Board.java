@@ -64,11 +64,11 @@ public class Board {
     @JoinColumn(name = "category_id", nullable = false)
     private BoardCategory category;
 
-    @OneToMany(mappedBy = "board", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "board", cascade = CascadeType.ALL)
     @OrderBy("createdAt ASC")
     private List<BoardReply> replies = new ArrayList<>();
 
-    @OneToMany(mappedBy = "board", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "board", cascade = CascadeType.ALL)
     private List<BoardFile> files = new ArrayList<>();
 
 
