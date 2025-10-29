@@ -20,12 +20,12 @@ import com.goodee.coreconnect.chat.dto.response.ChatResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatRoomResponseDTO;
 import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
-import com.goodee.coreconnect.chat.entity.Notification;
-import com.goodee.coreconnect.chat.enums.NotificationType;
 import com.goodee.coreconnect.chat.repository.ChatRepository;
 import com.goodee.coreconnect.chat.repository.NotificationRepository;
 import com.goodee.coreconnect.chat.service.ChatRoomService;
 import com.goodee.coreconnect.common.dto.response.ResponseDTO;
+import com.goodee.coreconnect.common.entity.Notification;
+import com.goodee.coreconnect.common.notification.enums.NotificationType;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
 

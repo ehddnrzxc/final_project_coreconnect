@@ -1,4 +1,4 @@
-package com.goodee.coreconnect.chat.handler;
+package com.goodee.coreconnect.common.notification.handler;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -8,7 +8,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -22,15 +21,15 @@ import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.approval.repository.DocumentRepository;
 import com.goodee.coreconnect.chat.dto.response.ChatResponseDTO;
 import com.goodee.coreconnect.chat.entity.Chat;
-import com.goodee.coreconnect.chat.entity.Notification;
-import com.goodee.coreconnect.chat.enums.NotificationType;
 import com.goodee.coreconnect.chat.repository.NotificationRepository;
 import com.goodee.coreconnect.chat.service.ChatRoomService;
+import com.goodee.coreconnect.common.entity.Notification;
+import com.goodee.coreconnect.common.notification.enums.NotificationType;
+import com.goodee.coreconnect.common.notification.service.WebSocketDeliveryService;
 import com.goodee.coreconnect.security.jwt.JwtProvider;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
-import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -42,10 +41,11 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class ChatWebSocketHandler extends TextWebSocketHandler {
+public class WebSocketHandler extends TextWebSocketHandler {
 	
-	// 사용자ID와 세션 매핑 (추후 Redis로 확장 가능)
-	public final Map<Integer, WebSocketSession> userSessions = new ConcurrentHashMap<>();
+  private final WebSocketDeliveryService webSocketDeliveryService;
+  
+  public final Map<Integer, WebSocketSession> userSessions = new ConcurrentHashMap<>();
 	
 	private final JwtProvider jwtProvider;
 	
@@ -62,10 +62,6 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 	
 	// 사용자별 구독 중인 채팅방 목록을 관리 (userId -> List of roomIds)
 	private final Map<Integer, List<Integer>> userSubscriptions = new ConcurrentHashMap<>();
-	
-	public Map<Integer, WebSocketSession> getUserSessions() {
-		return userSessions;
-	}
 	
 	/**
 	 * 서버(예: REST 컨트롤러)에서 DB에 Chat을 저장한 후에, 연결된 WebSocket 클라이언트들에게
@@ -125,6 +121,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 		Integer userId = getUserIdFromSession(session); // JWT/Principal에서 추출
 		if (userId != null) {
 			userSessions.put(userId, session);
+			webSocketDeliveryService.registerSession(userId, session);
 		}		
 	}
 	
@@ -135,6 +132,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 		Integer userId = getUserIdFromSession(session);
 		if (userId != null) {
 			userSessions.remove(userId);
+			webSocketDeliveryService.unregisterSession(userId);
 		}
 	}	
 	
@@ -317,7 +315,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 			json.put("message", message);  //  
 			json.put("alarmId", alarmId);
 			try {
-				
+			  session.sendMessage(new TextMessage(objectMapper.writeValueAsString(json)));
+        sentSuccess = true;
 			} catch (Exception e) {
 				log.error("[sendAlarmToUser] 알림 전송 오류: " + e.getMessage());
 				sentSuccess = false;

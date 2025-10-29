@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.goodee.coreconnect.common.entity.Notification;
 import com.goodee.coreconnect.user.entity.User;
 
 import jakarta.persistence.CascadeType;
