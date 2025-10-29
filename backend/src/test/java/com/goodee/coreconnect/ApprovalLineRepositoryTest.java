@@ -17,6 +17,7 @@ import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.approval.entity.Template;
 import com.goodee.coreconnect.approval.enums.ApprovalLineStatus;
 import com.goodee.coreconnect.approval.enums.ApprovalLineType;
+import com.goodee.coreconnect.approval.enums.DocumentStatus;
 import com.goodee.coreconnect.approval.repository.ApprovalLineRepository;
 import com.goodee.coreconnect.approval.repository.DocumentRepository;
 import com.goodee.coreconnect.approval.repository.TemplateRepository;
@@ -29,8 +30,8 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @SpringBootTest
-@TestPropertySource(locations = "classpath:application.properties")
 @Transactional
+@TestPropertySource(locations = "classpath:application.properties")
 public class ApprovalLineRepositoryTest {
 
   @Autowired
@@ -56,9 +57,9 @@ public class ApprovalLineRepositoryTest {
   @BeforeEach
   void setUp() throws InterruptedException {
     // 테스트 데이터 설정
-    drafter = userRepository.save(User.createUser("password0", "기안자", Role.ADMIN, "drafter@example.com", "010-0000-0000", null));
-    approver1 = userRepository.save(User.createUser("password1", "결재자1", Role.USER, "approver1@example.com", "010-1111-1111", null));
-    approver2 = userRepository.save(User.createUser("password2", "결재자2", Role.USER, "approver2@example.com", "010-2222-2222", null));
+    drafter = userRepository.save(User.createUser("password0", "기안자", Role.ADMIN, "drafter111@example.com", "010-0000-0000", null));
+    approver1 = userRepository.save(User.createUser("password1", "결재자1", Role.USER, "approver111@example.com", "010-1111-1111", null));
+    approver2 = userRepository.save(User.createUser("password2", "결재자2", Role.USER, "approver221@example.com", "010-2222-2222", null));
     template = templateRepository.save(Template.createTemplate("테스트 양식", "테스트 양식내용입니다.", drafter));
     doc1 = documentRepository.save(Document.createDocument(template, drafter, "테스트 문서1 (가장 오래됨)", "테스트 문서 내용1"));
     Thread.sleep(10);
@@ -68,17 +69,17 @@ public class ApprovalLineRepositoryTest {
     userRepository.flush();
     documentRepository.flush();
     templateRepository.flush();
-    User email = userRepository.findByEmail("drafter@example.com").orElseThrow(() -> new EntityNotFoundException("~~~~~이메일을 찾을 수 없습니다.~~~~"));
+    User email = userRepository.findByEmail("drafter111@example.com").orElseThrow(() -> new EntityNotFoundException("~~~~~이메일을 찾을 수 없습니다.~~~~"));
     log.info("email: {}" ,email.getEmail());
     
     // --- 결재선 생성 시나리오 ---
-    ApprovalLine line_doc2_app1 = ApprovalLine.createApprovalLine(doc2, approver1, 1, ApprovalLineType.APPROVE);
-    ApprovalLine line_doc1_app1 = ApprovalLine.createApprovalLine(doc1, approver1, 1, ApprovalLineType.APPROVE); 
+    ApprovalLine line_doc2_app1 = ApprovalLine.createApprovalLine(doc2, approver1, 1, ApprovalLineType.APPROVE, ApprovalLineStatus.WAITING);
+    ApprovalLine line_doc1_app1 = ApprovalLine.createApprovalLine(doc1, approver1, 1, ApprovalLineType.APPROVE, ApprovalLineStatus.WAITING); 
 
-    ApprovalLine line_doc3_app1_approved = ApprovalLine.createApprovalLine(doc3, approver1, 1, ApprovalLineType.APPROVE);
+    ApprovalLine line_doc3_app1_approved = ApprovalLine.createApprovalLine(doc3, approver1, 1, ApprovalLineType.APPROVE, ApprovalLineStatus.WAITING);
     line_doc3_app1_approved.approve("테스트 승인"); 
 
-    ApprovalLine line_doc3_app2 = ApprovalLine.createApprovalLine(doc3, approver2, 2, ApprovalLineType.APPROVE);
+    ApprovalLine line_doc3_app2 = ApprovalLine.createApprovalLine(doc3, approver2, 2, ApprovalLineType.APPROVE, ApprovalLineStatus.WAITING);
 
     approvalLineRepository.saveAll(List.of(
         line_doc2_app1, 
@@ -96,9 +97,10 @@ public class ApprovalLineRepositoryTest {
   void findByApproverAndApprovalLineStatusOrderByDocumentCreatedAt() {
 
     // --- 1. 실행 (Act) ---
-    List<ApprovalLine> results = approvalLineRepository.findByApproverAndApprovalLineStatusOrderByDocumentCreatedAt(
+    List<ApprovalLine> results = approvalLineRepository.findMyTasks(
         approver1, 
-        ApprovalLineStatus.WAITING
+        ApprovalLineStatus.WAITING,
+        DocumentStatus.DRAFT
         );
 
     // --- 2. 검증 (Assert) ---
