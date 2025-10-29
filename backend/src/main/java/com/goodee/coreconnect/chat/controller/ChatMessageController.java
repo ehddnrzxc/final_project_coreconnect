@@ -3,11 +3,14 @@ package com.goodee.coreconnect.chat.controller;
 import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,10 +19,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.goodee.coreconnect.chat.dto.request.CreateRoomRequestDTO;
 import com.goodee.coreconnect.chat.dto.request.SendMessageRequestDTO;
+import com.goodee.coreconnect.chat.dto.response.ChatMessageResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatRoomResponseDTO;
+import com.goodee.coreconnect.chat.dto.response.ChatUserResponseDTO;
+import com.goodee.coreconnect.chat.dto.response.NotificationReadResponseDTO;
 import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
+import com.goodee.coreconnect.chat.entity.ChatRoomUser;
 import com.goodee.coreconnect.chat.entity.Notification;
 import com.goodee.coreconnect.chat.enums.NotificationType;
 import com.goodee.coreconnect.chat.repository.ChatRepository;
@@ -137,8 +144,85 @@ public class ChatMessageController {
 	}
 	
 
+	/**
+	 * 채팅방에서 사용자 목록 조회
+	 * 
+	 * */
+	@GetMapping("/{roomId}")
+	public ResponseEntity<List<ChatUserResponseDTO>> getChatRoomUsers(@PathVariable("roomId") Integer roomId,  @AuthenticationPrincipal String email) {
+		List<ChatRoomUser> chatRoomUsers = chatRoomService.getChatRoomUsers(roomId);
+		List<ChatUserResponseDTO> usersDTO = chatRoomUsers.stream()
+			    .filter(cru -> cru.getUser() != null)
+			    .map(cru -> new ChatUserResponseDTO(
+			        cru.getUser().getId(),
+			        cru.getUser().getName(),
+			        cru.getUser().getEmail()))
+			    .collect(Collectors.toList());
+		
+		
+		
+		ResponseDTO<List<ChatUserResponseDTO>> success = ResponseDTO.<List<ChatUserResponseDTO>>builder()
+				.status(HttpStatus.CREATED.value())
+				.message("채팅방 사용자 조회 성공")
+				.data(usersDTO)
+				.build();
+			
+		return ResponseEntity.ok(usersDTO);
+	}
 	
 	
+	/**
+	 * 내가 참여중인 채팅방에 올라온 채팅메시지 전부 조회
+	 * 
+	 * 
+	 * 
+	 * */
+	@GetMapping
+	public ResponseEntity<List<ChatMessageResponseDTO>> getMyChatMessages(@AuthenticationPrincipal String email) {
+		User user	 = userRepository.findByEmail(email).orElseThrow();		
+		List<Integer> roomIds = chatRoomService.getChatRoomIdsByUserId(user.getId());
+        List<Chat> chats = chatRepository.findByChatRoomIds(roomIds);
+        List<ChatMessageResponseDTO> dtoList = chats.stream().map(chat -> ChatMessageResponseDTO.builder()
+                .id(chat.getId())
+                .messageContent(chat.getMessageContent())
+                .sendAt(chat.getSendAt())
+                .fileYn(chat.getFileYn())
+                .fileUrl(chat.getFileUrl())
+                .roomId(chat.getChatRoom().getId())
+                .senderId(chat.getSender().getId())
+                .senderName(chat.getSender().getName())
+                .build()).collect(Collectors.toList());
+        return ResponseEntity.ok(dtoList);
+		
+		
+		
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	/**
+	 * 채팅메시지 알림 조회시 읽음 처리
+	 * 
+	 * 
+	 * */
+	@PutMapping("/{notificationId}")
+	public ResponseEntity<NotificationReadResponseDTO> markNotificationRead(@PathVariable("notificationId") Integer notificationId, @AuthenticationPrincipal String email) {
+		Notification notification = notificationRepository.findById(notificationId)
+				.orElseThrow(() -> new IllegalArgumentException("알림 없음: " + notificationId));
+		notification.markRead();
+		notificationRepository.save(notification);
+	    return ResponseEntity.ok(new NotificationReadResponseDTO(notification.getId(), notification.getNotificationReadYn()));
+		
+		
+		
+		
+		
+	}
 	
 	
 	
