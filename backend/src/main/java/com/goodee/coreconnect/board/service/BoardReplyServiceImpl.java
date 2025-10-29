@@ -28,7 +28,7 @@ public class BoardReplyServiceImpl implements BoardReplyService {
     private final BoardRepository boardRepository;
     private final UserRepository userRepository;
 
-    /** ✅ 댓글 등록 */
+    /** 댓글 등록 */
     @Override
     public BoardReplyResponseDTO createReply(BoardReplyRequestDTO dto, String email) {
         User user = userRepository.findByEmail(email)
@@ -49,7 +49,7 @@ public class BoardReplyServiceImpl implements BoardReplyService {
         return BoardReplyResponseDTO.toDTO(saved);
     }
 
-    /** ✅ 댓글 수정 (본인만 가능) */
+    /** 댓글 수정 (본인만 가능) */
     @Override
     public BoardReplyResponseDTO updateReply(Integer replyId, BoardReplyRequestDTO dto, String email) {
         BoardReply reply = replyRepository.findById(replyId)
@@ -58,7 +58,7 @@ public class BoardReplyServiceImpl implements BoardReplyService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new EntityNotFoundException("사용자 정보를 찾을 수 없습니다."));
 
-        // 🔒 본인 댓글만 수정 가능
+        // 본인 댓글만 수정 가능
         if (!reply.getUser().getId().equals(user.getId())) {
             throw new AccessDeniedException("본인 댓글만 수정할 수 있습니다.");
         }
@@ -67,7 +67,7 @@ public class BoardReplyServiceImpl implements BoardReplyService {
         return BoardReplyResponseDTO.toDTO(reply);
     }
 
-    /** ✅ 댓글 삭제 (Soft Delete, 본인만 가능) */
+    /** 댓글 삭제 (Soft Delete, 본인만 가능) */
     @Override
     public void softDeleteReply(Integer replyId, String email) {
         BoardReply reply = replyRepository.findById(replyId)
@@ -76,7 +76,7 @@ public class BoardReplyServiceImpl implements BoardReplyService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new EntityNotFoundException("사용자 정보를 찾을 수 없습니다."));
 
-        // 🔒 본인 댓글만 삭제 가능
+        // 본인 댓글만 삭제 가능
         if (!reply.getUser().getId().equals(user.getId())) {
             throw new AccessDeniedException("본인 댓글만 삭제할 수 있습니다.");
         }
@@ -84,7 +84,7 @@ public class BoardReplyServiceImpl implements BoardReplyService {
         reply.delete();
     }
 
-    /** ✅ 게시글별 댓글 목록 (대댓글 포함, 전체 조회 가능) */
+    /** 게시글별 댓글 목록 (대댓글 포함, 전체 조회 가능) */
     @Override
     @Transactional(readOnly = true)
     public List<BoardReplyResponseDTO> getRepliesByBoard(Integer boardId) {

@@ -29,7 +29,7 @@ public class BoardServiceImpl implements BoardService {
     private final BoardCategoryRepository categoryRepository;
     private final UserRepository userRepository;
 
-    /** ✅ 게시글 등록 (이메일 기반) */
+    /** 게시글 등록 (이메일 기반) */
     @Override
     public BoardResponseDTO createBoard(BoardRequestDTO dto, String email) {
         // 로그인 사용자 조회
@@ -41,14 +41,12 @@ public class BoardServiceImpl implements BoardService {
                 .orElseThrow(() -> new EntityNotFoundException("카테고리를 찾을 수 없습니다."));
 
         // 엔티티 생성
-        Board board = Board.createBoard(
-                user,
-                category,
-                dto.getTitle(),
-                dto.getContent(),
-                dto.getNoticeYn(),
-                dto.getPrivateYn()
-        );
+        Board board = Board.createBoard(user,
+                                        category,
+                                        dto.getTitle(),
+                                        dto.getContent(),
+                                        dto.getNoticeYn(),
+                                        dto.getPrivateYn());
 
         Board saved = boardRepository.save(board);
         return BoardResponseDTO.toDTO(saved);
@@ -66,13 +64,11 @@ public class BoardServiceImpl implements BoardService {
                     .orElseThrow(() -> new EntityNotFoundException("카테고리를 찾을 수 없습니다."));
         }
 
-        board.updateBoard(
-                category,
-                dto.getTitle(),
-                dto.getContent(),
-                dto.getNoticeYn(),
-                dto.getPrivateYn()
-        );
+        board.updateBoard(category,
+                          dto.getTitle(),
+                          dto.getContent(),
+                          dto.getNoticeYn(),
+                          dto.getPrivateYn());
 
         return BoardResponseDTO.toDTO(board);
     }
@@ -112,7 +108,7 @@ public class BoardServiceImpl implements BoardService {
         Page<Board> boardPage = boardRepository.findByDeletedYnFalse(pageable);
         List<BoardResponseDTO> dtoList = boardPage.getContent()
                                                   .stream()
-                                                  .map(BoardResponseDTO::toDTO)
+                                                  .map(board -> BoardResponseDTO.toDTO(board))
                                                   .toList();
         return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());
     }
@@ -124,19 +120,19 @@ public class BoardServiceImpl implements BoardService {
         Page<Board> boardPage = boardRepository.findByCategoryIdAndDeletedYnFalse(categoryId, pageable);
         List<BoardResponseDTO> dtoList = boardPage.getContent()
                                                   .stream()
-                                                  .map(BoardResponseDTO::toDTO)
+                                                  .map(board -> BoardResponseDTO.toDTO(board))
                                                   .toList();
         return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());
     }
 
-    /** ✅ 사용자 이메일 기반 게시글 목록 */
+    /** 사용자 이메일 기반 게시글 목록 */
     @Override
     @Transactional(readOnly = true)
     public Page<BoardResponseDTO> getBoardsByUser(String email, Pageable pageable) {
         Page<Board> boardPage = boardRepository.findByUserEmailAndDeletedYnFalse(email, pageable);
         List<BoardResponseDTO> dtoList = boardPage.getContent()
                                                   .stream()
-                                                  .map(BoardResponseDTO::toDTO)
+                                                  .map(board -> BoardResponseDTO.toDTO(board))
                                                   .toList();
         return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());
     }
@@ -147,8 +143,8 @@ public class BoardServiceImpl implements BoardService {
     public List<BoardResponseDTO> getNoticeBoards() {
         List<Board> boardList = boardRepository.findByNoticeYnTrueAndDeletedYnFalse();
         return boardList.stream()
-                        .map(BoardResponseDTO::toDTO)
-                        .toList();
+                         .map(board -> BoardResponseDTO.toDTO(board))
+                         .toList();
     }
 
     /** 게시글 검색 (제목 / 내용 / 작성자명 중 선택형) */
@@ -166,7 +162,7 @@ public class BoardServiceImpl implements BoardService {
 
         List<BoardResponseDTO> dtoList = result.getContent()
                                                .stream()
-                                               .map(BoardResponseDTO::toDTO)
+                                               .map(board -> BoardResponseDTO.toDTO(board))
                                                .toList();
         return new PageImpl<>(dtoList, pageable, result.getTotalElements());
     }

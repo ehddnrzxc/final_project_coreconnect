@@ -13,7 +13,6 @@ import lombok.*;
 @Builder
 /**
  * 댓글 및 대댓글 등록 요청 DTO
- * - 게시글 ID와 부모 댓글 ID를 포함하여 댓글 등록 요청을 처리
  */
 public class BoardReplyRequestDTO {
 
