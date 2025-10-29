@@ -31,7 +31,7 @@ export default function UserCreateForm() {
   useEffect(() => {
     const token = getAccessToken();
     // 부서 조회는 인증 필요 없다면 Authorization 제거해도 됨
-    fetch("/api/departments", {
+    fetch("/api/v1/departments", {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
       .then((r) => {
@@ -81,7 +81,7 @@ export default function UserCreateForm() {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/users", {
+      const res = await fetch("/api/v1/admin/users", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -1,5 +1,7 @@
 package com.goodee.coreconnect.config;
 
+import java.util.List;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -7,7 +9,9 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.goodee.coreconnect.security.jwt.JwtAuthFilter;
 
@@ -17,10 +21,10 @@ import lombok.RequiredArgsConstructor;
 
 @Configuration
 @EnableMethodSecurity
-@RequiredArgsConstructor // ✅ 이 한 줄이면 아래 생성자 필요 없음
+@RequiredArgsConstructor 
 public class SecurityConfig {
 
-    private final JwtAuthFilter jwtAuthFilter; // ← 반드시 final 이어야 함
+    private final JwtAuthFilter jwtAuthFilter; 
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -39,10 +43,11 @@ public class SecurityConfig {
               })
             )
             .authorizeHttpRequests(auth -> auth
+                // CORS 프리플라이트는 항상 허용
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/api/auth/**", "/ws/chat", "/ws/chat/**").permitAll()
-                .requestMatchers("/api/admin/**").hasRole("ADMIN") // URL 레벨 보호(중복되도 OK)
-                .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/user/profile-image").authenticated()
+                // 로그인/회원가입 등 인증 시작 엔드포인트만 오픈
+                .requestMatchers("/api/v1/auth/**").permitAll()
+                // 나머지 경로는 로그인 필요
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthFilter,
@@ -53,12 +58,13 @@ public class SecurityConfig {
 
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
-        var c = new org.springframework.web.cors.CorsConfiguration();
-        c.setAllowedOrigins(java.util.List.of("http://localhost:5173"));
-        c.setAllowedMethods(java.util.List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
-        c.setAllowedHeaders(java.util.List.of("Authorization","Content-Type"));
+        CorsConfiguration c = new CorsConfiguration();
+        c.setAllowedOrigins(List.of("http://localhost:5173"));
+        c.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
+        c.setAllowedHeaders(List.of("Authorization","Content-Type"));
         c.setAllowCredentials(true);
-        var s = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
+
+        UrlBasedCorsConfigurationSource s = new UrlBasedCorsConfigurationSource();
         s.registerCorsConfiguration("/**", c);
         return s;
     }

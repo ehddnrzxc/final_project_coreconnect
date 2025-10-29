@@ -174,6 +174,10 @@ public class User {
     public void deactivate() {
         this.status = Status.INACTIVE;
     }
+    /** 회원 재활성화 */
+    public void activate() {
+      this.status = Status.ACTIVE;
+    }
 
     /** 프로필 이미지 변경 */
     public void updateProfileImage(String imageKey) {
