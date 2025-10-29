@@ -3,11 +3,11 @@ package com.goodee.coreconnect.chat.service;
 import java.util.List;
 
 import com.goodee.coreconnect.approval.entity.Document;
-import com.goodee.coreconnect.chat.dto.request.NotificationRequestDTO;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
 import com.goodee.coreconnect.chat.entity.ChatRoomUser;
-import com.goodee.coreconnect.chat.entity.Notification;
-import com.goodee.coreconnect.chat.enums.NotificationType;
+import com.goodee.coreconnect.common.dto.request.NotificationRequestDTO;
+import com.goodee.coreconnect.common.entity.Notification;
+import com.goodee.coreconnect.common.notification.enums.NotificationType;
 import com.goodee.coreconnect.user.entity.User;
 
 public interface ChatRoomService {

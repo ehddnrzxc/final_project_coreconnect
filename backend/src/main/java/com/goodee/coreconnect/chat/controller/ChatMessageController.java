@@ -5,6 +5,11 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -27,22 +32,24 @@ import com.goodee.coreconnect.chat.dto.response.NotificationReadResponseDTO;
 import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
 import com.goodee.coreconnect.chat.entity.ChatRoomUser;
-import com.goodee.coreconnect.chat.entity.Notification;
-import com.goodee.coreconnect.chat.enums.NotificationType;
 import com.goodee.coreconnect.chat.repository.ChatRepository;
 import com.goodee.coreconnect.chat.repository.NotificationRepository;
 import com.goodee.coreconnect.chat.service.ChatRoomService;
 import com.goodee.coreconnect.common.dto.response.ResponseDTO;
+import com.goodee.coreconnect.common.entity.Notification;
+import com.goodee.coreconnect.common.notification.enums.NotificationType;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+@Tag(name = "Chat API", description = "채팅 관련 기능 API")
 @Slf4j
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/chat")
 @RestController
+@SecurityRequirement(name = "bearerAuth") // 이게 핵심!
 public class ChatMessageController {
 
 
@@ -51,6 +58,7 @@ public class ChatMessageController {
 	private final ChatRepository chatRepository;
 	private final NotificationRepository notificationRepository;
 	
+	@Operation(summary = "채팅방 생성", description = "새로운 채팅방을 생성합니다.")
 	@PostMapping
     public ResponseEntity<ChatRoom> createChatRoom(
     		Principal principal, // ← 이렇게!
@@ -68,6 +76,7 @@ public class ChatMessageController {
 	/**
 	 * 메시지 전송
 	 * */
+	@Operation(summary = "채팅 메시지 전송", description = "채팅 메시지를 전송하고 알림을 생성합니다.")
 	@PostMapping("/messages")
 	public ResponseEntity<ResponseDTO<ChatResponseDTO>> sendMessage(@RequestBody SendMessageRequestDTO req, @AuthenticationPrincipal String email) {
 		User authUser = User.getAuthenticatedUser(userRepository);
@@ -148,6 +157,7 @@ public class ChatMessageController {
 	 * 채팅방에서 사용자 목록 조회
 	 * 
 	 * */
+	@Operation(summary = "채팅방에 참여시킬 사용자 목록 조회", description = "채팅방에 참여시킬 사용자 목록을 반환합니다.")
 	@GetMapping("/{roomId}")
 	public ResponseEntity<List<ChatUserResponseDTO>> getChatRoomUsers(@PathVariable("roomId") Integer roomId,  @AuthenticationPrincipal String email) {
 		List<ChatRoomUser> chatRoomUsers = chatRoomService.getChatRoomUsers(roomId);
@@ -177,6 +187,7 @@ public class ChatMessageController {
 	 * 
 	 * 
 	 * */
+	@Operation(summary = "내가 참여중인 채팅방 메시지 전체 조회", description = "내가 참여중인 모든 채팅방의 메시지를 조회합니다.")
 	@GetMapping
 	public ResponseEntity<List<ChatMessageResponseDTO>> getMyChatMessages(@AuthenticationPrincipal String email) {
 		User user	 = userRepository.findByEmail(email).orElseThrow();		
@@ -210,6 +221,7 @@ public class ChatMessageController {
 	 * 
 	 * 
 	 * */
+	@Operation(summary = "채팅 메시지 알림 읽음 처리", description = "알림을 읽음 처리 합니다.")
 	@PutMapping("/{notificationId}")
 	public ResponseEntity<NotificationReadResponseDTO> markNotificationRead(@PathVariable("notificationId") Integer notificationId, @AuthenticationPrincipal String email) {
 		Notification notification = notificationRepository.findById(notificationId)
