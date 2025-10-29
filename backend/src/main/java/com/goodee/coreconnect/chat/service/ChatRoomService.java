@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
+import com.goodee.coreconnect.chat.entity.ChatRoomUser;
 import com.goodee.coreconnect.common.dto.request.NotificationRequestDTO;
 import com.goodee.coreconnect.common.entity.Notification;
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
@@ -29,6 +30,12 @@ public interface ChatRoomService {
 	List<Notification> saveNotification(
             Integer roomId, Integer senderId, String chatContent, NotificationType notificationType,  Document document);
 	
+	// 채팅방 참열를 위한 주소록 조회
+	List<ChatRoomUser> getChatRoomUsers(Integer roomId);
+	
+	// 사용자가 참여중인 채팅방 조회
+	List<Integer> getChatRoomIdsByUserId(Integer userId);
+
 	void sendNotification(NotificationRequestDTO dto);
 	
 	/**

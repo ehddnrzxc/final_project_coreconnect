@@ -45,6 +45,14 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // CORS 프리플라이트는 항상 허용
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                // Swagger/OpenAPI 경로 모두 허용
+                .requestMatchers(
+                		"/v3/api-docs/**",
+                		"/swagger-ui/**",
+                		"/swagger-ui.html",
+                		"/swagger-resources/**",
+                		"/webjars/**"
+                ).permitAll()
                 // 로그인/회원가입 등 인증 시작 엔드포인트만 오픈
                 .requestMatchers("/api/v1/auth/**").permitAll()
                 // 나머지 경로는 로그인 필요

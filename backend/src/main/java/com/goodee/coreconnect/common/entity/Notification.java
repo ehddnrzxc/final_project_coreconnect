@@ -111,5 +111,13 @@ public class Notification {
        this.notificationSentAt = sentAt;
    }
    
+   /**
+    * 알림 읽음 상태 및 읽은 시각을 변경하는 도메인 메서드
+    * @param readAt 읽은 시각
+    */
+   public void markRead() {
+       this.notificationReadYn = true;
+       this.notificationReadAt = LocalDateTime.now();
+   }
    
 }
