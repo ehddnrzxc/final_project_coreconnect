@@ -2,7 +2,6 @@ package com.goodee.coreconnect.schedule.dto.response;
 
 import java.time.LocalDateTime;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import com.goodee.coreconnect.schedule.entity.Schedule;
 import com.goodee.coreconnect.schedule.enums.ScheduleVisibility;
 
@@ -23,10 +22,8 @@ public class ResponseScheduleDTO {
   
   private String location;
   
-  @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")
   private LocalDateTime startDateTime;
   
-  @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")
   private LocalDateTime endDateTime;
   
   private ScheduleVisibility visibility;

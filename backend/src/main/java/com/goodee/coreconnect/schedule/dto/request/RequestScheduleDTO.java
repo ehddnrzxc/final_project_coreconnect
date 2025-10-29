@@ -2,6 +2,7 @@ package com.goodee.coreconnect.schedule.dto.request;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.goodee.coreconnect.department.entity.Department;
 import com.goodee.coreconnect.schedule.entity.MeetingRoom;
 import com.goodee.coreconnect.schedule.entity.Schedule;
@@ -40,9 +41,11 @@ public class RequestScheduleDTO {
   private String content;
   
   @NotNull
+  @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")
   private LocalDateTime startDateTime;
   
   @NotNull
+  @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")
   private LocalDateTime endDateTime;
   
   @Size(max = 100, message = "장소는 100자 이하로 입력해주세요.")

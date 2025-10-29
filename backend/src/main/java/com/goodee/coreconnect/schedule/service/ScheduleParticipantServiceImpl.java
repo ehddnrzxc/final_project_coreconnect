@@ -29,16 +29,35 @@ public class ScheduleParticipantServiceImpl implements ScheduleParticipantServic
   /** 참여자 추가 */
   @Override
   public ResponseScheduleParticipantDTO addParticipant(RequestScheduleParticipantDTO dto, String email) {
-    
+
+    // 1️⃣요청자 (로그인 유저)
+    User requester = userRepository.findByEmail(email)
+        .orElseThrow(() -> new IllegalArgumentException("요청자(로그인 유저)를 찾을 수 없습니다."));
+  
+    // 2️⃣실제 추가할 유저 (DTO의 userId)
+    User targetUser = userRepository.findById(dto.getUserId())
+        .orElseThrow(() -> new IllegalArgumentException("추가할 유저를 찾을 수 없습니다."));
+  
+    // 3️⃣일정 조회
     Schedule schedule = scheduleRepository.findById(dto.getScheduleId())
-            .orElseThrow(() -> new IllegalArgumentException("일정을 찾을 수 없습니다."));
-
-    User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new IllegalArgumentException("유저를 찾을 수 없습니다."));
-
-    ScheduleParticipant participant = dto.toEntity(schedule, user);
+        .orElseThrow(() -> new IllegalArgumentException("일정을 찾을 수 없습니다."));
+  
+    // (선택사항) 권한 검사: 요청자가 일정의 OWNER인지 확인
+    // boolean isOwner = participantRepository.existsByScheduleAndUserAndRole(schedule, requester, ScheduleRole.OWNER);
+    // if (!isOwner) throw new SecurityException("다른 참여자를 추가할 권한이 없습니다.");
+  
+    // 4️⃣ 중복 체크
+    boolean alreadyExists = participantRepository.findByScheduleAndDeletedYnFalse(schedule)
+        .stream()
+        .anyMatch(p -> p.getUser().equals(targetUser));
+    if (alreadyExists) {
+      throw new IllegalStateException("이미 해당 일정에 등록된 사용자입니다.");
+    }
+  
+    ScheduleParticipant participant = dto.toEntity(schedule, targetUser);
+  
     ScheduleParticipant saved = participantRepository.save(participant);
-
+  
     return ResponseScheduleParticipantDTO.toDTO(saved);
   }
 

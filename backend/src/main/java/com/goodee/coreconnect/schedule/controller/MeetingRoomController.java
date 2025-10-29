@@ -25,20 +25,20 @@ public class MeetingRoomController {
 
   /** 회의실 수정 */
   @PutMapping("/{id}")
-  public MeetingRoomDTO update(@PathVariable Integer id,
+  public MeetingRoomDTO update(@PathVariable("id") Integer id,
                                @Valid @RequestBody MeetingRoomDTO dto) {
     return meetingRoomService.updateMeetingRoom(id, dto);
   }
 
   /** 회의실 삭제 (Soft Delete) */
   @DeleteMapping("/{id}")
-  public void delete(@PathVariable Integer id) {
+  public void delete(@PathVariable("id") Integer id) {
     meetingRoomService.deleteMeetingRoom(id);
   }
   
   /** 회의실 단일 조회 (id 파라미터 기반으로 통일) */
   @GetMapping(params = "id") 
-  public MeetingRoomDTO getById(@RequestParam Integer id) { 
+  public MeetingRoomDTO getById(@RequestParam("id") Integer id) { 
     return meetingRoomService.getMeetingRoomById(id);        
   }
 

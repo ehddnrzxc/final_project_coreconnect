@@ -35,19 +35,19 @@ public class ScheduleParticipantController {
 
   /** 일정별 참여자 목록 조회 */
   @GetMapping(params = "scheduleId")
-  public List<ResponseScheduleParticipantDTO> getBySchedule(@RequestParam Integer scheduleId) {
+  public List<ResponseScheduleParticipantDTO> getBySchedule(@RequestParam("scheduleId") Integer scheduleId) {
     return participantService.getParticipantsBySchedule(scheduleId);
   }
 
   /** 유저별 참여 일정 목록 조회 */
   @GetMapping(params = "userId")
-  public List<ResponseScheduleParticipantDTO> getByUser(@RequestParam Integer userId) {
+  public List<ResponseScheduleParticipantDTO> getByUser(@RequestParam("userId") Integer userId) {
     return participantService.getSchedulesByUser(userId);
   }
 
   /** 참여자 삭제 (Soft Delete) */
   @DeleteMapping("/{id}")
-  public void delete(@PathVariable Integer id) {
+  public void delete(@PathVariable("id") Integer id) {
     participantService.deleteParticipant(id);
   }
 }

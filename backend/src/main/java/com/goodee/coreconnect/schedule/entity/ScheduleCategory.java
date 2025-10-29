@@ -31,7 +31,7 @@ public class ScheduleCategory {
   @Column(name = "sch_category_default_yn", nullable = false)
   private Boolean defaultYn;  // 기본 카테고리 여부
   
-  @Column(name = "sch_category_deleted_yn", nullable = false)
+  @Column(name = "sch_category_deleted_yn", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
   private Boolean deletedYn = false;  // 삭제 여부 (기본값 false)
 
   @Column(name = "sch_category_created_at", nullable = false)
