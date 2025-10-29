@@ -56,6 +56,17 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.BAD_REQUEST) // 400
                 .body(ex.getMessage()); // (예: "진행 중인 문서만 결재할 수 있습니다.")
     }
+    
+    /**
+     * IllegalArgumentException에 대한 예외 처리
+     * @param ex
+     * @return ResponseEntity
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<?> handleIllegalArgument(IllegalArgumentException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ex.getMessage());
+    }
 
     /**
      * 4. 그 외 모든 예상치 못한 예외 처리 (HTTP 500 Internal Server Error)
@@ -69,4 +80,10 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.INTERNAL_SERVER_ERROR) // 500
                 .body("서버 내부 오류가 발생했습니다. 관리자에게 문의하세요.");
     }
+    
+    
+
+
+    
+    
 }

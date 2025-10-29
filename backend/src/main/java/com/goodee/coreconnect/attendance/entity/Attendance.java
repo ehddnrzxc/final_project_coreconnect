@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED) // ✅ 외부에서 new로 생성 방지
+@NoArgsConstructor(access = AccessLevel.PROTECTED) 
 @Table(name = "attendance")
 public class Attendance {
 
@@ -29,7 +29,7 @@ public class Attendance {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "att_status", length = 20, nullable = false)
-    private AttendanceStatus status; // ex) WORKING, LEAVE, ABSENT
+    private AttendanceStatus status; // PRESENT, LATE, ABSENT, LEAVE_EARLY
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id")
@@ -39,9 +39,9 @@ public class Attendance {
     @JoinColumn(name = "dash_id")
     private Dashboard dashboard;
 
-    // ───────────────────────────────
-    // ✅ 정적 팩토리 메서드
-    // ───────────────────────────────
+
+    // 정적 팩토리 메서드
+
     public static Attendance createAttendance(User user, AttendanceStatus status, Dashboard dashboard) {
         Attendance attendance = new Attendance();
         attendance.user = user;
@@ -51,9 +51,9 @@ public class Attendance {
         return attendance;
     }
 
-    // ───────────────────────────────
-    // ✅ 도메인 행위 (업무 로직)
-    // ───────────────────────────────
+
+    // 도메인 행위 (업무 로직)
+ 
 
     /** 퇴근 처리 */
     public void checkOut() {

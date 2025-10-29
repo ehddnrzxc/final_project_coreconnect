@@ -1,6 +1,7 @@
 package com.goodee.coreconnect.user.service;
 
 import java.io.IOException;
+import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -12,8 +13,8 @@ import org.springframework.web.server.ResponseStatusException;
 import com.goodee.coreconnect.common.S3Service;
 import com.goodee.coreconnect.department.entity.Department;
 import com.goodee.coreconnect.department.repository.DepartmentRepository;
-import com.goodee.coreconnect.user.dto.request.CreateUserReq;
-import com.goodee.coreconnect.user.dto.response.UserDto;
+import com.goodee.coreconnect.user.dto.request.CreateUserReqDTO;
+import com.goodee.coreconnect.user.dto.response.UserDTO;
 import com.goodee.coreconnect.user.entity.Status;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
@@ -57,7 +58,7 @@ public class UserServiceImpl implements UserService {
     }
     
     @Transactional
-    public UserDto createUser(CreateUserReq req) {
+    public UserDTO createUser(CreateUserReqDTO req) {
         // 1) 중복 이메일 방지
         if (userRepository.existsByEmail(req.email())) {
             throw new IllegalArgumentException("이미 등록된 이메일입니다: " + req.email());
@@ -90,7 +91,7 @@ public class UserServiceImpl implements UserService {
         }
 
         // 5) 저장 & 반환
-        return UserDto.from(userRepository.save(user));
+        return UserDTO.from(userRepository.save(user));
     }
     
     @Transactional
@@ -102,5 +103,13 @@ public class UserServiceImpl implements UserService {
         } else if (status == Status.INACTIVE) {
             user.deactivate();
         }
+    }
+    @Transactional(readOnly = true)
+    public List<UserDTO> findAllUsers() {
+      List<UserDTO> userList = userRepository.findAll()
+                                             .stream()
+                                             .map(UserDTO::from)
+                                             .toList();
+      return userList;
     }
 }
