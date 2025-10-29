@@ -10,7 +10,6 @@ import lombok.*;
 @Builder
 /**
  * 파일 응답 DTO
- * - 게시글 상세 조회 시, 첨부파일 정보 전달용
  */
 public class BoardFileResponseDTO {
 

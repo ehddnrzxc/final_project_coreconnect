@@ -14,7 +14,6 @@ import lombok.*;
 @Builder
 /**
  * 게시글 응답 DTO
- * - 게시글 상세 / 목록 조회 시 클라이언트로 반환되는 데이터
  */
 public class BoardResponseDTO {
 
@@ -35,7 +34,7 @@ public class BoardResponseDTO {
 
 
     /**
-     * Entity → DTO 변환
+     * Entity -> DTO 변환
      */
     public static BoardResponseDTO toDTO(Board board) {
         if (board == null) return null;
@@ -52,10 +51,10 @@ public class BoardResponseDTO {
                                           .writerName(board.getUser() != null ? board.getUser().getName() : null)
                                           .categoryName(board.getCategory() != null ? board.getCategory().getName() : null)
                                           .files(board.getFiles() != null ? board.getFiles().stream()
-                                                                                  .map(BoardFileResponseDTO::toDTO)
+                                                                                  .map(file -> BoardFileResponseDTO.toDTO(file))
                                                                                   .collect(Collectors.toList()) : List.of())
                                           .replies(board.getReplies() != null ? board.getReplies().stream()
-                                                                                      .map(BoardReplyResponseDTO::toDTO)
+                                                                                      .map(reply -> BoardReplyResponseDTO.toDTO(reply))
                                                                                       .collect(Collectors.toList()) : List.of())
                                           .build();
     }

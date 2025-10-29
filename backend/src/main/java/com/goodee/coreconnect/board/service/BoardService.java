@@ -28,7 +28,7 @@ public interface BoardService {
     /** 카테고리별 게시글 목록 */
     Page<BoardResponseDTO> getBoardsByCategory(Integer categoryId, Pageable pageable);
 
-    /** ✅ 사용자별 게시글 목록 (이메일 기반) */
+    /** 사용자별 게시글 목록 (이메일 기반) */
     Page<BoardResponseDTO> getBoardsByUser(String email, Pageable pageable);
 
     /** 공지글 목록 조회 */

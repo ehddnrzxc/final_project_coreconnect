@@ -264,6 +264,20 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 				.orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다. Email: " + email));
 		
 	}
+
+	@Override
+	public List<ChatRoomUser> getChatRoomUsers(Integer roomId) {
+		return chatRoomUserRepository.findByChatRoomId(roomId);
+	}
+
+	@Override
+	public List<Integer> getChatRoomIdsByUserId(Integer userId) {
+		List<ChatRoomUser> chatRoomUsers = chatRoomUserRepository.findByUserId(userId);
+		return chatRoomUsers.stream()
+				.map(cru -> cru.getChatRoom().getId())
+				.distinct()
+				.collect(Collectors.toList());
+	}
 	
 	
 }

@@ -36,10 +36,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         // WebSocket 인증 제외
         // WebSocket 연결에서는 핸드쉐이크 과정이 HTTP와 다르기 때문에 JWT 인증을 따로 적용하거나 핸들러에서 직접 인증을 처리하는 경우가 많음
-        if (uri.startsWith("/ws/chat")) {
-            chain.doFilter(req, res);
-            return;
-        }
+     // Swagger, API Docs, WebSocket 인증 제외
+        if (
+    	    uri.startsWith("/ws/chat") ||
+    	    uri.equals("/swagger-ui.html") ||
+    	    uri.startsWith("/swagger-ui/") ||
+    	    uri.startsWith("/v3/api-docs") ||
+    	    uri.startsWith("/swagger-resources") ||
+    	    uri.startsWith("/webjars")
+    	) {
+    	    chain.doFilter(req, res);
+    	    return;
+    	}
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             final String token = authHeader.substring(7);

@@ -1,4 +1,4 @@
-package com.goodee.coreconnect;
+package com.goodee.coreconnect.board;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -26,7 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 @SpringBootTest
 @TestPropertySource(locations = "classpath:application.properties")
 @Transactional
-class BoardServiceImplTest {
+class BoardServiceTest {
 
     @Autowired
     private BoardService boardService;

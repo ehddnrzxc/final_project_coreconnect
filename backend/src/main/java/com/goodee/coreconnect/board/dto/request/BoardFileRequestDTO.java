@@ -12,7 +12,6 @@ import lombok.*;
 @Builder
 /**
  * 파일 업로드 요청 DTO
- * - 프론트에서 업로드된 파일 메타정보를 받음
  * - S3 업로드 후 반환된 key를 포함
  */
 public class BoardFileRequestDTO {

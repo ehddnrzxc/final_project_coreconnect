@@ -12,7 +12,6 @@ import lombok.*;
 @Builder
 /**
  * 댓글/대댓글 응답 DTO
- * - 게시글 상세 조회 시 댓글 목록 반환용
  */
 public class BoardReplyResponseDTO {
 

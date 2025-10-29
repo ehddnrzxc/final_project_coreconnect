@@ -46,7 +46,7 @@ public class RequestScheduleDTO {
   
   @NotNull
   @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")
-  private LocalDateTime endDateTime;
+
   
   @Size(max = 100, message = "장소는 100자 이하로 입력해주세요.")
   private String location;
