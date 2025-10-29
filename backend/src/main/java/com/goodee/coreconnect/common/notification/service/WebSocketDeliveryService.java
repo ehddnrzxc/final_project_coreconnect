@@ -5,11 +5,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.stereotype.Service;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+@Service
 public class WebSocketDeliveryService {
 
 	private final Map<Integer, WebSocketSession> sessions = new ConcurrentHashMap<>();
