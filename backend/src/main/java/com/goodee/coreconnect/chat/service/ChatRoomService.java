@@ -7,6 +7,7 @@ import com.goodee.coreconnect.chat.dto.request.NotificationRequestDTO;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
 import com.goodee.coreconnect.chat.entity.Notification;
 import com.goodee.coreconnect.chat.enums.NotificationType;
+import com.goodee.coreconnect.user.entity.User;
 
 public interface ChatRoomService {
 
@@ -19,7 +20,7 @@ public interface ChatRoomService {
 	// 채팅방의 참여자 email 리스트 반환
 	List<String> getParticipantEmail(Integer roomId);
 
-	ChatRoom createChatRoom(String string, List<Integer> userIds);
+	ChatRoom createChatRoom(String string, List<Integer> userIds, String email);
 
 	ChatRoom findById(Integer id);
 
