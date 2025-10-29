@@ -4,7 +4,6 @@ import java.util.List;
 
 import org.springframework.context.ApplicationEvent;
 
-import com.goodee.coreconnect.chat.entity.Notification;
 import com.goodee.coreconnect.common.notification.dto.NotificationPayload;
 
 public class NotificationCreatedEvent extends ApplicationEvent {

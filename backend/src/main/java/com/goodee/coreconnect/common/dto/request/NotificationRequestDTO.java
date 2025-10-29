@@ -1,9 +1,9 @@
-package com.goodee.coreconnect.chat.dto.request;
+package com.goodee.coreconnect.common.dto.request;
 
 import java.util.List;
 import java.util.Map;
 
-import com.goodee.coreconnect.chat.enums.NotificationType;
+import com.goodee.coreconnect.common.notification.enums.NotificationType;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

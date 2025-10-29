@@ -1,9 +1,10 @@
-package com.goodee.coreconnect.chat.entity;
+package com.goodee.coreconnect.common.entity;
 
 import java.time.LocalDateTime;
 
 import com.goodee.coreconnect.approval.entity.Document;
-import com.goodee.coreconnect.chat.enums.NotificationType;
+import com.goodee.coreconnect.chat.entity.Chat;
+import com.goodee.coreconnect.common.notification.enums.NotificationType;
 import com.goodee.coreconnect.user.entity.User;
 
 import jakarta.persistence.Column;
@@ -19,8 +20,6 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Getter
 @AllArgsConstructor

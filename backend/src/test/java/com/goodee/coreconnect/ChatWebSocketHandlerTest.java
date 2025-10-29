@@ -57,14 +57,13 @@ import com.goodee.coreconnect.approval.repository.DocumentRepository;
 import com.goodee.coreconnect.approval.repository.TemplateRepository;
 import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
-import com.goodee.coreconnect.chat.entity.Notification;
-import com.goodee.coreconnect.chat.enums.NotificationType;
-import com.goodee.coreconnect.chat.handler.ChatWebSocketHandler;
 import com.goodee.coreconnect.chat.repository.ChatRepository;
 import com.goodee.coreconnect.chat.repository.NotificationRepository;
 import com.goodee.coreconnect.chat.service.ChatRoomService;
 import com.goodee.coreconnect.chat.service.ChatRoomServiceImpl;
-
+import com.goodee.coreconnect.common.entity.Notification;
+import com.goodee.coreconnect.common.notification.enums.NotificationType;
+import com.goodee.coreconnect.common.notification.handler.WebSocketHandler;
 import com.goodee.coreconnect.security.jwt.JwtProvider;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
@@ -94,7 +93,7 @@ public class ChatWebSocketHandlerTest {
 	@Autowired
 	ChatRepository chatRepository;
 		
-	ChatWebSocketHandler handler;	
+	WebSocketHandler handler;	
 	
 	@Autowired
 	DataSource dataSource;
@@ -119,7 +118,7 @@ public class ChatWebSocketHandlerTest {
 		
 		// 테스트용 ChatWebSocketHandler 인스턴스 생성
 		// 생성자에 필요한 의존성(Mock개체들)을 주입
-		handler = new ChatWebSocketHandler(jwtProvider, userRepository, chatRoomService, notificationRepository, documentRepository);
+		/* handler = new WebSocketHandler(jwtProvider, userRepository, chatRoomService, notificationRepository, documentRepository);*/
 	}
 	
 	@Test

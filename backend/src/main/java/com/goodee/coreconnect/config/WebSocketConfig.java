@@ -1,12 +1,11 @@
 package com.goodee.coreconnect.config;
 
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.messaging.simp.config.MessageBrokerRegistry;
-import org.springframework.web.socket.WebSocketHandler;
-import org.springframework.web.socket.config.annotation.*;
+import org.springframework.web.socket.config.annotation.EnableWebSocket;
+import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
+import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 
-import com.goodee.coreconnect.chat.handler.ChatWebSocketHandler;
+import com.goodee.coreconnect.common.notification.handler.WebSocketHandler;
 
 import lombok.RequiredArgsConstructor;
 
@@ -15,13 +14,13 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class WebSocketConfig  implements WebSocketConfigurer {
 
-	private final ChatWebSocketHandler chatWebSocketHandler; // Bean 주입
+  private final WebSocketHandler webSocketHandler;
 	
 	
 	@Override
 	public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-		registry.addHandler(chatWebSocketHandler, "/ws/chat")
-		         .setAllowedOrigins("*"); // CORS 허용
+	  registry.addHandler(webSocketHandler, "/ws/notification") // (1, 2)
+    .setAllowedOrigins("http://localhost:5173"); // CORS 허용
 		         //.withSockJS();		
 	}
 }
