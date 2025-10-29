@@ -1,6 +1,7 @@
 package com.goodee.coreconnect.approval.service;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -27,15 +28,23 @@ import com.goodee.coreconnect.approval.repository.ApprovalLineRepository;
 import com.goodee.coreconnect.approval.repository.DocumentRepository;
 import com.goodee.coreconnect.approval.repository.TemplateRepository;
 import com.goodee.coreconnect.common.S3Service;
+import com.goodee.coreconnect.common.entity.Notification;
+
+import com.goodee.coreconnect.common.notification.dto.NotificationPayload;
+import com.goodee.coreconnect.common.notification.enums.NotificationType;
+import com.goodee.coreconnect.common.notification.service.WebSocketDeliveryService;
+import com.goodee.coreconnect.chat.repository.NotificationRepository;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
- * 결재 서비스 구현체
- */
+ * 결재 서비스 구현체
+ */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true) // CUD 작업에는 @Transactional을 별도 명시
@@ -46,6 +55,10 @@ public class ApprovalServiceImpl implements ApprovalService {
   private final UserRepository userRepository;
   private final ApprovalLineRepository approvalLineRepository;
   private final S3Service s3Service;
+
+  // --- 알림 서비스 및 리포지토리 주입 ---
+  private final WebSocketDeliveryService webSocketDeliveryService;
+  private final NotificationRepository notificationRepository;
 
   /**
    * 새 결재 문서를 상신합니다.
@@ -107,6 +120,33 @@ public class ApprovalServiceImpl implements ApprovalService {
     // 5. 문서 저장 (CascadeType.ALL로 인해 ApprovalLines도 함께 저장됨)
     Document savedDocument = documentRepository.save(document);
 
+
+    // --- 알림 전송 로직 (첫번째 결재자에게) ---
+    // 6. 첫번째 결재자 찾기
+    ApprovalLine firstLine = savedDocument.getApprovalLines().stream()
+        .min(Comparator.comparing(ApprovalLine::getApprovalLineOrder))
+        .orElse(null);
+
+    if (firstLine != null) {
+      User firstApprover = firstLine.getApprover();
+      String message = drafter.getName() + "님으로부터 새로운 결재 요청이 도착했습니다.";
+
+      // 6-1. 페이로드 생성
+      NotificationPayload payload = createNotificationPayload(
+          firstApprover.getId(), // 받는사람 (첫 결재자)
+          drafter.getId(),         // 보낸사람 (기안자)
+          drafter.getName(),
+          message,
+          savedDocument.getId()
+          );
+
+      // 6-2. DB에 알림 저장
+      saveNotificationToDB(payload, firstApprover, savedDocument);
+
+      // 6-3. 실시간 알림 전송
+      webSocketDeliveryService.sendToUser(firstApprover.getId(), payload);
+    }
+
     return savedDocument.getId();
   }
 
@@ -155,7 +195,7 @@ public class ApprovalServiceImpl implements ApprovalService {
   }
 
   /**
-   * 문서 상세 내용을 조회합니다.
+   * 문서 상세 내용을 조회합니다.
    */
   @Override
   public DocumentDetailResponseDTO getDocumentDetail(Integer documentId, String email) {
@@ -229,6 +269,53 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     // 문서 엔티티 로직 호출 (모든 결재 완료 시 문서 상태 'COMPLETED'로 변경)
     document.updateStatusAfterApproval();
+
+
+    // --- 알림 전송 로직 (다음 결재자 또는 기안자에게) ---
+
+    // CASE 1: 결재가 완료된 경우 (최종 승인)
+    if (document.getDocumentStatus() == DocumentStatus.COMPLETED) {
+      User drafter = document.getUser(); // 기안자
+      String message = "상신하신 결재가 최종 승인되었습니다.";
+
+      NotificationPayload payload = createNotificationPayload(
+          drafter.getId(),      // 받는사람 (기안자)
+          currentUserId,        // 보낸사람 (마지막 결재자)
+          currentUser.getName(),
+          message,
+          document.getId()
+          );
+
+      saveNotificationToDB(payload, drafter, document);
+      webSocketDeliveryService.sendToUser(drafter.getId(), payload);
+
+    } 
+    // CASE 2: 아직 진행 중인 경우 (다음 결재자에게 알림)
+    else if (document.getDocumentStatus() == DocumentStatus.IN_PROGRESS) {
+      // 다음 결재자 찾기
+      ApprovalLine nextLine = document.getApprovalLines().stream()
+          .filter(line -> line.getApprovalLineStatus() == ApprovalLineStatus.WAITING)
+          .min(Comparator.comparing(ApprovalLine::getApprovalLineOrder))
+          .orElse(null); // 다음 결재자가 없으면 null
+
+      if (nextLine != null) {
+        User nextApprover = nextLine.getApprover();
+        User drafter = document.getUser(); // 기안자
+        String message = drafter.getName() + "님으로부터 새로운 결재 요청이 도착했습니다."; // (메시지는 첫 상신과 동일)
+
+        NotificationPayload payload = createNotificationPayload(
+            nextApprover.getId(), // 받는사람 (다음 결재자)
+            drafter.getId(),      // 보낸사람 (기안자)
+            drafter.getName(),
+            message,
+            document.getId()
+            );
+
+        saveNotificationToDB(payload, nextApprover, document);
+        webSocketDeliveryService.sendToUser(nextApprover.getId(), payload);
+      }
+    }
+
   }
 
   /**
@@ -271,6 +358,21 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     // 문서 엔티티 로직 호출 (상태: IN_PROGRESS -> REJECTED)
     document.reject();
+
+    // --- 알림 전송 로직 (기안자에게) ---
+    User drafter = document.getUser(); // 기안자
+    String message = "상신하신 결재가 반려되었습니다.";
+
+    NotificationPayload payload = createNotificationPayload(
+        drafter.getId(),      // 받는사람 (기안자)
+        currentUserId,        // 보낸사람 (반려한 결재자)
+        currentUser.getName(),
+        message,
+        document.getId()
+        );
+
+    saveNotificationToDB(payload, drafter, document);
+    webSocketDeliveryService.sendToUser(drafter.getId(), payload);
   }
 
   /**
@@ -286,7 +388,7 @@ public class ApprovalServiceImpl implements ApprovalService {
   }
 
   /**
-   * 특정 양식(템플릿)의 상세 내용을 조회합니다.
+   * 특정 양식(템플릿)의 상세 내용을 조회합니다.
    */
   @Override
   public TemplateDetailResponseDTO getTemplateDetail(Integer templateId) {
@@ -310,6 +412,57 @@ public class ApprovalServiceImpl implements ApprovalService {
   private User findUserByEmail(String email) {
     return userRepository.findByEmail(email) // ✅ findByEmail 사용
         .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다. Email: " + email));
+  }
+
+
+  // --- 알림 페이로드 생성 헬퍼 메서드 ---
+  /**
+   * 알림 페이로드(DTO)를 생성합니다.
+   */
+  private NotificationPayload createNotificationPayload(Integer recipientId, Integer senderId, String senderName, String message, Integer documentId) {
+
+    NotificationPayload payload = new NotificationPayload();
+    payload.setRecipientId(recipientId);
+    payload.setSenderId(senderId);
+    payload.setSenderName(senderName);
+    payload.setMessage(message);
+    payload.setNotificationType(NotificationType.APPROVAL.name()); // "APPROVAL"
+    payload.setCreatedAt(LocalDateTime.now());
+
+    return payload;
+  }
+
+  /**
+   * 알림 페이로드(DTO)를 Notification 엔티티로 변환하여 DB에 저장합니다.
+   */
+  private void saveNotificationToDB(NotificationPayload payload, User recipient, Document document) {
+    try {
+      // [수정해야하는 부분] new Notification() 및 setter 대신 createNotification 팩토리 메서드 사용
+      Notification notification = Notification.createNotification(
+          recipient,                             // User user (알림 수신자)
+          NotificationType.APPROVAL,             // NotificationType notificationType
+          payload.getMessage(),                  // String notificationMessage
+          null,                                  // Chat chat (결재 알림이므로 null)
+          document,                              // Document document (연관된 결재 문서)
+          false,                                 // Boolean notificationReadYn (초기값: 안 읽음)
+          false,                                 // Boolean notificationSentYn (초기값: 전송 전)
+          false,                                 // Boolean notificationDeletedYn (초기값: 삭제 안 됨)
+          null,                                  // LocalDateTime notificationSentAt (초기값: null)
+          null                                   // LocalDateTime notificationReadAt (초기값: null)
+          );
+
+      Notification savedNotification = notificationRepository.save(notification);
+
+      // 저장 후 생성된 ID를 페이로드에 다시 설정 (클라이언트에서 PK가 필요할 경우)
+      payload.setNotificationId(savedNotification.getId());
+
+    } catch (Exception e) {
+      log.error("알림 DB 저장 실패. (Recipient: {}, Document: {}). Error: {}", 
+          recipient.getId(), 
+          document.getId(), 
+          e.getMessage()
+          );
+    }
   }
 
 }

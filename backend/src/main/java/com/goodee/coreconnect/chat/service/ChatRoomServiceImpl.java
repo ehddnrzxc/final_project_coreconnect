@@ -9,13 +9,13 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.goodee.coreconnect.chat.entity.Notification;
-import com.goodee.coreconnect.chat.enums.NotificationType;
 import com.goodee.coreconnect.chat.event.NotificationCreatedEvent;
+import com.goodee.coreconnect.common.dto.request.NotificationRequestDTO;
+import com.goodee.coreconnect.common.entity.Notification;
 import com.goodee.coreconnect.common.notification.dto.NotificationPayload; // DTO import 추가
+import com.goodee.coreconnect.common.notification.enums.NotificationType;
 import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.approval.repository.DocumentRepository;
-import com.goodee.coreconnect.chat.dto.request.NotificationRequestDTO;
 import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
 import com.goodee.coreconnect.chat.entity.ChatRoomUser;
@@ -26,6 +26,7 @@ import com.goodee.coreconnect.chat.repository.ChatRoomUserRepository;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -61,11 +62,13 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	}
 
 	@Transactional
-	public ChatRoom createChatRoom(String name, List<Integer> userIds) {
+	public ChatRoom createChatRoom(String name, List<Integer> userIds,  String email ) {
+		User drafter = findUserByEmail(email);
+		
 	    String roomType = (userIds.size() == 1) ? "alone" : "group";
 	    Boolean favoriteStatus = false;
 		
-	    ChatRoom chatRoom = ChatRoom.createChatRoom(name, roomType, favoriteStatus);
+	    ChatRoom chatRoom = ChatRoom.createChatRoom(name, roomType, favoriteStatus, drafter);
 
 		chatRoomRepository.save(chatRoom);
 		
@@ -78,6 +81,8 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 		}
 		return chatRoom;		
 	}
+
+	
 
 	@Override
 	public ChatRoom findById(Integer id) {
@@ -97,7 +102,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	@Transactional
 	@Override
 	public List<Notification> saveNotification(Integer roomId, Integer senderId, String chatContent, NotificationType notificationType, Document document) {
-
+		log.info("CHAT: chatContent2: {}", chatContent);
 	    ChatRoom chatRoom = null;
 	    if (roomId != null) {
 	        chatRoom = chatRoomRepository.findById(roomId)
@@ -111,6 +116,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 
 	    if (notificationType == NotificationType.CHAT && chatRoom != null) {
 	        Chat chat = Chat.createChat(chatRoom, sender, chatContent, false, chatContent, LocalDateTime.now());
+	        log.info("CHAT: content: {}", chatContent);
 	        chat = chatRepository.save(chat);
 
 	        List<ChatRoomUser> participants = chatRoomUserRepository.findByChatRoomId(roomId);
@@ -252,4 +258,12 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 		    notificationRepository.save(notification);
 		}
 	}
+	
+	private User findUserByEmail(String email) {
+		return userRepository.findByEmail(email)
+				.orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다. Email: " + email));
+		
+	}
+	
+	
 }

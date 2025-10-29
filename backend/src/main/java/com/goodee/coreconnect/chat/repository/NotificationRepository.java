@@ -7,7 +7,8 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import com.goodee.coreconnect.chat.entity.Notification;
+
+import com.goodee.coreconnect.common.entity.Notification;
 
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, Integer> {

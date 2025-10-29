@@ -3,12 +3,17 @@ package com.goodee.coreconnect.chat.entity;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.goodee.coreconnect.user.entity.User;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -35,6 +40,11 @@ public class ChatRoom {
 	@Column(name = "favorite_status")
 	private Boolean favoriteStatus;
 	
+	// 개설자(drafter)와의 단방향 다대일 관계 매핑
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "user_id")
+	private User drafter;
+	
 	// 1:N 관계 매핑 (참여자 리스트 테이블과 매핑)
 	@OneToMany(mappedBy = "chatRoom", cascade = CascadeType.ALL)
 	private List<ChatRoomUser> chatRoomUsers = new ArrayList<>();
@@ -45,13 +55,14 @@ public class ChatRoom {
 	
 	protected ChatRoom() {}
 	
-	public static ChatRoom createChatRoom(String roomName, String roomType, Boolean favoriteStatus) {
+	public static ChatRoom createChatRoom(String roomName, String roomType, Boolean favoriteStatus, User user) {
 		 ChatRoom chatRoom = new ChatRoom();
          chatRoom.roomName = roomName;
          chatRoom.roomType = roomType;
          chatRoom.favoriteStatus = favoriteStatus;
          chatRoom.chatRoomUsers = new ArrayList<>();
          chatRoom.chats = new ArrayList<>();
+         chatRoom.drafter = user;
          return chatRoom;
 	}
 	

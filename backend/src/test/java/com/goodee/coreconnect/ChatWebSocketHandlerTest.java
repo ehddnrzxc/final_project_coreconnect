@@ -57,14 +57,13 @@ import com.goodee.coreconnect.approval.repository.DocumentRepository;
 import com.goodee.coreconnect.approval.repository.TemplateRepository;
 import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
-import com.goodee.coreconnect.chat.entity.Notification;
-import com.goodee.coreconnect.chat.enums.NotificationType;
-import com.goodee.coreconnect.chat.handler.ChatWebSocketHandler;
 import com.goodee.coreconnect.chat.repository.ChatRepository;
 import com.goodee.coreconnect.chat.repository.NotificationRepository;
 import com.goodee.coreconnect.chat.service.ChatRoomService;
 import com.goodee.coreconnect.chat.service.ChatRoomServiceImpl;
-
+import com.goodee.coreconnect.common.entity.Notification;
+import com.goodee.coreconnect.common.notification.enums.NotificationType;
+import com.goodee.coreconnect.common.notification.handler.WebSocketHandler;
 import com.goodee.coreconnect.security.jwt.JwtProvider;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
@@ -94,7 +93,7 @@ public class ChatWebSocketHandlerTest {
 	@Autowired
 	ChatRepository chatRepository;
 		
-	ChatWebSocketHandler handler;	
+	WebSocketHandler handler;	
 	
 	@Autowired
 	DataSource dataSource;
@@ -119,7 +118,7 @@ public class ChatWebSocketHandlerTest {
 		
 		// 테스트용 ChatWebSocketHandler 인스턴스 생성
 		// 생성자에 필요한 의존성(Mock개체들)을 주입
-		handler = new ChatWebSocketHandler(jwtProvider, userRepository, chatRoomService, notificationRepository, documentRepository);
+		/* handler = new WebSocketHandler(jwtProvider, userRepository, chatRoomService, notificationRepository, documentRepository);*/
 	}
 	
 	@Test
@@ -167,25 +166,20 @@ public class ChatWebSocketHandlerTest {
 	@Test
 	@DisplayName("2. 채팅방 생성/초대/참여자 관리")
 	void testCreatedChatRoomANdInvite() throws Exception {
-	    ChatRoomServiceImpl chatRoomServiceImpl = mock(ChatRoomServiceImpl.class);
-	    List<Integer> userIds = Arrays.asList(0,2,3,4);
+		   List<Integer> userIds = Arrays.asList(37,38,39,40,41);
 
-	    String roomName = "testRoom2";
-	    String roomType = userIds.size() == 1 ? "alone" : "group";
-	    Boolean favoriteStatus = false;
+	        String roomName = "testRoom";
+	        String roomType = userIds.size() == 1 ? "alone" : "group";
+	        Boolean favoriteStatus = false;
 
-	    ChatRoom chatRoom = ChatRoom.createChatRoom(roomName, roomType, favoriteStatus);
+	        
+	        
+	        // 진짜 DB에 저장
+	        ChatRoom created = chatRoomService.createChatRoom(roomName, userIds, "choimeeyoung2@gmail.com");
 
-	    // id 직접 주입
-	    Field idField = ChatRoom.class.getDeclaredField("id");
-	    idField.setAccessible(true);
-	    idField.set(chatRoom, 100);
-
-	    when(chatRoomServiceImpl.createChatRoom(roomName, userIds)).thenReturn(chatRoom);
-
-	    ChatRoom created = chatRoomServiceImpl.createChatRoom(roomName, userIds);
-
-	    assertEquals(100, created.getId());
+	        assertNotNull(created.getId());
+	        assertEquals(roomName, created.getRoomName());
+	        // 추가 검증 가능: 참여자 수, roomType 등
 	}
 	
 	
@@ -201,7 +195,7 @@ public class ChatWebSocketHandlerTest {
 		List<Integer> userIds = Arrays.asList(user1.getId());
 		
 		// 실제 방 생성
-		ChatRoom chatRoom = chatRoomService.createChatRoom("testRoom", userIds);
+		ChatRoom chatRoom = chatRoomService.createChatRoom("testRoom", userIds, user1.getEmail());
 		
 		// PK는 자동생성! 직접 setId() 안함
 		assertNotNull(chatRoom.getId());
@@ -287,7 +281,7 @@ public class ChatWebSocketHandlerTest {
 		List<Integer> userIds = users.subList(0, Math.min(users.size(), 4)).stream().map(User::getId).toList();
 	
 		// 3. 채팅방을 하나 새로 만든다
-		ChatRoom chatRoom = chatRoomService.createChatRoom("alarmTestRoom3", userIds);
+		ChatRoom chatRoom = chatRoomService.createChatRoom("alarmTestRoom3", userIds, "choimeeyoung2@gmail.com");
 		
 		// 메시지 저장 및 알림 생성
 		chatRoomService.saveNotification(chatRoom.getId(), userIds.get(0), "실제 메시지 전송 테스트3", NotificationType.CHAT, null);
@@ -349,7 +343,7 @@ public class ChatWebSocketHandlerTest {
            실제 일정 등록/알림 등과 똑같은 데이터 구조로 메시지 전송.
          * */
         String schedulePayload = String.format(
-        		"{ \"type\": \"%s\", \"roomId\": 6 }",
+        		"{ \"type\": \"%s\", \"roomId\": 3 }",
         	    type.name() // "APPROVAL"
         	    
         	);
@@ -386,8 +380,8 @@ public class ChatWebSocketHandlerTest {
 		 * CHAT 타입 메시지를 서버에 전송. content에 실제 채팅 메시지가 포함됨.
            서버가 실시간으로 메시지를 push하면 정상적으로 수신되는지 검증.
 		 * */
-		String chatContent = "채팅 테스트 메시지8";
-		String chatPayload = "{ \"type\": \"CHAT\", \"roomId\": 6, \"content\": \"" + chatContent + "\" }";
+		String chatContent = "안녕하세요 김민석 입니다~~";
+		String chatPayload = "{ \"type\": \"CHAT\", \"roomId\": 3, \"content\": \"" + chatContent + "\" }";
 		session.sendMessage(new TextMessage(chatPayload));
 		
 		String chatResponse = receivedMessages.poll(5, TimeUnit.SECONDS);
