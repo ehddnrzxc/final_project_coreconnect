@@ -70,7 +70,7 @@ class BoardServiceImplTest {
                 .privateYn(false)
                 .build();
 
-        BoardResponseDTO response = boardService.createBoard(dto, user.getId());
+        BoardResponseDTO response = boardService.createBoard(dto, user.getEmail());
 
         assertThat(response).isNotNull();
         assertThat(response.getId()).isNotNull();
@@ -88,7 +88,7 @@ class BoardServiceImplTest {
                 .content("수정 전 내용")
                 .build();
 
-        BoardResponseDTO created = boardService.createBoard(dto, user.getId());
+        BoardResponseDTO created = boardService.createBoard(dto, user.getEmail());
 
         BoardRequestDTO updateDto = BoardRequestDTO.builder()
                 .title("수정된 제목")
@@ -111,7 +111,7 @@ class BoardServiceImplTest {
                 .content("삭제 내용")
                 .build();
 
-        BoardResponseDTO created = boardService.createBoard(dto, user.getId());
+        BoardResponseDTO created = boardService.createBoard(dto, user.getEmail());
 
         boardService.softDeleteBoard(created.getId());
 
@@ -124,14 +124,13 @@ class BoardServiceImplTest {
     @Test
     @DisplayName("게시글 상세 조회 (조회수 증가 포함)")
     void testGetBoardById() {
-        // given
         BoardRequestDTO dto = BoardRequestDTO.builder()
                 .categoryId(category.getId())
                 .title("조회 테스트")
                 .content("내용입니다.")
                 .build();
 
-        BoardResponseDTO created = boardService.createBoard(dto, user.getId());
+        BoardResponseDTO created = boardService.createBoard(dto, user.getEmail());
 
         BoardResponseDTO found = boardService.getBoardById(created.getId());
 
@@ -149,7 +148,8 @@ class BoardServiceImplTest {
                     .title("게시글 " + i)
                     .content("내용 " + i)
                     .build();
-            boardService.createBoard(dto, user.getId());
+
+            boardService.createBoard(dto, user.getEmail());
         }
 
         var page = boardService.getAllBoards(org.springframework.data.domain.PageRequest.of(0, 10));

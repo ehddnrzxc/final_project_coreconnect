@@ -18,8 +18,8 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
     /** 카테고리별 게시글 목록 (삭제 제외) */
     Page<Board> findByCategoryIdAndDeletedYnFalse(Integer categoryId, Pageable pageable);
 
-    /** 사용자별 게시글 목록 (삭제 제외) */
-    Page<Board> findByUserIdAndDeletedYnFalse(Integer userId, Pageable pageable);
+    /** 사용자 이메일 기반 게시글 목록 (삭제 제외) */
+    Page<Board> findByUserEmailAndDeletedYnFalse(String email, Pageable pageable);
 
     /** 공지글 목록 (삭제 제외) */
     List<Board> findByNoticeYnTrueAndDeletedYnFalse();

@@ -3,6 +3,7 @@ package com.goodee.coreconnect.board.service;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,10 +28,10 @@ public class BoardReplyServiceImpl implements BoardReplyService {
     private final BoardRepository boardRepository;
     private final UserRepository userRepository;
 
-    /** 댓글 등록 */
+    /** ✅ 댓글 등록 */
     @Override
-    public BoardReplyResponseDTO createReply(BoardReplyRequestDTO dto, Integer userId) {
-        User user = userRepository.findById(userId)
+    public BoardReplyResponseDTO createReply(BoardReplyRequestDTO dto, String email) {
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new EntityNotFoundException("작성자 정보를 찾을 수 없습니다."));
 
         Board board = boardRepository.findById(dto.getBoardId())
@@ -42,37 +43,48 @@ public class BoardReplyServiceImpl implements BoardReplyService {
                     .orElseThrow(() -> new EntityNotFoundException("부모 댓글을 찾을 수 없습니다."));
         }
 
-        BoardReply reply = BoardReply.createReply(
-                user,
-                board,
-                parentReply,
-                dto.getContent()
-        );
-
+        BoardReply reply = BoardReply.createReply(user, board, parentReply, dto.getContent());
         BoardReply saved = replyRepository.save(reply);
+
         return BoardReplyResponseDTO.toDTO(saved);
     }
 
-    /** 댓글 수정 */
+    /** ✅ 댓글 수정 (본인만 가능) */
     @Override
-    public BoardReplyResponseDTO updateReply(Integer replyId, BoardReplyRequestDTO dto) {
+    public BoardReplyResponseDTO updateReply(Integer replyId, BoardReplyRequestDTO dto, String email) {
         BoardReply reply = replyRepository.findById(replyId)
                 .orElseThrow(() -> new EntityNotFoundException("댓글을 찾을 수 없습니다."));
 
-        reply.updateReply(dto.getContent());
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new EntityNotFoundException("사용자 정보를 찾을 수 없습니다."));
 
+        // 🔒 본인 댓글만 수정 가능
+        if (!reply.getUser().getId().equals(user.getId())) {
+            throw new AccessDeniedException("본인 댓글만 수정할 수 있습니다.");
+        }
+
+        reply.updateReply(dto.getContent());
         return BoardReplyResponseDTO.toDTO(reply);
     }
 
-    /** 댓글 삭제 (Soft Delete) */
+    /** ✅ 댓글 삭제 (Soft Delete, 본인만 가능) */
     @Override
-    public void softDeleteReply(Integer replyId) {
+    public void softDeleteReply(Integer replyId, String email) {
         BoardReply reply = replyRepository.findById(replyId)
                 .orElseThrow(() -> new EntityNotFoundException("댓글을 찾을 수 없습니다."));
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new EntityNotFoundException("사용자 정보를 찾을 수 없습니다."));
+
+        // 🔒 본인 댓글만 삭제 가능
+        if (!reply.getUser().getId().equals(user.getId())) {
+            throw new AccessDeniedException("본인 댓글만 삭제할 수 있습니다.");
+        }
+
         reply.delete();
     }
 
-    /** 게시글별 댓글 목록 (대댓글 포함) */
+    /** ✅ 게시글별 댓글 목록 (대댓글 포함, 전체 조회 가능) */
     @Override
     @Transactional(readOnly = true)
     public List<BoardReplyResponseDTO> getRepliesByBoard(Integer boardId) {

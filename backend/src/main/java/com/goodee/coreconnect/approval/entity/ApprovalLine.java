@@ -49,7 +49,7 @@ public class ApprovalLine {
   
   @Enumerated(EnumType.STRING)
   @Column(name = "line_status", nullable = false, length = 20)
-  private ApprovalLineStatus approvalLineStatus = ApprovalLineStatus.WAITING;  // 대기 (스키마 기본값) - WAITING, 승인 - APPROVED, 반려 - REJECTED
+  private ApprovalLineStatus approvalLineStatus; 
   
   @Column(name = "line_comment", length = 255)
   private String approvalLineComment;
@@ -67,12 +67,13 @@ public class ApprovalLine {
    * @param approvalLineType
    * @return
    */
-  public static ApprovalLine createApprovalLine(Document document, User approver, int approvalLineOrder, ApprovalLineType approvalLineType) {
+  public static ApprovalLine createApprovalLine(Document document, User approver, int approvalLineOrder, ApprovalLineType approvalLineType, ApprovalLineStatus approvalLineStatus) {
     ApprovalLine a = new ApprovalLine();
     a.document = document;
     a.approver = approver;
     a.approvalLineOrder = approvalLineOrder;
     a.approvalLineType = approvalLineType;
+    a.approvalLineStatus = ApprovalLineStatus.WAITING; // 대기 (스키마 기본값) - WAITING, 승인 - APPROVED, 반려 - REJECTED
     document.addApprovalLine(a);
     return a;
   }

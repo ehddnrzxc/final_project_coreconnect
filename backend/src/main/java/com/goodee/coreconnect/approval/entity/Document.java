@@ -2,8 +2,10 @@ package com.goodee.coreconnect.approval.entity;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 import org.hibernate.annotations.CreationTimestamp;
 
@@ -57,7 +59,7 @@ public class Document {
   private LocalDateTime completedAt;
 
   @Column(name = "doc_deleted_yn")
-  private Boolean docDeletedYn;
+  private Boolean docDeletedYn = false;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "user_id", nullable = false)
@@ -71,7 +73,7 @@ public class Document {
   private List<ApprovalLine> approvalLines = new ArrayList<>();
 
   @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true)
-  private List<File> files = new ArrayList<>();
+  private Set<File> files = new HashSet<>();
 
   protected Document() {};
 
@@ -136,7 +138,7 @@ public class Document {
   /**
    * 문서를 완료 처리하는 메소드 (updateStatusAfterApproval 메소드에서 사용됨)
    */
-  private void complete() {
+  public void complete() {
     this.documentStatus = DocumentStatus.COMPLETED;
     this.completedAt = LocalDateTime.now();
   }
