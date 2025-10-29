@@ -98,10 +98,9 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("유저가 존재하지 않습니다: " + userId));
         if (status == Status.ACTIVE) {
-            // 활성화 로직 필요 시
+            user.activate();
         } else if (status == Status.INACTIVE) {
             user.deactivate();
         }
-        // save는 트랜잭션 끝나면 flush
     }
 }
