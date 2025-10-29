@@ -22,12 +22,17 @@ import com.goodee.coreconnect.approval.dto.response.TemplateDetailResponseDTO;
 import com.goodee.coreconnect.approval.dto.response.TemplateSimpleResponseDTO;
 import com.goodee.coreconnect.approval.service.ApprovalService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+@Tag(name = "Approval API", description = "전자결재 관련 기능 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/approvals") // API 기본 경로
+@SecurityRequirement(name = "bearerAuth")
 public class ApprovalController {
 
     private final ApprovalService approvalService;
@@ -37,6 +42,7 @@ public class ApprovalController {
      * [POST] /api/v1/approvals
      * - Content-Type: multipart/form-data
      */
+    @Operation(summary = "문서 생성", description = "새 결재 문서 상신")
     @PostMapping
     public ResponseEntity<Integer> createDocument(
         @Valid @RequestPart("dto") DocumentCreateRequestDTO requestDTO, // (1) JSON 데이터
@@ -55,6 +61,7 @@ public class ApprovalController {
      * 2. 내 상신함 (내가 작성한 문서) 목록 조회
      * [GET] /api/v1/approvals/my-drafts
      */
+    @Operation(summary = "목록 조회", description = "내가 작성한 문서 목록 조회")
     @GetMapping("/my-drafts")
     public ResponseEntity<List<DocumentSimpleResponseDTO>> getMyDrafts(
         @AuthenticationPrincipal String email
@@ -67,6 +74,7 @@ public class ApprovalController {
      * 3. 내 결재함 (내가 결재할 문서) 목록 조회
      * [GET] /api/v1/approvals/my-tasks
      */
+    @Operation(summary = "목록 조회", description = "내가 결재할 문서 목록 조회")
     @GetMapping("/my-tasks")
     public ResponseEntity<List<DocumentSimpleResponseDTO>> getMyTasks(
         @AuthenticationPrincipal String email
@@ -79,6 +87,7 @@ public class ApprovalController {
      * 4. 문서 상세 조회
      * [GET] /api/v1/approvals/{documentId}
      */
+    @Operation(summary = "문서 상세 조회", description = "문서 상세 조회")
     @GetMapping("/{documentId}")
     public ResponseEntity<DocumentDetailResponseDTO> getDocumentDetail(
         @PathVariable("documentId") Integer documentId,
@@ -92,6 +101,7 @@ public class ApprovalController {
      * 5. 문서 승인
      * [POST] /api/v1/approvals/{documentId}/approve
      */
+    @Operation(summary = "문서 승인", description = "문서를 승인합니다.")
     @PostMapping("/{documentId}/approve")
     public ResponseEntity<String> approveDocument(
         @PathVariable("documentId") Integer documentId,
@@ -106,6 +116,7 @@ public class ApprovalController {
      * 6. 문서 반려
      * [POST] /api/v1/approvals/{documentId}/reject
      */
+    @Operation(summary = "문서 반려", description = "문서를 반려합니다.")
     @PostMapping("/{documentId}/reject")
     public ResponseEntity<String> rejectDocument(
         @PathVariable("documentId") Integer documentId,
@@ -120,6 +131,7 @@ public class ApprovalController {
      * 7. 활성화된 양식(템플릿) 목록 조회
      * [GET] /api/v1/approvals/templates
      */
+    @Operation(summary = "양식 목록 조회", description = "활성화된 양식 목록 조회")
     @GetMapping("/templates")
     public ResponseEntity<List<TemplateSimpleResponseDTO>> getActiveTemplates() {
         List<TemplateSimpleResponseDTO> templates = approvalService.getActiveTemplates();
@@ -130,6 +142,7 @@ public class ApprovalController {
      * 8. 특정 양식(템플릿) 상세 조회
      * [GET] /api/v1/approvals/templates/{templateId}
      */
+    @Operation(summary = "양식 상세 조회", description = "특정 양식 상세 조회")
     @GetMapping("/templates/{templateId}")
     public ResponseEntity<TemplateDetailResponseDTO> getTemplateDetail(
         @PathVariable("templateId") Integer templateId
