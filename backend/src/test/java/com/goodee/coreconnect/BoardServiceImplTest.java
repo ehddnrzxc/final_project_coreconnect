@@ -1,0 +1,160 @@
+package com.goodee.coreconnect;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.goodee.coreconnect.board.dto.request.BoardRequestDTO;
+import com.goodee.coreconnect.board.dto.response.BoardResponseDTO;
+import com.goodee.coreconnect.board.entity.Board;
+import com.goodee.coreconnect.board.entity.BoardCategory;
+import com.goodee.coreconnect.board.repository.BoardCategoryRepository;
+import com.goodee.coreconnect.board.repository.BoardRepository;
+import com.goodee.coreconnect.board.service.BoardService;
+import com.goodee.coreconnect.user.entity.User;
+import com.goodee.coreconnect.user.repository.UserRepository;
+
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+@SpringBootTest
+@TestPropertySource(locations = "classpath:application.properties")
+@Transactional
+class BoardServiceImplTest {
+
+    @Autowired
+    private BoardService boardService;
+    @Autowired
+    private BoardRepository boardRepository;
+    @Autowired
+    private BoardCategoryRepository categoryRepository;
+    @Autowired
+    private UserRepository userRepository;
+
+    private User user;
+    private BoardCategory category;
+
+    @BeforeEach
+    void setUp() {
+        // ─────────────── 실제 DB 유저 중 1명 불러오기 ───────────────
+        user = userRepository.findByEmail("admin@example.com")
+                .orElseThrow(() -> new IllegalStateException("테스트용 유저(admin@example.com)를 찾을 수 없습니다."));
+
+        log.info("테스트 유저 로드 완료: {}", user.getName());
+
+        // ─────────────── 카테고리 자동 세팅 ───────────────
+        category = categoryRepository.findAll().stream()
+                .findFirst()
+                .orElseGet(() -> {
+                    BoardCategory newCategory = BoardCategory.createCategory("테스트카테고리", 1);
+                    return categoryRepository.save(newCategory);
+                });
+
+        log.info("테스트 카테고리 사용: {}", category.getName());
+    }
+
+    @Test
+    @DisplayName("게시글 등록 성공")
+    void testCreateBoard() {
+        BoardRequestDTO dto = BoardRequestDTO.builder()
+                .categoryId(category.getId())
+                .title("첫 게시글")
+                .content("내용입니다.")
+                .noticeYn(false)
+                .privateYn(false)
+                .build();
+
+        BoardResponseDTO response = boardService.createBoard(dto, user.getId());
+
+        assertThat(response).isNotNull();
+        assertThat(response.getId()).isNotNull();
+        assertThat(response.getTitle()).isEqualTo("첫 게시글");
+        assertThat(response.getWriterName()).isEqualTo(user.getName());
+        log.info("등록 테스트 통과: {}", response);
+    }
+
+    @Test
+    @DisplayName("게시글 수정 성공")
+    void testUpdateBoard() {
+        BoardRequestDTO dto = BoardRequestDTO.builder()
+                .categoryId(category.getId())
+                .title("수정 전 제목")
+                .content("수정 전 내용")
+                .build();
+
+        BoardResponseDTO created = boardService.createBoard(dto, user.getId());
+
+        BoardRequestDTO updateDto = BoardRequestDTO.builder()
+                .title("수정된 제목")
+                .content("수정된 내용")
+                .build();
+
+        BoardResponseDTO updated = boardService.updateBoard(created.getId(), updateDto);
+
+        assertThat(updated.getTitle()).isEqualTo("수정된 제목");
+        assertThat(updated.getContent()).isEqualTo("수정된 내용");
+        log.info("수정 테스트 통과: {}", updated);
+    }
+
+    @Test
+    @DisplayName("게시글 Soft Delete 성공")
+    void testSoftDeleteBoard() {
+        BoardRequestDTO dto = BoardRequestDTO.builder()
+                .categoryId(category.getId())
+                .title("삭제 테스트")
+                .content("삭제 내용")
+                .build();
+
+        BoardResponseDTO created = boardService.createBoard(dto, user.getId());
+
+        boardService.softDeleteBoard(created.getId());
+
+        Board deleted = boardRepository.findById(created.getId())
+                .orElseThrow(() -> new IllegalStateException("게시글이 존재하지 않음"));
+        assertThat(deleted.getDeletedYn()).isTrue();
+        log.info("삭제 테스트 통과: {}", deleted.getTitle());
+    }
+
+    @Test
+    @DisplayName("게시글 상세 조회 (조회수 증가 포함)")
+    void testGetBoardById() {
+        // given
+        BoardRequestDTO dto = BoardRequestDTO.builder()
+                .categoryId(category.getId())
+                .title("조회 테스트")
+                .content("내용입니다.")
+                .build();
+
+        BoardResponseDTO created = boardService.createBoard(dto, user.getId());
+
+        BoardResponseDTO found = boardService.getBoardById(created.getId());
+
+        assertThat(found.getId()).isEqualTo(created.getId());
+        assertThat(found.getViewCount()).isEqualTo(1);
+        log.info("상세조회 테스트 통과: {}", found.getTitle());
+    }
+
+    @Test
+    @DisplayName("전체 게시글 목록 조회 성공")
+    void testGetAllBoards() {
+        for (int i = 1; i <= 3; i++) {
+            BoardRequestDTO dto = BoardRequestDTO.builder()
+                    .categoryId(category.getId())
+                    .title("게시글 " + i)
+                    .content("내용 " + i)
+                    .build();
+            boardService.createBoard(dto, user.getId());
+        }
+
+        var page = boardService.getAllBoards(org.springframework.data.domain.PageRequest.of(0, 10));
+
+        assertThat(page.getContent()).hasSize(3);
+        log.info("전체목록 테스트 통과: {}개 게시글", page.getContent().size());
+    }
+}

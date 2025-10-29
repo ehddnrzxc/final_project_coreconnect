@@ -3,6 +3,8 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import useAuth from "./hooks/useAuth";
 import LoginPage from "./pages/LoginPage";
 import HomePage from "./pages/HomePage";
+import UserCreateForm from "./components/admin/UserCreateForm";
+import AdminRoute from "./components/admin/AdminRoute";
 
 const ProtectedRoute = ({ isLoggedIn, children }) => {
   if (!isLoggedIn) return <Navigate to="/login" replace />;
@@ -24,6 +26,14 @@ export default function App() {
         }
       />
       <Route path="*" element={<Navigate to="/home" replace />} />
+      <Route
+        path="/admin/users/create"
+        element={
+          <AdminRoute>
+            <UserCreateForm />
+          </AdminRoute>
+        }
+      />
     </Routes>
   );
 }

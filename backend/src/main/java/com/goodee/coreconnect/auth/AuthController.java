@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.goodee.coreconnect.security.jwt.JwtProvider;
+import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
@@ -22,7 +23,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 public class AuthController {
   private final JwtProvider jwt;
@@ -37,13 +38,18 @@ public class AuthController {
       // ✅ 요청값 받기
       String email = body.get("email");
       String password = body.get("password");
-
+      
       // ✅ 1. 이메일로 사용자 조회
-      User user = userRepository.findByEmail(email)
-              .orElse(null);
-      if (user == null) {
+      User user = userRepository.findByEmail(email).orElse(null);
+      if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+      if (!passwordEncoder.matches(password, user.getPassword()))
           return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-      }
+
+      // ✅ 사용자 실제 Role 사용
+      Role role = user.getRole();
+
+      
+      
 
       // ✅ 2. 비밀번호 비교 (BCrypt)
       if (!passwordEncoder.matches(password, user.getPassword())) {
@@ -51,7 +57,7 @@ public class AuthController {
       }
 
       // ✅ 3. 토큰 생성
-      String access = jwt.createAccess(email, 10);   // 10분짜리 Access Token
+      String access = jwt.createAccess(email, role, 10);   // 10분짜리 Access Token
       String refresh = jwt.createRefresh(email, 7);  // 7일짜리 Refresh Token
 
       // ✅ 4. HttpOnly Refresh Token 쿠키 설정
@@ -84,8 +90,9 @@ public class AuthController {
       @CookieValue(name="refresh_token", required=false) String refresh) {
     if (refresh == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
     try {
-      String username = jwt.getSubject(refresh);
-      String newAccess = jwt.createAccess(username, 10);
+      String email = jwt.getSubject(refresh);
+      Role role = Role.valueOf(jwt.getRole(refresh));
+      String newAccess = jwt.createAccess(email, role, 10);
       return ResponseEntity.ok(Map.of("accessToken", newAccess));
     } catch (Exception e) {
       e.printStackTrace();

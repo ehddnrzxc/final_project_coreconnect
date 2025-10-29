@@ -9,6 +9,8 @@ import java.util.Map;
 
 import org.springframework.stereotype.Component;
 
+import com.goodee.coreconnect.user.entity.Role;
+
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -22,9 +24,9 @@ public class JwtProvider {
     private final Key key = Keys.hmacShaKeyFor(SECRET.getBytes());
 
     /** Access 토큰 생성 (권장: subject는 setSubject로, role은 클레임으로) */
-    public String createAccess(String email, int minutes) {
+    public String createAccess(String email, Role role, int minutes) {
         Map<String, Object> claims = new HashMap<>();
-        claims.put("role", "USER"); // 또는 실제 user.getRole().name()
+        claims.put("role", role.name()); 
 
         return Jwts.builder()
                 .setSubject(email) // ✅ 표준 subject

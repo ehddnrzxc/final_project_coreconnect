@@ -5,12 +5,16 @@ import com.goodee.coreconnect.schedule.entity.ScheduleParticipant;
 import com.goodee.coreconnect.schedule.enums.ScheduleRole;
 import com.goodee.coreconnect.user.entity.User;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
 @NoArgsConstructor
+@AllArgsConstructor
 @Getter
+@Builder
 @ToString
 public class RequestScheduleParticipantDTO {
 
