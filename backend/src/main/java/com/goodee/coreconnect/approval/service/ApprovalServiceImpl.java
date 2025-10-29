@@ -1,5 +1,6 @@
 package com.goodee.coreconnect.approval.service;
 
+import java.io.IOException;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -7,6 +8,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.goodee.coreconnect.approval.dto.request.ApprovalProcessRequestDTO;
 import com.goodee.coreconnect.approval.dto.request.DocumentCreateRequestDTO;
@@ -16,6 +18,7 @@ import com.goodee.coreconnect.approval.dto.response.TemplateDetailResponseDTO;
 import com.goodee.coreconnect.approval.dto.response.TemplateSimpleResponseDTO;
 import com.goodee.coreconnect.approval.entity.ApprovalLine;
 import com.goodee.coreconnect.approval.entity.Document;
+import com.goodee.coreconnect.approval.entity.File;
 import com.goodee.coreconnect.approval.entity.Template;
 import com.goodee.coreconnect.approval.enums.ApprovalLineStatus;
 import com.goodee.coreconnect.approval.enums.ApprovalLineType;
@@ -23,6 +26,7 @@ import com.goodee.coreconnect.approval.enums.DocumentStatus;
 import com.goodee.coreconnect.approval.repository.ApprovalLineRepository;
 import com.goodee.coreconnect.approval.repository.DocumentRepository;
 import com.goodee.coreconnect.approval.repository.TemplateRepository;
+import com.goodee.coreconnect.common.S3Service;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
@@ -41,16 +45,17 @@ public class ApprovalServiceImpl implements ApprovalService {
   private final TemplateRepository templateRepository;
   private final UserRepository userRepository;
   private final ApprovalLineRepository approvalLineRepository;
+  private final S3Service s3Service;
 
   /**
    * 새 결재 문서를 상신합니다.
    */
   @Override
   @Transactional
-  public Integer createDocument(DocumentCreateRequestDTO requestDTO, Integer currentUserId) {
+  public Integer createDocument(DocumentCreateRequestDTO requestDTO, List<MultipartFile> files, String email) {
 
     // 1. 기안자(User) 및 양식(Template) 조회
-    User drafter = findUserById(currentUserId);
+    User drafter = findUserByEmail(email);
     Template template = templateRepository.findById(requestDTO.getTemplateId())
         .orElseThrow(() -> new EntityNotFoundException("해당 템플릿을 찾을 수 없습니다. ID: " + requestDTO.getTemplateId()));
 
@@ -76,6 +81,26 @@ public class ApprovalServiceImpl implements ApprovalService {
           );
     });
 
+    // 4. (추가) 첨부파일 처리 (S3 업로드)
+    if (files != null && !files.isEmpty()) {
+      try {
+        for (MultipartFile file : files) {
+          if (file == null || file.isEmpty()) continue;
+
+          String fileUrl = s3Service.uploadApprovalFile(file); // S3 업로드
+
+          File.createFile(
+              document,
+              file.getOriginalFilename(),
+              fileUrl, // S3 URL
+              file.getSize()
+              );
+        }
+      } catch (IOException e) {
+        throw new RuntimeException("파일 업로드 중 오류가 발생했습니다.", e);
+      }
+    }
+
     // 4. 문서 상신 (DRAFT -> IN_PROGRESS)
     document.submit();
 
@@ -89,8 +114,8 @@ public class ApprovalServiceImpl implements ApprovalService {
    * 내 상신함(내가 작성한 문서) 목록을 조회합니다.
    */
   @Override
-  public List<DocumentSimpleResponseDTO> getMyDrafts(Integer currentUserId) {
-    User user = findUserById(currentUserId);
+  public List<DocumentSimpleResponseDTO> getMyDrafts(String email) {
+    User user = findUserByEmail(email);
 
     // 1. 리포지토리에서 조회
     List<Document> documents = documentRepository.findByUserAndDocDeletedYnOrderByCreatedAtDesc(user, false);
@@ -105,17 +130,26 @@ public class ApprovalServiceImpl implements ApprovalService {
    * 내 결재함(내가 결재할 문서) 목록을 조회합니다.
    */
   @Override
-  public List<DocumentSimpleResponseDTO> getMyTasks(Integer currentUserId) {
-    User approver = findUserById(currentUserId);
+  public List<DocumentSimpleResponseDTO> getMyTasks(String email) {
+    User approver = findUserByEmail(email);
 
     // 1. 내가 'WAITING' 상태인 모든 결재선 조회
     List<ApprovalLine> waitingLines = approvalLineRepository.findMyTasks(approver, ApprovalLineStatus.WAITING, DocumentStatus.IN_PROGRESS);
 
-    // 2. 조회된 결재선에서 문서를 추출
-    //    (메모리에서 필터링: IN_PROGRESS 상태, 삭제되지 않은 문서)
+    // 2. 조회된 결재선에서 문서를 추출하고, "내 차례가 맞는지" 메모리에서 필터링
     return waitingLines.stream()
-        .map(ApprovalLine::getDocument)
-        .distinct()
+        .map(ApprovalLine::getDocument) // 문서를 가져옴
+        .distinct() // 문서 중복 제거
+        .filter(document -> { // <-- 💡 "내 차례" 필터링 로직 추가
+          // 이 문서의 'WAITING' 상태인 결재선 중 가장 순서(order)가 빠른 선을 찾음
+          ApprovalLine currentTurnLine = document.getApprovalLines().stream()
+              .filter(line -> line.getApprovalLineStatus() == ApprovalLineStatus.WAITING)
+              .min(Comparator.comparing(ApprovalLine::getApprovalLineOrder))
+              .orElse(null); // 대기중인 선이 없으면 null
+
+          // 그 선의 결재자가 지금 로그인한 사용(approver)이 맞는지 확인
+          return currentTurnLine != null && currentTurnLine.getApprover().getId().equals(approver.getId());
+        })
         .map(DocumentSimpleResponseDTO::toDTO)
         .collect(Collectors.toList());
   }
@@ -124,7 +158,7 @@ public class ApprovalServiceImpl implements ApprovalService {
    * 문서 상세 내용을 조회합니다.
    */
   @Override
-  public DocumentDetailResponseDTO getDocumentDetail(Integer documentId, Integer currentUserId) {
+  public DocumentDetailResponseDTO getDocumentDetail(Integer documentId, String email) {
 
     Document document = documentRepository.findDocumentDetailById(documentId)
         .orElseThrow(() -> new EntityNotFoundException("문서를 찾을 수 없습니다. ID: " + documentId));
@@ -133,6 +167,11 @@ public class ApprovalServiceImpl implements ApprovalService {
     if (document.getDocDeletedYn() != null && document.getDocDeletedYn()) {
       throw new EntityNotFoundException("삭제된 문서입니다. ID: " + documentId);
     }
+
+    // email을 기반으로 userId를 가져와서 비교
+    User currentUser = userRepository.findByEmail(email)
+        .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다. Email: " + email));
+    Integer currentUserId = currentUser.getId(); // ID 추출
 
     // 열람 권한 확인 (기안자 또는 결재선에 포함된 사용자인지)
     boolean isDrafter = document.getUser().getId().equals(currentUserId);
@@ -155,7 +194,7 @@ public class ApprovalServiceImpl implements ApprovalService {
    */
   @Override
   @Transactional
-  public void approveDocument(Integer documentId, ApprovalProcessRequestDTO requestDTO, Integer currentUserId) {
+  public void approveDocument(Integer documentId, ApprovalProcessRequestDTO requestDTO, String email) {
 
     Document document = documentRepository.findByIdForUpdate(documentId)
         .orElseThrow(() -> new EntityNotFoundException("문서를 찾을 수 없습니다. ID: " + documentId));
@@ -168,6 +207,11 @@ public class ApprovalServiceImpl implements ApprovalService {
     if (document.getDocumentStatus() != DocumentStatus.IN_PROGRESS) {
       throw new IllegalStateException("진행 중인 문서만 결재할 수 있습니다.");
     }
+
+    // email을 기반으로 userId를 가져와서 비교
+    User currentUser = userRepository.findByEmail(email)
+        .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다. Email: " + email));
+    Integer currentUserId = currentUser.getId(); // ID 추출
 
     // 현재 결재할 차례인 결재선(ApprovalLine) 찾기 (순차 결재 가정)
     ApprovalLine currentLine = document.getApprovalLines().stream()
@@ -192,7 +236,7 @@ public class ApprovalServiceImpl implements ApprovalService {
    */
   @Override
   @Transactional
-  public void rejectDocument(Integer documentId, ApprovalProcessRequestDTO requestDTO, Integer currentUserId) {
+  public void rejectDocument(Integer documentId, ApprovalProcessRequestDTO requestDTO, String email) {
 
     Document document = documentRepository.findByIdForUpdate(documentId)
         .orElseThrow(() -> new EntityNotFoundException("문서를 찾을 수 없습니다. ID: " + documentId));
@@ -205,6 +249,11 @@ public class ApprovalServiceImpl implements ApprovalService {
     if (document.getDocumentStatus() != DocumentStatus.IN_PROGRESS) {
       throw new IllegalStateException("진행 중인 문서만 결재할 수 있습니다.");
     }
+
+    // email을 기반으로 userId를 가져와서 비교
+    User currentUser = userRepository.findByEmail(email)
+        .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다. Email: " + email));
+    Integer currentUserId = currentUser.getId(); // ID 추출
 
     // 현재 결재할 차례인 결재선(ApprovalLine) 찾기
     ApprovalLine currentLine = document.getApprovalLines().stream()
@@ -256,6 +305,11 @@ public class ApprovalServiceImpl implements ApprovalService {
   private User findUserById(Integer userId) {
     return userRepository.findById(userId)
         .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다. ID: " + userId));
+  }
+
+  private User findUserByEmail(String email) {
+    return userRepository.findByEmail(email) // ✅ findByEmail 사용
+        .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다. Email: " + email));
   }
 
 }
