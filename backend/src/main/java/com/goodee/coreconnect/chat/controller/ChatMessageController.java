@@ -1,11 +1,13 @@
 package com.goodee.coreconnect.chat.controller;
 
+import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -28,7 +30,9 @@ import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/chat")
 @RestController
@@ -40,49 +44,25 @@ public class ChatMessageController {
 	private final ChatRepository chatRepository;
 	private final NotificationRepository notificationRepository;
 	
-	/**
-	 * 채팅방 생성
-	 * 
-	 * */
-	@PostMapping("/rooms")
-	public ResponseEntity<ResponseDTO<ChatRoomResponseDTO>> createRoom(@RequestBody CreateRoomRequestDTO req) {
-//		User authUser = User.getAuthenticatedUser(userRepository);
-//        if (authUser == null) {
-//            ResponseDTO<ChatRoomResponseDTO> res = ResponseDTO.<ChatRoomResponseDTO>builder()
-//                    .status(HttpStatus.UNAUTHORIZED.value())
-//                    .message("로그인이 필요합니다.")
-//                    .data(null)
-//                    .build();
-//            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(res);
-//        }
-//
-//        // ensure userIds list exists
-//        if (req.getUserIds() == null) {
-//            req.setUserIds(List.of());
-//        }
-//
-//        // make sure creator is included in participants
-//        if (!req.getUserIds().contains(authUser.getId())) {
-//            req.getUserIds().add(authUser.getId());
-//        }
+	@PostMapping
+    public ResponseEntity<ChatRoom> createChatRoom(
+    		Principal principal, // ← 이렇게!
+            @RequestBody CreateRoomRequestDTO request
+    		
+    		) {  // 2. 방 이름, 초대할 ID 목록
 		
-		
-		
-		ChatRoom created = chatRoomService.createChatRoom(req.getRoomName(), req.getUserIds());
-		ChatRoomResponseDTO dto = ChatRoomResponseDTO.fromEntity(created);
-		ResponseDTO<ChatRoomResponseDTO> res = ResponseDTO.<ChatRoomResponseDTO>builder()
-				.status(HttpStatus.CREATED.value())
-				.message("채팅방이 생성 되었습니다")
-				.data(dto)
-				.build();
-		return ResponseEntity.status(HttpStatus.CREATED).body(res);		
-	}
+        String creatorEmail = principal.getName();
+        // 서비스를 호출할 때 로그인한 사용자 정보(creatorEmail)를 넘겨줍니다.
+        ChatRoom newChatRoom = chatRoomService.createChatRoom(creatorEmail, request.getUserIds(), creatorEmail);
+        
+        return new ResponseEntity<>(newChatRoom, HttpStatus.CREATED);
+    }
 	
 	/**
 	 * 메시지 전송
 	 * */
 	@PostMapping("/messages")
-	public ResponseEntity<ResponseDTO<ChatResponseDTO>> sendMessage(@RequestBody SendMessageRequestDTO req) {
+	public ResponseEntity<ResponseDTO<ChatResponseDTO>> sendMessage(@RequestBody SendMessageRequestDTO req, @AuthenticationPrincipal String email) {
 		User authUser = User.getAuthenticatedUser(userRepository);
 		if (authUser == null) {
             ResponseDTO<ChatResponseDTO> bad = ResponseDTO.<ChatResponseDTO>builder()
@@ -104,6 +84,7 @@ public class ChatMessageController {
 		
 		
 		// 채팅방에 알림 저장
+		log.info("CHAT: chatContent1: {}", req.getContent());
 		List<Notification> notifications = chatRoomService.saveNotification(req.getRoomId(), req.getSenderId(), req.getContent(), NotificationType.CHAT, null);
 		
 		if (notifications == null || notifications.isEmpty()) {
@@ -155,10 +136,7 @@ public class ChatMessageController {
 		
 	}
 	
-	
-	
-	
-	
+
 	
 	
 	

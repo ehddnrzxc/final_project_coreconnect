@@ -11,6 +11,7 @@ import com.goodee.coreconnect.approval.entity.ApprovalLine;
 import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.approval.entity.Template;
 import com.goodee.coreconnect.board.entity.Board;
+import com.goodee.coreconnect.chat.entity.ChatRoom;
 import com.goodee.coreconnect.chat.entity.ChatRoomUser;
 import com.goodee.coreconnect.department.entity.Department;
 import com.goodee.coreconnect.user.repository.UserRepository;
@@ -95,8 +96,11 @@ public class User {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dept_id")
     private Department department;
-
-
+    
+    // (추가) 내가 만든 채팅방 리스트 (개설자 기준)
+    @OneToMany(mappedBy = "drafter")
+    private List<ChatRoom> createdChatRooms = new ArrayList<>();
+    
     // ─────────────── 생성 메서드 ───────────────
     public static User createUser(
             String password,
