@@ -19,17 +19,22 @@ import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
+@Tag(name = "Auth API", description = "로그인/토큰재발급/로그아웃 API")
 public class AuthController {
   private final JwtProvider jwt;
   private final UserRepository userRepository;  
   private final PasswordEncoder passwordEncoder;
 
+  @Operation(summary = "로그인", 
+             description = "이메일/비밀번호로 로그인하여 Access Token(응답 본문)과 Refresh Token(HttpOnly 쿠키)을 발급합니다.")
   @PostMapping("/login")
   public ResponseEntity<Map<String, Object>> login(
       @RequestBody Map<String, String> body,
@@ -42,19 +47,12 @@ public class AuthController {
       // ✅ 1. 이메일로 사용자 조회
       User user = userRepository.findByEmail(email).orElse(null);
       if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+      // ✅ 2. 비밀번호 비교 (BCrypt)
       if (!passwordEncoder.matches(password, user.getPassword()))
           return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
 
       // ✅ 사용자 실제 Role 사용
       Role role = user.getRole();
-
-      
-      
-
-      // ✅ 2. 비밀번호 비교 (BCrypt)
-      if (!passwordEncoder.matches(password, user.getPassword())) {
-          return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-      }
 
       // ✅ 3. 토큰 생성
       String access = jwt.createAccess(email, role, 10);   // 10분짜리 Access Token
@@ -84,7 +82,7 @@ public class AuthController {
       return ResponseEntity.ok(result);
   }
 
-
+  @Operation(summary = "Refresh Token", description = "만료된 Access Token을 Refresh Token(쿠키)로 재발급합니다.")
   @PostMapping("/refresh")
   public ResponseEntity<Map<String,String>> refresh(
       @CookieValue(name="refresh_token", required=false) String refresh) {
@@ -100,6 +98,7 @@ public class AuthController {
     }
   }
 
+  @Operation(summary = "로그아웃", description = "Refresh Token을 제거하고 로그아웃 기능을 수행합니다.")
   @PostMapping("/logout")
   public ResponseEntity<Void> logout(HttpServletResponse res) {
     ResponseCookie delete = ResponseCookie.from("refresh_token", "")
