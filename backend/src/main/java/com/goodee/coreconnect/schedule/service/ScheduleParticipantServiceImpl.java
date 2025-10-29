@@ -28,12 +28,12 @@ public class ScheduleParticipantServiceImpl implements ScheduleParticipantServic
 
   /** 참여자 추가 */
   @Override
-  public ResponseScheduleParticipantDTO addParticipant(RequestScheduleParticipantDTO dto) {
+  public ResponseScheduleParticipantDTO addParticipant(RequestScheduleParticipantDTO dto, String email) {
     
     Schedule schedule = scheduleRepository.findById(dto.getScheduleId())
             .orElseThrow(() -> new IllegalArgumentException("일정을 찾을 수 없습니다."));
 
-    User user = userRepository.findById(dto.getUserId())
+    User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new IllegalArgumentException("유저를 찾을 수 없습니다."));
 
     ScheduleParticipant participant = dto.toEntity(schedule, user);

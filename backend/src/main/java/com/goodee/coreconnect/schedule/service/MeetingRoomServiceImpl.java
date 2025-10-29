@@ -47,14 +47,24 @@ public class MeetingRoomServiceImpl implements MeetingRoomService {
 
     room.delete(); // deletedYn = true, availableYn = false
   }
+  
+  /** 단일 회의실 조회 */
+  @Override
+  @Transactional(readOnly = true)
+  public MeetingRoomDTO getMeetingRoomById(Integer id) {
+    MeetingRoom room = meetingRoomRepository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("회의실을 찾을 수 없습니다."));
+    return MeetingRoomDTO.toDTO(room);
+  }
 
   /** 전체 회의실 목록 조회 (삭제 제외) */
   @Override
   @Transactional(readOnly = true)
-  public List<MeetingRoomDTO> getAllRooms() {
+  public List<MeetingRoomDTO> getAllRooms(Boolean availableOnly) {
     return meetingRoomRepository.findAll()
                                  .stream()
                                  .filter(room -> !room.getDeletedYn()) // 삭제된 회의실 제외
+                                 .filter(room -> availableOnly == null || !availableOnly || room.getAvailableYn())
                                  .map(MeetingRoomDTO::toDTO)
                                  .collect(Collectors.toList());
   }

@@ -11,7 +11,9 @@ public interface MeetingRoomService {
   MeetingRoomDTO updateMeetingRoom(Integer id, MeetingRoomDTO dto);
 
   void deleteMeetingRoom(Integer id);
+  
+  MeetingRoomDTO getMeetingRoomById(Integer id); 
 
-  List<MeetingRoomDTO> getAllRooms();
+  List<MeetingRoomDTO> getAllRooms(Boolean availableOnly);
   
 }

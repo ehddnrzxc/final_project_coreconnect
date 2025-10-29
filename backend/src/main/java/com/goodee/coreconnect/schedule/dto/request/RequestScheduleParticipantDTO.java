@@ -5,6 +5,7 @@ import com.goodee.coreconnect.schedule.entity.ScheduleParticipant;
 import com.goodee.coreconnect.schedule.enums.ScheduleRole;
 import com.goodee.coreconnect.user.entity.User;
 
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -18,8 +19,12 @@ import lombok.ToString;
 @ToString
 public class RequestScheduleParticipantDTO {
 
+  @NotNull(message = "scheduleId는 필수입니다.")
   private Integer scheduleId;
+  
+  @NotNull(message = "userId는 필수입니다.")
   private Integer userId;
+  
   private ScheduleRole role;
 
   /** DTO → Entity 변환 */
