@@ -9,8 +9,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.goodee.coreconnect.board.dto.request.BoardCategoryRequestDTO;
 import com.goodee.coreconnect.board.dto.response.BoardCategoryResponseDTO;
+import com.goodee.coreconnect.board.entity.Board;
 import com.goodee.coreconnect.board.entity.BoardCategory;
 import com.goodee.coreconnect.board.repository.BoardCategoryRepository;
+import com.goodee.coreconnect.board.repository.BoardRepository;
 import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
@@ -23,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 @Transactional
 public class BoardCategoryServiceImpl implements BoardCategoryService {
 
+    private final BoardRepository boardRepository;
     private final BoardCategoryRepository categoryRepository;
     private final UserRepository userRepository;
 
@@ -62,13 +65,19 @@ public class BoardCategoryServiceImpl implements BoardCategoryService {
         return BoardCategoryResponseDTO.toDTO(category);
     }
 
-    /** 카테고리 삭제 (Soft Delete, 관리자 전용) */
     @Override
     public void deleteCategory(Integer categoryId, String email) {
         checkAdminRole(email);
 
         BoardCategory category = categoryRepository.findByIdAndDeletedYnFalse(categoryId)
                 .orElseThrow(() -> new EntityNotFoundException("카테고리를 찾을 수 없습니다."));
+
+        List<Board> boards = boardRepository.findByCategoryIdAndDeletedYnFalse(categoryId);
+        for (Board board : boards) {
+            board.delete(); // 게시글 soft delete
+            board.getReplies().forEach(reply -> reply.delete()); // 댓글도 함께 soft delete
+            board.getFiles().forEach(file -> file.delete());    // 파일도 함께 soft delete
+        }
 
         category.delete();
     }

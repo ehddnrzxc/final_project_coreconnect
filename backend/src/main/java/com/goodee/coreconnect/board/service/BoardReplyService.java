@@ -16,6 +16,6 @@ public interface BoardReplyService {
     /** 댓글 삭제 (Soft Delete) */
     void softDeleteReply(Integer replyId, String email);
 
-    /** 게시글별 댓글 목록 (대댓글 포함) */
+    /** 게시글별 댓글 목록 조회 (대댓글 포함) */
     List<BoardReplyResponseDTO> getRepliesByBoard(Integer boardId);
 }

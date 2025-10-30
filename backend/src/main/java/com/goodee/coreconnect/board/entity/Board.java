@@ -36,6 +36,9 @@ public class Board {
 
     @Column(name = "board_notice_yn", nullable = false)
     private Boolean noticeYn = false;
+    
+    @Column(name = "board_pinned_yn", nullable = false)
+    private Boolean pinned = false; 
 
     @Column(name = "board_private_yn", nullable = false)
     private Boolean privateYn = false;
@@ -73,7 +76,7 @@ public class Board {
 
 
     // ─────────────── 생성 메서드 ───────────────
-    public static Board createBoard(User user, BoardCategory category, String title, String content, Boolean noticeYn, Boolean privateYn) {
+    public static Board createBoard(User user, BoardCategory category, String title, String content, Boolean noticeYn, Boolean privateYn, Boolean pinned) {
         if (user == null) throw new IllegalArgumentException("작성자는 반드시 지정되어야 합니다.");
         if (category == null) throw new IllegalArgumentException("카테고리는 반드시 지정되어야 합니다.");
         if (title == null || title.isBlank()) throw new IllegalArgumentException("게시글 제목은 비어 있을 수 없습니다.");
@@ -85,6 +88,7 @@ public class Board {
         board.content = content;
         if (noticeYn != null) board.noticeYn = noticeYn;
         if (privateYn != null) board.privateYn = privateYn;
+        if (pinned != null) board.pinned = pinned;
         board.createdAt = LocalDateTime.now();
         return board;
     }
@@ -92,7 +96,7 @@ public class Board {
 
     // ─────────────── 도메인 행위 ───────────────
     /** 게시글 수정 */
-    public void updateBoard(BoardCategory category, String title, String content, Boolean noticeYn, Boolean privateYn) {
+    public void updateBoard(BoardCategory category, String title, String content, Boolean noticeYn, Boolean privateYn, Boolean pinned) {
         if (title == null || title.isBlank()) throw new IllegalArgumentException("게시글 제목은 비어 있을 수 없습니다.");
         
         this.category = (category != null) ? category : this.category;
@@ -100,6 +104,7 @@ public class Board {
         this.content = content;
         if (noticeYn != null) this.noticeYn = noticeYn;
         if (privateYn != null) this.privateYn = privateYn;
+        if (pinned != null) this.pinned = pinned;
         this.updatedAt = LocalDateTime.now();
     }
 

@@ -216,6 +216,61 @@ class BoardServiceTest {
         assertThat(notices.get(0).getNoticeYn()).isTrue();
         log.info("공지글 조회 테스트 통과: {}", notices.get(0).getTitle());
     }
+    
+    @Test
+    @DisplayName("상단고정 → 공지 → 최신순 정렬 목록 조회")
+    void testGetBoardsOrdered() {
+        // 1️⃣ 일반 게시글
+        BoardRequestDTO dto1 = BoardRequestDTO.builder()
+                .categoryId(category.getId())
+                .title("일반글")
+                .content("일반 내용")
+                .noticeYn(false)
+                .privateYn(false)
+                .pinned(false)
+                .build();
+
+        // 2️⃣ 공지글
+        BoardRequestDTO dto2 = BoardRequestDTO.builder()
+                .categoryId(category.getId())
+                .title("공지글")
+                .content("공지 내용")
+                .noticeYn(true)
+                .privateYn(false)
+                .pinned(false)
+                .build();
+
+        // 3️⃣ 상단고정 게시글
+        BoardRequestDTO dto3 = BoardRequestDTO.builder()
+                .categoryId(category.getId())
+                .title("상단고정글")
+                .content("고정 내용")
+                .noticeYn(false)
+                .privateYn(false)
+                .pinned(true)
+                .build();
+
+        boardService.createBoard(dto1, user.getEmail());
+        boardService.createBoard(dto2, user.getEmail());
+        boardService.createBoard(dto3, user.getEmail());
+
+        var page = boardService.getBoardsOrdered(PageRequest.of(0, 10));
+
+        assertThat(page.getContent()).hasSize(3);
+
+        // ✅ 순서 검증: pinned → notice → 일반 순서
+        String first = page.getContent().get(0).getTitle();
+        String second = page.getContent().get(1).getTitle();
+        String third = page.getContent().get(2).getTitle();
+
+        log.info("정렬 결과: 1️⃣ {} / 2️⃣ {} / 3️⃣ {}", first, second, third);
+
+        assertThat(first).isEqualTo("상단고정글");
+        assertThat(second).isEqualTo("공지글");
+        assertThat(third).isEqualTo("일반글");
+
+        log.info("상단고정 → 공지 → 일반 정렬 테스트 통과 ✅");
+    }
 
     @Test
     @DisplayName("검색 기능 (제목, 내용, 작성자명) 테스트")

@@ -8,13 +8,13 @@ import com.goodee.coreconnect.board.dto.response.BoardFileResponseDTO;
 
 public interface BoardFileService {
 
-    /** 파일 업로드 및 등록 */
+    /** 다중 파일 업로드 */
     List<BoardFileResponseDTO> uploadFiles(Integer boardId, List<MultipartFile> files);
 
-    /** 파일 단건 다운로드 */
+    /** 단일 파일 조회 (미리보기/다운로드) */
     BoardFileResponseDTO getFile(Integer fileId);
 
-    /** 파일 목록 (게시글 기준) */
+    /** 파일 목록 조회 (게시글 기준) */
     List<BoardFileResponseDTO> getFilesByBoard(Integer boardId);
 
     /** 파일 삭제 (Soft Delete) */

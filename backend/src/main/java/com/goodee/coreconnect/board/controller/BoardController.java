@@ -168,6 +168,22 @@ public class BoardController {
 
         return ResponseEntity.ok(res);
     }
+    
+    @Operation(summary = "정렬된 게시글 목록 조회", description = "상단고정 -> 공지 -> 최신순으로 게시글 목록을 조회합니다.")
+    @GetMapping("/ordered")
+    public ResponseEntity<ResponseDTO<Page<BoardResponseDTO>>> getBoardsOrdered(
+            @PageableDefault(size = 10) Pageable pageable
+    ) {
+        Page<BoardResponseDTO> page = boardService.getBoardsOrdered(pageable);
+
+        ResponseDTO<Page<BoardResponseDTO>> res = ResponseDTO.<Page<BoardResponseDTO>>builder()
+                                                             .status(HttpStatus.OK.value())
+                                                             .message("정렬된 게시글 목록 조회 성공")
+                                                             .data(page)
+                                                             .build();
+
+        return ResponseEntity.ok(res);
+    }
 
     @Operation(summary = "게시글 검색", description = "제목, 내용 또는 작성자명으로 게시글을 검색합니다.")
     @GetMapping("/search")
