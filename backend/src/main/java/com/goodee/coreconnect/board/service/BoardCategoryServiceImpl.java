@@ -11,6 +11,7 @@ import com.goodee.coreconnect.board.dto.request.BoardCategoryRequestDTO;
 import com.goodee.coreconnect.board.dto.response.BoardCategoryResponseDTO;
 import com.goodee.coreconnect.board.entity.BoardCategory;
 import com.goodee.coreconnect.board.repository.BoardCategoryRepository;
+import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
@@ -29,7 +30,7 @@ public class BoardCategoryServiceImpl implements BoardCategoryService {
     private void checkAdminRole(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
-        if (user.getRole() == null || !user.getRole().equals("ROLE_ADMIN")) {
+        if (user.getRole() != Role.ADMIN) {
             throw new AccessDeniedException("카테고리 관리 권한이 없습니다.");
         }
     }
@@ -43,10 +44,7 @@ public class BoardCategoryServiceImpl implements BoardCategoryService {
             throw new IllegalArgumentException("이미 존재하는 카테고리명입니다: " + dto.getName());
         }
 
-        BoardCategory category = BoardCategory.createCategory(
-                dto.getName(),
-                dto.getOrderNo()
-        );
+        BoardCategory category = BoardCategory.createCategory(dto.getName(), dto.getOrderNo());
 
         BoardCategory saved = categoryRepository.save(category);
         return BoardCategoryResponseDTO.toDTO(saved);
@@ -75,7 +73,7 @@ public class BoardCategoryServiceImpl implements BoardCategoryService {
         category.delete();
     }
 
-    /** 전체 카테고리 목록 (삭제 제외, 순서 정렬) */
+    /** 전체 카테고리 목록 (삭제 제외, 관리자 전용) */
     @Override
     @Transactional(readOnly = true)
     public List<BoardCategoryResponseDTO> getAllCategories() {

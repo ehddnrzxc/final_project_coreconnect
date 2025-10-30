@@ -23,7 +23,7 @@ public interface BoardFileRepository extends JpaRepository<BoardFile, Integer> {
 
     /**
      * 특정 S3 ObjectKey로 파일 찾기 (삭제 제외)
-     * - 이미지 / PDF 미리보기용
+     * - 이미지 미리보기용
      */
     Optional<BoardFile> findByS3ObjectKeyAndDeletedYnFalse(String s3ObjectKey);
 

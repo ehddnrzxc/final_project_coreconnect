@@ -16,7 +16,7 @@ public interface BoardCategoryService {
     /** 카테고리 삭제 (관리자 전용, Soft Delete) */
     void deleteCategory(Integer categoryId, String email);
 
-    /** 전체 카테고리 목록 (삭제 제외) */
+    /** 전체 카테고리 목록 (관리자 전용) */
     List<BoardCategoryResponseDTO> getAllCategories();
 
     /** 카테고리명 중복 여부 확인 */
