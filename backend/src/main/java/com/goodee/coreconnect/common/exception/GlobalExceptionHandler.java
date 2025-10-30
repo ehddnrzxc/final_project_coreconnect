@@ -4,9 +4,12 @@ import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import com.goodee.coreconnect.common.dto.response.ResponseDTO;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
@@ -16,7 +19,20 @@ import lombok.extern.slf4j.Slf4j;
 public class GlobalExceptionHandler {
 
     /**
-     * 1. @Valid 유효성 검사 실패 시 처리 (HTTP 400 Bad Request)
+     * 1. 접근 권한 예외 처리 (HTTP 403 Forbidden)
+     * (관리자 전용 기능 접근 시 권한이 없을 경우)
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ResponseDTO<Void>> handleAccessDenied(AccessDeniedException ex) {
+        ResponseDTO<Void> res = ResponseDTO.<Void>builder()
+                .status(HttpStatus.FORBIDDEN.value()) // 403
+                .message(ex.getMessage())
+                .build();
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res);
+    }
+  
+    /**
+     * 2. @Valid 유효성 검사 실패 시 처리 (HTTP 400 Bad Request)
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<String> handleValidationExceptions(MethodArgumentNotValidException ex) {
@@ -34,7 +50,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 2. 엔티티를 찾지 못했을 때 처리 (HTTP 404 Not Found)
+     * 3. 엔티티를 찾지 못했을 때 처리 (HTTP 404 Not Found)
      * (서비스의 findById().orElseThrow() 등)
      */
     @ExceptionHandler(EntityNotFoundException.class)
@@ -46,7 +62,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 3. 비즈니스 로직 상 예외 처리 (HTTP 400 Bad Request)
+     * 4. 비즈니스 로직 상 예외 처리 (HTTP 400 Bad Request)
      * (서비스의 new IllegalStateException() 등)
      */
     @ExceptionHandler(IllegalStateException.class)
@@ -58,7 +74,7 @@ public class GlobalExceptionHandler {
     }
     
     /**
-     * IllegalArgumentException에 대한 예외 처리
+     * 5. IllegalArgumentException에 대한 예외 처리
      * @param ex
      * @return ResponseEntity
      */
@@ -69,7 +85,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 4. 그 외 모든 예상치 못한 예외 처리 (HTTP 500 Internal Server Error)
+     * 6. 그 외 모든 예상치 못한 예외 처리 (HTTP 500 Internal Server Error)
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<String> handleException(Exception ex) {

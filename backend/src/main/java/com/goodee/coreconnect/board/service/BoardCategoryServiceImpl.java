@@ -73,7 +73,7 @@ public class BoardCategoryServiceImpl implements BoardCategoryService {
         category.delete();
     }
 
-    /** 전체 카테고리 목록 (삭제 제외, 순서 정렬) */
+    /** 전체 카테고리 목록 (삭제 제외, 관리자 전용) */
     @Override
     @Transactional(readOnly = true)
     public List<BoardCategoryResponseDTO> getAllCategories() {
