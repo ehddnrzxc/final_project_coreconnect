@@ -1,5 +1,6 @@
 package com.goodee.coreconnect;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -42,7 +43,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpHeaders;
-
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
@@ -64,9 +65,11 @@ import com.goodee.coreconnect.chat.entity.ChatRoomUser;
 import com.goodee.coreconnect.chat.entity.MessageFile;
 import com.goodee.coreconnect.chat.repository.ChatRepository;
 import com.goodee.coreconnect.chat.repository.ChatRoomUserRepository;
+import com.goodee.coreconnect.chat.repository.MessageFileRepository;
 import com.goodee.coreconnect.chat.repository.NotificationRepository;
 import com.goodee.coreconnect.chat.service.ChatRoomService;
 import com.goodee.coreconnect.chat.service.ChatRoomServiceImpl;
+import com.goodee.coreconnect.common.S3Service;
 import com.goodee.coreconnect.common.entity.Notification;
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
 import com.goodee.coreconnect.common.notification.service.NotificationService;
@@ -114,6 +117,12 @@ public class ChatWebSocketHandlerTest {
 	
 	@Autowired
 	NotificationService notificationService;
+	
+	@Autowired
+	MessageFileRepository messageFileRepository;
+	
+	@Autowired
+	S3Service s3Service;
 	
 	@Autowired
 	private PlatformTransactionManager transactionManager;
@@ -983,7 +992,114 @@ public class ChatWebSocketHandlerTest {
 		}
 	 
 	 
-	 
+	    @Test
+	    @Transactional
+	    @DisplayName("채팅방에 파일 또는 이미지 업로드 시 미리보기 기능 테스트")
+	    void testFileImageUploadPreviewAndNotification() throws Exception {
+	    	// 1. 환경 준비: 채팅방/로그인 사용자(예: 38번) 정보 조회
+	        Integer chatRoomId = 4;
+	        Integer loginUserId = 38;
+	        User loginUser = userRepository.findById(loginUserId).orElseThrow();
+	        ChatRoom chatRoom = chatRoomService.findById(chatRoomId);
+	        List<Integer> participantIds = chatRoomService.getParticipantIds(chatRoomId);
+	        
+	        // 2. 이미지 파일 업로드 시나리오
+	        // (실제 테스트에서는 MockMultipartFile 사용, 실제 서비스에서는 MultipartFile)
+	        MockMultipartFile image = new MockMultipartFile("file", "profile.png", "image/png", new byte[]{/*이미지 바이트*/});
+	        String imgKey = s3Service.uploadProfileImage(image, loginUser.getName());
+	        String imgUrl = s3Service.getFileUrl(imgKey);
+	        
+	        // [미리보기] 이미지 선택 시, 프론트엔드에서 이미지 바이트를 바로 미리보기로 보여줌 (생략, 실제 UI)
+	        log.info("[미리보기] 이미지 파일명: {}", image.getOriginalFilename());
+	        log.info("[미리보기] 이미지 바이트 크기: {}", image.getSize());
+	        
+	        // [수정] createMessageFile 메서드 파라미터에 맞게 생성
+	        MessageFile imgEntity = MessageFile.createMessageFile(
+	            image.getOriginalFilename(),
+	            (double) image.getSize(),
+	            imgKey,
+	            null // chat은 sendChatMessage에서 연결됨
+	        );
+
+	        // chat과 연결
+	        Chat imgChat = chatRoomService.sendChatMessage(chatRoomId, loginUserId, imgEntity);
+
+	        // MessageFile 저장
+	        messageFileRepository.save(imgEntity);
+
+	        log.info("[업로드] 이미지 S3 URL: {}", imgUrl);
+	        
+	        
+	        // 4. 채팅방 메시지 오름차순 정렬 및 내/남 메시지 UI 구분
+	        List<Chat> messages = chatRepository.findByChatRoomIdOrderBySendAtAsc(chatRoomId);
+
+	        for (Chat msg : messages) {
+	            boolean isMe = msg.getSender() != null && msg.getSender().getId().equals(loginUserId);
+	            String display = "";
+
+	            // 파일/이미지 메시지
+	            if (msg.getFileYn() != null && msg.getFileYn()) {
+	                List<MessageFile> files = msg.getMessageFiles();
+	                String fileName = (files != null && !files.isEmpty() && files.get(0).getFileName() != null) ? files.get(0).getFileName() : "파일명 없음";
+	                String fileUrlMsg = (msg.getFileUrl() != null) ? msg.getFileUrl() : "";
+	                if (isMe) {
+	                    display = "[오른쪽] 파일/이미지: " + fileName + " (" + fileUrlMsg + ")";
+	                } else {
+	                    display = "[왼쪽] " + msg.getSender().getName() + ": 파일/이미지 " + fileName + " (" + fileUrlMsg + ")";
+	                }
+	            }
+	            // 텍스트 메시지
+	            else if (msg.getMessageContent() != null && !msg.getMessageContent().isBlank()) {
+	                if (isMe) {
+	                    display = "[오른쪽] " + msg.getMessageContent();
+	                } else {
+	                    display = "[왼쪽] " + msg.getSender().getName() + ": " + msg.getMessageContent();
+	                }
+	            }
+	            log.info("[{}] {}", msg.getSendAt(), display);
+	        }
+
+	        // 5. 업로드/메시지 전송 후, 접속중 아닌 다른 참여자에게 실시간 알림
+	       // List<Integer> onlineUserIds = /* WebSocketDeliveryService.getOnlineUserIds() 등으로 현재 접속자 조회 */;
+	     // 모든 참여자를 오프라인으로 가정
+	        List<Integer> onlineUserIds = new ArrayList<>();
+	        List<Integer> offlineUserIds = participantIds.stream()
+	            .filter(uid -> !uid.equals(loginUserId) && !onlineUserIds.contains(uid))
+	            .toList();
+	         offlineUserIds = participantIds.stream()
+	            .filter(uid -> !uid.equals(loginUserId) && (onlineUserIds == null || !onlineUserIds.contains(uid)))
+	            .toList();
+	        for (Integer offlineUid : offlineUserIds) {
+	            User offlineUser = userRepository.findById(offlineUid).orElse(null);
+	            if (offlineUser != null) {
+	                String notificationMsg = loginUser.getName() + "님으로부터 온 새로운 채팅메시지가 있습니다";
+	                notificationService.sendNotification(
+	                    offlineUid,
+	                    NotificationType.NOTICE,
+	                    notificationMsg,
+	                    null, chatRoomId,
+	                    loginUserId,
+	                    loginUser.getName()
+	                );
+	                log.info("[알림] {} -> {}", offlineUser.getName(), notificationMsg);
+	            }
+	        }
+	        
+	        
+	        
+	        
+	        
+	        
+	        
+	        
+	        
+	        
+	        
+	    	
+	    	
+	    	
+	    	
+	    }
 	 
 	 
 }
