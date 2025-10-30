@@ -84,7 +84,7 @@ public class BoardReplyServiceImpl implements BoardReplyService {
         reply.delete();
     }
 
-    /** 게시글별 댓글 목록 (대댓글 포함, 전체 조회 가능) */
+    /** 게시글별 댓글 목록 조회 (대댓글 포함, 전체 조회 가능) */
     @Override
     @Transactional(readOnly = true)
     public List<BoardReplyResponseDTO> getRepliesByBoard(Integer boardId) {

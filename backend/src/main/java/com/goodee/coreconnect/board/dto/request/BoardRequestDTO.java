@@ -20,7 +20,8 @@ public class BoardRequestDTO {
     private String title;        
     private String content;      
     private Boolean noticeYn;    
-    private Boolean privateYn;   
+    private Boolean privateYn;
+    private Boolean pinned;
 
     /**
      * DTO -> Entity 변환
@@ -32,6 +33,7 @@ public class BoardRequestDTO {
                                   this.title,
                                   this.content,
                                   this.noticeYn,
-                                  this.privateYn);
+                                  this.privateYn,
+                                  this.pinned);
     }
 }

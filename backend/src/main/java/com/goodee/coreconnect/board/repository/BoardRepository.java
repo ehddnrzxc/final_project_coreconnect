@@ -12,17 +12,28 @@ import com.goodee.coreconnect.board.entity.Board;
 
 public interface BoardRepository extends JpaRepository<Board, Integer> {
 
-    /** 전체 게시글 목록 (삭제 제외) */
+    /** 전체 게시글 조회 (삭제 제외) */
     Page<Board> findByDeletedYnFalse(Pageable pageable);
 
-    /** 카테고리별 게시글 목록 (삭제 제외) */
+    /** 카테고리별 게시글 조회 (삭제 제외, 페이징) */
     Page<Board> findByCategoryIdAndDeletedYnFalse(Integer categoryId, Pageable pageable);
+    
+    /** 카테고리별 게시글 조회 (삭제 제외, 카테고리 삭제 시 사용) */
+    List<Board> findByCategoryIdAndDeletedYnFalse(Integer categoryId);
 
-    /** 사용자 이메일 기반 게시글 목록 (삭제 제외) */
+    /** 사용자 이메일 기반 게시글 조회 (삭제 제외) */
     Page<Board> findByUserEmailAndDeletedYnFalse(String email, Pageable pageable);
 
-    /** 공지글 목록 (삭제 제외) */
+    /** 공지글 조회 (삭제 제외) */
     List<Board> findByNoticeYnTrueAndDeletedYnFalse();
+    
+    /** 상단고정 -> 공지 -> 일반글 순으로 조회 (삭제 제외, 페이징) */
+    @Query("""
+        SELECT b FROM Board b
+        WHERE b.deletedYn = false
+        ORDER BY b.pinned DESC, b.noticeYn DESC, b.createdAt DESC
+    """)
+    Page<Board> findAllOrderByPinnedNoticeAndCreated(Pageable pageable);
 
     // ─────────────── 선택형 검색 ───────────────
     /** 제목으로 검색 */
@@ -30,6 +41,7 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
         SELECT b FROM Board b
         WHERE b.deletedYn = false
           AND LOWER(b.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
+        ORDER BY b.createdAt DESC
     """)
     Page<Board> searchByTitle(@Param("keyword") String keyword, Pageable pageable);
 
@@ -38,6 +50,7 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
         SELECT b FROM Board b
         WHERE b.deletedYn = false
           AND LOWER(b.content) LIKE LOWER(CONCAT('%', :keyword, '%'))
+        ORDER BY b.createdAt DESC
     """)
     Page<Board> searchByContent(@Param("keyword") String keyword, Pageable pageable);
 
@@ -47,6 +60,7 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
         JOIN b.user u
         WHERE b.deletedYn = false
           AND LOWER(u.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
+        ORDER BY b.createdAt DESC
     """)
     Page<Board> searchByAuthor(@Param("keyword") String keyword, Pageable pageable);
 }

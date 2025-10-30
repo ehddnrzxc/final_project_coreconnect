@@ -15,7 +15,7 @@ import com.goodee.coreconnect.common.dto.response.ResponseDTO;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/v1/board-files")
+@RequestMapping("/api/v1/board-file")
 @RequiredArgsConstructor
 public class BoardFileController {
 

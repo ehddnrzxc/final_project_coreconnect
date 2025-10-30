@@ -21,7 +21,6 @@ import com.goodee.coreconnect.board.dto.response.BoardCategoryResponseDTO;
 import com.goodee.coreconnect.board.entity.BoardCategory;
 import com.goodee.coreconnect.board.repository.BoardCategoryRepository;
 import com.goodee.coreconnect.board.service.BoardCategoryServiceImpl;
-import com.goodee.coreconnect.department.entity.Department;
 import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
@@ -54,7 +53,8 @@ class BoardCategoryServiceTest {
                 Role.ADMIN,
                 "admin@test.com",
                 "010-1111-2222",
-                (Department) null, null
+                 null,
+                 null
         );
 
         // 실제 일반 사용자 객체
@@ -64,7 +64,8 @@ class BoardCategoryServiceTest {
                 Role.USER,
                 "user@test.com",
                 "010-3333-4444",
-                (Department) null, null
+                null,
+                null
         );
 
         // 테스트용 카테고리 엔티티

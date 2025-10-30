@@ -130,7 +130,7 @@ public class BoardFileServiceImpl implements BoardFileService {
     }
 
     /**
-     * 게시글 기준 파일 목록 조회
+     * 파일 목록 조회 (게시글 기준)
      * - Soft Delete 제외
      */
     @Override

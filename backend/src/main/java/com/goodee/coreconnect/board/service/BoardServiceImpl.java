@@ -55,7 +55,8 @@ public class BoardServiceImpl implements BoardService {
                 dto.getTitle(),
                 dto.getContent(),
                 dto.getNoticeYn(),
-                dto.getPrivateYn()
+                dto.getPrivateYn(),
+                dto.getPinned()
         );
 
         Board saved = boardRepository.save(board);
@@ -99,7 +100,8 @@ public class BoardServiceImpl implements BoardService {
                 dto.getTitle(),
                 dto.getContent(),
                 dto.getNoticeYn(),
-                dto.getPrivateYn()
+                dto.getPrivateYn(),
+                dto.getPinned()
         );
 
         return BoardResponseDTO.toDTO(board);
@@ -128,12 +130,25 @@ public class BoardServiceImpl implements BoardService {
         if (board.getDeletedYn()) {
             throw new IllegalStateException("삭제된 게시글입니다.");
         }
+        
+        if (board.getPrivateYn()) {
+          User loginUser = User.getAuthenticatedUser(userRepository);
+          if (loginUser == null) {
+              throw new SecurityException("비공개 게시글은 로그인 후 조회할 수 있습니다.");
+          }
+
+          if (!loginUser.getId().equals(board.getUser().getId())
+                  && loginUser.getRole() != Role.ADMIN
+                  && loginUser.getRole() != Role.MANAGER) {
+              throw new SecurityException("비공개 게시글은 작성자 또는 관리자만 조회할 수 있습니다.");
+          }
+      }
 
         board.increaseViewCount();
         return BoardResponseDTO.toDTO(board);
     }
 
-    /** 전체 게시글 목록 */
+    /** 전체 게시글 목록 조회 */
     @Override
     @Transactional(readOnly = true)
     public Page<BoardResponseDTO> getAllBoards(Pageable pageable) {
@@ -145,7 +160,7 @@ public class BoardServiceImpl implements BoardService {
         return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());
     }
 
-    /** 카테고리별 게시글 목록 */
+    /** 카테고리별 게시글 목록 조회 */
     @Override
     @Transactional(readOnly = true)
     public Page<BoardResponseDTO> getBoardsByCategory(Integer categoryId, Pageable pageable) {
@@ -157,7 +172,7 @@ public class BoardServiceImpl implements BoardService {
         return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());
     }
 
-    /** 사용자 이메일 기반 게시글 목록 */
+    /** 사용자 이메일 기반 게시글 목록 조회 */
     @Override
     @Transactional(readOnly = true)
     public Page<BoardResponseDTO> getBoardsByUser(String email, Pageable pageable) {
@@ -177,6 +192,20 @@ public class BoardServiceImpl implements BoardService {
         return boardList.stream()
                          .map(BoardResponseDTO::toDTO)
                          .toList();
+    }
+    
+    /** 게시판용 정렬된 목록 조회 (상단고정 -> 공지 -> 최신순) */
+    @Override
+    @Transactional(readOnly = true)
+    public Page<BoardResponseDTO> getBoardsOrdered(Pageable pageable) {
+        Page<Board> boardPage = boardRepository.findAllOrderByPinnedNoticeAndCreated(pageable);
+
+        List<BoardResponseDTO> dtoList = boardPage.getContent()
+                                                  .stream()
+                                                  .map(BoardResponseDTO::toDTO)
+                                                  .toList();
+
+        return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());
     }
 
     /** 게시글 검색 (제목 / 내용 / 작성자명 중 선택형) */
