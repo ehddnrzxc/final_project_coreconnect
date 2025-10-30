@@ -29,7 +29,7 @@ public class MeetingRoomDTO {
 
   /** DTO → Entity 변환 */
   public MeetingRoom toEntity() {
-      return MeetingRoom.createMeetingRoom(name, location, capacity);
+      return MeetingRoom.createMeetingRoom(name, location, capacity, availableYn);
   }
 
   /** Entity → DTO 변환 */

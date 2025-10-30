@@ -59,11 +59,13 @@ public class MeetingRoomController {
     return meetingRoomService.getMeetingRoomById(id);        
   }
 
-  /** 회의실 목록 조회 */
-  @Operation(summary = "회의실 목록", description = "회의실의 목록을 조회합니다.")
+  /** 관리자 조건 기반 회의실 목록 조회 */
+  @Operation(summary = "회의실 조건 조회 (deletedYn, availableYn)")
   @GetMapping
-  public List<MeetingRoomDTO> getAll(@RequestParam(name = "availableOnly", required = false) Boolean availableOnly) {
-    return meetingRoomService.getAllRooms(availableOnly);
+  public List<MeetingRoomDTO> getRooms(
+          @RequestParam(name = "deletedYn",required = false) Boolean deletedYn,
+          @RequestParam(name = "availableYn",required = false) Boolean availableYn) {
+    return meetingRoomService.getFilteredRooms(deletedYn, availableYn);
   }
 }
 
