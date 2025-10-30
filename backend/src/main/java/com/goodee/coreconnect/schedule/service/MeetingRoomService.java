@@ -6,14 +6,22 @@ import com.goodee.coreconnect.schedule.dto.MeetingRoomDTO;
 
 public interface MeetingRoomService {
 
+  /** 회의실 생성 */
   MeetingRoomDTO createMeetingRoom(MeetingRoomDTO dto);
 
+  /** 회의실 수정 */
   MeetingRoomDTO updateMeetingRoom(Integer id, MeetingRoomDTO dto);
 
+  /** 회의실 삭제 (Soft Delete) */
   void deleteMeetingRoom(Integer id);
-  
-  MeetingRoomDTO getMeetingRoomById(Integer id); 
 
-  List<MeetingRoomDTO> getAllRooms(Boolean availableOnly);
+  /** 단일 회의실 조회 */
+  MeetingRoomDTO getMeetingRoomById(Integer id);
+  
+  /** 관리자용 조건 기반 회의실 목록 조회 (deletedYn, availableYn 조건 포함) */
+  List<MeetingRoomDTO> getFilteredRooms(Boolean deletedYn, Boolean availableYn);
+
+  /** 전체 회의실 목록 조회 (기본값: deletedYn = false) */
+  List<MeetingRoomDTO> getAllRooms();
   
 }

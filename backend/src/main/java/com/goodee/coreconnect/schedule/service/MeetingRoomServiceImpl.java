@@ -35,7 +35,8 @@ public class MeetingRoomServiceImpl implements MeetingRoomService {
 
     room.update(dto.getName(),
                 dto.getLocation(),
-                dto.getCapacity());
+                dto.getCapacity(),
+                dto.getAvailableYn());
     return MeetingRoomDTO.toDTO(room);
   }
 
@@ -57,15 +58,32 @@ public class MeetingRoomServiceImpl implements MeetingRoomService {
     return MeetingRoomDTO.toDTO(room);
   }
 
-  /** 전체 회의실 목록 조회 (삭제 제외) */
+  /** 관리자용 조건 기반 조회 추가 */
   @Override
   @Transactional(readOnly = true)
-  public List<MeetingRoomDTO> getAllRooms(Boolean availableOnly) {
-    return meetingRoomRepository.findAll()
-                                 .stream()
-                                 .filter(room -> !room.getDeletedYn()) // 삭제된 회의실 제외
-                                 .filter(room -> availableOnly == null || !availableOnly || room.getAvailableYn())
-                                 .map(MeetingRoomDTO::toDTO)
-                                 .collect(Collectors.toList());
+  public List<MeetingRoomDTO> getFilteredRooms(Boolean deletedYn, Boolean availableYn) {
+    List<MeetingRoom> rooms;
+
+    if (deletedYn != null && availableYn != null) {
+      rooms = meetingRoomRepository.findByDeletedYnAndAvailableYn(deletedYn, availableYn);
+    } else if (deletedYn != null) {
+      rooms = meetingRoomRepository.findByDeletedYn(deletedYn);
+    } else if (availableYn != null) {
+      rooms = meetingRoomRepository.findByAvailableYn(availableYn);
+    } else {
+      rooms = meetingRoomRepository.findAll();
+    }
+
+    return rooms.stream().map(MeetingRoomDTO::toDTO).collect(Collectors.toList());
+  }
+
+  /** 기본 전체 목록 조회 (삭제 제외) */
+  @Override
+  @Transactional(readOnly = true)
+  public List<MeetingRoomDTO> getAllRooms() {
+    return meetingRoomRepository.findByDeletedYn(false)
+            .stream()
+            .map(MeetingRoomDTO::toDTO)
+            .collect(Collectors.toList());
   }
 }

@@ -59,6 +59,18 @@ public class ScheduleServiceImpl implements ScheduleService {
         }
     }
 
+    if (meetingRoom != null) {
+      boolean overlap = !scheduleRepository
+              .findOverlappingSchedules(meetingRoom, dto.getStartDateTime(), dto.getEndDateTime())
+              .isEmpty();
+      if (overlap) {
+          throw new IllegalArgumentException("해당 시간대에 이미 예약된 회의실입니다.");
+      }
+
+      // 회의실 예약 시 자동으로 비활성화 처리 (예약 중 상태)
+      meetingRoom.changeAvailability(false);
+    }
+    
     Schedule schedule = dto.toEntity(user, department, meetingRoom, category);
     Schedule saved = scheduleRepository.save(schedule);
 

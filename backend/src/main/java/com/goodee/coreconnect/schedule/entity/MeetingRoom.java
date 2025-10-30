@@ -35,15 +35,17 @@ public class MeetingRoom {
 
   protected MeetingRoom() {}
 
-  public static MeetingRoom createMeetingRoom(String name, 
-                                                String location, 
-                                                Integer capacity) {
+  public static MeetingRoom createMeetingRoom(String name,
+                                               String location, 
+                                               Integer capacity, 
+                                               Boolean availableYn) {
+    
     MeetingRoom room = new MeetingRoom();
     room.name = name;
     room.location = location;
     room.capacity = capacity;
     room.deletedYn = false;
-    room.availableYn = true;
+    room.availableYn = availableYn != null ? availableYn : true;
     return room;
   }
   
@@ -62,10 +64,12 @@ public class MeetingRoom {
   /** 회의실 정보 수정 */
   public void update(String name,
                       String location, 
-                      Integer capacity) {
+                      Integer capacity,
+                      Boolean availableYn) {
     this.name = name;
     this.location = location;
     this.capacity = capacity;
+    if (availableYn != null) this.availableYn = availableYn;
   }
 
   /** 회의실 이용 가능 여부 변경 */
