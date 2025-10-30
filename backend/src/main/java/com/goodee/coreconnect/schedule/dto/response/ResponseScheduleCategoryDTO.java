@@ -1,6 +1,6 @@
 package com.goodee.coreconnect.schedule.dto.response;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import com.goodee.coreconnect.schedule.entity.ScheduleCategory;
 
@@ -16,7 +16,7 @@ public class ResponseScheduleCategoryDTO {
   private Integer id;
   private String name;
   private boolean defaultYn;
-  private LocalDate createdAt;
+  private LocalDateTime createdAt;
   private String userName;
 
   /** Entity → DTO 변환 */

@@ -1,7 +1,10 @@
 package com.goodee.coreconnect.schedule.entity;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.goodee.coreconnect.user.entity.User;
 
 import jakarta.persistence.Column;
@@ -12,8 +15,10 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.Getter;
+import lombok.ToString;
 
 @Entity
 @Table(name = "schedule_category")
@@ -35,17 +40,30 @@ public class ScheduleCategory {
   private Boolean deletedYn = false;  // 삭제 여부 (기본값 false)
 
   @Column(name = "sch_category_created_at", nullable = false)
-  private LocalDate createdAt;
+  private LocalDateTime createdAt;
 
   @Column(name = "sch_category_updated_at")
-  private LocalDate updatedAt;
+  private LocalDateTime updatedAt;
 
-  /**
-   * N:1 (user 테이블과 매핑)
-   */
+  /** N:1 (user 테이블과 매핑) */
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "user_id")
   private User user;
+  
+  /** 1:N (schedule 테이블과 매핑) 
+   * @ToString.Exclude : 
+   *   - Lombok의 toString() 생성 시 schedules 필드를 제외.
+   *   - Category ↔ Schedule 양방향 참조 시 무한 순환(toString 재귀 호출) 방지용.
+   *
+   * @JsonIgnore : 
+   *   - JSON 직렬화(Jackson 변환) 시 schedules 필드를 무시.
+   *   - REST API 응답 변환 시 Category → Schedule → Category ... 무한 순환 방지.
+   * */
+  @OneToMany(mappedBy = "category", fetch = FetchType.LAZY)
+  @ToString.Exclude
+  @JsonIgnore
+  private List<Schedule> schedules = new ArrayList<>();
+  
   
   protected ScheduleCategory() {};
   
@@ -57,26 +75,35 @@ public class ScheduleCategory {
     category.name = name;
     category.defaultYn = defaultYn;
     category.deletedYn = false;
-    category.createdAt = LocalDate.now();
+    category.createdAt = LocalDateTime.now();
     return category;
   }
 
   /** 카테고리 이름 변경 */
   public void rename(String name) {
     this.name = name;
-    this.updatedAt = LocalDate.now();
+    this.updatedAt = LocalDateTime.now();
   }
 
   /** 기본 카테고리 여부 변경 */
   public void changeDefault(boolean defaultYn) {
     this.defaultYn = defaultYn;
-    this.updatedAt = LocalDate.now();
+    this.updatedAt = LocalDateTime.now();
   }
 
   /** 카테고리 삭제(delete) */
   public void delete() {
     this.deletedYn = true;
-    this.updatedAt = LocalDate.now();
+    this.updatedAt = LocalDateTime.now();
+  }
+  
+  /** 카테고리 삭제 시 해당 일정도 Soft Delete 처리 */
+  public void deleteWithSchedules() {
+    if (schedules != null && !schedules.isEmpty()) {
+      schedules.forEach(Schedule::deleteWithParticipants); // Schedule 엔티티의 deleteWithParticipants() 메서드 호출
+    }
+    this.deletedYn = true;
+    this.updatedAt = LocalDateTime.now();
   }
   
 }

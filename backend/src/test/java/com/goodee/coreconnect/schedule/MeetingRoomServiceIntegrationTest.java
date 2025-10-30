@@ -15,6 +15,9 @@ import com.goodee.coreconnect.schedule.entity.MeetingRoom;
 import com.goodee.coreconnect.schedule.repository.MeetingRoomRepository;
 import com.goodee.coreconnect.schedule.service.MeetingRoomService;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @SpringBootTest
 @Transactional
 public class MeetingRoomServiceIntegrationTest {
@@ -38,7 +41,7 @@ public class MeetingRoomServiceIntegrationTest {
 
     assertThat(response).isNotNull();
     assertThat(response.getName()).isEqualTo("회의실 A");
-    System.out.println("회의실 생성 성공: " + response);
+    log.info("회의실 생성 성공: " + response);
   }
 
   @Test
@@ -56,7 +59,7 @@ public class MeetingRoomServiceIntegrationTest {
 
     assertThat(updated.getName()).isEqualTo("수정된 회의실");
     assertThat(updated.getCapacity()).isEqualTo(10);
-    System.out.println("회의실 수정 성공: " + updated);
+    log.info("회의실 수정 성공: " + updated);
   }
 
   @Test
@@ -66,7 +69,7 @@ public class MeetingRoomServiceIntegrationTest {
     MeetingRoomDTO dto = meetingRoomService.getMeetingRoomById(saved.getId()); 
     assertThat(dto).isNotNull();
     assertThat(dto.getName()).isEqualTo("회의실 B");
-    System.out.println("회의실 단일 조회 성공: " + dto);
+    log.info("회의실 단일 조회 성공: " + dto);
   }
 
   @Test
@@ -78,7 +81,7 @@ public class MeetingRoomServiceIntegrationTest {
     List<MeetingRoomDTO> list = meetingRoomService.getAllRooms(false);
 
     assertThat(list).isNotEmpty();
-    System.out.println("회의실 목록 조회 성공: " + list.size() + "건");
+    log.info("회의실 목록 조회 성공: " + list.size() + "건");
   }
 
   @Test
@@ -91,7 +94,7 @@ public class MeetingRoomServiceIntegrationTest {
     List<MeetingRoomDTO> list = meetingRoomService.getAllRooms(true); 
 
     assertThat(list).allMatch(MeetingRoomDTO::getAvailableYn);
-    System.out.println("사용 가능한 회의실 조회 성공: " + list.size() + "건");
+    log.info("사용 가능한 회의실 조회 성공: " + list.size() + "건");
   }
 
   @Test
@@ -104,6 +107,6 @@ public class MeetingRoomServiceIntegrationTest {
     MeetingRoom deleted = meetingRoomRepository.findById(saved.getId()).orElseThrow();
     assertThat(deleted.getDeletedYn()).isTrue();
     assertThat(deleted.getAvailableYn()).isFalse();
-    System.out.println("회의실 삭제 성공 (Soft Delete): ID=" + deleted.getId());
+    log.info("회의실 삭제 성공 (Soft Delete): ID=" + deleted.getId());
   }
 }
