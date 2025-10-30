@@ -3,6 +3,7 @@ package com.goodee.coreconnect.chat.service;
 import java.util.List;
 
 import com.goodee.coreconnect.approval.entity.Document;
+import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
 import com.goodee.coreconnect.chat.entity.ChatRoomUser;
 import com.goodee.coreconnect.common.dto.request.NotificationRequestDTO;
@@ -27,8 +28,9 @@ public interface ChatRoomService {
 
 	ChatRoom updateRoomType(int i, String string);
 
+	// 알림 저장 (EMAIL, NOTICE, APPROVAL, SCHEDULE만 처리)
 	List<Notification> saveNotification(
-            Integer roomId, Integer senderId, String chatContent, NotificationType notificationType,  Document document);
+		    Integer roomId, Integer senderId, String chatContent, NotificationType notificationType, Document document);
 	
 	// 채팅방 참열를 위한 주소록 조회
 	List<ChatRoomUser> getChatRoomUsers(Integer roomId);
@@ -42,4 +44,7 @@ public interface ChatRoomService {
 	 * 전자결재 문서 삭제시 알림 삭제
 	 * */
 	void deleteDocumentAndNotification(Integer documentId);
+	
+	// 채팅 메시지 저장 및 반환 (채팅 알림과 분리)
+	Chat sendChatMessage(Integer roomId, Integer senderId, Object contentOrFile);
 }
