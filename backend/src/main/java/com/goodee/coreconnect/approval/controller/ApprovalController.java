@@ -16,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.goodee.coreconnect.approval.dto.request.ApprovalProcessRequestDTO;
 import com.goodee.coreconnect.approval.dto.request.DocumentCreateRequestDTO;
+import com.goodee.coreconnect.approval.dto.request.DocumentDraftRequestDTO;
 import com.goodee.coreconnect.approval.dto.response.DocumentDetailResponseDTO;
 import com.goodee.coreconnect.approval.dto.response.DocumentSimpleResponseDTO;
 import com.goodee.coreconnect.approval.dto.response.TemplateDetailResponseDTO;
@@ -56,17 +57,49 @@ public class ApprovalController {
         // 생성 성공 시 201 Created 상태와 문서 ID 반환
         return ResponseEntity.status(HttpStatus.CREATED).body(documentId);
     }
+    
+    /**
+     * 1-1. 결재 문서 임시저장
+     * [POST] /api/v1/approvals/drafts
+     * - Content-Type: multipart/form-data
+     */
+    @Operation(summary = "문서 임시저장", description = "결재 문서를 임시저장합니다. (DRAFT 상태로 저장)")
+    @PostMapping("/drafts")
+    public ResponseEntity<Integer> createDraft(
+        @Valid @RequestPart("dto") DocumentDraftRequestDTO requestDTO, // (1) 임시저장용 DTO
+        @RequestPart(value = "files", required = false) List<MultipartFile> files, // (2) 파일 데이터 (없을 수도 있음)
+        @AuthenticationPrincipal String email // (3) 인증된 사용자 이메일
+    ) {
+        
+        Integer documentId = approvalService.createDraft(requestDTO, files, email);
+        
+        // 생성 성공 시 201 Created 상태와 문서 ID 반환
+        return ResponseEntity.status(HttpStatus.CREATED).body(documentId);
+    }
 
     /**
      * 2. 내 상신함 (내가 작성한 문서) 목록 조회
-     * [GET] /api/v1/approvals/my-drafts
+     * [GET] /api/v1/approvals/my-documents
      */
     @Operation(summary = "목록 조회", description = "내가 작성한 문서 목록 조회")
-    @GetMapping("/my-drafts")
+    @GetMapping("/my-documents")
     public ResponseEntity<List<DocumentSimpleResponseDTO>> getMyDrafts(
         @AuthenticationPrincipal String email
     ) {
-        List<DocumentSimpleResponseDTO> myDrafts = approvalService.getMyDrafts(email);
+        List<DocumentSimpleResponseDTO> myDrafts = approvalService.getMyDocuments(email);
+        return ResponseEntity.ok(myDrafts);
+    }
+    
+    /**
+     * 2-1. 임시저장함 (DRAFT 상태) 목록 조회
+     * [GET] /api/v1/approvals/drafts
+     */
+    @Operation(summary = "임시저장함 조회", description = "내가 임시저장한(DRAFT 상태) 문서 목록 조회")
+    @GetMapping("/drafts")
+    public ResponseEntity<List<DocumentSimpleResponseDTO>> getMyDraftBox(
+        @AuthenticationPrincipal String email
+    ) {
+        List<DocumentSimpleResponseDTO> myDrafts = approvalService.getMyDraftBox(email);
         return ResponseEntity.ok(myDrafts);
     }
 

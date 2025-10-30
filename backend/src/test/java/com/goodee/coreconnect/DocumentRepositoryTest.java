@@ -151,7 +151,7 @@ public class DocumentRepositoryTest {
         // --- 1. 준비 (Arrange) ---
         // approver1이 결재할 'WAITING' 상태인 결재선 목록을 먼저 조회
         List<ApprovalLine> linesForApprover1 = approvalLineRepository
-            .findMyTasks(approver1, ApprovalLineStatus.WAITING, DocumentStatus.DRAFT);
+            .findMyCurrentTasks(approver1, ApprovalLineStatus.WAITING, DocumentStatus.DRAFT);
         
         // (준비 검증) approver1은 2개의 결재선(doc2, doc4)을 가지고 있어야 함
         assertThat(linesForApprover1).hasSize(2);
