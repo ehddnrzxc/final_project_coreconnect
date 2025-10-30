@@ -24,6 +24,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * 로그인, 로그아웃 로직을 수행하는 컨트롤러
+ */
+
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
@@ -40,36 +44,36 @@ public class AuthController {
       @RequestBody Map<String, String> body,
       HttpServletResponse res) {
 
-      // ✅ 요청값 받기
+      // 요청값 받기
       String email = body.get("email");
       String password = body.get("password");
       
-      // ✅ 1. 이메일로 사용자 조회
+      // 이메일로 사용자 조회
       User user = userRepository.findByEmail(email).orElse(null);
       if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-      // ✅ 2. 비밀번호 비교 (BCrypt)
+      // 비밀번호 비교 (BCrypt)
       if (!passwordEncoder.matches(password, user.getPassword()))
           return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
 
-      // ✅ 사용자 실제 Role 사용
+      // 사용자 Role 추출
       Role role = user.getRole();
 
-      // ✅ 3. 토큰 생성
-      String access = jwt.createAccess(email, role, 10);   // 10분짜리 Access Token
-      String refresh = jwt.createRefresh(email, 7);  // 7일짜리 Refresh Token
+      // 토큰 생성
+      String access = jwt.createAccess(email, role, 10);   
+      String refresh = jwt.createRefresh(email, 7);  
 
-      // ✅ 4. HttpOnly Refresh Token 쿠키 설정
+      // HttpOnly Refresh Token 쿠키 설정
       ResponseCookie cookie = ResponseCookie.from("refresh_token", refresh)
           .httpOnly(true)
-          .secure(false)       // 로컬 개발 환경은 false (배포 시 true)
-          .sameSite("Lax")     // 로컬일 땐 Lax, 도메인 분리 시 None + secure(true)
+          .secure(false)       
+          .sameSite("Lax")     
           .path("/")
           .maxAge(Duration.ofDays(7))
           .build();
 
       res.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
-      // ✅ 5. 응답 데이터 (AccessToken + 사용자 정보)
+      // 응답 데이터 (AccessToken + 사용자 정보)
       Map<String, Object> result = Map.of(
           "accessToken", access,
           "user", Map.of(
