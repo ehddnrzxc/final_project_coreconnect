@@ -73,7 +73,6 @@ public class BoardReply {
         return reply;
     }
 
-
     // ─────────────── 도메인 행위 ───────────────
     /** 댓글 수정 */
     public void updateReply(String content) {

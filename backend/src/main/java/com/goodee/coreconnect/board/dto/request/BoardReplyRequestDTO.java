@@ -12,7 +12,7 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 /**
- * 댓글 및 대댓글 등록 요청 DTO
+ * 댓글/대댓글 등록 요청 DTO
  */
 public class BoardReplyRequestDTO {
 

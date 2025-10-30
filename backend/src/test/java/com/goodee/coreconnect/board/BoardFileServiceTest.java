@@ -33,7 +33,6 @@ import com.goodee.coreconnect.board.repository.BoardFileRepository;
 import com.goodee.coreconnect.board.repository.BoardRepository;
 import com.goodee.coreconnect.board.service.BoardFileServiceImpl;
 import com.goodee.coreconnect.common.S3Service;
-import com.goodee.coreconnect.department.entity.Department;
 import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
@@ -80,7 +79,8 @@ class BoardFileServiceTest {
                 Role.USER,
                 "test@example.com",
                 "010-1234-5678",
-                (Department) null, null
+                null,
+                null
         );
 
         // 리플렉션으로 ID 설정
