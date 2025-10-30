@@ -16,4 +16,6 @@ public interface ChatRepository extends JpaRepository<Chat, Integer> {
     @Query("SELECT c FROM Chat c WHERE c.chatRoom.id IN :roomIds")
     List<Chat> findByChatRoomIds(@Param("roomIds") List<Integer> roomIds);
 
+	List<Chat> findByChatRoomIdOrderBySendAtAsc(Integer roomId);
+
 }
