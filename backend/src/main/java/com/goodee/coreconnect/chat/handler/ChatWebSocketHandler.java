@@ -12,6 +12,8 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.goodee.coreconnect.chat.dto.response.ChatResponseDTO;
 import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.chat.service.ChatRoomService;
@@ -36,8 +38,10 @@ public class ChatWebSocketHandler extends TextWebSocketHandler{
     // 실시간 메시지 전송을 위한 공통 서비스
     private final WebSocketDeliveryService webSocketDeliveryService;
 
-    // JSON 파싱을 위한 ObjectMapper
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    // JSON 파싱을 위한 ObjectMapper (JavaTimeModule 등록)
+    private final ObjectMapper objectMapper = new ObjectMapper()
+    		.registerModule(new JavaTimeModule())
+    		.disable(SerializationFeature.WRITE_DATE_TIMESTAMPS_AS_NANOSECONDS);// ISO8601 포맷으로 직렬화
     // 사용자 ID별 WebSocketSession 관리용 맵
     private final Map<Integer, WebSocketSession> userSessions = new ConcurrentHashMap<>();
 	

@@ -64,6 +64,7 @@ import com.goodee.coreconnect.chat.service.ChatRoomService;
 import com.goodee.coreconnect.chat.service.ChatRoomServiceImpl;
 import com.goodee.coreconnect.common.entity.Notification;
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
+import com.goodee.coreconnect.common.notification.service.WebSocketDeliveryService;
 import com.goodee.coreconnect.security.jwt.JwtProvider;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
@@ -105,6 +106,10 @@ public class ChatWebSocketHandlerTest {
 	@Autowired
 	private PlatformTransactionManager transactionManager;
 	
+	@Autowired
+	private WebSocketDeliveryService webSocketDeliverService;
+	
+	
 	@LocalServerPort
 	int port;
 
@@ -120,9 +125,50 @@ public class ChatWebSocketHandlerTest {
 	}
 	
 	@Test
-	@DisplayName("1. WebSocket 연결/해제 정상 동작")
+	@DisplayName("1. ChatWebSocketHandler WebSocket 연결/해제 & 실시간 채팅 메시지 푸시 테스트")
 	void testWebSocketConnection() throws Exception {
+		// 1. 테스트 사용자 준비: 실제 계정 사용
+		String email = "choimeeyoung2@gmail.com";
+		User user = userRepository.findByEmail(email).orElseThrow();
+		Role role = user.getRole();
 		
+		// 채팅방 직접 생성
+		List<Integer> userIds = Arrays.asList(user.getId());
+		ChatRoom chatRoom = chatRoomService.createChatRoom("테스트방", userIds, email);
+		int roomId = chatRoom.getId();		
+		
+		// 2. JWT 토큰 발급
+		String accessToken = jwtProvider.createAccess(email, role, 10); // 10분짜리 액세스 토큰 
+		
+		// 3. WebSocket 클라이언트 준비
+	    BlockingQueue<String> receivedMessages = new LinkedBlockingQueue<>();
+	    TextWebSocketHandler clientHandler = new TextWebSocketHandler() {
+	        @Override
+	        public void handleTextMessage(WebSocketSession session, TextMessage message) {
+	            receivedMessages.add(message.getPayload());
+	        }
+	    };
+
+	    // 4. 서버에 WebSocket 연결
+	    String wsUri = "ws://localhost:" + port + "/ws/chat?accessToken=" + accessToken;
+	    StandardWebSocketClient client = new StandardWebSocketClient();
+	    WebSocketSession session = client.doHandshake(clientHandler, wsUri).get();
+		
+	    // 5. 연결 후 세션이 정상적으로 등록되는지 검증 (핸들러 내부 세션 맵은 직접 접근 불가, 실시간 메시지로 간접 검증)
+	    assertTrue(session.isOpen(), "WebSocket 세션이 정상적으로 오픈되어야 합니다.");
+
+	    // 6. 채팅 메시지 전송 및 실시간 푸시 검증
+	    String chatContent = "테스트 채팅 메시지입니다!";
+	    String chatPayload = "{ \"type\": \"CHAT\", \"roomId\": " + roomId + ", \"content\": \"" + chatContent + "\" }";
+	    session.sendMessage(new TextMessage(chatPayload));
+	    String chatResponse = receivedMessages.poll(5, TimeUnit.SECONDS);
+	    log.info("실시간 채팅 응답: {}" + chatResponse);
+	    assertNotNull(chatResponse, "서버로부터 채팅 응답 메시지를 받아야 합니다.");
+	    assertTrue(chatResponse.contains(chatContent), "채팅 응답에 메시지 내용이 포함되어야 합니다.");
+
+	    // 7. 연결 해제 테스트
+	    session.close(CloseStatus.NORMAL);
+	    assertFalse(session.isOpen(), "WebSocket 세션이 정상적으로 닫혀야 합니다.");
 	   
 	}
 	
