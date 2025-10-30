@@ -80,7 +80,7 @@ class BoardFileServiceTest {
                 Role.USER,
                 "test@example.com",
                 "010-1234-5678",
-                (Department) null
+                (Department) null, null
         );
 
         // 리플렉션으로 ID 설정

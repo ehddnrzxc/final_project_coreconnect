@@ -54,7 +54,7 @@ class BoardCategoryServiceTest {
                 Role.ADMIN,
                 "admin@test.com",
                 "010-1111-2222",
-                (Department) null
+                (Department) null, null
         );
 
         // 실제 일반 사용자 객체
@@ -64,7 +64,7 @@ class BoardCategoryServiceTest {
                 Role.USER,
                 "user@test.com",
                 "010-3333-4444",
-                (Department) null
+                (Department) null, null
         );
 
         // 테스트용 카테고리 엔티티
