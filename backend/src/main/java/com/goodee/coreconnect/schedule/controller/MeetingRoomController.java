@@ -62,7 +62,7 @@ public class MeetingRoomController {
   /** 회의실 목록 조회 */
   @Operation(summary = "회의실 목록", description = "회의실의 목록을 조회합니다.")
   @GetMapping
-  public List<MeetingRoomDTO> getAll(@RequestParam(required = false) Boolean availableOnly) {
+  public List<MeetingRoomDTO> getAll(@RequestParam(name = "availableOnly", required = false) Boolean availableOnly) {
     return meetingRoomService.getAllRooms(availableOnly);
   }
 }

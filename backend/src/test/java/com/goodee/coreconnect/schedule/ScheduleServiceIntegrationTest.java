@@ -22,6 +22,9 @@ import com.goodee.coreconnect.schedule.service.ScheduleService;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @SpringBootTest
 @Transactional
 public class ScheduleServiceIntegrationTest {
@@ -59,7 +62,7 @@ public class ScheduleServiceIntegrationTest {
 
     assertThat(response).isNotNull();
     assertThat(response.getTitle()).isEqualTo("회의실 없이 생성되는 테스트 일정");
-    System.out.println("생성 성공: " + response);
+    log.info("생성 성공: " + response);
   }
 
   @Test
@@ -75,7 +78,7 @@ public class ScheduleServiceIntegrationTest {
     ResponseScheduleDTO response = scheduleService.getScheduleById(saved.getId());
     assertThat(response).isNotNull();
     assertThat(response.getTitle()).isEqualTo("조회 테스트 일정");
-    System.out.println("조회 성공: " + response);
+    log.info("조회 성공: " + response);
   }
 
   @Test
@@ -99,7 +102,7 @@ public class ScheduleServiceIntegrationTest {
 
     ResponseScheduleDTO updated = scheduleService.updateSchedule(saved.getId(), updateDto);
     assertThat(updated.getTitle()).isEqualTo("수정된 일정 제목");
-    System.out.println("수정 성공: " + updated);
+    log.info("수정 성공: " + updated);
   }
 
   @Test
@@ -115,7 +118,7 @@ public class ScheduleServiceIntegrationTest {
     scheduleService.deleteSchedule(saved.getId());
     Schedule deleted = scheduleRepository.findById(saved.getId()).orElseThrow();
     assertThat(deleted.getDeletedYn()).isTrue();
-    System.out.println("삭제 성공 (Soft Delete): ID=" + deleted.getId());
+    log.info("삭제 성공 (Soft Delete): ID=" + deleted.getId());
   }
 
   @Test
@@ -129,13 +132,13 @@ public class ScheduleServiceIntegrationTest {
 
     List<ResponseScheduleDTO> list = scheduleService.getUserSchedules(testUser.getId());
     assertThat(list).isNotEmpty();
-    System.out.println("유저 일정 조회 성공 (총 " + list.size() + "건)");
+    log.info("유저 일정 조회 성공 (총 " + list.size() + "건)");
   }
 
   @Test
   @DisplayName("6️⃣존재하지 않는 일정 조회 시 예외 발생")
   void testGetSchedule_NotFound() {
     assertThrows(IllegalArgumentException.class, () -> scheduleService.getScheduleById(99999));
-    System.out.println("존재하지 않는 일정 예외 정상 발생");
+    log.info("존재하지 않는 일정 예외 정상 발생");
   }
 }

@@ -23,6 +23,9 @@ import com.goodee.coreconnect.schedule.service.ScheduleParticipantService;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @SpringBootTest
 @Transactional
 public class ScheduleParticipantServiceIntegrationTest {
@@ -69,7 +72,7 @@ public class ScheduleParticipantServiceIntegrationTest {
 
     assertThat(response).isNotNull();
     assertThat(response.getUserName()).isEqualTo(testUser.getName());
-    System.out.println("참여자 추가 성공: " + response);
+    log.info("참여자 추가 성공: " + response);
   }
 
   @Test
@@ -80,7 +83,7 @@ public class ScheduleParticipantServiceIntegrationTest {
     List<ResponseScheduleParticipantDTO> list = participantService.getParticipantsBySchedule(testSchedule.getId());
 
     assertThat(list).isNotEmpty();
-    System.out.println("참여자 목록 조회 성공 (총 " + list.size() + "명)");
+    log.info("참여자 목록 조회 성공 (총 " + list.size() + "명)");
   }
 
   @Test
@@ -91,7 +94,7 @@ public class ScheduleParticipantServiceIntegrationTest {
     List<ResponseScheduleParticipantDTO> list = participantService.getSchedulesByUser(testUser.getId());
 
     assertThat(list).isNotEmpty();
-    System.out.println("유저별 참여 일정 목록 조회 성공: " + list.size() + "건");
+    log.info("유저별 참여 일정 목록 조회 성공: " + list.size() + "건");
   }
 
   @Test
@@ -104,6 +107,6 @@ public class ScheduleParticipantServiceIntegrationTest {
 
     var deleted = participantRepository.findById(saved.getId()).orElseThrow();
     assertThat(deleted.getDeletedYn()).isTrue();
-    System.out.println("참여자 삭제 성공 (Soft Delete): ID=" + deleted.getId());
+    log.info("참여자 삭제 성공 (Soft Delete): ID=" + deleted.getId());
   }
 }
