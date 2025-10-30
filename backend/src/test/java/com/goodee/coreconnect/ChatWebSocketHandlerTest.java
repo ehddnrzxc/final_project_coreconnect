@@ -128,6 +128,41 @@ public class ChatWebSocketHandlerTest {
 	@Test
 	@DisplayName("1. ChatWebSocketHandler WebSocket 연결/해제 & 실시간 채팅 메시지 푸시 테스트")
 	void testWebSocketConnection() throws Exception {
+		Role role = Role.valueOf("USER");
+	   String accessToken = jwtProvider.createAccess("choimeeyoung2@gmail.com", role, 10);
+	   log.info("accessToken: {}", accessToken);
+	   
+	   WebSocketSession session = mock(WebSocketSession.class);
+	   
+	   // 실제 URI 객체 생성
+	   java.net.URI realUri = new java.net.URI("ws://localhost/ws?accessToken=" + accessToken);
+	   when(session.getUri()).thenReturn(realUri);
+	   when(session.getHandshakeHeaders()).thenReturn(new HttpHeaders());
+	   
+	   Map<String, Object> attributes = new HashMap<>();
+	   when(session.getAttributes()).thenReturn(attributes);
+	   
+	   User user = User.createUser("dummyPassword", "최미영", Role.ADMIN, jwtProvider.getSubject(accessToken), "01011111111", null, null);
+	   Field idField = User.class.getDeclaredField("id");
+	   idField.setAccessible(true);
+	   idField.set(user, 2); // id를 2로 세팅 (assert 비교용)
+	   
+	   //when(userRepository.findByEmail("choimeeyoung2@gmail.com")).thenReturn(Optional.of(user));
+	   
+	   // User를 session에 저장
+	   session.getAttributes().put("user", user);
+	   
+	   //핸들러 연결
+	   handler.afterConnectionEstablished(session);
+	   for (Map.Entry<Integer, WebSocketSession> entry : handler.userSessions.entrySet()) {
+	       log.info("{} - {}", entry.getKey(), entry.getValue().toString());
+	   }
+	   
+	   assertTrue(handler.userSessions.containsKey(user.getId())); // == 2
+	   handler.afterConnectionClosed(session, CloseStatus.NORMAL);
+	   assertFalse(handler.userSessions.containsKey(user.getId()));
+	   
+	   
 		// 1. 테스트 사용자 준비: 실제 계정 사용
 		String email = "choimeeyoung2@gmail.com";
 		User user = userRepository.findByEmail(email).orElseThrow();

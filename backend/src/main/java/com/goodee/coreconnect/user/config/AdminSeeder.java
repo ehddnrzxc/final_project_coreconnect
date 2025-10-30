@@ -1,5 +1,6 @@
 package com.goodee.coreconnect.user.config;
 
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,23 +27,23 @@ public class AdminSeeder {
     private static final String ADMIN_NAME  = "시스템관리자";
     private static final String ADMIN_PHONE = "010-0000-0000";
     private static final String ADMIN_RAW_PASSWORD = "coreconnect@admin"; 
-    private static final Integer ADMIN_DEPT_ID = null; // 예: 1 로 지정하거나 null
+    private static final Integer ADMIN_DEPT_ID = null; 
 
     @Bean
-    public org.springframework.boot.CommandLineRunner seedAdminRunner() {
+    public CommandLineRunner seedAdminRunner() {
         return args -> seedAdminIfNeeded();
     }
 
     @Transactional
     protected void seedAdminIfNeeded() {
         if (userRepository.existsByEmail(ADMIN_EMAIL)) {
-            return; // 이미 있으면 아무 것도 안 함
+            return; 
         }
 
         Department dept = null;
         if (ADMIN_DEPT_ID != null) {
             dept = departmentRepository.findById(ADMIN_DEPT_ID)
-                    .orElse(null); // 없어도 null 허용
+                    .orElse(null);
         }
 
         String encoded = passwordEncoder.encode(ADMIN_RAW_PASSWORD);
@@ -53,7 +54,8 @@ public class AdminSeeder {
                 Role.ADMIN,             // role
                 ADMIN_EMAIL,            // email
                 ADMIN_PHONE,            // phone
-                dept                    // department (null 가능)
+                dept,                   // department (null 가능)
+                null                    // jobGrade (초기값: null)
         );
 
         // 상태 등 추가 설정이 필요하면 여기서 조정 가능

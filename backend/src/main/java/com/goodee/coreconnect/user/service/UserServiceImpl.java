@@ -15,6 +15,7 @@ import com.goodee.coreconnect.department.entity.Department;
 import com.goodee.coreconnect.department.repository.DepartmentRepository;
 import com.goodee.coreconnect.user.dto.request.CreateUserReqDTO;
 import com.goodee.coreconnect.user.dto.response.UserDTO;
+import com.goodee.coreconnect.user.entity.JobGrade;
 import com.goodee.coreconnect.user.entity.Status;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
@@ -26,7 +27,7 @@ import lombok.RequiredArgsConstructor;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
-    private final S3Service s3Service; // ✅ 기존 S3Service 주입
+    private final S3Service s3Service; 
     private final DepartmentRepository departmentRepository;
     private final PasswordEncoder passwordEncoder;
 
@@ -81,7 +82,9 @@ public class UserServiceImpl implements UserService {
                 req.role(),
                 req.email(),
                 req.phone(),
-                dept
+                dept,
+                req.jobGrade()
+                
         );
 
         // (옵션) 기본 상태 보정
@@ -112,4 +115,29 @@ public class UserServiceImpl implements UserService {
                                              .toList();
       return userList;
     }
+    /**
+     * 유저의 부서 변경 메소드
+     */
+    @Override
+    @Transactional
+    public void moveUserToDepartment(Integer userId, Integer newDeptId) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+        Department newDept = departmentRepository.findById(newDeptId)
+            .orElseThrow(() -> new IllegalArgumentException("부서를 찾을 수 없습니다."));
+
+        user.changeDepartment(newDept);
+    }
+    /**
+     * 유저의 직급 변경 메소드
+     */
+    @Override
+    @Transactional
+    public void moveUserToJobGrade(Integer userId, JobGrade jobGrade) {
+      User user = userRepository.findById(userId)
+          .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+      
+      user.changeJobGrade(jobGrade);
+    }
+
 }

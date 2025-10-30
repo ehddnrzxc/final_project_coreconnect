@@ -27,17 +27,20 @@ public class Department {
     @Column(name = "dept_order_no", nullable = false)
     private Integer deptOrderNo;
 
-    /**
-     * ✅ 양방향 연관관계 (User 엔티티는 이미 ManyToOne으로 연결되어 있음)
-     * mappedBy = "department" → User 엔티티의 필드명과 동일해야 함
-     */
     @OneToMany(mappedBy = "department", cascade = CascadeType.ALL, orphanRemoval = false)
     private List<User> users = new ArrayList<>();
+    
+    /** 계층 구조(자기참조 관계) */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_id")
+    private Department parent; 
+
+    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
+    private List<Department> children = new ArrayList<>();
 
 
-    // ───────────────────────────────
-    // ✅ 정적 팩토리 메서드
-    // ───────────────────────────────
+
+    // 정적 팩토리 메서드
     public static Department createDepartment(String deptName, Integer deptOrderNo) {
         Department dept = new Department();
         dept.deptName = deptName;
@@ -46,14 +49,18 @@ public class Department {
     }
 
 
-    // ───────────────────────────────
-    // ✅ 도메인 행위
-    // ───────────────────────────────
+
+    //----- 도메인 메서드 -----
+    
     public void changeName(String newName) {
         this.deptName = newName;
     }
 
     public void changeOrder(int newOrder) {
         this.deptOrderNo = newOrder;
+    }
+    
+    public void changeParent(Department newParent) {
+      this.parent = newParent;
     }
 }

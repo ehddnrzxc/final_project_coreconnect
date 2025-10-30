@@ -57,9 +57,9 @@ public class ApprovalLineRepositoryTest {
   @BeforeEach
   void setUp() throws InterruptedException {
     // 테스트 데이터 설정
-    drafter = userRepository.save(User.createUser("password0", "기안자", Role.ADMIN, "drafter111@example.com", "010-0000-0000", null));
-    approver1 = userRepository.save(User.createUser("password1", "결재자1", Role.USER, "approver111@example.com", "010-1111-1111", null));
-    approver2 = userRepository.save(User.createUser("password2", "결재자2", Role.USER, "approver221@example.com", "010-2222-2222", null));
+    drafter = userRepository.save(User.createUser("password0", "기안자", Role.ADMIN, "drafter111@example.com", "010-0000-0000", null, null));
+    approver1 = userRepository.save(User.createUser("password1", "결재자1", Role.USER, "approver111@example.com", "010-1111-1111", null, null));
+    approver2 = userRepository.save(User.createUser("password2", "결재자2", Role.USER, "approver221@example.com", "010-2222-2222", null, null));
     template = templateRepository.save(Template.createTemplate("테스트 양식", "테스트 양식내용입니다.", drafter));
     doc1 = documentRepository.save(Document.createDocument(template, drafter, "테스트 문서1 (가장 오래됨)", "테스트 문서 내용1"));
     Thread.sleep(10);

@@ -1,5 +1,6 @@
 package com.goodee.coreconnect.user.dto.request;
 
+import com.goodee.coreconnect.user.entity.JobGrade;
 import com.goodee.coreconnect.user.entity.Role;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -18,7 +19,9 @@ public record CreateUserReqDTO(
  
  String phone,
  
- Integer deptId,    
+ Integer deptId,  
+ 
+ JobGrade jobGrade,
  
  @NotNull 
  Role role         

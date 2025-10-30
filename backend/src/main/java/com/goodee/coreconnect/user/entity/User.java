@@ -101,6 +101,11 @@ public class User {
     @OneToMany(mappedBy = "drafter")
     private List<ChatRoom> createdChatRooms = new ArrayList<>();
     
+    // 직급
+    @Enumerated(EnumType.STRING)
+    @Column(name = "user_rank", length = 20)
+    private JobGrade jobGrade;
+    
     // ─────────────── 생성 메서드 ───────────────
     public static User createUser(
             String password,
@@ -108,7 +113,8 @@ public class User {
             Role role,
             String email,
             String phone,
-            Department department
+            Department department,
+            JobGrade jobGrade
     ) {
         User user = new User();
         user.password = password;
@@ -119,6 +125,7 @@ public class User {
         user.department = department;
         user.joinDate = LocalDateTime.now();
         user.status = Status.ACTIVE;
+        user.jobGrade = jobGrade;
         return user;
     }
 
@@ -169,6 +176,13 @@ public class User {
         if (department != null) {
             department.getUsers().add(this);
         }
+    }
+    
+    /** 직급 변경 */
+    public void changeJobGrade(JobGrade jobGrade) {
+      if(jobGrade != null) {
+        this.jobGrade = jobGrade;
+      }
     }
 
 
