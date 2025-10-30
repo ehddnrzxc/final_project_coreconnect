@@ -16,5 +16,6 @@ public interface ChatRoomUserRepository extends JpaRepository<ChatRoomUser, Inte
 	List<ChatRoomUser> findByChatRoomIdWithUser(@Param("roomId") Integer roomId);
 	
 	// 내가 참여한 모든 채팅방
-	List<ChatRoomUser> findByUserId(Integer userId);
+	@Query("SELECT cru FROM ChatRoomUser cru JOIN FETCH cru.chatRoom WHERE cru.user.id = :userId")
+	List<ChatRoomUser> findByUserId(@Param("userId") Integer userId);
 }
