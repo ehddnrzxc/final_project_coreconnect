@@ -604,7 +604,7 @@ public class ChatWebSocketHandlerTest {
 	         }
 	     };
 
-	     String email = "receiver@example.com";
+	     String email = "choimeeyoung2@gmail.com";
 	     User user = userRepository.findByEmail(email).orElseThrow();
 	     String accessToken = jwtProvider.createAccess(email, user.getRole(), 10);
 
