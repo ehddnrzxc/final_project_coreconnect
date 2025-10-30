@@ -16,23 +16,30 @@ import com.goodee.coreconnect.schedule.dto.request.RequestScheduleCategoryDTO;
 import com.goodee.coreconnect.schedule.dto.response.ResponseScheduleCategoryDTO;
 import com.goodee.coreconnect.schedule.service.ScheduleCategoryService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+@Tag(name = "ScheduleCategory API", description = "일정 카테고리 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/scheduleCategories")
+@SecurityRequirement(name = "bearerAuth")
 public class ScheduleCategoryController {
 
   private final ScheduleCategoryService scheduleCategoryService;
 
   /** 카테고리 생성 */
+  @Operation(summary = "카테고리 생성", description = "새로운 카테고리를 생성합니다.")
   @PostMapping
   public ResponseScheduleCategoryDTO create(@Valid @RequestBody RequestScheduleCategoryDTO dto, @AuthenticationPrincipal String email) {
     return scheduleCategoryService.createCategory(dto, email);
   }
 
   /** 카테고리 수정 */
+  @Operation(summary = "카테고리 수정", description = "기존의 카테고리를 수정합니다.")
   @PutMapping("/{id}")
   public ResponseScheduleCategoryDTO update(@PathVariable("id") Integer id,
                                             @Valid @RequestBody RequestScheduleCategoryDTO dto) {
@@ -40,6 +47,7 @@ public class ScheduleCategoryController {
   }
 
   /** 카테고리 삭제 */
+  @Operation(summary = "카테고리 삭제", description = "기존의 카테고리를 수정합니다.")
   @DeleteMapping("/{id}")
   public void delete(@PathVariable("id") Integer id) {
     scheduleCategoryService.deleteCategory(id);

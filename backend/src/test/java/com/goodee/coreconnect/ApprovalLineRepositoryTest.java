@@ -97,7 +97,7 @@ public class ApprovalLineRepositoryTest {
   void findByApproverAndApprovalLineStatusOrderByDocumentCreatedAt() {
 
     // --- 1. 실행 (Act) ---
-    List<ApprovalLine> results = approvalLineRepository.findMyTasks(
+    List<ApprovalLine> results = approvalLineRepository.findMyCurrentTasks(
         approver1, 
         ApprovalLineStatus.WAITING,
         DocumentStatus.DRAFT

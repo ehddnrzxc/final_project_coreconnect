@@ -25,6 +25,15 @@ public interface DocumentRepository extends JpaRepository<Document, Integer>{
   List<Document> findByUserAndDocDeletedYnOrderByCreatedAtDesc(User user, Boolean docDeletedYn);
   
   /**
+   * 내가 작성한 문서 목록을 상태별로 조회 (임시저장함용)
+   */
+  List<Document> findByUserAndDocumentStatusAndDocDeletedYnOrderByCreatedAtDesc(
+      User user, 
+      DocumentStatus documentStatus, 
+      Boolean docDeletedYn
+  );
+  
+  /**
    * (N+1 문제 해결) 문서 상세 조회 시 필요한 모든 연관 엔티티를 fetch join
    */
   @Query("SELECT d FROM Document d " +

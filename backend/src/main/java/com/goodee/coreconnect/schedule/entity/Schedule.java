@@ -1,6 +1,8 @@
 package com.goodee.coreconnect.schedule.entity;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.goodee.coreconnect.department.entity.Department;
 import com.goodee.coreconnect.schedule.enums.ScheduleVisibility;
@@ -16,6 +18,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.Getter;
 
@@ -57,33 +60,29 @@ public class Schedule {
   @Column(name = "sch_updated_at")
   private LocalDateTime updatedAt;
 
-  /**
-   * N:1 (user 테이블과 매핑)
-   */
+  /** N:1 (user 테이블과 매핑) */
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "user_id")
   private User user;
   
-  /**
-   * N:1 (scheduleCategory 테이블과 매핑)
-   */
+  /** N:1 (scheduleCategory 테이블과 매핑) */
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "sch_category_id")
   private ScheduleCategory category;
   
-  /**
-   * N:1 (meetingRoom 테이블과 매핑)
-   */
+  /** N:1 (meetingRoom 테이블과 매핑) */
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "mt_id")
   private MeetingRoom meetingRoom;
   
-  /**
-   * N:1 (department 테이블과 매핑)
-   */
+  /** N:1 (department 테이블과 매핑) */
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "dept_id")
   private Department department;
+  
+  /** 1:N (scheduleParticipant(일정 참여자) 관계 추가) */
+  @OneToMany(mappedBy = "schedule", fetch = FetchType.LAZY)
+  private List<ScheduleParticipant> participants = new ArrayList<>();
   
   
   protected Schedule() {};
@@ -138,10 +137,14 @@ public class Schedule {
     this.updatedAt = LocalDateTime.now();
   }
   
-  /** 일정 삭제(Delete) */
-  public void delete() {
+  /** Soft Delete + 참여자까지 함께 Soft Delete */
+  public void deleteWithParticipants() {
     this.deletedYn = true;
     this.updatedAt = LocalDateTime.now();
+
+    if (participants != null && !participants.isEmpty()) {
+      participants.forEach(ScheduleParticipant::delete);
+    }
   }
   
 }

@@ -6,6 +6,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.goodee.coreconnect.approval.dto.request.ApprovalProcessRequestDTO;
 import com.goodee.coreconnect.approval.dto.request.DocumentCreateRequestDTO;
+import com.goodee.coreconnect.approval.dto.request.DocumentDraftRequestDTO;
 import com.goodee.coreconnect.approval.dto.response.DocumentDetailResponseDTO;
 import com.goodee.coreconnect.approval.dto.response.DocumentSimpleResponseDTO;
 import com.goodee.coreconnect.approval.dto.response.TemplateDetailResponseDTO;
@@ -22,11 +23,27 @@ public interface ApprovalService {
   Integer createDocument(DocumentCreateRequestDTO requestDTO, List<MultipartFile> files, String email);
 
   /**
-   * 내 상신함(내가 작성한 문서) 목록을 조회합니다.
+   * 결재 문서를 임시저장합니다. (DRAFT 상태)
+   * @param requestDTO 문서 임시저장 요청
+   * @param files 첨부 파일
+   * @param email 작성자 email
+   * @return 생성된 문서 ID
+   */
+  Integer createDraft(DocumentDraftRequestDTO requestDTO, List<MultipartFile> files, String email);
+
+  /**
+   * 임시저장함(내가 작성한 DRAFT 문서) 목록을 조회합니다.
+   * @param email 현재 사용자 email
+   * @return DRAFT 상태의 문서 목록
+   */
+  List<DocumentSimpleResponseDTO> getMyDraftBox(String email);
+
+  /**
+   * 내 상신함(내가 작성한 *모든* 문서) 목록을 조회합니다.
    * @param email 현재 사용자 email
    * @return 문서 목록
    */
-  List<DocumentSimpleResponseDTO> getMyDrafts(String email);
+  List<DocumentSimpleResponseDTO> getMyDocuments(String email);
 
   /**
    * 내 결재함(내가 결재할 문서) 목록을 조회합니다.
@@ -58,18 +75,18 @@ public interface ApprovalService {
    * @param email 반려하는 사용자 email
    */
   void rejectDocument(Integer documentId, ApprovalProcessRequestDTO requestDTO, String email);
-  
+
   /**
    * 활성화된 모든 양식(템플릿) 목록을 조회합니다.
    * @return 템플릿 목록
    */
   List<TemplateSimpleResponseDTO> getActiveTemplates();
-  
+
   /**
    * 특정 양식(템플릿)의 상세 내용을 조회합니다.
    * @param templateId 템플릿 ID
    * @return 템플릿 상세 DTO
    */
   TemplateDetailResponseDTO getTemplateDetail(Integer templateId);
-  
+
 }

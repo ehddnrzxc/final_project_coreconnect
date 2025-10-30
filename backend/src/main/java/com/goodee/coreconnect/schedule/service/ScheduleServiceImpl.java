@@ -116,8 +116,8 @@ public class ScheduleServiceImpl implements ScheduleService {
     Schedule schedule = scheduleRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("일정을 찾을 수 없습니다."));
 
-    // 엔티티의 delete() 행위 호출
-    schedule.delete();
+    // Soft Delete (참여자 포함)
+    schedule.deleteWithParticipants();
   }
 
   /** 유저별 일정 조회 (readOnly) */

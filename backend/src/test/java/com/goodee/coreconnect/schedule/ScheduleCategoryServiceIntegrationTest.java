@@ -19,6 +19,9 @@ import com.goodee.coreconnect.schedule.service.ScheduleCategoryService;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @SpringBootTest
 @Transactional
 public class ScheduleCategoryServiceIntegrationTest {
@@ -52,7 +55,7 @@ public class ScheduleCategoryServiceIntegrationTest {
 
     assertThat(response).isNotNull();
     assertThat(response.getName()).isEqualTo("개인 일정");
-    System.out.println("카테고리 생성 성공: " + response);
+    log.info("카테고리 생성 성공: " + response);
   }
 
   @Test
@@ -70,7 +73,7 @@ public class ScheduleCategoryServiceIntegrationTest {
 
     assertThat(response.getName()).isEqualTo("변경된 일정");
     assertThat(response.isDefaultYn()).isTrue();
-    System.out.println("수정 성공: " + response);
+    log.info("수정 성공: " + response);
   }
 
   @Test
@@ -83,7 +86,7 @@ public class ScheduleCategoryServiceIntegrationTest {
     List<ResponseScheduleCategoryDTO> list = categoryService.getUserCategories(testUser.getEmail());
 
     assertThat(list).isNotEmpty();
-    System.out.println("유저 카테고리 목록 조회 성공: " + list.size() + "건");
+    log.info("유저 카테고리 목록 조회 성공: " + list.size() + "건");
   }
 
   @Test
@@ -96,6 +99,6 @@ public class ScheduleCategoryServiceIntegrationTest {
 
     ScheduleCategory deleted = categoryRepository.findById(saved.getId()).orElseThrow();
     assertThat(deleted.getDeletedYn()).isTrue();
-    System.out.println("삭제 성공 (Soft Delete): ID=" + deleted.getId());
+    log.info("삭제 성공 (Soft Delete): ID=" + deleted.getId());
   }
 }
