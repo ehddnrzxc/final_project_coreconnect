@@ -100,6 +100,19 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
 		// 알림 저장 및 실시간 푸시
 		notificationService.sendNotification(recipientId, type, msg, null, null, senderId, senderName);
 		
+		// WebSocket 세션이 있다면 알림 메시지 push
+		WebSocketSession recipientSession = userSessions.get(recipientId);
+		if (recipientSession != null && recipientSession.isOpen()) {
+			// 알림 응답 JSON 생성
+			String responseJson = objectMapper.writeValueAsString(
+					Map.of("type", type.name(), "message", msg, "recipientId", recipientId)
+			);
+			recipientSession.sendMessage(new TextMessage(responseJson));
+			log.info("실시간 WebSocket 알림 푸시: recipientId={}, message={}", recipientId, msg);
+		}
+		
+		
+		
 	}
 	
 	/**

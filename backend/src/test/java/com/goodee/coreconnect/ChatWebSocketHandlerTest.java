@@ -28,7 +28,7 @@ import java.util.Map.Entry;
 import java.util.Optional;
 
 import java.util.concurrent.BlockingQueue;
-
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -47,6 +47,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
@@ -171,6 +172,49 @@ public class ChatWebSocketHandlerTest {
 	    assertFalse(session.isOpen(), "WebSocket 세션이 정상적으로 닫혀야 합니다.");
 	   
 	}
+	
+	
+	@Test
+	@DisplayName("NotificationWebSocketHandler WebSocket 연결/해제 & 실시간 아릶 푸시 테스트")
+	void testNotificationWebSocketConnection() throws Exception {
+		// 1. 테스트 사용자 준비 : 실제 계정 사용
+		String email = "choimeeyoung2@gmail.com";
+		User user = userRepository.findByEmail(email).orElseThrow(null);
+		Role role = user.getRole();
+		
+		// 2. JWT 토큰 발급 
+		String accessToken = jwtProvider.createAccess(email, role, 10);
+		
+		// 3. WebSocket 클라이언트 준비
+		BlockingQueue<String> receivedMessages = new LinkedBlockingQueue<>();
+		TextWebSocketHandler clientHandler = new TextWebSocketHandler() {
+			protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
+				receivedMessages.add(message.getPayload());
+			}
+		};
+		
+		// 4. 서버에 WebSocket 연결
+		WebSocketHttpHeaders headers = new WebSocketHttpHeaders();
+
+		String wsUri = "ws://localhost:" + port + "/ws/notification?accessToken=" + accessToken;
+		StandardWebSocketClient client = new StandardWebSocketClient();
+		WebSocketSession session = client.execute(clientHandler, wsUri, headers).get();
+		
+		assertTrue(session.isOpen(), "WebSocket 세션이 정상적으로 오픈되어야 합니다.");
+		
+		// 5. 알림 메시지 전송 및 실시간 푸시 검증
+		String notificationPayload =  "{ \"recipientId\": " + user.getId() + ", \"type\": \"EMAIL\", \"message\": \"새 이메일이 왔습니다\" }";
+		session.sendMessage(new TextMessage(notificationPayload));
+		
+		String response = receivedMessages.poll(5, TimeUnit.SECONDS);
+		log.info("실시간 알림 응답: {}" + response);
+		assertNotNull(response, "서버로부터 알림 응답 메시지를 받아야 합니다.");
+		
+		
+		
+		
+	}
+	
 	
 	
 	@Test
