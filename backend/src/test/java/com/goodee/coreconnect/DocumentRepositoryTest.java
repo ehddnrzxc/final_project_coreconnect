@@ -59,9 +59,9 @@ public class DocumentRepositoryTest {
         // --- 1. 부서, 유저, 템플릿 생성 ---
         Department devDept = departmentRepository.save(Department.createDepartment("개발부", 1));
         
-        drafter1 = userRepository.save(User.createUser("pw123", "기안자1", Role.USER, "drafter1@example.com", "010-1111-1111", devDept));
-        drafter2 = userRepository.save(User.createUser("pw123", "기안자2", Role.USER, "drafter2@example.com", "010-2222-2222", devDept));
-        approver1 = userRepository.save(User.createUser("pw123", "결재자1", Role.USER, "approver1@example.com", "010-3333-3333", devDept));
+        drafter1 = userRepository.save(User.createUser("pw123", "기안자1", Role.USER, "drafter1@example.com", "010-1111-1111", devDept, null));
+        drafter2 = userRepository.save(User.createUser("pw123", "기안자2", Role.USER, "drafter2@example.com", "010-2222-2222", devDept, null));
+        approver1 = userRepository.save(User.createUser("pw123", "결재자1", Role.USER, "approver1@example.com", "010-3333-3333", devDept, null));
         
         template = templateRepository.save(Template.createTemplate("테스트 양식", "내용", drafter1));
 

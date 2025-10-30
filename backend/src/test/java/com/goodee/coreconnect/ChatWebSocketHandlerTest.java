@@ -138,7 +138,7 @@ public class ChatWebSocketHandlerTest {
 	   Map<String, Object> attributes = new HashMap<>();
 	   when(session.getAttributes()).thenReturn(attributes);
 	   
-	   User user = User.createUser("dummyPassword", "최미영", Role.ADMIN, jwtProvider.getSubject(accessToken), "01011111111", null);
+	   User user = User.createUser("dummyPassword", "최미영", Role.ADMIN, jwtProvider.getSubject(accessToken), "01011111111", null, null);
 	   Field idField = User.class.getDeclaredField("id");
 	   idField.setAccessible(true);
 	   idField.set(user, 2); // id를 2로 세팅 (assert 비교용)

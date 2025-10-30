@@ -47,13 +47,12 @@ public class Attendance {
         attendance.user = user;
         attendance.status = status;
         attendance.dashboard = dashboard;
-        attendance.checkIn = LocalDateTime.now(); // 출근 시점 자동 기록
+        attendance.checkIn = LocalDateTime.now(); 
         return attendance;
     }
 
 
     // 도메인 행위 (업무 로직)
- 
 
     /** 퇴근 처리 */
     public void checkOut() {

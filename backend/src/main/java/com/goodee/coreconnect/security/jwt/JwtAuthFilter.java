@@ -14,8 +14,10 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
+@Slf4j
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
@@ -31,8 +33,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         final String uri = req.getRequestURI();
         final String authHeader = req.getHeader("Authorization");
 
-        System.out.println("[JWT] 요청 URI: " + uri);
-        System.out.println("[JWT] Authorization 헤더: " + authHeader);
+        log.info("[JWT] 요청 URI: " + uri);
+        log.info("[JWT] Authorization 헤더: " + authHeader);
 
         // WebSocket 인증 제외
         // WebSocket 연결에서는 핸드쉐이크 과정이 HTTP와 다르기 때문에 JWT 인증을 따로 적용하거나 핸들러에서 직접 인증을 처리하는 경우가 많음
@@ -56,8 +58,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 final String username = jwtProvider.getSubject(token);
                 final String role = jwtProvider.getRole(token);
 
-                System.out.println("[JWT] 토큰 subject(email): " + username);
-                System.out.println("[JWT] 토큰 role: " + role);
+                log.info("[JWT] 토큰 subject(email): " + username);
+                log.info("[JWT] 토큰 role: " + role);
 
                 final List<SimpleGrantedAuthority> authorities =
                     (role != null)
@@ -70,19 +72,19 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 
-                System.out.println("[JWT] SecurityContext 인증 등록 완료: " + authentication);
+                log.info("[JWT] SecurityContext 인증 등록 완료: " + authentication);
 
             } catch (Exception e) {
-                System.err.println("[JWT] Invalid token: " + e.getMessage());
+              log.info("[JWT] Invalid token: " + e.getMessage());
             }
         }
 
         // 인증 정보 로그 (컨트롤러 진입 직전)
         var authentication = SecurityContextHolder.getContext().getAuthentication();
-        System.out.println("[JWT][After Filter] SecurityContext 인증 정보: " + authentication);
+        log.info("[JWT][After Filter] SecurityContext 인증 정보: " + authentication);
         if (authentication != null) {
-            System.out.println("[JWT][After Filter] Principal: " + authentication.getPrincipal());
-            System.out.println("[JWT][After Filter] Authorities: " + authentication.getAuthorities());
+          log.info("[JWT][After Filter] Principal: " + authentication.getPrincipal());
+          log.info("[JWT][After Filter] Authorities: " + authentication.getAuthorities());
         }
 
         chain.doFilter(req, res);

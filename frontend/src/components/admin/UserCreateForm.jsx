@@ -28,7 +28,7 @@ export default function UserCreateForm() {
   /** 부서 목록 로드 */
   useEffect(() => {
     http
-      .get("/departments")
+      .get("/departments/flat")
       .then(({ data }) => setDepartments(data))
       .catch(() =>
         setMsg({
