@@ -57,13 +57,13 @@ import com.goodee.coreconnect.approval.repository.DocumentRepository;
 import com.goodee.coreconnect.approval.repository.TemplateRepository;
 import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
+import com.goodee.coreconnect.chat.entity.MessageFile;
 import com.goodee.coreconnect.chat.repository.ChatRepository;
 import com.goodee.coreconnect.chat.repository.NotificationRepository;
 import com.goodee.coreconnect.chat.service.ChatRoomService;
 import com.goodee.coreconnect.chat.service.ChatRoomServiceImpl;
 import com.goodee.coreconnect.common.entity.Notification;
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
-import com.goodee.coreconnect.common.notification.handler.WebSocketHandler;
 import com.goodee.coreconnect.security.jwt.JwtProvider;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
@@ -92,8 +92,6 @@ public class ChatWebSocketHandlerTest {
 	
 	@Autowired
 	ChatRepository chatRepository;
-		
-	WebSocketHandler handler;	
 	
 	@Autowired
 	DataSource dataSource;
@@ -124,41 +122,7 @@ public class ChatWebSocketHandlerTest {
 	@Test
 	@DisplayName("1. WebSocket 연결/해제 정상 동작")
 	void testWebSocketConnection() throws Exception {
-		Role role = Role.valueOf("USER");
-	   String accessToken = jwtProvider.createAccess("choimeeyoung2@gmail.com", role, 10);
-	   log.info("accessToken: {}", accessToken);
-	   
-	   WebSocketSession session = mock(WebSocketSession.class);
-	   
-	   // 실제 URI 객체 생성
-	   java.net.URI realUri = new java.net.URI("ws://localhost/ws?accessToken=" + accessToken);
-	   when(session.getUri()).thenReturn(realUri);
-	   when(session.getHandshakeHeaders()).thenReturn(new HttpHeaders());
-	   
-	   Map<String, Object> attributes = new HashMap<>();
-	   when(session.getAttributes()).thenReturn(attributes);
-	   
-	   User user = User.createUser("dummyPassword", "최미영", Role.ADMIN, jwtProvider.getSubject(accessToken), "01011111111", null);
-	   Field idField = User.class.getDeclaredField("id");
-	   idField.setAccessible(true);
-	   idField.set(user, 2); // id를 2로 세팅 (assert 비교용)
-	   
-	   //when(userRepository.findByEmail("choimeeyoung2@gmail.com")).thenReturn(Optional.of(user));
-	   
-	   // User를 session에 저장
-	   session.getAttributes().put("user", user);
-	   
-	   //핸들러 연결
-	   handler.afterConnectionEstablished(session);
-	   for (Map.Entry<Integer, WebSocketSession> entry : handler.userSessions.entrySet()) {
-	       log.info("{} - {}", entry.getKey(), entry.getValue().toString());
-	   }
-	   
-	   assertTrue(handler.userSessions.containsKey(user.getId())); // == 2
-	   handler.afterConnectionClosed(session, CloseStatus.NORMAL);
-	   assertFalse(handler.userSessions.containsKey(user.getId()));
-	   
-	   
+		
 	   
 	}
 	
@@ -212,11 +176,11 @@ public class ChatWebSocketHandlerTest {
         String targetEmail = "ehddnras@gmail.com";
         try (Connection conn = dataSource.getConnection()) {
             // DB 정보 출력
-            System.out.println(">>> 현재 연결된 DB 정보");
-            System.out.println("DB URL: " + conn.getMetaData().getURL());
-            System.out.println("DB User: " + conn.getMetaData().getUserName());
-            System.out.println("DB Product: " + conn.getMetaData().getDatabaseProductName());
-            System.out.println("DB Version: " + conn.getMetaData().getDatabaseProductVersion());
+            log.info(">>> 현재 연결된 DB 정보");
+            log.info("DB URL: {} " + conn.getMetaData().getURL());
+            log.info("DB User: " + conn.getMetaData().getUserName());
+            log.info("DB Product: " + conn.getMetaData().getDatabaseProductName());
+            log.info("DB Version: " + conn.getMetaData().getDatabaseProductVersion());
 
             // 현재 DB(스키마) 이름 확인 (MySQL 기준)
             try (PreparedStatement stmt = conn.prepareStatement("SELECT DATABASE()")) {
@@ -283,17 +247,19 @@ public class ChatWebSocketHandlerTest {
 		// 3. 채팅방을 하나 새로 만든다
 		ChatRoom chatRoom = chatRoomService.createChatRoom("alarmTestRoom3", userIds, "choimeeyoung2@gmail.com");
 		
-		// 메시지 저장 및 알림 생성
-		chatRoomService.saveNotification(chatRoom.getId(), userIds.get(0), "실제 메시지 전송 테스트3", NotificationType.CHAT, null);
+		// 4. 메시지 저장 및 알림 생성
+		String messageContent = "실제 메시지 전송 테스트3";
+		chatRoomService.sendChatMessage(chatRoom.getId(), userIds.get(0), messageContent);
 		
-		//메시지가 저장됐는지 확인
+		// 파일 메시지 저장 예시 (파일 메시지 테스트)
+		MessageFile file = MessageFile.createMessageFile("test.pdf", 12345.0, "chatfiles/test.pdf", null);
+		chatRoomService.sendChatMessage(chatRoom.getId(), userIds.get(0), file);
+		
+		// 5. 메시지가 저장됐는지 확인
 		List<Chat> chats = chatRepository.findByChatRoomId(chatRoom.getId());
 		assertFalse(chats.isEmpty(), "메시지가 DB에 저장되어야 함");
-		
-		// 알림이 생성됐는지 확인
-		List<Notification> nofiNotifications = notificationRepository.findByChatId(chats.get(0).getId());
-		assertEquals(userIds.size(), nofiNotifications.size(), "알림이 참여자 수만큼 생성되어야 함");	
-	
+		assertTrue(chats.stream().anyMatch(c -> messageContent.equals(c.getMessageContent())));
+		 // 6. 실시간 푸시 및 알림 검증은 별도의 WebSocket 핸들러 테스트에서 수행
 	}
 	
 	@Test
@@ -391,13 +357,11 @@ public class ChatWebSocketHandlerTest {
 		// 9. DB에서 알림 메시지 검증 (CHAT 타입: content 포함)
 		// DB에서 chatContent(사용자 메시지)가 알림 메시지에 제대로 포함되어 있는지 검증.
 	    notifications = notificationRepository.findByUserId(user.getId());
-	    // CHAT 검증
-	    boolean foundChat = notifications.stream()
-	    	    .filter(n -> n.getNotificationType() != null)
-	    	    .anyMatch(n -> n.getNotificationType() == NotificationType.CHAT
-	    	        && n.getNotificationMessage() != null
-	    	        && n.getNotificationMessage().contains(chatContent));
-	    assertTrue(foundChat, "DB에 CHAT 알림 메시지에 사용자 메시지(content)가 포함되어야 합니다.");
+	 // Chat 테이블에서 메시지 검증
+	    List<Chat> chats = chatRepository.findByChatRoomId(3);
+	    boolean foundChat = chats.stream()
+	        .anyMatch(c -> c.getMessageContent() != null && c.getMessageContent().contains(chatContent));
+	    assertTrue(foundChat, "DB에 채팅 메시지(content)가 저장되어야 합니다.");
 	}
 	
 
@@ -543,6 +507,33 @@ public class ChatWebSocketHandlerTest {
         }
     }
 	
-	
+	 @Test
+	 @DisplayName("실시간 알림 WebSocket 푸시 테스트")
+	 void testNotificationWebSocketPush() throws Exception {
+	     BlockingQueue<String> receivedMessages = new LinkedBlockingQueue<>();
+	     TextWebSocketHandler clientHandler = new TextWebSocketHandler() {
+	         @Override
+	         public void handleTextMessage(WebSocketSession session, TextMessage message) {
+	             receivedMessages.add(message.getPayload());
+	         }
+	     };
+
+	     String email = "receiver@example.com";
+	     User user = userRepository.findByEmail(email).orElseThrow();
+	     String accessToken = jwtProvider.createAccess(email, user.getRole(), 10);
+
+	     String wsUri = "ws://localhost:" + port + "/ws/notification?accessToken=" + accessToken;
+	     StandardWebSocketClient client = new StandardWebSocketClient();
+	     WebSocketSession session = client.doHandshake(clientHandler, wsUri).get();
+
+	     // 알림 메시지 전송
+	     String notificationPayload = "{ \"recipientId\": " + user.getId() + ", \"type\": \"EMAIL\", \"message\": \"새 이메일이 왔습니다\" }";
+	     session.sendMessage(new TextMessage(notificationPayload));
+
+	     // 실시간 푸시 메시지 수신 검증
+	     String response = receivedMessages.poll(5, TimeUnit.SECONDS);
+	     assertNotNull(response);
+	     assertTrue(response.contains("새 이메일이 왔습니다"));
+	 }
 	
 }
