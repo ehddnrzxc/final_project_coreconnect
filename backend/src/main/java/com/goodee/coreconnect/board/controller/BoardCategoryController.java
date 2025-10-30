@@ -19,7 +19,7 @@ import lombok.RequiredArgsConstructor;
  * - 관리자 전용 (ADMIN)
  */
 @RestController
-@RequestMapping("/api/v1/board-categories")
+@RequestMapping("/api/v1/board-cate")
 @RequiredArgsConstructor
 public class BoardCategoryController {
 
