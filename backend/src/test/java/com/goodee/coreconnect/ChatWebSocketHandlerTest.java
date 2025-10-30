@@ -175,7 +175,7 @@ public class ChatWebSocketHandlerTest {
 	
 	
 	@Test
-	@DisplayName("NotificationWebSocketHandler WebSocket 연결/해제 & 실시간 아릶 푸시 테스트")
+	@DisplayName("NotificationWebSocketHandler WebSocket 연결/해제 & 실시간 알림 푸시 테스트")
 	void testNotificationWebSocketConnection() throws Exception {
 		// 1. 테스트 사용자 준비 : 실제 계정 사용
 		String email = "choimeeyoung2@gmail.com";
@@ -209,10 +209,6 @@ public class ChatWebSocketHandlerTest {
 		String response = receivedMessages.poll(5, TimeUnit.SECONDS);
 		log.info("실시간 알림 응답: {}" + response);
 		assertNotNull(response, "서버로부터 알림 응답 메시지를 받아야 합니다.");
-		
-		
-		
-		
 	}
 	
 	

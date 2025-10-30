@@ -33,7 +33,7 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
 	private final WebSocketDeliveryService webSocketDeliveryService;
 	
 	private final ObjectMapper objectMapper = new ObjectMapper();
-	private final Map<Integer, WebSocketSession> userSessions = new ConcurrentHashMap<>();
+	//private final Map<Integer, WebSocketSession> userSessions = new ConcurrentHashMap<>();
 	
 	/**
 	 * 클라이언트(WebSocket) 연결 시 호출
@@ -45,10 +45,9 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
 		
 		// 사용자 ID가 있다면
 		if (userId != null) {
-			// 세션을 map에 등록
-			userSessions.put(userId, session);
-			// 공통 서비스에 등록
-			webSocketDeliveryService.registerSession(userId, session);
+			// 세션 등록은 DeliveryService에게 위임
+	        webSocketDeliveryService.registerSession(userId, session);
+	        log.info("WebSocket 세션 등록: userId={}", userId);
 		}
 	}
 
@@ -59,15 +58,15 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
 	public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
 		// JWT에서 사용자 ID 추출
 		Integer userId = getUserIdFromSession(session);
-		if (userId != null) {
-			// 세션 맵에서 제거
-			userSessions.remove(userId);
-			webSocketDeliveryService.unregisterSession(userId);
-		}
+	    if (userId != null) {
+	    	// 세션 등록은 DeliveryService에게 위임
+	        webSocketDeliveryService.unregisterSession(userId);
+	    }
 	}
 	
 	/**
 	 * 텍스트 메시지 수신 시 실행되는 콜백
+	 * handleTextMessage에서 직접 sendMessage()하지 않고, 항상 service.sendNotification()만 호출
 	 * */
 	@Override
 	protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
@@ -97,22 +96,8 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
 			senderName = senderName != null ? user.getName() : null;
 		}
 		
-		// 알림 저장 및 실시간 푸시
+		// 알림 저장 + 실시간 푸시는 NotificationService에서 일원화
 		notificationService.sendNotification(recipientId, type, msg, null, null, senderId, senderName);
-		
-		// WebSocket 세션이 있다면 알림 메시지 push
-		WebSocketSession recipientSession = userSessions.get(recipientId);
-		if (recipientSession != null && recipientSession.isOpen()) {
-			// 알림 응답 JSON 생성
-			String responseJson = objectMapper.writeValueAsString(
-					Map.of("type", type.name(), "message", msg, "recipientId", recipientId)
-			);
-			recipientSession.sendMessage(new TextMessage(responseJson));
-			log.info("실시간 WebSocket 알림 푸시: recipientId={}, message={}", recipientId, msg);
-		}
-		
-		
-		
 	}
 	
 	/**
