@@ -1,0 +1,157 @@
+/* ─────────────────────────────
+   CoreConnect Admin (ccad-*)
+   ─ 네임스페이스로 충돌 방지
+   ───────────────────────────── */
+.ccad {
+  padding: 28px;
+  max-width: 1200px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.ccad * {
+  box-sizing: inherit;
+}
+
+/* Header */
+.ccad__header { margin-bottom: 22px; }
+
+.ccad__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 26px;
+  font-weight: 800;
+  margin: 0 0 6px;
+}
+
+.ccad__subtitle {
+  color: #666;
+  margin: 0 0 14px;
+}
+
+.ccad__quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* Buttons */
+.ccad-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #f3f5f7;
+  color: #222;
+  font-weight: 600;
+  border: 1px solid #e7ebef;
+  text-decoration: none;
+}
+
+.ccad-btn:hover { background: #e9eef3; }
+
+.ccad-btn--primary {
+  background: #00a0e9;
+  color: #fff;
+  border-color: #0096da;
+}
+
+.ccad-btn--primary:hover { background: #0096da; }
+
+/* Stat cards */
+.ccad-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin: 18px 0 8px;
+}
+
+.ccad-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid #e9edf2;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+}
+
+.ccad-card__icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  flex: 0 0 auto;
+}
+
+.ccad-card__icon--blue   { background: #2e8cf0; }
+.ccad-card__icon--green  { background: #31b77c; }
+.ccad-card__icon--orange { background: #f59e0b; }
+.ccad-card__icon--red    { background: #ef4444; }
+
+.ccad-card__label { font-size: 12px; color: #64748b; }
+.ccad-card__value { font-size: 20px; font-weight: 800; }
+
+/* Panels & grid */
+.ccad-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.ccad-panel {
+  background: #fff;
+  border: 1px solid #e9edf2;
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.ccad-panel__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.ccad-panel__head h3 {
+  font-size: 18px;
+  margin: 0;
+}
+
+.ccad-panel__more {
+  color: #0f6bdc;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* Quick list */
+.ccad-quicklist {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ccad-quicklist li a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 6px;
+  border-radius: 10px;
+  color: #334155;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.ccad-quicklist li a:hover { background: #f5f7fb; }
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .ccad-cards { grid-template-columns: repeat(2, 1fr); }
+  .ccad-grid  { grid-template-columns: 1fr; }
+}
