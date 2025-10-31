@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import './ApprovalLayout.css'; // <-- 이 CSS 파일이 꼭 필요합니다!
+import './ApprovalLayout.css';
 
 /**
  * ApprovalLayout의 왼쪽 서브 사이드바 컴포넌트
