@@ -17,10 +17,12 @@ import com.goodee.coreconnect.common.notification.enums.NotificationType;
 import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.approval.repository.DocumentRepository;
 import com.goodee.coreconnect.chat.entity.Chat;
+import com.goodee.coreconnect.chat.entity.ChatMessageReadStatus;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
 import com.goodee.coreconnect.chat.entity.ChatRoomUser;
 import com.goodee.coreconnect.chat.entity.MessageFile;
 import com.goodee.coreconnect.chat.repository.NotificationRepository;
+import com.goodee.coreconnect.chat.repository.ChatMessageReadStatusRepository;
 import com.goodee.coreconnect.chat.repository.ChatRepository;
 import com.goodee.coreconnect.chat.repository.ChatRoomRepository;
 import com.goodee.coreconnect.chat.repository.ChatRoomUserRepository;
@@ -44,7 +46,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	private final UserRepository userRepository;
 	private final DocumentRepository documentRepository;
 	private final MessageFileRepository messageFileRepository;
-
+    private final ChatMessageReadStatusRepository chatMessageReadStatusRepository;
     private final ApplicationEventPublisher eventPublisher;
 
 	@Transactional(readOnly = true)
@@ -308,9 +310,49 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 			throw new IllegalArgumentException("지원하지 않는 타입");
 		}
 		
-		chat = chatRepository.save(chat);		
+		chat = chatRepository.save(chat);
+		
+		// 여기에서 ChatMessageReadStatus 저장
+	    List<ChatRoomUser> participants = chatRoomUserRepository.findByChatRoomId(roomId);
+	    for (ChatRoomUser cru : participants) {
+	        User participant = cru.getUser();
+	        ChatMessageReadStatus readStatus = ChatMessageReadStatus.create(chat, participant);
+	        // 만약 발신자라면 바로 읽음 처리
+	        if (participant.getId().equals(sender.getId())) {
+	            readStatus.markRead();
+	        }
+	        chatMessageReadStatusRepository.save(readStatus);
+	    }
+		
+		
 		return chat;
 	}
+
+	@Override
+	public List<Chat> getLatestMessagesByUserId(Integer userId) {
+		List<Integer> roomIds = getChatRoomIdsByUserId(userId);
+        return chatRepository.findLatestMessageByChatRoomIds(roomIds);
+	}
+
+	
+
+	@Override
+	public List<Notification> getNotificationsByUserId(Integer userId) {
+		return notificationRepository.findByUserIdOrderBySentAtDesc(userId);
+	}
+
+	@Override
+	public int countUnreadByChatId(Integer chatId) {
+		return chatMessageReadStatusRepository.countUnreadByChatId(chatId);
+
+	}
+
+	@Override
+	public List<Object[]> countUnreadByRoomId(Integer roomId) {
+		return chatMessageReadStatusRepository.countUnreadByRoomId(roomId);
+	}
+	
+	
 	
 	
 }

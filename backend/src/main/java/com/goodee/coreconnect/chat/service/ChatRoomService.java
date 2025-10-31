@@ -27,6 +27,8 @@ public interface ChatRoomService {
 	ChatRoom findById(Integer id);
 
 	ChatRoom updateRoomType(int i, String string);
+	
+	int countUnreadByChatId(Integer chatId);
 
 	// 알림 저장 (EMAIL, NOTICE, APPROVAL, SCHEDULE만 처리)
 	List<Notification> saveNotification(
@@ -47,4 +49,10 @@ public interface ChatRoomService {
 	
 	// 채팅 메시지 저장 및 반환 (채팅 알림과 분리)
 	Chat sendChatMessage(Integer roomId, Integer senderId, Object contentOrFile);
+	
+    List<Chat> getLatestMessagesByUserId(Integer userId);
+   
+    List<Notification> getNotificationsByUserId(Integer userId);
+    
+    List<Object[]> countUnreadByRoomId(Integer roomId);
 }

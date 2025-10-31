@@ -34,6 +34,7 @@ import com.goodee.coreconnect.chat.dto.response.ChatMessageResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatMessageSenderTypeResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatRoomResponseDTO;
+import com.goodee.coreconnect.chat.dto.response.ChatUnreadCountDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatUserResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.NotificationReadResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ReplyMessageRequestDTO;
@@ -50,6 +51,7 @@ import com.goodee.coreconnect.chat.service.ChatRoomService;
 import com.goodee.coreconnect.common.S3Service;
 import com.goodee.coreconnect.common.dto.response.ResponseDTO;
 import com.goodee.coreconnect.common.entity.Notification;
+import com.goodee.coreconnect.common.notification.dto.NotificationDTO;
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
 import com.goodee.coreconnect.common.notification.service.NotificationService;
 import com.goodee.coreconnect.common.notification.service.WebSocketDeliveryService;
@@ -358,4 +360,66 @@ public class ChatMessageController {
         );
         return ResponseEntity.ok(ResponseDTO.success("푸시 테스트 성공", "알림 푸시 테스트 완료"));
     }
+    
+    // 14. 내가 참여중인 채팅방들의 마지막 메시지만 조회
+    @Operation(summary = "내가 참여중인 채팅방들의 마지막 메시지만 조회", description = "내가 참여중인 채팅방들의 마지막 메시지만 조회")
+    @GetMapping("/rooms/messages/latest")
+    public ResponseEntity<ResponseDTO<List<ChatMessageResponseDTO>>> getLatestMessages(@AuthenticationPrincipal String email) {
+        User user = userRepository.findByEmail(email).orElseThrow();
+        List<Chat> latestChats = chatRoomService.getLatestMessagesByUserId(user.getId());
+        List<ChatMessageResponseDTO> dtoList = latestChats.stream()
+                .map(ChatMessageResponseDTO::fromEntity)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(ResponseDTO.success(dtoList, "내 채팅방별 마지막 메시지 조회 성공"));
+    }
+
+    // 15. 내가 참여중인 채팅방에서 각 메시지별 읽지 않은 인원 수 표시
+    @Operation(summary = "내가 참여중인 채팅방에서 각 메시지별 읽지 않은 인원 수 표시", description = "내가 참여중인 채팅방에서 각 메시지별 읽지 않은 인원 수 표시")
+    @GetMapping("/rooms/{roomId}/messages/unread-count")
+    public ResponseEntity<ResponseDTO<List<ChatUnreadCountDTO>>> getUnreadCounts(@PathVariable("roomId") Integer roomId) {
+        List<Object[]> unreadCounts = chatRoomService.countUnreadByRoomId(roomId);
+        List<ChatUnreadCountDTO> dtoList = unreadCounts.stream()
+            .map(arr -> new ChatUnreadCountDTO((Integer) arr[0], ((Long) arr[1]).intValue()))
+            .collect(Collectors.toList());
+        return ResponseEntity.ok(ResponseDTO.success(dtoList, "채팅방별 메시지 미읽은 인원 수"));
+    }
+
+    // 16. 채팅 메시지 전송시 알림 발송
+    @Operation(summary = "채팅 메시지 전송시 알림 발송", description = "채팅 메시지 전송시 알림 발송")
+    @PostMapping("/rooms/{roomId}/messages")
+    public ResponseEntity<ResponseDTO<ChatResponseDTO>> sendChatMessageAndNotify(
+            @PathVariable Integer roomId,
+            @AuthenticationPrincipal String email,
+            @RequestBody SendMessageRequestDTO req
+    ) {
+        User sender = userRepository.findByEmail(email).orElseThrow();
+        Chat chat = chatRoomService.sendChatMessage(roomId, sender.getId(), req.getContent());
+        // 서비스 내에서 알림 발송도 처리
+        ChatResponseDTO dto = ChatResponseDTO.fromEntity(chat);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ResponseDTO.success(dto, "메시지 전송 및 알림 발송 성공"));
+    }
+
+    // 4. 나에게 온 알림만 조회
+    @Operation(summary = " 나에게 온 알림만 조회", description = " 나에게 온 알림만 조회")
+    @GetMapping("/notifications")
+    public ResponseEntity<ResponseDTO<List<NotificationDTO>>> getMyNotifications(@AuthenticationPrincipal String email) {
+    	User user = userRepository.findByEmail(email).orElseThrow();
+        List<Notification> notifications = chatRoomService.getNotificationsByUserId(user.getId());
+        
+        // Notification 엔티티를 DTO로 변환
+        List<NotificationDTO> dtoList = notifications.stream()
+            .map(n -> {
+                NotificationDTO dto = new NotificationDTO();
+                dto.setId(n.getId());
+                dto.setMessage(n.getNotificationMessage());
+                dto.setNotificationType(n.getNotificationType().name());
+                dto.setSentAt(n.getNotificationSentAt());
+                return dto;
+            })
+            .collect(Collectors.toList());
+        return ResponseEntity.ok(ResponseDTO.success(dtoList, "나에게 온 알림 조회 성공"));
+    }
+    
+    
+    
 }

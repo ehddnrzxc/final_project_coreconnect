@@ -41,4 +41,12 @@ public interface NotificationRepository extends JpaRepository<Notification, Inte
     	List<Notification> findUnreadByUserIdAndTypes(@Param("userId") Integer userId,
     	                                              @Param("types") List<NotificationType> types);
 	
+    
+    // 4. 나에게 온 알림만 조회
+    @Query("SELECT n FROM Notification n WHERE n.user.id = :userId ORDER BY n.notificationSentAt DESC")
+    List<Notification> findByUserIdOrderBySentAtDesc(@Param("userId") Integer userId);
+
+    // 4. 나에게 온 안읽은 알림 조회 (참고)
+    @Query("SELECT n FROM Notification n WHERE n.user.id = :userId AND n.notificationReadYn = false ORDER BY n.notificationSentAt DESC")
+    List<Notification> findUnreadByUserId(@Param("userId") Integer userId);
 }

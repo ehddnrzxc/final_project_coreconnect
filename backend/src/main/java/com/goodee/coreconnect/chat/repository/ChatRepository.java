@@ -32,6 +32,13 @@ public interface ChatRepository extends JpaRepository<Chat, Integer> {
     @Query("SELECT c FROM Chat c JOIN FETCH c.sender WHERE c.chatRoom.id = :roomId AND c.readYn = false")
     List<Chat> findByChatRoom_IdAndReadYnIsFalseWithSender(@Param("roomId") Integer chatRoomId);
     
+    // 1. 내가 참여중인 채팅방들의 마지막 메시지만 조회
+    @Query("SELECT c FROM Chat c WHERE c.chatRoom.id IN :roomIds AND c.sendAt = (SELECT MAX(c2.sendAt) FROM Chat c2 WHERE c2.chatRoom.id = c.chatRoom.id)")
+    List<Chat> findLatestMessageByChatRoomIds(@Param("roomIds") List<Integer> roomIds);
+
+    // 2. 채팅방 내에서 특정 메시지의 미읽은 인원 조회 (ChatMessageReadStatus 활용)
+    @Query("SELECT r.chat.id, COUNT(r) FROM ChatMessageReadStatus r WHERE r.chat.chatRoom.id = :roomId AND r.readYn = false GROUP BY r.chat.id")
+    List<Object[]> countUnreadByRoomId(@Param("roomId") Integer roomId);
     
     
     // 만약 사용자별 읽음 관리가 필요하다면 별도 테이블 및 Repository 필요
