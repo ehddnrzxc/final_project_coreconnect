@@ -42,7 +42,7 @@ public class TemplateAdminServiceImpl implements TemplateAdminService {
   public Integer createTemplate(TemplateRequestDTO requestDTO, String adminEmail) {
     User admin = findUserByEmail(adminEmail);
 
-    Template newTemplate = Template.createTemplate(requestDTO.getTemplateName(), requestDTO.getTemplateContent(), admin);
+    Template newTemplate = requestDTO.toEntity(admin);
 
     Template savedTemplate = templateRepository.save(newTemplate);
     return savedTemplate.getId();
