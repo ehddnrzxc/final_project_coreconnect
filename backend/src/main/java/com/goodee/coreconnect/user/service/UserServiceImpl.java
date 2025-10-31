@@ -31,33 +31,38 @@ public class UserServiceImpl implements UserService {
     private final DepartmentRepository departmentRepository;
     private final PasswordEncoder passwordEncoder;
 
-    // 프로필 이미지 업로드
+    /** 프로필 이미지 업로드 */
+    @Override
     public void updateProfileImage(String email, MultipartFile file) throws IOException {
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND"));
 
-        // 1️⃣ S3에 업로드 → key 반환
+        // 1. S3에 업로드 -> key 반환
         String key = s3Service.uploadProfileImage(file, user.getEmail());
 
-        // 2️⃣ DB에 key 저장
+        // 2. DB에 key 저장
         user.updateProfileImage(key);
         userRepository.save(user);
     }
 
-    // 프로필 이미지 URL 반환
+    /** 프로필 이미지 URL 반환 */
+    @Override
     public String getProfileImageUrlByEmail(String email) {
+        // email로 User 엔티티 조회
         User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "USER_NOT_FOUND"));
-
+        // User 엔티티에서 profileImageKey 필드를 조회
         String key = user.getProfileImageKey();
+        // 기본 이미지 없으면 빈문자열 or 기본 URL 리턴
         if (key == null || key.isBlank()) {
-            return ""; // 기본 이미지 없으면 빈문자열 or 기본 URL 리턴
+            return ""; 
         }
 
-        // 3️⃣ S3Service 통해 공개 URL 반환
+        // S3Service 통해 공개 URL 반환
         return s3Service.getFileUrl(key);
     }
     
+    @Override
     @Transactional
     public UserDTO createUser(CreateUserReqDTO req) {
         // 1) 중복 이메일 방지
@@ -94,9 +99,9 @@ public class UserServiceImpl implements UserService {
         }
 
         // 5) 저장 & 반환
-        return UserDTO.from(userRepository.save(user));
+        return UserDTO.toDTO(userRepository.save(user));
     }
-    
+    @Override
     @Transactional
     public void changeStatus(Integer userId, Status status) {
         User user = userRepository.findById(userId)
@@ -107,11 +112,12 @@ public class UserServiceImpl implements UserService {
             user.deactivate();
         }
     }
+    @Override
     @Transactional(readOnly = true)
     public List<UserDTO> findAllUsers() {
       List<UserDTO> userList = userRepository.findAll()
                                              .stream()
-                                             .map(UserDTO::from)
+                                             .map(UserDTO::toDTO)
                                              .toList();
       return userList;
     }

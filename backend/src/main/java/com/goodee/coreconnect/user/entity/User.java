@@ -45,7 +45,6 @@ import lombok.NoArgsConstructor;
 )
 public class User {
 
-    // ─────────────── 기본 속성 ───────────────
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_id")

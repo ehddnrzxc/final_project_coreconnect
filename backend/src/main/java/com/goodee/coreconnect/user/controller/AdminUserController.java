@@ -24,7 +24,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/api/v1/admin/users")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')") // 이 컨트롤러 전체를 ADMIN 전용으로 
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminUserController {
   
   private final UserService userService;
