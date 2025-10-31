@@ -49,6 +49,9 @@ public class Chat {
 	@JoinColumn(name = "chat_room_id")
 	private ChatRoom chatRoom;
 	
+	@Column(name = "read_yn")
+	private Boolean readYn;
+	
 	// 1 : N 관계 (채팅메시지파일 테이블과 매핑)
 	// 파일은 Chat에 종속된 데잋터여서 Chat이 없으면 의미가 없어서 고아 데이터가 되는 것을 
 	// 방지하기 위해 cascadeType.ALL을 쓴다
@@ -78,5 +81,8 @@ public class Chat {
         return chat;
 	}
 	
-		
+	// 읽음 상태 변경 도메인 메서드
+    public void markRead() {
+        this.readYn = true;
+    }
 }

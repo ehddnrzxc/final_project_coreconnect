@@ -23,7 +23,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
-
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -63,6 +63,7 @@ import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
 import com.goodee.coreconnect.chat.entity.ChatRoomUser;
 import com.goodee.coreconnect.chat.entity.MessageFile;
+import com.goodee.coreconnect.chat.handler.ChatWebSocketHandler;
 import com.goodee.coreconnect.chat.repository.ChatRepository;
 import com.goodee.coreconnect.chat.repository.ChatRoomUserRepository;
 import com.goodee.coreconnect.chat.repository.MessageFileRepository;
@@ -120,6 +121,9 @@ public class ChatWebSocketHandlerTest {
 	
 	@Autowired
 	MessageFileRepository messageFileRepository;
+	
+	@Autowired
+	ChatWebSocketHandler chatWebSocketHandler;
 	
 	@Autowired
 	S3Service s3Service;
@@ -707,7 +711,7 @@ public class ChatWebSocketHandlerTest {
 	   
 	   // 4. 테스트용: 첫번째 채팅방 선택 (실제 클릭 상황 가정)
 	   Integer selectedRoomId = chatRoomIds.get(1);
-	   ChatRoom selectedRoom = chatRoomService.findById(15);
+	   ChatRoom selectedRoom = chatRoomService.findById(4);
 	   assertNotNull(selectedRoom);
 	   
 	   log.info("선택한 채팅방: [{}] {}", selectedRoom.getId(), selectedRoom.getRoomName());
@@ -1084,17 +1088,197 @@ public class ChatWebSocketHandlerTest {
 	                log.info("[알림] {} -> {}", offlineUser.getName(), notificationMsg);
 	            }
 	        }
+	    }
+	    
+	    @Test
+	    @DisplayName("나에게 온 Email, Approval, Notice, Schedule 관련 알림을 가장 최근에 온 알림만 띄우고 옆에 숫자로 나에게 온 알림 게수 표시해주기")
+	    void testLatestUnreadNotificationSummary() {
+	    	// 1. 로그인 사용자 정보 조회
+	        String email = "choimeeyoung2@gmail.com"; // 실제 테스트 계정
+	        User user = userRepository.findByEmail(email)
+	                .orElseThrow(() -> new IllegalArgumentException("사용자 없음: " + email));
+
+	        Integer userId = user.getId();
+	    	
+
+	        // 2. 나에게 온 알림 중 '안읽은' 것만, 타입 필터링 (EMAIL, NOTICE, APPROVAL, SCHEDULE)
+	        List<NotificationType> allowedTypes = List.of(
+        	    NotificationType.EMAIL,
+        	    NotificationType.NOTICE,
+        	    NotificationType.APPROVAL,
+        	    NotificationType.SCHEDULE
+        	);
+
+        	List<Notification> unreadNotifications = notificationRepository.findUnreadByUserIdAndTypes(userId, allowedTypes);
+
+        	List<Notification> filtered = unreadNotifications.stream()
+        	    .filter(n -> allowedTypes.contains(n.getNotificationType()))
+        	    .sorted(Comparator.comparing(
+        	        Notification::getNotificationSentAt,
+        	        Comparator.nullsLast(Comparator.naturalOrder()) // << Null-safe 정렬!
+        	    ).reversed())
+        	    .toList();
+
+	        // 3. 최신순 정렬
+        	filtered = unreadNotifications.stream()
+        		    .filter(n -> allowedTypes.contains(n.getNotificationType()))
+        		    .sorted(Comparator.comparing(
+        		        Notification::getNotificationSentAt,
+        		        Comparator.nullsLast(Comparator.naturalOrder())
+        		    ).reversed())
+        		    .toList();
+
+	        int unreadCount = filtered.size();
+	    	
+	        // 4. 종모양 옆에 개수 표시 검증
+	        log.info("안읽은 알림 개수: {}", unreadCount);
+	        assertTrue(unreadCount >= 0);
+
+	        // 5. 알림창(토스트)에 가장 최근 알림 한 개만 띄움
+	        if (!filtered.isEmpty()) {
+	            Notification latest = filtered.get(0);
+	            String senderName = latest.getUser() != null ? latest.getUser().getName() : "알수없음";
+	            String message = latest.getNotificationMessage();
+	            String dateStr = latest.getNotificationSentAt() != null
+	                ? latest.getNotificationSentAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd H HH:mm:ss"))
+	                : "날짜없음";
+	            log.info("알림 토스트: 보낸사람: {}, 내용: {}, 날짜: {}", senderName, message, dateStr);
+
+	            // 실제 UI에서는 이 정보를 Toast 메시지로 출력
+	            assertNotNull(message);
+	        }
+
+	        // 6. 종모양 클릭 시, 최신순으로 모든 안읽은 알림을 토스트로 표시
+	        for (Notification n : filtered) {
+	            String senderName = n.getUser() != null ? n.getUser().getName() : "알수없음";
+	            String message = n.getNotificationMessage();
+	            String dateStr = n.getNotificationSentAt() != null
+	                ? n.getNotificationSentAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd H HH:mm:ss"))
+	                : "날짜없음";
+	            log.info("알림: 보낸사람: {}, 내용: {}, 날짜: {}", senderName, message, dateStr);
+	            assertNotNull(message);
+	        }
+	    }
+	    
+	    @Test
+	    @Transactional
+	    @DisplayName("채팅메시지에 온 안읽은 메시지를 토스트 메시지로 표시")
+	    void testUnreadChatToastMessage() {
+	    	// 1. 이메일 로그인 사용자 정보 조회
+	        String email = "choimeeyoung2@gmail.com";
+	        User user = userRepository.findByEmail(email)
+	            .orElseThrow(() -> new IllegalArgumentException("사용자 없음: " + email));
+	        Integer userId = user.getId();
+
+	    	
+	        // 2. 내가 속한 채팅방 목록 조회
+	        List<Integer> chatRoomIds = chatRoomService.getChatRoomIdsByUserId(userId);
 	        
-	        
-	        
-	        
-	        
-	        
-	        
-	        
-	        
-	        
-	        
+	     // 3. 각 채팅방의 안읽은 메시지 조회 (fetch join으로 sender 미리 로딩)
+	        for (Integer roomId : chatRoomIds) {
+	            // ★ 변경된 fetch join 메서드 사용!
+	            List<Chat> unreadChats = chatRepository.findByChatRoom_IdAndReadYnIsFalseWithSender(roomId);
+	            System.out.println("여기 들어옴");
+	            System.out.println("unreadChats: " + unreadChats.toString());
+	            if (!unreadChats.isEmpty()) {
+	                // 3-1. 최신 메시지 한 건
+	                Chat latest = unreadChats.stream()
+	                    .sorted(Comparator.comparing(Chat::getSendAt, Comparator.nullsLast(Comparator.naturalOrder())).reversed())
+	                    .findFirst()
+	                    .orElse(null);
+
+	                // 3-2. 안읽은 메시지 개수
+	                int unreadCount = unreadChats.size();
+
+	                // 3-3. 토스트 메시지 출력
+	                assert latest != null;
+	                String senderName = latest.getSender() != null ? latest.getSender().getName() : "알수없음";
+	                String content = latest.getMessageContent();
+	                String dateStr = latest.getSendAt() != null
+	                    ? latest.getSendAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd H HH:mm:ss"))
+	                    : "날짜없음";
+	                System.out.println("토스트:  " + senderName + " [ " + content + dateStr + " ] " + unreadCount + "개 채팅메시지 알림이 있음");
+
+	                // 4. 토스트 클릭 시, 해당 채팅방의 모든 안읽은 메시지 읽음 처리
+	                for (Chat chat : unreadChats) {
+	                    chat.markRead();
+	                    
+	                }
+
+	                // 읽음 처리 검증 (fetch join 필요 없음)
+	                List<Chat> afterRead = chatRepository.findByChatRoom_IdAndReadYnIsFalseWithSender(roomId);
+	                assertTrue(afterRead.isEmpty());
+	            }
+	        }
+	    	
+	    }
+	    
+	    
+	    @Test
+	    @DisplayName("사용자가 채팅방을 선택해서 채팅방에 메시지 전송시 다른 사용자들이 접속중이 아닌 경우 안읽은 사람 수 표시해주기")
+	    void testSendChatMessageAndUnreadStatus() {
+	    	// 1. 사용자가 로그인을 한다
+	        String email = "choimeeyoung2@gmail.com";
+	        User user = userRepository.findByEmail(email)
+	            .orElseThrow(() -> new IllegalArgumentException("사용자 없음: " + email));
+	        Integer userId = user.getId();
+	    	
+	        // 2. 내가 참여중인 채팅방 목록을 보여준다
+	        List<Integer> chatRoomIds = chatRoomService.getChatRoomIdsByUserId(userId);
+	        assertFalse(chatRoomIds.isEmpty());
+	    	
+	        // 3. 채팅방 하나 선택(첫번째 방)
+	        Integer roomId = 4;
+	        ChatRoom chatRoom = chatRoomService.findById(roomId);
+	    	
+	        // 4. 메시지 전송
+	        String message = "테스트 메시지 전송7";
+	        Chat sentChat = chatRoomService.sendChatMessage(roomId, userId, message);
+	    	
+	        // 5. 채팅방의 참여자 목록 조회
+	        List<Integer> participantIds = chatRoomService.getParticipantIds(roomId);
+
+	        // 6. 현재 채팅방에 접속중인 사용자 목록 조회 (WebSocketHandler 활용)
+	        List<Integer> connectedUserIds = chatWebSocketHandler.getConnectedUserIdsInRoom(roomId);
+
+	        // 7. 현재 참여자 중 미접속자(알림 받을 대상) 계산
+	        List<Integer> notConnectedUserIds = participantIds.stream()
+	            .filter(pid -> !connectedUserIds.contains(pid))
+	            .collect(Collectors.toList());
+
+	        // 8. 미접속자에게 알림 메시지 전송
+	        for (Integer pid : notConnectedUserIds) {
+	            String alertMsg = user.getName() + "님으로부터 채팅메시지가 도착했습니다.";
+	            // log.info("[알림] userId {}" , pid ,", message: {}" , alertMsg);  // ← 기존 오류
+	            log.info("[알림] userId {}, message: {}", pid, alertMsg); // ← 수정
+	        }
+
+	        // 9. 미접속자 수(즉, 읽지 않은 인원) 계산
+	        int unreadCount = notConnectedUserIds.size();
+
+	        // 10. 방금 전송한 채팅 메시지의 readYn이 false(0)이면 미읽음 처리
+	        assertNotNull(sentChat);
+	        assertFalse(Boolean.TRUE.equals(sentChat.getReadYn())); // 기본값 false 또는 0
+
+	        // 11. 화면 표시: 메시지 옆에 "미읽음 X명" 표시
+	        log.info("미읽음: {}명", unreadCount); // ← 수정
+
+	        // 12. 한 명 읽음 처리 후 미읽음
+	        if (unreadCount > 0) {
+	            Integer firstUnreadUserId = notConnectedUserIds.get(0);
+	            sentChat.markRead();
+	            chatRepository.save(sentChat);
+	            int newUnreadCount = unreadCount - 1;
+	            log.info("한 명 읽음 처리 후 미읽음: {}명", newUnreadCount); // ← 수정
+	        }
+
+	        // 13. 채팅 메시지 정렬 검증
+	        List<Chat> chats = chatRepository.findByChatRoomIdOrderBySendAtAsc(roomId);
+	        for (Chat c : chats) {
+	            String align = c.getSender().getId().equals(userId) ? "오른쪽" : "왼쪽";
+	            log.info("채팅[{}] - 정렬: {}, 시간: {}", c.getMessageContent(), align, c.getSendAt()); // ← 수정
+	        }
+	    	
 	    	
 	    	
 	    	
