@@ -211,6 +211,13 @@ public class User {
         this.phone = newPhone;
     }
     
+    /** 권한(Role) 변경 */
+    public void changeRole(Role newRole) {
+      if (newRole != null) {
+          this.role = newRole;
+      }
+    }
+    
  // ─────────────── 편의(인증) 메서드 ───────────────
 
     /**

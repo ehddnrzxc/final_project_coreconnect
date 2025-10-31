@@ -74,6 +74,7 @@ public class Board {
     @OneToMany(mappedBy = "board", cascade = CascadeType.ALL)
     private List<BoardFile> files = new ArrayList<>();
     
+    
     /** Auditing + 수동 제어 */
     @PrePersist
     public void onPrePersist() {
@@ -85,7 +86,6 @@ public class Board {
     public void onPreUpdate() {
         this.updatedAt = LocalDateTime.now(); // 수정 시에만 갱신
     }
-
 
     // ─────────────── 생성 메서드 ───────────────
     public static Board createBoard(User user, BoardCategory category, String title, String content, Boolean noticeYn, Boolean privateYn, Boolean pinned) {
@@ -129,10 +129,6 @@ public class Board {
     }
     
     /** pinned 상태 제어 */
-    public void pin() {
-      this.pinned = true;
-    }
-
     public void unpin() {
       this.pinned = false;
     }

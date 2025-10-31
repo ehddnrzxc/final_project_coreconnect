@@ -9,7 +9,7 @@ public enum JobGrade {
     GENERAL_MANAGER("부장"),
     DIRECTOR("이사"),
     EXECUTIVE_DIRECTOR("상무"),
-    VICE_PRESIDENT("부사장"),
+    VICE_PRESIDENT("전무"),
     PRESIDENT("대표");
 
     private final String label;
