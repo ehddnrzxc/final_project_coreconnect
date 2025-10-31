@@ -54,7 +54,6 @@ public class ScheduleCategoryController {
   }
 
   /** 특정 유저의 카테고리 목록 조회 */
-
   @GetMapping
   public List<ResponseScheduleCategoryDTO> getUserCategories(@AuthenticationPrincipal String email) {
     return scheduleCategoryService.getUserCategories(email);
