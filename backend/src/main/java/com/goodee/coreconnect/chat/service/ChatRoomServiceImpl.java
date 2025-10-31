@@ -288,8 +288,8 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 		
 		Chat chat;
 		if (contentOrFile instanceof String) {
-			// 텍스트 메시지
-			chat = Chat.createChat(chatRoom, sender, (String) contentOrFile,false, (String) contentOrFile, LocalDateTime.now());
+		    // 텍스트 메시지
+		    chat = Chat.createChat(chatRoom, sender, (String) contentOrFile, false, null, LocalDateTime.now());
 		} else if (contentOrFile instanceof MessageFile) {
 			// 파일 메시지
 			chat = Chat.createChat(chatRoom, sender, null, true, null, LocalDateTime.now());

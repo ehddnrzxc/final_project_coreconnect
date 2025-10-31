@@ -6,6 +6,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import io.jsonwebtoken.io.IOException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -21,9 +22,13 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.goodee.coreconnect.chat.dto.request.CreateRoomRequestDTO;
+import com.goodee.coreconnect.chat.dto.request.InviteUsersRequestDTO;
+import com.goodee.coreconnect.chat.dto.request.PushNotificationTestRequestDTO;
 import com.goodee.coreconnect.chat.dto.request.SendMessageRequestDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatMessageResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatMessageSenderTypeResponseDTO;
@@ -31,14 +36,18 @@ import com.goodee.coreconnect.chat.dto.response.ChatResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatRoomResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatUserResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.NotificationReadResponseDTO;
+import com.goodee.coreconnect.chat.dto.response.ReplyMessageRequestDTO;
+import com.goodee.coreconnect.chat.dto.response.UnreadNotificationSummaryDTO;
 import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
 import com.goodee.coreconnect.chat.entity.ChatRoomUser;
+import com.goodee.coreconnect.chat.entity.MessageFile;
 import com.goodee.coreconnect.chat.repository.ChatRepository;
 import com.goodee.coreconnect.chat.repository.ChatRoomUserRepository;
 import com.goodee.coreconnect.chat.repository.MessageFileRepository;
 import com.goodee.coreconnect.chat.repository.NotificationRepository;
 import com.goodee.coreconnect.chat.service.ChatRoomService;
+import com.goodee.coreconnect.common.S3Service;
 import com.goodee.coreconnect.common.dto.response.ResponseDTO;
 import com.goodee.coreconnect.common.entity.Notification;
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
@@ -65,6 +74,7 @@ public class ChatMessageController {
     private final NotificationRepository notificationRepository;
     private final NotificationService notificationService;
     private final WebSocketDeliveryService webSocketDeliveryService;
+    private final S3Service s3Service;
 	
 	@Operation(summary = "채팅방 생성", description = "새로운 채팅방을 생성합니다.")
 	@PostMapping
@@ -213,7 +223,139 @@ public class ChatMessageController {
         return ResponseEntity.ok(ResponseDTO.success(dtoList, "내/남 메시지 구분 조회 성공"));
     }
 	
+	/**
+	 * 7. 메시지 답신
+	 * */
+	@Operation(summary = "메시지 답신 전송", description="특정 메시지에 답신을 전송합니다.")
+	@PostMapping("/{roomId}/messages/reply")
+	public ResponseEntity<ResponseDTO<ChatResponseDTO>> replyToMessage(@PathVariable("roomId") Integer roomId, @AuthenticationPrincipal String email, @RequestBody ReplyMessageRequestDTO req) {
+		User sender = userRepository.findByEmail(email).orElseThrow();
+		Chat replyChat = chatRoomService.sendChatMessage(roomId, sender.getId(), req.getReplyContent());
+		if (replyChat == null) {
+			ChatResponseDTO.fromEntity(replyChat);
+		}
+		ChatResponseDTO dto = ChatResponseDTO.fromEntity(replyChat);
+		return ResponseEntity.status(HttpStatus.CREATED).body(ResponseDTO.success(dto, "답신 메시지 저장 성공"));		
+	}
 	
+	
+	/**
+	 * 8. 파일/이미지 업로드 및 미리보기
+	 * @throws java.io.IOException 
+	 * */
+	@Operation(summary = "채팅방 파일/이미지 업로드", description = "채팅방에 파일/이미지를 업로드합니다")
+	@PostMapping("/{roomId}/messages/file")
+	public ResponseEntity<ResponseDTO<ChatResponseDTO>> uploadFileMessage(@PathVariable("roomId") Integer roomId, @AuthenticationPrincipal String email, @RequestParam("file") MultipartFile uploadFile) throws java.io.IOException {
+		User sender = userRepository.findByEmail(email).orElseThrow();
+		String s3Key;
+		String fileUrl;
+		
+		try {
+			// s3에 업로드
+			s3Key = s3Service.uploadProfileImage(uploadFile, sender.getName());
+			fileUrl = s3Service.getFileUrl(s3Key);
+			
+		} catch (IOException e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(ResponseDTO.internalError("파일 s3 업로드 실패: "+ e.getMessage()));
+		}		
+		
+		MessageFile fileEntity = MessageFile.createMessageFile(
+	                uploadFile.getOriginalFilename(),
+	                (double) uploadFile.getSize(),
+	                fileUrl,
+	                null // chat은 sendChatMessage에서 연결됨
+	     );
+		// fileUrl은 chat의 fileUrl 필드로도 저장해줄 수 있음
+		Chat chat = chatRoomService.sendChatMessage(roomId, sender.getId(), fileEntity);
+		if (chat == null) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(ResponseDTO.internalError("파일 메시지 저장 실패"));
+		}
+		messageFileRepository.save(fileEntity);
+		ChatResponseDTO dto = ChatResponseDTO.fromEntity(chat);
+		// fileUrl도 DTO에 포함
+		dto.setFileUrl(fileUrl);
+		return ResponseEntity.status(HttpStatus.CREATED).body(ResponseDTO.success(dto, "파일/이미지 업로드 성공"));
+	}
+	
+	  // 9. 채팅방 초대/참여
+    @Operation(summary = "채팅방에 사용자 초대", description = "채팅방에 사용자를 초대하고 참여 메시지를 전송합니다.")
+    @PostMapping("/{roomId}/invite")
+    public ResponseEntity<ResponseDTO<List<ChatUserResponseDTO>>> inviteUsersToChatRoom(
+            @PathVariable("roomId") Integer roomId,
+            @RequestBody InviteUsersRequestDTO req
+    ) {
+        ChatRoom chatRoom = chatRoomService.findById(roomId);
+        List<Integer> participantIds = chatRoomService.getParticipantIds(roomId);
+        List<User> nonParticipants = userRepository.findAll()
+                .stream().filter(u -> !participantIds.contains(u.getId())).collect(Collectors.toList());
+        List<User> invitedUsers = nonParticipants.stream()
+                .filter(u -> req.getUserIds().contains(u.getId()))
+                .collect(Collectors.toList());
 
-	
+        for (User invited : invitedUsers) {
+            ChatRoomUser cru = ChatRoomUser.createChatRoomUser(invited, chatRoom);
+            chatRoomUserRepository.save(cru);
+            String joinMsg = invited.getName() + "의 사용자가 채팅방에 참여했습니다";
+            chatRoomService.sendChatMessage(roomId, invited.getId(), joinMsg);
+        }
+        List<ChatUserResponseDTO> dtoList = invitedUsers.stream().map(ChatUserResponseDTO::fromEntity).collect(Collectors.toList());
+        return ResponseEntity.ok(ResponseDTO.success(dtoList, "초대 및 참여 메시지 저장 성공"));
+    }
+    
+
+    // 10. 알림 읽음 처리 (채팅/업무)
+    @Operation(summary = "알림 읽음 처리", description = "알림을 읽음 처리합니다.")
+    @PutMapping("/notifications/{notificationId}/read")
+    public ResponseEntity<ResponseDTO<NotificationReadResponseDTO>> markNotificationRead(
+            @PathVariable("notificationId") Integer notificationId,
+            @AuthenticationPrincipal String email
+    ) {
+        Notification notification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new IllegalArgumentException("알림 없음: " + notificationId));
+        notification.markRead();
+        notificationRepository.save(notification);
+        NotificationReadResponseDTO dto = new NotificationReadResponseDTO(notification.getId(), notification.getNotificationReadYn());
+        return ResponseEntity.ok(ResponseDTO.success(dto, "알림 읽음 처리 성공"));
+    }
+
+    // 11. 미읽은 알림/채팅 메시지 요약
+    @Operation(summary = "미읽은 알림 요약", description = "가장 최근 알림만 띄우고 알림 개수 표시")
+    @GetMapping("/notifications/unread")
+    public ResponseEntity<ResponseDTO<UnreadNotificationSummaryDTO>> getLatestUnreadNotificationSummary(
+            @AuthenticationPrincipal String email
+    ) {
+        User user = userRepository.findByEmail(email).orElseThrow();
+        List<NotificationType> allowedTypes = List.of(NotificationType.EMAIL, NotificationType.NOTICE, NotificationType.APPROVAL, NotificationType.SCHEDULE);
+        List<Notification> unreadNotifications = notificationRepository.findUnreadByUserIdAndTypes(user.getId(), allowedTypes);
+        List<Notification> filtered = unreadNotifications.stream()
+                .filter(n -> allowedTypes.contains(n.getNotificationType()))
+                .sorted(Comparator.comparing(Notification::getNotificationSentAt, Comparator.nullsLast(Comparator.naturalOrder())).reversed())
+                .toList();
+        int unreadCount = filtered.size();
+        Notification latest = filtered.isEmpty() ? null : filtered.get(0);
+        UnreadNotificationSummaryDTO dto = UnreadNotificationSummaryDTO.from(latest, unreadCount);
+        return ResponseEntity.ok(ResponseDTO.success(dto, "미읽은 알림 요약 조회 성공"));
+    }
+    
+    
+    // 13. 실시간 알림 WebSocket 푸시 테스트
+    @Operation(summary = "실시간 알림 WebSocket 푸시 테스트", description = "WebSocket을 통해 실시간 알림을 테스트합니다.")
+    @PostMapping("/notifications/push-test")
+    public ResponseEntity<ResponseDTO<String>> pushNotificationTest(
+            @AuthenticationPrincipal String email,
+            @RequestBody PushNotificationTestRequestDTO req
+    ) {
+        User user = userRepository.findByEmail(email).orElseThrow();
+        notificationService.sendNotification(
+                user.getId(),
+                NotificationType.EMAIL,
+                req.getMessage(),
+                null, null,
+                user.getId(),
+                user.getName()
+        );
+        return ResponseEntity.ok(ResponseDTO.success("푸시 테스트 성공", "알림 푸시 테스트 완료"));
+    }
 }

@@ -1,5 +1,6 @@
 package com.goodee.coreconnect.chat.entity;
 
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -39,10 +40,11 @@ public class MessageFile {
 	
 	protected MessageFile() {}
 	
+   
+
     public static MessageFile createMessageFile(String fileName, Double fileSize, String s3ObjectKey, Chat chat) {
         MessageFile file = new MessageFile();
         file.fileName = fileName;
-    
         file.fileSize = fileSize;
         file.S3ObjectKey = s3ObjectKey;
         file.chat = chat;
