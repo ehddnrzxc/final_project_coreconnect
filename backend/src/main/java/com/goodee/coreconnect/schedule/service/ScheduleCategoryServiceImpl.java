@@ -54,6 +54,11 @@ public class ScheduleCategoryServiceImpl implements ScheduleCategoryService {
     
     ScheduleCategory category = scheduleCategoryRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("카테고리를 찾을 수 없습니다."));
+    
+    // 기본 카테고리(defaultYn = true)면 삭제 불가
+    if (Boolean.TRUE.equals(category.getDefaultYn())) {
+        throw new IllegalStateException("기본 카테고리는 삭제할 수 없습니다.");
+    }
 
     // 엔티티의 delete() 메서드 호출
     category.deleteWithSchedules();
