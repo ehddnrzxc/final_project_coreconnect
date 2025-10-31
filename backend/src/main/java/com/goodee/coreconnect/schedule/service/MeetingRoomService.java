@@ -3,6 +3,7 @@ package com.goodee.coreconnect.schedule.service;
 import java.util.List;
 
 import com.goodee.coreconnect.schedule.dto.MeetingRoomDTO;
+import com.goodee.coreconnect.schedule.dto.response.ResponseScheduleDTO;
 
 public interface MeetingRoomService {
 
@@ -23,5 +24,8 @@ public interface MeetingRoomService {
 
   /** 전체 회의실 목록 조회 (기본값: deletedYn = false) */
   List<MeetingRoomDTO> getAllRooms();
+  
+  /** 특정 회의실의 예약 일정 조회 */
+  List<ResponseScheduleDTO> getSchedulesByMeetingRoom(Integer meetingRoomId);
   
 }
