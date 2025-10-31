@@ -1,6 +1,10 @@
 package com.goodee.coreconnect.approval.dto.request;
 
+import com.goodee.coreconnect.approval.entity.ApprovalLine;
+import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.approval.enums.ApprovalLineType;
+import com.goodee.coreconnect.user.entity.User;
+
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -19,4 +23,8 @@ public class ApprovalLineRequestDTO {
 
   @NotNull(message = "결재자 역할(결재/합의/참조)은 필수입니다.")
   private ApprovalLineType type;
+
+  public ApprovalLine toEntity(Document document, User user, int order) {
+    return ApprovalLine.createApprovalLine(document, user, order, this.type);
+  }
 }

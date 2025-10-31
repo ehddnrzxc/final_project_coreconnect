@@ -2,8 +2,11 @@ package com.goodee.coreconnect.approval.dto.request;
 
 import java.util.List;
 
+import com.goodee.coreconnect.approval.entity.Document;
+import com.goodee.coreconnect.approval.entity.Template;
+import com.goodee.coreconnect.user.entity.User;
+
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -41,5 +44,15 @@ public class DocumentDraftRequestDTO {
    */
   @Valid
   private List<ApprovalLineRequestDTO> approvalLines;
+  
+  /**
+   * DTO to Entity
+   * @param template
+   * @param user
+   * @return
+   */
+  public Document toEntity(Template template, User user) {
+    return Document.createDocument(template, user, this.documentTitle, this.documentContent);
+  }
 
 }

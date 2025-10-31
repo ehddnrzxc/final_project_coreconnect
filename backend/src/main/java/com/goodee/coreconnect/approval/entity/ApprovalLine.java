@@ -67,7 +67,7 @@ public class ApprovalLine {
    * @param approvalLineType
    * @return
    */
-  public static ApprovalLine createApprovalLine(Document document, User approver, int approvalLineOrder, ApprovalLineType approvalLineType, ApprovalLineStatus approvalLineStatus) {
+  public static ApprovalLine createApprovalLine(Document document, User approver, int approvalLineOrder, ApprovalLineType approvalLineType) {
     ApprovalLine a = new ApprovalLine();
     a.document = document;
     a.approver = approver;

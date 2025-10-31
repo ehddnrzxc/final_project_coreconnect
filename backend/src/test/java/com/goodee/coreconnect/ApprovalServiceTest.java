@@ -22,8 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.goodee.coreconnect.approval.dto.request.ApprovalLineRequestDTO;
-
-import com.goodee.coreconnect.approval.dto.request.ApprovalProcessRequestDTO;
+import com.goodee.coreconnect.approval.dto.request.ApprovalRejectRequestDTO;
+import com.goodee.coreconnect.approval.dto.request.ApprovalApproveRequestDTO;
 import com.goodee.coreconnect.approval.dto.request.DocumentCreateRequestDTO;
 import com.goodee.coreconnect.approval.dto.response.DocumentDetailResponseDTO;
 import com.goodee.coreconnect.approval.dto.response.DocumentSimpleResponseDTO;
@@ -108,8 +108,8 @@ public class ApprovalServiceTest {
 
     // ApprovalLine.createApprovalLine(document, approver, order, type, status)
     // createApprovalLine 내부에서 document.addApprovalLine(a)이 호출됨
-    ApprovalLine.createApprovalLine(testDocument, approver1, 1, ApprovalLineType.APPROVE, ApprovalLineStatus.WAITING);
-    ApprovalLine.createApprovalLine(testDocument, approver2, 2, ApprovalLineType.APPROVE, ApprovalLineStatus.WAITING);
+    ApprovalLine.createApprovalLine(testDocument, approver1, 1, ApprovalLineType.APPROVE);
+    ApprovalLine.createApprovalLine(testDocument, approver2, 2, ApprovalLineType.APPROVE);
 
     // Document.submit() 호출 (DRAFT -> IN_PROGRESS)
     testDocument.submit();
@@ -414,7 +414,7 @@ public class ApprovalServiceTest {
   @DisplayName("문서 승인 - 성공 (중간 결재자)")
   void approveDocument_Success_FirstApprover() {
     // Arrange
-    ApprovalProcessRequestDTO requestDTO = new ApprovalProcessRequestDTO();
+    ApprovalApproveRequestDTO requestDTO = new ApprovalApproveRequestDTO();
     requestDTO.setApprovalComment("승인합니다.");
 
     Integer docId = testDocument.getId();
@@ -446,10 +446,10 @@ public class ApprovalServiceTest {
     Integer docId = testDocument.getId();
 
     // 1. 첫 번째 결재자가 먼저 승인
-    approvalService.approveDocument(docId, new ApprovalProcessRequestDTO(), approver1.getEmail());
+    approvalService.approveDocument(docId, new ApprovalApproveRequestDTO(), approver1.getEmail());
 
     // 2. 최종 결재자 DTO 준비
-    ApprovalProcessRequestDTO finalRequest = new ApprovalProcessRequestDTO();
+    ApprovalApproveRequestDTO finalRequest = new ApprovalApproveRequestDTO();
     finalRequest.setApprovalComment("최종 승인");
 
     String email = approver2.getEmail();
@@ -474,7 +474,7 @@ public class ApprovalServiceTest {
   @DisplayName("문서 승인 - 실패 (권한 없음 - 순서 아님)")
   void approveDocument_Fail_WrongTurn() {
     // Arrange
-    ApprovalProcessRequestDTO requestDTO = new ApprovalProcessRequestDTO();
+    ApprovalApproveRequestDTO requestDTO = new ApprovalApproveRequestDTO();
 
     Integer docId = testDocument.getId();
     String email = approver2.getEmail(); // 아직 approver1 차례임
@@ -491,7 +491,7 @@ public class ApprovalServiceTest {
   @DisplayName("문서 반려 - 성공")
   void rejectDocument_Success() {
     // Arrange
-    ApprovalProcessRequestDTO requestDTO = new ApprovalProcessRequestDTO();
+    ApprovalRejectRequestDTO requestDTO = new ApprovalRejectRequestDTO();
     requestDTO.setApprovalComment("반려합니다. 사유: ...");
 
     Integer docId = testDocument.getId();
@@ -524,7 +524,7 @@ public class ApprovalServiceTest {
     documentRepository.saveAndFlush(doc);
     em.clear();
 
-    ApprovalProcessRequestDTO requestDTO = new ApprovalProcessRequestDTO();
+    ApprovalRejectRequestDTO requestDTO = new ApprovalRejectRequestDTO();
     Integer docId = testDocument.getId();
     String email = approver1.getEmail();
 

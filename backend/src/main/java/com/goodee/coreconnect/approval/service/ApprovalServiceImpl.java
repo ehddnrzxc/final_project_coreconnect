@@ -14,7 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.goodee.coreconnect.approval.dto.request.ApprovalLineRequestDTO;
-import com.goodee.coreconnect.approval.dto.request.ApprovalProcessRequestDTO;
+import com.goodee.coreconnect.approval.dto.request.ApprovalApproveRequestDTO;
+import com.goodee.coreconnect.approval.dto.request.ApprovalRejectRequestDTO;
 import com.goodee.coreconnect.approval.dto.request.DocumentCreateRequestDTO;
 import com.goodee.coreconnect.approval.dto.request.DocumentDraftRequestDTO;
 import com.goodee.coreconnect.approval.dto.response.DocumentDetailResponseDTO;
@@ -74,13 +75,7 @@ public class ApprovalServiceImpl implements ApprovalService {
         .orElseThrow(() -> new EntityNotFoundException("해당 템플릿을 찾을 수 없습니다. ID: " + requestDTO.getTemplateId()));
 
     // 2. 문서 엔티티 생성
-    Document document = Document.createDocument(
-        template, 
-        drafter,
-        requestDTO.getDocumentTitle(),
-        requestDTO.getDocumentContent()
-        );
-
+    Document document = requestDTO.toEntity(template, drafter);
     // 3. 결재선 엔티티 생성 (N+1 해결)
     List<ApprovalLineRequestDTO> approvalLines = requestDTO.getApprovalLines(); // DTO에서 순서가 보장된 ID List
     // 객체 리스트에서 UserId 리스트를 추출
@@ -105,13 +100,7 @@ public class ApprovalServiceImpl implements ApprovalService {
         throw new EntityNotFoundException("결재선에 포함된 사용자를 찾을 수 없습니다. ID: " + lines.getUserId());
       }
 
-      ApprovalLine.createApprovalLine(
-          document,
-          approver,
-          order.getAndIncrement(),
-          lines.getType(),  // DTO에서 받은 타입(APPROVE, AGREE, REFER)
-          ApprovalLineStatus.WAITING
-          );
+      lines.toEntity(document, drafter, order.getAndIncrement());
     });
 
     // 4. (추가) 첨부파일 처리 (S3 업로드)
@@ -212,13 +201,7 @@ public class ApprovalServiceImpl implements ApprovalService {
         if (approver == null) {
           throw new EntityNotFoundException("결재선에 포함된 사용자를 찾을 수 없습니다. ID: " + lineDTO.getUserId());
         }
-        ApprovalLine.createApprovalLine(
-            document,
-            approver,
-            order.getAndIncrement(),
-            lineDTO.getType(), // DTO에서 받은 타입(APPROVE, AGREE, REFER)
-            ApprovalLineStatus.WAITING
-            );
+        lineDTO.toEntity(document, drafter, order.getAndIncrement());
       });
     }
 
@@ -341,7 +324,7 @@ public class ApprovalServiceImpl implements ApprovalService {
    */
   @Override
   @Transactional
-  public void approveDocument(Integer documentId, ApprovalProcessRequestDTO requestDTO, String email) {
+  public void approveDocument(Integer documentId, ApprovalApproveRequestDTO requestDTO, String email) {
 
     // (비관적 락이 적용된 findByIdForUpdate 쿼리를 사용)
     Document document = documentRepository.findByIdForUpdate(documentId)
@@ -428,7 +411,7 @@ public class ApprovalServiceImpl implements ApprovalService {
    */
   @Override
   @Transactional
-  public void rejectDocument(Integer documentId, ApprovalProcessRequestDTO requestDTO, String email) {
+  public void rejectDocument(Integer documentId, ApprovalRejectRequestDTO requestDTO, String email) {
 
     // (비관적 락이 적용된 findByIdForUpdate 쿼리를 사용)
     Document document = documentRepository.findByIdForUpdate(documentId)

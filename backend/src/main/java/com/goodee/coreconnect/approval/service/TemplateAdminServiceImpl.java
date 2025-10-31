@@ -6,8 +6,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.goodee.coreconnect.approval.dto.request.TemplateCreateRequestDTO;
-import com.goodee.coreconnect.approval.dto.request.TemplateUpdateRequestDTO;
+import com.goodee.coreconnect.approval.dto.request.TemplateRequestDTO;
 import com.goodee.coreconnect.approval.dto.response.TemplateDetailResponseDTO;
 import com.goodee.coreconnect.approval.dto.response.TemplateSimpleResponseDTO;
 import com.goodee.coreconnect.approval.entity.Template;
@@ -40,10 +39,10 @@ public class TemplateAdminServiceImpl implements TemplateAdminService {
    * 새 양식 생성 (관리자)
    */
   @Override
-  public Integer createTemplate(TemplateCreateRequestDTO requestDTO, String adminEmail) {
+  public Integer createTemplate(TemplateRequestDTO requestDTO, String adminEmail) {
     User admin = findUserByEmail(adminEmail);
 
-    Template newTemplate = Template.createTemplate(requestDTO.getTemplateName(), requestDTO.getTemplateContent(), admin);
+    Template newTemplate = requestDTO.toEntity(admin);
 
     Template savedTemplate = templateRepository.save(newTemplate);
     return savedTemplate.getId();
@@ -77,7 +76,7 @@ public class TemplateAdminServiceImpl implements TemplateAdminService {
    * 양식 수정 (관리자)
    */
   @Override
-  public void updateTemplate(Integer templateId, TemplateUpdateRequestDTO requestDTO) {
+  public void updateTemplate(Integer templateId, TemplateRequestDTO requestDTO) {
     // 영속성 컨텍스트에 엔티티 로드
     Template template = findTemplateById(templateId);
 

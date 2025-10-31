@@ -73,13 +73,13 @@ public class ApprovalLineRepositoryTest {
     log.info("email: {}" ,email.getEmail());
     
     // --- 결재선 생성 시나리오 ---
-    ApprovalLine line_doc2_app1 = ApprovalLine.createApprovalLine(doc2, approver1, 1, ApprovalLineType.APPROVE, ApprovalLineStatus.WAITING);
-    ApprovalLine line_doc1_app1 = ApprovalLine.createApprovalLine(doc1, approver1, 1, ApprovalLineType.APPROVE, ApprovalLineStatus.WAITING); 
+    ApprovalLine line_doc2_app1 = ApprovalLine.createApprovalLine(doc2, approver1, 1, ApprovalLineType.APPROVE);
+    ApprovalLine line_doc1_app1 = ApprovalLine.createApprovalLine(doc1, approver1, 1, ApprovalLineType.APPROVE); 
 
-    ApprovalLine line_doc3_app1_approved = ApprovalLine.createApprovalLine(doc3, approver1, 1, ApprovalLineType.APPROVE, ApprovalLineStatus.WAITING);
+    ApprovalLine line_doc3_app1_approved = ApprovalLine.createApprovalLine(doc3, approver1, 1, ApprovalLineType.APPROVE);
     line_doc3_app1_approved.approve("테스트 승인"); 
 
-    ApprovalLine line_doc3_app2 = ApprovalLine.createApprovalLine(doc3, approver2, 2, ApprovalLineType.APPROVE, ApprovalLineStatus.WAITING);
+    ApprovalLine line_doc3_app2 = ApprovalLine.createApprovalLine(doc3, approver2, 2, ApprovalLineType.APPROVE);
 
     approvalLineRepository.saveAll(List.of(
         line_doc2_app1, 

@@ -14,7 +14,8 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.goodee.coreconnect.approval.dto.request.ApprovalProcessRequestDTO;
+import com.goodee.coreconnect.approval.dto.request.ApprovalApproveRequestDTO;
+import com.goodee.coreconnect.approval.dto.request.ApprovalRejectRequestDTO;
 import com.goodee.coreconnect.approval.dto.request.DocumentCreateRequestDTO;
 import com.goodee.coreconnect.approval.dto.request.DocumentDraftRequestDTO;
 import com.goodee.coreconnect.approval.dto.response.DocumentDetailResponseDTO;
@@ -138,7 +139,7 @@ public class ApprovalController {
     @PostMapping("/{documentId}/approve")
     public ResponseEntity<String> approveDocument(
         @PathVariable("documentId") Integer documentId,
-        @RequestBody ApprovalProcessRequestDTO requestDTO, // 결재 의견
+        @RequestBody ApprovalApproveRequestDTO requestDTO, // 결재 의견
         @AuthenticationPrincipal String email
     ) {
         approvalService.approveDocument(documentId, requestDTO, email);
@@ -153,7 +154,7 @@ public class ApprovalController {
     @PostMapping("/{documentId}/reject")
     public ResponseEntity<String> rejectDocument(
         @PathVariable("documentId") Integer documentId,
-        @Valid @RequestBody ApprovalProcessRequestDTO requestDTO, // 반려 사유
+        @Valid @RequestBody ApprovalRejectRequestDTO requestDTO, // 반려 사유
         @AuthenticationPrincipal String email
     ) {
         approvalService.rejectDocument(documentId, requestDTO, email);
