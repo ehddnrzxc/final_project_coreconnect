@@ -46,7 +46,11 @@ public class BoardCategoryServiceImpl implements BoardCategoryService {
         if (isCategoryNameExists(dto.getName())) {
             throw new IllegalArgumentException("이미 존재하는 카테고리명입니다: " + dto.getName());
         }
-
+        
+        if (categoryRepository.existsByOrderNoAndDeletedYnFalse(dto.getOrderNo())) {
+          throw new IllegalArgumentException("이미 사용 중인 순서 번호입니다: " + dto.getOrderNo());
+        }
+ 
         BoardCategory category = dto.toEntity();
 
         BoardCategory saved = categoryRepository.save(category);
@@ -60,6 +64,11 @@ public class BoardCategoryServiceImpl implements BoardCategoryService {
 
         BoardCategory category = categoryRepository.findByIdAndDeletedYnFalse(categoryId)
                 .orElseThrow(() -> new EntityNotFoundException("카테고리를 찾을 수 없습니다."));
+        
+        boolean isDuplicateOrderNo = categoryRepository.existsByOrderNoAndDeletedYnFalse(dto.getOrderNo());
+        if (isDuplicateOrderNo && !dto.getOrderNo().equals(category.getOrderNo())) {
+            throw new IllegalArgumentException("이미 사용 중인 순서 번호입니다: " + dto.getOrderNo());
+        }
 
         category.updateCategory(dto.getName(), dto.getOrderNo());
         return BoardCategoryResponseDTO.toDTO(category);

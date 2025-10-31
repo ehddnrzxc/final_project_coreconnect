@@ -56,6 +56,18 @@ public class BoardReply {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "board_id", nullable = false)
     private Board board;
+    
+    /** Auditing + 수동 제어 */
+    @PrePersist
+    public void onPrePersist() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = null;
+    }
+
+    @PreUpdate
+    public void onPreUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
 
 
     // ─────────────── 생성 메서드 ───────────────
@@ -69,7 +81,6 @@ public class BoardReply {
         reply.board = board;
         reply.parentReply = parentReply; // null이면 일반 댓글, 있으면 1단계 대댓글
         reply.content = content;
-        reply.createdAt = LocalDateTime.now();
         return reply;
     }
 
@@ -78,7 +89,6 @@ public class BoardReply {
     public void updateReply(String content) {
         if (content == null || content.isBlank()) throw new IllegalArgumentException("댓글 내용은 비어 있을 수 없습니다.");
         this.content = content;
-        this.updatedAt = LocalDateTime.now();
     }
 
     /** Soft Delete */
