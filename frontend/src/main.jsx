@@ -8,6 +8,9 @@ import UserCreateForm from "./components/admin/UserCreateForm";
 import AdminRoute from "./components/admin/AdminRoute";
 import useAuth from "./hooks/useAuth";
 import "@fortawesome/fontawesome-free/css/all.min.css";
+import ApprovalHomePage from './pages/ApprovalHomePage';
+import ApprovalWritePage from './pages/ApprovalWritePage';
+import ApprovalLayout from './pages/ApprovalLayout';
 
 /* 로그인 보호용 라우트 */
 function ProtectedRoute({ children }) {
@@ -29,6 +32,36 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
+      {
+        path: "e-approval",
+        element: (
+          <ProtectedRoute>
+            <ApprovalLayout /> {/* 2단 레이아웃 껍데기 */}
+          </ProtectedRoute>
+        ),
+        children: [
+          {
+            index: true, // /e-approval 접속 시 기본으로 보일 페이지
+            element: <ApprovalHomePage />,
+          },
+          {
+            path: "new", // /e-approval/new (새 결재 진행)
+            element: <ApprovalWritePage />,
+          },
+          {
+            path: "forms", // /e-approval/forms (자주 쓰는 양식)
+            element: <div>자주 쓰는 양식 페이지</div>, // 임시
+          },
+          {
+            path: "pending", // /e-approval/pending (결재 대기 문서)
+            element: <div>결재 대기 문서 목록</div>, // 임시
+          },
+          {
+            path: "doc/:documentId", // /e-approval/doc/123 (결재 상세)
+            element: <div>결재 상세 페이지</div>, // 임시
+          }
+        ]
+      },
       {
         path: "admin/users/create",
         element: (
