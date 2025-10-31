@@ -4,7 +4,8 @@ import java.util.List;
 
 import org.springframework.web.multipart.MultipartFile;
 
-import com.goodee.coreconnect.approval.dto.request.ApprovalProcessRequestDTO;
+import com.goodee.coreconnect.approval.dto.request.ApprovalApproveRequestDTO;
+import com.goodee.coreconnect.approval.dto.request.ApprovalRejectRequestDTO;
 import com.goodee.coreconnect.approval.dto.request.DocumentCreateRequestDTO;
 import com.goodee.coreconnect.approval.dto.request.DocumentDraftRequestDTO;
 import com.goodee.coreconnect.approval.dto.response.DocumentDetailResponseDTO;
@@ -66,7 +67,7 @@ public interface ApprovalService {
    * @param requestDTO 결재 의견 DTO
    * @param email 승인하는 사용자 email
    */
-  void approveDocument(Integer documentId, ApprovalProcessRequestDTO requestDTO, String email);
+  void approveDocument(Integer documentId, ApprovalApproveRequestDTO requestDTO, String email);
 
   /**
    * 문서를 반려합니다.
@@ -74,7 +75,7 @@ public interface ApprovalService {
    * @param requestDTO 결재 의견 DTO
    * @param email 반려하는 사용자 email
    */
-  void rejectDocument(Integer documentId, ApprovalProcessRequestDTO requestDTO, String email);
+  void rejectDocument(Integer documentId, ApprovalRejectRequestDTO requestDTO, String email);
 
   /**
    * 활성화된 모든 양식(템플릿) 목록을 조회합니다.

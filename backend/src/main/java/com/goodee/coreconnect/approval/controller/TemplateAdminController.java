@@ -1,7 +1,6 @@
 package com.goodee.coreconnect.approval.controller;
 
-import com.goodee.coreconnect.approval.dto.request.TemplateCreateRequestDTO;
-import com.goodee.coreconnect.approval.dto.request.TemplateUpdateRequestDTO;
+import com.goodee.coreconnect.approval.dto.request.TemplateRequestDTO;
 import com.goodee.coreconnect.approval.dto.response.TemplateDetailResponseDTO;
 import com.goodee.coreconnect.approval.dto.response.TemplateSimpleResponseDTO;
 import com.goodee.coreconnect.approval.service.TemplateAdminService; // AdminService 주입
@@ -36,7 +35,7 @@ public class TemplateAdminController {
   @Operation(summary = "양식 생성", description = "새 결재 양식을 생성합니다.")
   @PostMapping
   public ResponseEntity<Integer> createTemplate(
-      @Valid @RequestBody TemplateCreateRequestDTO requestDTO,
+      @Valid @RequestBody TemplateRequestDTO requestDTO,
       @AuthenticationPrincipal String adminEmail // 현재 로그인한 관리자 이메일
       ) {
     Integer templateId = templateAdminService.createTemplate(requestDTO, adminEmail);
@@ -75,7 +74,7 @@ public class TemplateAdminController {
   @PutMapping("/{templateId}")
   public ResponseEntity<String> updateTemplate(
       @PathVariable("templateId") Integer templateId,
-      @Valid @RequestBody TemplateUpdateRequestDTO requestDTO
+      @Valid @RequestBody TemplateRequestDTO requestDTO
       ) {
     templateAdminService.updateTemplate(templateId, requestDTO);
     return ResponseEntity.ok("양식이 성공적으로 수정되었습니다.");

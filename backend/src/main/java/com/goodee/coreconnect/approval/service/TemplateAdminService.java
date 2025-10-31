@@ -2,8 +2,7 @@ package com.goodee.coreconnect.approval.service;
 
 import java.util.List;
 
-import com.goodee.coreconnect.approval.dto.request.TemplateCreateRequestDTO;
-import com.goodee.coreconnect.approval.dto.request.TemplateUpdateRequestDTO;
+import com.goodee.coreconnect.approval.dto.request.TemplateRequestDTO;
 import com.goodee.coreconnect.approval.dto.response.TemplateDetailResponseDTO;
 import com.goodee.coreconnect.approval.dto.response.TemplateSimpleResponseDTO;
 
@@ -15,7 +14,7 @@ public interface TemplateAdminService {
    * @param adminEmail
    * @return
    */
-  Integer createTemplate(TemplateCreateRequestDTO requestDTO, String adminEmail);
+  Integer createTemplate(TemplateRequestDTO requestDTO, String adminEmail);
   
   /**
    * 전체 양식 목록 조회 (관리자용 - 활성화/비활성화 모구)
@@ -35,7 +34,7 @@ public interface TemplateAdminService {
    * @param templateId
    * @param requestDTO
    */
-  void updateTemplate(Integer templateId, TemplateUpdateRequestDTO requestDTO);
+  void updateTemplate(Integer templateId, TemplateRequestDTO requestDTO);
   
   /**
    * 양식 비활성화 (관리자)
