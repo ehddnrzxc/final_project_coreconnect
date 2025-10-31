@@ -1,19 +1,34 @@
 /* ─────────────────────────────
    CoreConnect Admin (ccad-*)
-   ─ 네임스페이스로 충돌 방지
+   ─ 네임스페이스 통일 / 충돌 방지
    ───────────────────────────── */
+:root {
+  --ccad-bg: #f5f7fb;
+  --ccad-card: #ffffff;
+  --ccad-border: #e9edf2;
+  --ccad-text: #1f2937;
+  --ccad-muted: #64748b;
+  --ccad-primary: #0f6bdc;
+  --ccad-primary-2: #0d5fc3;
+}
+
+html, body {
+  background: var(--ccad-bg);
+}
+
+/* 컨테이너 */
 .ccad {
   padding: 28px;
   max-width: 1200px;
   margin: 0 auto;
   box-sizing: border-box;
+  color: var(--ccad-text);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Arial, sans-serif;
 }
 
-.ccad * {
-  box-sizing: inherit;
-}
+.ccad * { box-sizing: inherit; }
 
-/* Header */
+/* 헤더 */
 .ccad__header { margin-bottom: 22px; }
 
 .ccad__title {
@@ -22,45 +37,49 @@
   gap: 10px;
   font-size: 26px;
   font-weight: 800;
-  margin: 0 0 6px;
+  margin: 0 0 8px;
 }
+
+.ccad__title i { font-size: 22px; }
 
 .ccad__subtitle {
-  color: #666;
+  color: #6b7280;
   margin: 0 0 14px;
+  line-height: 1.5;
 }
 
+/* 퀵 버튼 */
 .ccad__quick {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
 }
 
-/* Buttons */
 .ccad-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  border-radius: 10px;
+  border-radius: 12px;
   background: #f3f5f7;
-  color: #222;
+  color: #111827;
   font-weight: 600;
   border: 1px solid #e7ebef;
   text-decoration: none;
+  transition: background .15s ease, transform .05s ease;
 }
 
 .ccad-btn:hover { background: #e9eef3; }
+.ccad-btn:active { transform: translateY(1px); }
 
 .ccad-btn--primary {
-  background: #00a0e9;
+  background: var(--ccad-primary);
   color: #fff;
-  border-color: #0096da;
+  border-color: var(--ccad-primary-2);
 }
+.ccad-btn--primary:hover { background: var(--ccad-primary-2); }
 
-.ccad-btn--primary:hover { background: #0096da; }
-
-/* Stat cards */
+/* 카드 메트릭 */
 .ccad-cards {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -74,8 +93,8 @@
   gap: 14px;
   padding: 16px;
   border-radius: 14px;
-  background: #fff;
-  border: 1px solid #e9edf2;
+  background: var(--ccad-card);
+  border: 1px solid var(--ccad-border);
   box-shadow: 0 1px 0 rgba(0,0,0,0.02);
 }
 
@@ -94,10 +113,10 @@
 .ccad-card__icon--orange { background: #f59e0b; }
 .ccad-card__icon--red    { background: #ef4444; }
 
-.ccad-card__label { font-size: 12px; color: #64748b; }
+.ccad-card__label { font-size: 12px; color: var(--ccad-muted); }
 .ccad-card__value { font-size: 20px; font-weight: 800; }
 
-/* Panels & grid */
+/* 패널 & 그리드 */
 .ccad-grid {
   display: grid;
   grid-template-columns: 2fr 1fr;
@@ -106,8 +125,8 @@
 }
 
 .ccad-panel {
-  background: #fff;
-  border: 1px solid #e9edf2;
+  background: var(--ccad-card);
+  border: 1px solid var(--ccad-border);
   border-radius: 14px;
   padding: 16px;
 }
@@ -116,7 +135,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .ccad-panel__head h3 {
@@ -125,33 +144,73 @@
 }
 
 .ccad-panel__more {
-  color: #0f6bdc;
+  color: var(--ccad-primary);
   font-weight: 600;
   text-decoration: none;
 }
+.ccad-panel__more:hover { text-decoration: underline; }
 
-/* Quick list */
+/* 테이블 */
+.ccad-tablewrap { overflow: auto; }
+
+.ccad-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 14px;
+}
+
+.ccad-table thead th {
+  text-align: left;
+  padding: 10px 12px;
+  background: #f8fafc;
+  color: #334155;
+  border-bottom: 1px solid var(--ccad-border);
+  position: sticky;
+  top: 0;
+}
+
+.ccad-table tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--ccad-border);
+  color: #1f2937;
+}
+
+.ccad-table tbody tr:hover {
+  background: #fafbfe;
+}
+
+/* 빠른 관리 리스트 */
 .ccad-quicklist {
   list-style: none;
   padding: 0;
   margin: 0;
 }
 
+.ccad-quicklist li + li { border-top: 1px dashed var(--ccad-border); }
+
 .ccad-quicklist li a {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 6px;
+  padding: 12px 6px;
   border-radius: 10px;
   color: #334155;
   font-weight: 600;
   text-decoration: none;
 }
 
+.ccad-quicklist li a i { width: 18px; display: inline-grid; place-items: center; }
 .ccad-quicklist li a:hover { background: #f5f7fb; }
 
-/* Responsive */
+/* 반응형 */
 @media (max-width: 1024px) {
   .ccad-cards { grid-template-columns: repeat(2, 1fr); }
   .ccad-grid  { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 560px) {
+  .ccad__title { font-size: 22px; }
+  .ccad-card__value { font-size: 18px; }
+  .ccad-btn { padding: 9px 12px; border-radius: 10px; }
 }

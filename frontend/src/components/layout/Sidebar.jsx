@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 
 const Sidebar = () => {
   const items = [
@@ -13,7 +13,7 @@ const Sidebar = () => {
 
   return (
     <aside className="sidebar">
-      <div className="sidebar__brand">CoreConnect</div>
+      <Link to="/home" className="sidebar__brand">CoreConnect</Link>
       <nav className="sidebar__nav">
         {items.map((it) => (
           <NavLink

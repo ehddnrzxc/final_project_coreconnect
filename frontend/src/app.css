@@ -394,4 +394,15 @@ html, body, #root {
   .profile-card__name { font-size: 18px; }
 }
 
+/* ── 브랜드(Logo) 링크 스타일 ── */
+.sidebar__brand {
+  display: block;               /* 클릭 범위 전체 */
+  text-decoration: none;        /* 밑줄 제거 */
+  color: var(--brand);          /* 글자색 유지 */
+  cursor: pointer;              /* 마우스 올릴 때 손가락 모양 */
+}
+
+.sidebar__brand:hover {
+  background: #f3f4f6;          /* 살짝 하이라이트 */
+}
 
