@@ -2,6 +2,7 @@ package com.goodee.coreconnect.chat.controller;
 
 import java.security.Principal;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.goodee.coreconnect.chat.dto.request.CreateRoomRequestDTO;
 import com.goodee.coreconnect.chat.dto.request.SendMessageRequestDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatMessageResponseDTO;
+import com.goodee.coreconnect.chat.dto.response.ChatMessageSenderTypeResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatRoomResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatUserResponseDTO;
@@ -33,11 +35,15 @@ import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
 import com.goodee.coreconnect.chat.entity.ChatRoomUser;
 import com.goodee.coreconnect.chat.repository.ChatRepository;
+import com.goodee.coreconnect.chat.repository.ChatRoomUserRepository;
+import com.goodee.coreconnect.chat.repository.MessageFileRepository;
 import com.goodee.coreconnect.chat.repository.NotificationRepository;
 import com.goodee.coreconnect.chat.service.ChatRoomService;
 import com.goodee.coreconnect.common.dto.response.ResponseDTO;
 import com.goodee.coreconnect.common.entity.Notification;
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
+import com.goodee.coreconnect.common.notification.service.NotificationService;
+import com.goodee.coreconnect.common.notification.service.WebSocketDeliveryService;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
@@ -51,12 +57,14 @@ import lombok.extern.slf4j.Slf4j;
 @RestController
 @SecurityRequirement(name = "bearerAuth") // 이게 핵심!
 public class ChatMessageController {
-
-
 	private final ChatRoomService chatRoomService;
-	private final UserRepository userRepository;
-	private final ChatRepository chatRepository;
-	private final NotificationRepository notificationRepository;
+    private final UserRepository userRepository;
+    private final ChatRepository chatRepository;
+    private final ChatRoomUserRepository chatRoomUserRepository;
+    private final MessageFileRepository messageFileRepository;
+    private final NotificationRepository notificationRepository;
+    private final NotificationService notificationService;
+    private final WebSocketDeliveryService webSocketDeliveryService;
 	
 	@Operation(summary = "채팅방 생성", description = "새로운 채팅방을 생성합니다.")
 	@PostMapping
@@ -138,89 +146,74 @@ public class ChatMessageController {
 	
 
 	/**
-	 * 채팅방에서 사용자 목록 조회
+	 * 3. 채팅방 참여자 목록 조회
 	 * 
 	 * */
-	@Operation(summary = "채팅방에 참여시킬 사용자 목록 조회", description = "채팅방에 참여시킬 사용자 목록을 반환합니다.")
-	@GetMapping("/{roomId}")
-	public ResponseEntity<List<ChatUserResponseDTO>> getChatRoomUsers(@PathVariable("roomId") Integer roomId,  @AuthenticationPrincipal String email) {
+	@Operation(summary = "채팅방 참여자 목록 조회", description = "채팅방에 참여중인 사용자 목록을 반환합니다.")
+	@GetMapping("/{roomId}/users")
+	public ResponseEntity<ResponseDTO<List<ChatUserResponseDTO>>> getChatRoomUsers(@PathVariable("roomId") Integer roomId) {
 		List<ChatRoomUser> chatRoomUsers = chatRoomService.getChatRoomUsers(roomId);
 		List<ChatUserResponseDTO> usersDTO = chatRoomUsers.stream()
-			    .filter(cru -> cru.getUser() != null)
-			    .map(cru -> new ChatUserResponseDTO(
-			        cru.getUser().getId(),
-			        cru.getUser().getName(),
-			        cru.getUser().getEmail()))
-			    .collect(Collectors.toList());
+                .filter(cru -> cru.getUser() != null)
+                .map(ChatUserResponseDTO::fromEntity)
+                .collect(Collectors.toList());
 		
-		
-		
-		ResponseDTO<List<ChatUserResponseDTO>> success = ResponseDTO.<List<ChatUserResponseDTO>>builder()
-				.status(HttpStatus.CREATED.value())
-				.message("채팅방 사용자 조회 성공")
-				.data(usersDTO)
-				.build();
-			
-		return ResponseEntity.ok(usersDTO);
+		return ResponseEntity.ok(ResponseDTO.success(usersDTO, "채팅방 사용자 조회 성공"));
 	}
 	
-	
 	/**
-	 * 내가 참여중인 채팅방에 올라온 채팅메시지 전부 조회
-	 * 
-	 * 
+	 * 4. 내가 참여중인 채팅방 메시지 전체 조회
 	 * 
 	 * */
 	@Operation(summary = "내가 참여중인 채팅방 메시지 전체 조회", description = "내가 참여중인 모든 채팅방의 메시지를 조회합니다.")
-	@GetMapping
-	public ResponseEntity<List<ChatMessageResponseDTO>> getMyChatMessages(@AuthenticationPrincipal String email) {
-		User user	 = userRepository.findByEmail(email).orElseThrow();		
+	@GetMapping("/messages")
+	public ResponseEntity<ResponseDTO<List<ChatMessageResponseDTO>>> getMyChatMessages(@AuthenticationPrincipal String email) {
+		User user = userRepository.findByEmail(email).orElseThrow();
 		List<Integer> roomIds = chatRoomService.getChatRoomIdsByUserId(user.getId());
-        List<Chat> chats = chatRepository.findByChatRoomIds(roomIds);
-        List<ChatMessageResponseDTO> dtoList = chats.stream().map(chat -> ChatMessageResponseDTO.builder()
-                .id(chat.getId())
-                .messageContent(chat.getMessageContent())
-                .sendAt(chat.getSendAt())
-                .fileYn(chat.getFileYn())
-                .fileUrl(chat.getFileUrl())
-                .roomId(chat.getChatRoom().getId())
-                .senderId(chat.getSender().getId())
-                .senderName(chat.getSender().getName())
-                .build()).collect(Collectors.toList());
-        return ResponseEntity.ok(dtoList);
-		
-		
-		
+		List<Chat> chats = chatRepository.findByChatRoomIds(roomIds);
+		List<ChatMessageResponseDTO> dtoList = chats.stream()
+	                .map(ChatMessageResponseDTO::fromEntity)
+	                .collect(Collectors.toList());
+		return ResponseEntity.ok(ResponseDTO.success(dtoList, "내 채팅방 메시지 조회 성공"));
 	}
-	
-	
-	
-	
-	
-	
 	
 	
 	/**
-	 * 채팅메시지 알림 조회시 읽음 처리
-	 * 
+	 * 5. 내가 접속한 채팅방에 모든 메시지 날짜 오름차순 조회
 	 * 
 	 * */
-	@Operation(summary = "채팅 메시지 알림 읽음 처리", description = "알림을 읽음 처리 합니다.")
-	@PutMapping("/{notificationId}")
-	public ResponseEntity<NotificationReadResponseDTO> markNotificationRead(@PathVariable("notificationId") Integer notificationId, @AuthenticationPrincipal String email) {
-		Notification notification = notificationRepository.findById(notificationId)
-				.orElseThrow(() -> new IllegalArgumentException("알림 없음: " + notificationId));
-		notification.markRead();
-		notificationRepository.save(notification);
-	    return ResponseEntity.ok(new NotificationReadResponseDTO(notification.getId(), notification.getNotificationReadYn()));
-		
-		
-		
-		
-		
+	@Operation(summary = "채팅방의 메시지 조회(오름차순)", description = "선택한 채팅방의 메시지를 날짜 기준 오름차순으로 정렬해 조회합니다.")
+	@GetMapping("/{roomId}/messages")
+	public ResponseEntity<ResponseDTO<List<ChatMessageResponseDTO>>> getChatRoomMessagesByChatRoomId(@PathVariable("roomId") Integer roomId) {
+		ChatRoom chatRoom = chatRoomService.findById(roomId);
+		List<Chat> messages = chatRoom.getChats();
+		messages.sort(Comparator.comparing(Chat::getSendAt));
+		List<ChatMessageResponseDTO> dtoList = messages.stream()
+				.map(ChatMessageResponseDTO::fromEntity)
+				.collect(Collectors.toList());
+		return ResponseEntity.ok(ResponseDTO.success(dtoList, "채팅방 메시지 오름차순 조회 성공"));
 	}
 	
+	/**
+	 * 6. 채팅 메시지 정렬(내꺼/남의꺼)
+	 * */
+	@Operation(summary = "채팅 메시지 내/남 구분", description = "선택한 채팅방의 메시지를 내/다른 사람 메시지로 구분하여 조회합니다.")
+    @GetMapping("/{roomId}/messages/sender")
+    public ResponseEntity<ResponseDTO<List<ChatMessageSenderTypeResponseDTO>>> getChatRoomMessagesWithSenderType(
+            @PathVariable("roomId") Integer roomId,
+            @AuthenticationPrincipal String email
+    ) {
+        User user = userRepository.findByEmail(email).orElseThrow();
+        ChatRoom chatRoom = chatRoomService.findById(roomId);
+        List<Chat> messages = chatRoom.getChats();
+        messages.sort(Comparator.comparing(Chat::getSendAt));
+        List<ChatMessageSenderTypeResponseDTO> dtoList = messages.stream()
+                .map(chat -> ChatMessageSenderTypeResponseDTO.fromEntity(chat, user.getId()))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(ResponseDTO.success(dtoList, "내/남 메시지 구분 조회 성공"));
+    }
 	
 	
+
 	
 }
