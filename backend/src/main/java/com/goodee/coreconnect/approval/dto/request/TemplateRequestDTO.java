@@ -6,7 +6,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class TemplateCreateRequestDTO {
+public class TemplateRequestDTO {
 
   @NotBlank(message = "양식 이름은 필수입니다.")
   private String templateName;
