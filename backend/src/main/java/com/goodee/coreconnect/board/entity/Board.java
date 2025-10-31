@@ -117,4 +117,13 @@ public class Board {
     public void delete() {
         this.deletedYn = true;
     }
+    
+    /** pinned 상태 제어 */
+    public void pin() {
+      this.pinned = true;
+    }
+
+    public void unpin() {
+      this.pinned = false;
+    }
 }
