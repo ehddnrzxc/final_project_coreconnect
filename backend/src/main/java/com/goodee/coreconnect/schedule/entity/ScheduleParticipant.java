@@ -57,6 +57,15 @@ public class ScheduleParticipant {
   
   protected ScheduleParticipant() {}
 
+  /** 일정과의 양방향 관계를 설정 */
+  public void assignSchedule(Schedule schedule) {
+      this.schedule = schedule;
+      if (schedule != null && !schedule.getParticipants().contains(this)) {
+          schedule.getParticipants().add(this);
+      }
+  }
+
+  /** 생성 메서드 */
   public static ScheduleParticipant createParticipant(Schedule schedule, 
                                                         User user, 
                                                         ScheduleRole role) {
@@ -66,12 +75,17 @@ public class ScheduleParticipant {
     participant.role = role != null ? role : ScheduleRole.MEMBER;
     participant.deletedYn = false;
     participant.createdAt = LocalDateTime.now();
+    
+    // Schedule과 자동 연결
+    participant.assignSchedule(schedule);
+    
     return participant;
   }
   
   /** 참여자 역할 변경 */
   public void changeRole(ScheduleRole role) {
     this.role = role;
+    this.updatedAt = LocalDateTime.now();
   }
   
   /** Soft Delete 처리 */

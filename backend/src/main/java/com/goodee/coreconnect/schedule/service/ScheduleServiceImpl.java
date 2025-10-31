@@ -70,6 +70,7 @@ public class ScheduleServiceImpl implements ScheduleService {
       meetingRoom.changeAvailability(false);
     }
 
+    // 일정 생성
     Schedule schedule = dto.toEntity(user, department, meetingRoom, category);
     Schedule savedSchedule = scheduleRepository.save(schedule);
     
@@ -80,6 +81,20 @@ public class ScheduleServiceImpl implements ScheduleService {
             ScheduleRole.OWNER
     );
     scheduleParticipantRepository.save(owner);
+    
+    // 추가 참여자 목록 : MEMBER 등록
+    if (dto.getParticipantIds() != null && !dto.getParticipantIds().isEmpty()) {
+      for (Integer participantId : dto.getParticipantIds()) {          
+        // 본인(OWNER)은 제외
+        if (participantId.equals(user.getId())) continue;
+
+        User participantUser = userRepository.findById(participantId)
+                .orElseThrow(() -> new IllegalArgumentException("참여자 유저를 찾을 수 없습니다. ID=" + participantId));
+
+        ScheduleParticipant member = ScheduleParticipant.createParticipant(savedSchedule, participantUser, ScheduleRole.MEMBER);
+        scheduleParticipantRepository.save(member);
+      }
+    }
 
     return ResponseScheduleDTO.toDTO(savedSchedule);
   }
@@ -139,6 +154,41 @@ public class ScheduleServiceImpl implements ScheduleService {
         newMeetingRoom,
         category,
         department);
+    
+    // 참여자 수정 로직 
+    if (dto.getParticipantIds() != null) {
+      List<ScheduleParticipant> existingParticipants =
+              scheduleParticipantRepository.findByScheduleAndDeletedYnFalse(schedule);
+
+      // 기존 참여자 ID 목록 추출
+      List<Integer> existingIds = existingParticipants.stream()
+              .map(p -> p.getUser().getId())
+              .toList();
+
+      // 요청된 ID 중 새로 추가된 사람들
+      List<Integer> newIds = dto.getParticipantIds().stream()
+              .filter(id2 -> !existingIds.contains(id2))
+              .toList();
+
+      // 기존엔 있었는데, 요청엔 없는 사람 → 삭제 처리
+      existingParticipants.stream()
+              .filter(p -> !dto.getParticipantIds().contains(p.getUser().getId()))
+              .forEach(ScheduleParticipant::delete);
+
+      // 새로 추가된 사람들 MEMBER로 등록
+      for (Integer newId : newIds) {
+        User newUser = userRepository.findById(newId)
+                .orElseThrow(() -> new IllegalArgumentException("참여자 유저를 찾을 수 없습니다. ID=" + newId));
+
+        // OWNER는 제외
+        boolean isOwner = schedule.getUser().getId().equals(newId);
+        if (!isOwner) {
+          ScheduleParticipant newMember =
+                  ScheduleParticipant.createParticipant(schedule, newUser, ScheduleRole.MEMBER);
+          scheduleParticipantRepository.save(newMember);
+        }
+      }
+    }
 
     return ResponseScheduleDTO.toDTO(schedule);
   }

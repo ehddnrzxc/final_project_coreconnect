@@ -110,10 +110,33 @@ public class Schedule {
     schedule.visibility = visibility != null ? visibility : ScheduleVisibility.PRIVATE;
     schedule.deletedYn = false;
     schedule.createdAt = LocalDateTime.now();
+    
+    // 회의실 지정 (양방향 관계 자동 연결)
+    if (meetingRoom != null) {
+        schedule.assignMeetingRoom(meetingRoom);
+    }
+    
     return schedule;
   }
 
+  
+  /** 회의실과 일정의 양방향 관계 설정 메서드 */
+  public void assignMeetingRoom(MeetingRoom meetingRoom) {
+      this.meetingRoom = meetingRoom;
 
+      // meetingRoom 쪽에서도 해당 일정이 목록에 없으면 추가
+      if (meetingRoom != null && !meetingRoom.getSchedules().contains(this)) {
+          meetingRoom.getSchedules().add(this);
+      }
+  }
+  
+  /** 일정에 참여자 추가 */
+  public void addParticipant(ScheduleParticipant participant) {
+      if (!participants.contains(participant)) {
+          participants.add(participant);
+          participant.assignSchedule(this);
+      }
+  }
 
   /** 일정 정보 수정 */
   public void update(String title,
@@ -134,6 +157,12 @@ public class Schedule {
     this.meetingRoom = meetingRoom;
     this.category = category;
     this.department = department;
+    
+    // 회의실 수정 시에도 관계 동기화
+    if (meetingRoom != null) {
+        assignMeetingRoom(meetingRoom);
+    }
+    
     this.updatedAt = LocalDateTime.now();
   }
   

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.goodee.coreconnect.schedule.dto.MeetingRoomDTO;
+import com.goodee.coreconnect.schedule.dto.response.ResponseScheduleDTO;
 import com.goodee.coreconnect.schedule.service.MeetingRoomService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -67,5 +68,13 @@ public class MeetingRoomController {
           @RequestParam(name = "availableYn",required = false) Boolean availableYn) {
     return meetingRoomService.getFilteredRooms(deletedYn, availableYn);
   }
+  
+  /** 특정 회의실의 예약 일정 목록 조회 */
+  @Operation(summary = "회의실 예약 일정 조회", description = "특정 회의실에 예약된 일정을 조회합니다.")
+  @GetMapping(params = "meetingRoomId")
+  public List<ResponseScheduleDTO> getSchedulesByRoom(@RequestParam("meetingRoomId") Integer meetingRoomId) {
+    return meetingRoomService.getSchedulesByMeetingRoom(meetingRoomId);
+  }
+  
 }
 

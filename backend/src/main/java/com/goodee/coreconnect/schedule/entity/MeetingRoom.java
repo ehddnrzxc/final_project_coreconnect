@@ -1,10 +1,15 @@
 package com.goodee.coreconnect.schedule.entity;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.Getter;
 
@@ -32,6 +37,10 @@ public class MeetingRoom {
 
   @Column(name = "mt_available_yn", nullable = false)
   private Boolean availableYn;
+  
+  /** 1:N schedule(일정) 테이블과 매핑 (양방향 관계) */
+  @OneToMany(mappedBy = "meetingRoom", fetch = FetchType.LAZY)
+  private List<Schedule> schedules = new ArrayList<>();
 
   protected MeetingRoom() {}
 
@@ -47,6 +56,14 @@ public class MeetingRoom {
     room.deletedYn = false;
     room.availableYn = availableYn != null ? availableYn : true;
     return room;
+  }
+  
+  /** 회의실과 일정 양방향 관계 추가 */
+  public void addSchedule(Schedule schedule) {
+      if (!schedules.contains(schedule)) {
+          schedules.add(schedule);
+          schedule.assignMeetingRoom(this); // 역방향 연결
+      }
   }
   
   /** 회의실 비활성화(삭제) */
