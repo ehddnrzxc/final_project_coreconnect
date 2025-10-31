@@ -11,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.goodee.coreconnect.board.dto.request.BoardRequestDTO;
 import com.goodee.coreconnect.board.dto.response.BoardResponseDTO;
@@ -28,7 +27,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @SpringBootTest
 @TestPropertySource(locations = "classpath:application.properties")
-@Transactional
 class BoardServiceTest {
 
     @Autowired
@@ -45,20 +43,26 @@ class BoardServiceTest {
 
     @BeforeEach
     void setUp() {
+        // 게시글 모두 삭제 (테스트 환경 정리)
         boardRepository.deleteAll();
-      
-        // ─────────────── 테스트용 사용자 불러오기 ───────────────
+
+        // 테스트용 사용자 로드
         user = userRepository.findByEmail("admin@example.com")
                 .orElseThrow(() -> new IllegalStateException("테스트용 유저(admin@example.com)를 찾을 수 없습니다."));
         log.info("테스트 유저 로드 완료: {}", user.getName());
 
-        // ─────────────── 카테고리 세팅 ───────────────
-        category = categoryRepository.findAll().stream()
+        // 테스트용 카테고리 확인 및 생성
+        category = categoryRepository.findByDeletedYnFalseOrderByOrderNoAsc()
+                .stream()
                 .findFirst()
                 .orElseGet(() -> {
+                    // createCategory() 내부에서도 deletedYn=false 세팅되지만 명시적으로 한 번 더 안전장치
                     BoardCategory newCategory = BoardCategory.createCategory("테스트카테고리", 1);
-                    return categoryRepository.save(newCategory);
+                    newCategory.delete(); // 이건 삭제가 아니라 확인용이라 사용하지 않음
+                    newCategory = BoardCategory.createCategory("테스트카테고리", 1);
+                    return categoryRepository.saveAndFlush(newCategory);
                 });
+
         log.info("테스트 카테고리 사용: {}", category.getName());
     }
 
@@ -220,7 +224,7 @@ class BoardServiceTest {
     @Test
     @DisplayName("상단고정 → 공지 → 최신순 정렬 목록 조회")
     void testGetBoardsOrdered() {
-        // 1️⃣ 일반 게시글
+        // 일반 게시글
         BoardRequestDTO dto1 = BoardRequestDTO.builder()
                 .categoryId(category.getId())
                 .title("일반글")
@@ -230,7 +234,7 @@ class BoardServiceTest {
                 .pinned(false)
                 .build();
 
-        // 2️⃣ 공지글
+        // 공지글
         BoardRequestDTO dto2 = BoardRequestDTO.builder()
                 .categoryId(category.getId())
                 .title("공지글")
@@ -240,7 +244,7 @@ class BoardServiceTest {
                 .pinned(false)
                 .build();
 
-        // 3️⃣ 상단고정 게시글
+        // 상단고정 게시글
         BoardRequestDTO dto3 = BoardRequestDTO.builder()
                 .categoryId(category.getId())
                 .title("상단고정글")
@@ -258,7 +262,7 @@ class BoardServiceTest {
 
         assertThat(page.getContent()).hasSize(3);
 
-        // ✅ 순서 검증: pinned → notice → 일반 순서
+        // 순서 검증: pinned → notice → 일반 순서
         String first = page.getContent().get(0).getTitle();
         String second = page.getContent().get(1).getTitle();
         String third = page.getContent().get(2).getTitle();

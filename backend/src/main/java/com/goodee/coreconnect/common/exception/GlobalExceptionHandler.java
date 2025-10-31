@@ -30,9 +30,22 @@ public class GlobalExceptionHandler {
                 .build();
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res);
     }
+    
+    /**
+     * 2. SecurityException (비공개 게시글 접근, 로그인 필요 등)
+     * (AccessDeniedException과 동일한 403 응답)
+     */
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<ResponseDTO<Void>> handleSecurityException(SecurityException ex) {
+        ResponseDTO<Void> res = ResponseDTO.<Void>builder()
+                .status(HttpStatus.FORBIDDEN.value()) // 403
+                .message(ex.getMessage())
+                .build();
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res);
+    }
   
     /**
-     * 2. @Valid 유효성 검사 실패 시 처리 (HTTP 400 Bad Request)
+     * 3. @Valid 유효성 검사 실패 시 처리 (HTTP 400 Bad Request)
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<String> handleValidationExceptions(MethodArgumentNotValidException ex) {
@@ -50,7 +63,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 3. 엔티티를 찾지 못했을 때 처리 (HTTP 404 Not Found)
+     * 4. 엔티티를 찾지 못했을 때 처리 (HTTP 404 Not Found)
      * (서비스의 findById().orElseThrow() 등)
      */
     @ExceptionHandler(EntityNotFoundException.class)
@@ -62,7 +75,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 4. 비즈니스 로직 상 예외 처리 (HTTP 400 Bad Request)
+     * 5. 비즈니스 로직 상 예외 처리 (HTTP 400 Bad Request)
      * (서비스의 new IllegalStateException() 등)
      */
     @ExceptionHandler(IllegalStateException.class)
@@ -74,7 +87,7 @@ public class GlobalExceptionHandler {
     }
     
     /**
-     * 5. IllegalArgumentException에 대한 예외 처리
+     * 6. IllegalArgumentException에 대한 예외 처리
      * @param ex
      * @return ResponseEntity
      */
@@ -85,7 +98,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 6. 그 외 모든 예상치 못한 예외 처리 (HTTP 500 Internal Server Error)
+     * 7. 그 외 모든 예상치 못한 예외 처리 (HTTP 500 Internal Server Error)
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<String> handleException(Exception ex) {
@@ -96,10 +109,5 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.INTERNAL_SERVER_ERROR) // 500
                 .body("서버 내부 오류가 발생했습니다. 관리자에게 문의하세요.");
     }
-    
-    
-
-
-    
     
 }

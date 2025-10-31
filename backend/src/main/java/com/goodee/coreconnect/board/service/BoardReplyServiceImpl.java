@@ -43,7 +43,7 @@ public class BoardReplyServiceImpl implements BoardReplyService {
                     .orElseThrow(() -> new EntityNotFoundException("부모 댓글을 찾을 수 없습니다."));
         }
 
-        BoardReply reply = BoardReply.createReply(user, board, parentReply, dto.getContent());
+        BoardReply reply = dto.toEntity(user, board, parentReply);
         BoardReply saved = replyRepository.save(reply);
 
         return BoardReplyResponseDTO.toDTO(saved);

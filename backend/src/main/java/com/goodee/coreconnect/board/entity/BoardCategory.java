@@ -36,6 +36,7 @@ public class BoardCategory {
       BoardCategory category = new BoardCategory();
       category.name = name;
       category.orderNo = orderNo != null ? orderNo : 0;
+      category.deletedYn = false;
       return category;
     }
 

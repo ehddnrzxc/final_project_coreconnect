@@ -14,6 +14,7 @@ import com.goodee.coreconnect.board.entity.Board;
 import com.goodee.coreconnect.board.entity.BoardCategory;
 import com.goodee.coreconnect.board.repository.BoardCategoryRepository;
 import com.goodee.coreconnect.board.repository.BoardRepository;
+import com.goodee.coreconnect.common.notification.dto.NotificationPayload;
 import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
@@ -48,18 +49,16 @@ public class BoardServiceImpl implements BoardService {
         BoardCategory category = categoryRepository.findByIdAndDeletedYnFalse(dto.getCategoryId())
                 .orElseThrow(() -> new EntityNotFoundException("카테고리를 찾을 수 없습니다."));
 
-        // 엔티티 생성
-        Board board = Board.createBoard(
-                user,
-                category,
-                dto.getTitle(),
-                dto.getContent(),
-                dto.getNoticeYn(),
-                dto.getPrivateYn(),
-                dto.getPinned()
-        );
-
+        Board board = dto.toEntity(user, category);
         Board saved = boardRepository.save(board);
+
+        // 알림 페이로드 생성 헬퍼 메서드
+
+        // 알림 페이로드(DTO)를 Notification 엔티티로 변환하여 DB에 저장합니다.
+
+        //여러명
+        
+        
         return BoardResponseDTO.toDTO(saved);
     }
 
@@ -227,4 +226,6 @@ public class BoardServiceImpl implements BoardService {
                                                .toList();
         return new PageImpl<>(dtoList, pageable, result.getTotalElements());
     }
+    
+    
 }
