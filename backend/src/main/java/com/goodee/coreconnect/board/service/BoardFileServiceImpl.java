@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.goodee.coreconnect.board.dto.request.BoardFileRequestDTO;
 import com.goodee.coreconnect.board.dto.response.BoardFileResponseDTO;
 import com.goodee.coreconnect.board.entity.Board;
 import com.goodee.coreconnect.board.entity.BoardFile;
@@ -87,7 +88,14 @@ public class BoardFileServiceImpl implements BoardFileService {
                 s3Client.putObject(putRequest, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
 
                 // DB 저장
-                BoardFile boardFile = BoardFile.createFile(board, originalFileName, file.getSize(), key);
+                BoardFileRequestDTO requestDTO = BoardFileRequestDTO.builder()
+                                                                    .boardId(boardId)
+                                                                    .fileName(originalFileName)
+                                                                    .fileSize(file.getSize())
+                                                                    .s3ObjectKey(key)
+                                                                    .build();
+                
+                BoardFile boardFile = requestDTO.toEntity(board);
                 BoardFile saved = fileRepository.save(boardFile);
 
                 // 응답 DTO 변환 (S3 URL 포함)

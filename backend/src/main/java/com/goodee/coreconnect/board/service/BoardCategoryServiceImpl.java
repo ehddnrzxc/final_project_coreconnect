@@ -47,7 +47,7 @@ public class BoardCategoryServiceImpl implements BoardCategoryService {
             throw new IllegalArgumentException("이미 존재하는 카테고리명입니다: " + dto.getName());
         }
 
-        BoardCategory category = BoardCategory.createCategory(dto.getName(), dto.getOrderNo());
+        BoardCategory category = dto.toEntity();
 
         BoardCategory saved = categoryRepository.save(category);
         return BoardCategoryResponseDTO.toDTO(saved);
