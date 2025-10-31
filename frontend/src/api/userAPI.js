@@ -18,3 +18,6 @@ export async function uploadMyProfileImage(file) {
   });
   return data; // 필요 시 서버 응답 활용
 }
+
+// 관리자용 사원 리스트 조회
+export const getAdminUsers = () => http.get("/admin/users").then(res => res.data);
