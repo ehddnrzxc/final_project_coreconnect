@@ -1,5 +1,6 @@
 package com.goodee.coreconnect.chat.handler;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -154,5 +155,21 @@ public class ChatWebSocketHandler extends TextWebSocketHandler{
 		
 	}
 	
+	public List<Integer> getConnectedUserIdsInRoom(Integer roomId) {
+	    List<Integer> connectedUserIds = new ArrayList<>();
+	    for (Map.Entry<Integer, WebSocketSession> entry : userSessions.entrySet()) {
+	        Integer userId = entry.getKey();
+	        WebSocketSession session = entry.getValue();
+	        if (session != null && session.isOpen()) {
+	            // roomId와 연결시, session에 roomId 정보가 있다고 가정해야 함!
+	            // 예: session.getAttributes().get("roomId") 등
+	            Object sessionRoomId = session.getAttributes().get("roomId");
+	            if (sessionRoomId != null && sessionRoomId.equals(roomId)) {
+	                connectedUserIds.add(userId);
+	            }
+	        }
+	    }
+	    return connectedUserIds;
+	}
 	
 }
