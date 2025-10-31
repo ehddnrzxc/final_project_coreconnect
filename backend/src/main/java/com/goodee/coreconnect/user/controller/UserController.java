@@ -23,20 +23,17 @@ public class UserController {
 
     private final UserServiceImpl userService;
 
-    // 프로필 이미지 업로드
+    /** 프로필 이미지 업로드 */
     @PostMapping("/profile-image")
     public ResponseEntity<String> uploadProfileImage(
             @AuthenticationPrincipal String email, 
             @RequestParam("file") MultipartFile file) throws IOException {
-      
-        log.info("principal class = " + email.getClass().getName());
-
     
         userService.updateProfileImage(email, file);
         return ResponseEntity.ok("프로필 이미지 업로드 성공");
     }
 
-    // 프로필 이미지 조회
+    /**  프로필 이미지 조회 */
     @GetMapping("/profile-image")
     public ResponseEntity<Map<String, String>> getProfileImageUrl(
             @AuthenticationPrincipal String email) {
@@ -45,7 +42,7 @@ public class UserController {
         return ResponseEntity.ok(Map.of("imageUrl", imageUrl));
     }
     
-    // 사용자의 소속 부서 변경 
+    /** 사용자의 소속 부서 변경 */
     @PutMapping("/{id}/department") 
     ResponseEntity<Void> changeUserDeptartment(@PathVariable("id") Integer id, 
                                                @RequestBody ChangeUserDepartmentDTO req) {
@@ -53,14 +50,11 @@ public class UserController {
       return ResponseEntity.noContent().build();
     }
     
-    // 사용자의 직급 변경
+    /** 사용자의 직급 변경 */
     @PutMapping("/{id}/job-grade")
     ResponseEntity<Void> changeUserJobGrade(@PathVariable("id") Integer id,
                                             @RequestBody ChangeUserJobGradeDTO req) {
       userService.moveUserToJobGrade(id, req.jobGrade());
       return ResponseEntity.noContent().build();
     }
-    
-    
-    
 }

@@ -79,7 +79,9 @@ public class AuthController {
           "user", Map.of(
               "email", user.getEmail(),
               "name", user.getName(),
-              "role", user.getRole().name()
+              "role", user.getRole().name(),
+              "departmentName", user.getDepartment() != null ? user.getDepartment().getDeptName() : null,
+              "jobGrade", user.getJobGrade() != null ? user.getJobGrade().label() : null
           )
       );
 

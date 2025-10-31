@@ -1,39 +1,52 @@
-import React from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
-import useAuth from "./hooks/useAuth";
-import LoginPage from "./pages/LoginPage";
-import HomePage from "./pages/HomePage";
-import UserCreateForm from "./components/admin/UserCreateForm";
-import AdminRoute from "./components/admin/AdminRoute";
+import React, { useState, useEffect } from "react";
+import { Outlet, useNavigate } from "react-router-dom";
+import Topbar from "./components/layout/Topbar";
+import Sidebar from "./components/layout/Sidebar";
+import "./app.css";
+import { getMyProfileImage } from "./api/userAPI";
 
-const ProtectedRoute = ({ isLoggedIn, children }) => {
-  if (!isLoggedIn) return <Navigate to="/login" replace />;
-  return children;
-};
+function App() {
 
-export default function App() {
-  const { isLoggedIn, setIsLoggedIn, logout } = useAuth();
+  const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+  const [avatarUrl, setAvatarUrl] = useState(
+    storedUser.imageUrl || "https://i.pravatar.cc/80?img=12"
+  );
+
+  const navigate = useNavigate();
+
+  const onLogout = () => {
+    localStorage.removeItem("user");
+    localStorage.removeItem("accessToken");
+    navigate("/login"); // 로그인 페이지로 이동
+  };
+
+  useEffect(() => {
+    (async () => {
+      const token = localStorage.getItem("accessToken");
+      if (!token) return;
+      try {
+        const url = await getMyProfileImage();          
+        const user = JSON.parse(localStorage.getItem("user") || "{}");
+        const updated = { ...user, imageUrl: url || "" };
+        localStorage.setItem("user", JSON.stringify(updated));
+        setAvatarUrl(updated.imageUrl || "https://i.pravatar.cc/80?img=12");
+      } catch (_) {}
+    })();
+  }, []);
 
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage setIsLoggedIn={setIsLoggedIn} />} />
-      <Route
-        path="/home"
-        element={
-          <ProtectedRoute isLoggedIn={isLoggedIn}>
-            <HomePage onLogout={logout} />
-          </ProtectedRoute>
-        }
-      />
-      <Route path="*" element={<Navigate to="/home" replace />} />
-      <Route
-        path="/admin/users/create"
-        element={
-          <AdminRoute>
-            <UserCreateForm />
-          </AdminRoute>
-        }
-      />
-    </Routes>
+    <div className="app">
+      <Topbar onLogout={onLogout} avatarUrl={avatarUrl}/>
+      <div className="layout">
+        <Sidebar />
+        {/* 여기서 자식 라우트(HomePage 등)가 렌더링됨 */}
+        <main className="content">
+          {/* HomePage에 setter 전달 */}
+          <Outlet context={{ setAvatarUrl }}/>
+        </main>
+      </div>
+    </div>
   );
 }
+
+export default App;

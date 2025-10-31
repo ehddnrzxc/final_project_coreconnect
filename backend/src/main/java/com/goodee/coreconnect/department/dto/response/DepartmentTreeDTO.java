@@ -7,6 +7,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
+/** 트리 구조(children)으로 생성 후 하위 노드를 추가해야 하는 구조이기 때문에 
+ * record가 아니라 class를 사용함. */
+
 @Getter
 @Builder
 @AllArgsConstructor
@@ -33,3 +36,4 @@ public class DepartmentTreeDTO {
   }
 
 }
+
