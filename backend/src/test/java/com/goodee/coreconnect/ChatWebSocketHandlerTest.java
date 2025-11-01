@@ -59,6 +59,7 @@ import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.approval.entity.Template;
 import com.goodee.coreconnect.approval.repository.DocumentRepository;
 import com.goodee.coreconnect.approval.repository.TemplateRepository;
+import com.goodee.coreconnect.chat.dto.response.ChatRoomLatestMessageResponseDTO;
 import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
 import com.goodee.coreconnect.chat.entity.ChatRoomUser;
@@ -649,163 +650,157 @@ public class ChatWebSocketHandlerTest {
 	 
 	 @Test
 	 @Transactional
-	 @DisplayName("로그인한 사용자가 참여중인 모든 채팅방 목록 조회")
-	 void testGetChatRoomMessages() {
-		 // 사용자가 로그인을 한다
-		 // 1. DB에 실제 존재하는 이메일로 사용자 조회 (로그인)
-		 String email = "choimeeyoung2@gmail.com";
-		 User user = userRepository.findByEmail(email)
-				 .orElseThrow(() -> new IllegalArgumentException("사용자 없음:" + email));
-		 Role role = user.getRole();
-		 
-		 // 2. JWT Access 토큰 발급 (실제 서비스와 동일하게)
-		 String accessToken = jwtProvider.createAccess(email, role, 30); // 30분짜리 ㅗ큰
-		 
-		 assertNotNull(accessToken);
-		 log.info("발급된 JWT Access Token: " + accessToken);
-		 
-		 // 3. 참여중인 모든 채팅방 ID 조회
-		 List<Integer> chatRoomIds = chatRoomService.getChatRoomIdsByUserId(user.getId());
-		 assertNotNull(chatRoomIds);
-		 assertFalse(chatRoomIds.isEmpty(), "참여중인 채팅방이 최소 1개이상 있어야 테스트가 가능");
-		 
-		 for (Integer roomId : chatRoomIds) {
-			 // 4. 각 채팅방 정보 및 메시지 목록 조회
-			 ChatRoom chatRoom = chatRoomService.findById(roomId);
-			 assertNotNull(chatRoom, "채팅방 정보가 null이면 안됨");
-			 log.info("채팅방: [ {}" + chatRoom.getId() + "] {}" + chatRoom.getRoomName());
-		
-			 List<Chat> messages = chatRoom.getChats();
-			 log.info("메시지 개수: {}" + messages.size());
-			 for (Chat chat : messages) {
-				 String senderName = (chat.getSender() != null) ? chat.getSender().getName() : "알 수 없음";
-				 log.info("[" + chat.getSendAt() + "]" + senderName + ": " + chat.getMessageContent());
-						 
-			 }
-		 }
+	 @DisplayName("로그인한 사용자가 참여중인 모든 채팅방의 마지막 메시지만 조회")
+	 void testFindLatestMessagesByUserId() {
+	     String email = "choimeeyoung2@gmail.com";
+	     User user = userRepository.findByEmail(email)
+	             .orElseThrow(() -> new IllegalArgumentException("사용자 없음:" + email));
+	     Role role = user.getRole();
 
-	 }
-	 
+	     String accessToken = jwtProvider.createAccess(email, role, 30);
+	     assertNotNull(accessToken);
+	     log.info("발급된 JWT Access Token: " + accessToken);
+
+	     // 1. 참여중인 방의 roomId 리스트 얻기
+	     List<ChatRoomLatestMessageResponseDTO> roomDTOs = chatRoomService.getChatRoomIdsByUserId(user.getId());
+	     assertNotNull(roomDTOs);
+	     assertFalse(roomDTOs.isEmpty(), "참여중인 채팅방이 최소 1개 이상 있어야 테스트가 가능");
+
+	     List<Integer> chatRoomIds = roomDTOs.stream()
+	         .map(ChatRoomLatestMessageResponseDTO::getRoomId)
+	         .collect(Collectors.toList());
+
+	     // 2. 각 채팅방의 마지막 메시지 조회
+	     List<Chat> lastMessages = chatRepository.findLatestMessageByChatRoomIds(chatRoomIds);
+
+	     assertNotNull(lastMessages);
+	     log.info("채팅방별 마지막 메시지 수: " + lastMessages.size());
+
+	     for (Chat chat : lastMessages) {
+	         String senderName = (chat.getSender() != null) ? chat.getSender().getName() : "알 수 없음";
+	         log.info("채팅방[{}] 마지막 메시지 [{}] {}: {}", 
+	             chat.getChatRoom().getId(), chat.getSendAt(), senderName, chat.getMessageContent());
+	     }
+	 } 
 	 
 	 @Test
 	 @Transactional
 	 @DisplayName("로그인한 사용자가 참여중인 채팅방 목록에서 채팅방을 선택하는 경우 선택한 채팅방의 메시지만 날짜기준 오름차순으로 정렬")
 	 void testGetChatRoomMessagesByChatRoomId() {
-		// 사용자가 로그인을 한다
-	   // 1. DB에 실제 존재하는 이메일로 사용자 조회 (로그인)
-	   String email = "choimeeyoung2@gmail.com";
-	   User user = userRepository.findByEmail(email)
-			 .orElseThrow(() -> new IllegalArgumentException("사용자 없음:" + email));
-	   Role role = user.getRole();
-	 
-	   // 2. JWT Access 토큰 발급 (실제 서비스와 동일하게)
-	   String accessToken = jwtProvider.createAccess(email, role, 30); // 30분짜리 ㅗ큰
-	 
-	   assertNotNull(accessToken);
-	   log.info("발급된 JWT Access Token: " + accessToken);
-	   
-	   // 내가 참여중인 채팅방 중 한개의 방을 클릭
-	   List<Integer> chatRoomIds = chatRoomService.getChatRoomIdsByUserId(user.getId());
-	   assertNotNull(chatRoomIds);
-	   assertFalse(chatRoomIds.isEmpty(), "참여중인 채팅방이 최소 1개 이상 있어야 테스트가 가능");
-	   
-	   // 4. 테스트용: 첫번째 채팅방 선택 (실제 클릭 상황 가정)
-	   Integer selectedRoomId = chatRoomIds.get(1);
-	   ChatRoom selectedRoom = chatRoomService.findById(4);
-	   assertNotNull(selectedRoom);
-	   
-	   log.info("선택한 채팅방: [{}] {}", selectedRoom.getId(), selectedRoom.getRoomName());
-	   
-	   // 5. 선택한 채팅방의 모든 메시지 날짜 오름차순 정렬
-	   List<Chat> messages = selectedRoom.getChats();
-	   messages.sort(Comparator.comparing(Chat::getSendAt));
-	   
-	   // 클릭한 방에서 대화가 오고간 모든 대화내용을 날짜기준 으롬차순으로 정렬
-	   for (Chat chat : messages) {
-	        String senderName = (chat.getSender() != null) ? chat.getSender().getName() : "알 수 없음";
-	        String msgType = (chat.getFileYn() != null && chat.getFileYn()) ? "[파일]" : "[텍스트]";
-	        String fileInfo = "";
+	     // 1. DB에 실제 존재하는 이메일로 사용자 조회 (로그인)
+	     String email = "choimeeyoung2@gmail.com";
+	     User user = userRepository.findByEmail(email)
+	          .orElseThrow(() -> new IllegalArgumentException("사용자 없음:" + email));
+	     Role role = user.getRole();
 
-	        // 파일 메시지면 파일명 출력 (messageFiles 연관관계 활용)
-	        if (chat.getFileYn() != null && chat.getFileYn()) {
-	            List<MessageFile> files = chat.getMessageFiles();
-	            if (files != null && !files.isEmpty()) {
-	                fileInfo = "파일명: " + files.get(0).getFileName();
-	            } else {
-	                fileInfo = "파일명 없음";
-	            }
-	        }
-	        log.info("[{}] {} {}: {} {}", chat.getSendAt(), senderName, msgType, chat.getMessageContent(), fileInfo);
-	    }
+	     // 2. JWT Access 토큰 발급
+	     String accessToken = jwtProvider.createAccess(email, role, 30);
+	     assertNotNull(accessToken);
+	     log.info("발급된 JWT Access Token: " + accessToken);
 
-	    // Optional: 메시지의 날짜 오름차순이 맞는지 검증
-	    for (int i = 1; i < messages.size(); i++) {
-	        assertTrue(messages.get(i - 1).getSendAt().isBefore(messages.get(i).getSendAt()) ||
-	                   messages.get(i - 1).getSendAt().isEqual(messages.get(i).getSendAt()),
-	                   "메시지가 날짜 오름차순으로 정렬되어야 함");
-	    }
+	     // 3. 내가 참여중인 채팅방 DTO 리스트 조회
+	     List<ChatRoomLatestMessageResponseDTO> chatRoomDTOs = chatRoomService.getChatRoomIdsByUserId(user.getId());
+	     assertNotNull(chatRoomDTOs);
+	     assertFalse(chatRoomDTOs.isEmpty(), "참여중인 채팅방이 최소 1개 이상 있어야 테스트가 가능");
+
+	     // 4. 테스트용: 첫번째 채팅방 선택
+	     ChatRoomLatestMessageResponseDTO selectedRoomDTO = chatRoomDTOs.get(0); // 0번 인덱스(첫방)
+	     Integer selectedRoomId = selectedRoomDTO.getRoomId();
+
+	     ChatRoom selectedRoom = chatRoomService.findById(selectedRoomId);
+	     assertNotNull(selectedRoom);
+
+	     log.info("선택한 채팅방: [{}] {}", selectedRoom.getId(), selectedRoom.getRoomName());
+
+	     // 5. 선택한 채팅방의 모든 메시지 날짜 오름차순 정렬
+	     List<Chat> messages = selectedRoom.getChats();
+	     messages.sort(Comparator.comparing(Chat::getSendAt));
+
+	     for (Chat chat : messages) {
+	         String senderName = (chat.getSender() != null) ? chat.getSender().getName() : "알 수 없음";
+	         String msgType = (chat.getFileYn() != null && chat.getFileYn()) ? "[파일]" : "[텍스트]";
+	         String fileInfo = "";
+
+	         if (chat.getFileYn() != null && chat.getFileYn()) {
+	             List<MessageFile> files = chat.getMessageFiles();
+	             if (files != null && !files.isEmpty()) {
+	                 fileInfo = "파일명: " + files.get(0).getFileName();
+	             } else {
+	                 fileInfo = "파일명 없음";
+	             }
+	         }
+	         log.info("[{}] {} {}: {} {}", chat.getSendAt(), senderName, msgType, chat.getMessageContent(), fileInfo);
+	     }
+
+	     // Optional: 메시지의 날짜 오름차순이 맞는지 검증
+	     for (int i = 1; i < messages.size(); i++) {
+	         assertTrue(messages.get(i - 1).getSendAt().isBefore(messages.get(i).getSendAt()) ||
+	                    messages.get(i - 1).getSendAt().isEqual(messages.get(i).getSendAt()),
+	                    "메시지가 날짜 오름차순으로 정렬되어야 함");
+	     }
 	 }
 	 
 	 @Test
 	 @Transactional
 	 @DisplayName("선택한 채팅방에서 메시지를 정렬해서 보여줄때 나와 다른 사람을 구분해서 메시지를 날짜기준 오름차순으로 정렬해서 보여주기")
 	 void testGetChatRoomMessagesByChatRoomIdWithSenderType() {
-		 // 1. 로그인한 사용자 조회
-		 String email = "choimeeyoung2@gmail.com";
-		 User user = userRepository.findByEmail(email)
-				 .orElseThrow(() -> new IllegalArgumentException("사용자 없음: " + email));
-		 Role role = user.getRole();
-		 
-		 // 2. JWT 토큰 발급
-		 String accessToken = jwtProvider.createAccess(email, role, 30);
-		 assertNotNull(accessToken);
-		 log.info("발급된 JWT Access Token: {}", accessToken);
+	     // 1. 로그인한 사용자 조회
+	     String email = "choimeeyoung2@gmail.com";
+	     User user = userRepository.findByEmail(email)
+	             .orElseThrow(() -> new IllegalArgumentException("사용자 없음: " + email));
+	     Role role = user.getRole();
 
-	    // 3. 참여중인 채팅방 ID 목록 조회
-	    List<Integer> chatRoomIds = chatRoomService.getChatRoomIdsByUserId(user.getId());
-	    assertNotNull(chatRoomIds);
-	    assertFalse(chatRoomIds.isEmpty(), "참여중인 채팅방이 최소 1개 이상 있어야 테스트가 의미 있음");
+	     // 2. JWT 토큰 발급
+	     String accessToken = jwtProvider.createAccess(email, role, 30);
+	     assertNotNull(accessToken);
+	     log.info("발급된 JWT Access Token: {}", accessToken);
 
-		// 4. 테스트용: 첫번째 채팅방 선택 (실제 클릭 상황 가정)
-		Integer selectedRoomId = chatRoomIds.get(1);
-		ChatRoom selectedRoom = chatRoomService.findById(16);
-		assertNotNull(selectedRoom);
-		   
-		log.info("선택한 채팅방: [{}] {}", selectedRoom.getId(), selectedRoom.getRoomName());
-		 
-		// 5. 선택한 채팅방의 모든 메시지 날짜 오름차순 정렬
-	    List<Chat> messages = selectedRoom.getChats();
-	    messages.sort(Comparator.comparing(Chat::getSendAt));
+	     // 3. 참여중인 채팅방 DTO 목록 조회
+	     List<ChatRoomLatestMessageResponseDTO> chatRooms = chatRoomService.getChatRoomIdsByUserId(user.getId());
+	     assertNotNull(chatRooms);
+	     assertFalse(chatRooms.isEmpty(), "참여중인 채팅방이 최소 1개 이상 있어야 테스트가 의미 있음");
 
-	    log.info("메시지 개수: {}", messages.size());
-	    
-	    for (Chat chat : messages) {
-	    	String senderName = (chat.getSender() != null) ? chat.getSender().getName() : "알 수 없음";
-	    	boolean isMine = chat.getSender() != null && chat.getSender().getId().equals(user.getId());
-	    	String senderType = isMine ? "[내 메시지]" : "[다른 사람 메시지]";
-	    	String msgType = (chat.getFileYn() != null && chat.getFileYn()) ? "[파일]" : "[텍스트]";
-	    	String fileInfo = "";
-	    	
-	    	// 파일 메시지면 파일명 출력 (messageFiles 연관관계 활용)
-	    	if (chat.getFileYn() != null && chat.getFileYn()) {
-	    		List<MessageFile> files = chat.getMessageFiles();
-	    		if (files != null && !files.isEmpty()) {
-	    			fileInfo = "파일명: " + files.get(0).getFileName();
-	    		} else {
-	    			fileInfo = "파일명 없음";
-	    		}
-	    	}
-	    	
-	    	log.info("{} [{}] {} {}: {} {}", senderType, chat.getSendAt(), senderName, msgType, chat.getMessageContent(), fileInfo);
-	    	
-	    }
-	    
-	    // 날짜 오름차순 검증
-	    for (int i = 1; i < messages.size(); i++) {
-	    	assertTrue(messages.get(i - 1).getSendAt().isBefore(messages.get(i).getSendAt()) || 
-	    			 messages.get(i - 1).getSendAt().isEqual(messages.get(i).getSendAt()),
-	                   "메시지가 날짜 오름차순으로 정렬되어야 함");
-	    }
+	     // 4. 테스트용: 첫번째 채팅방 선택 (실제 클릭 상황 가정)
+	     ChatRoomLatestMessageResponseDTO selectedRoomDTO = chatRooms.get(0); // 0번 인덱스(첫번째 방)
+	     Integer selectedRoomId = selectedRoomDTO.getRoomId();
+	     ChatRoom selectedRoom = chatRoomService.findById(selectedRoomId);
+	     assertNotNull(selectedRoom);
+
+	     log.info("선택한 채팅방: [{}] {}", selectedRoom.getId(), selectedRoom.getRoomName());
+
+	     // 5. 선택한 채팅방의 모든 메시지 날짜 오름차순 정렬
+	     List<Chat> messages = selectedRoom.getChats();
+	     messages.sort(Comparator.comparing(Chat::getSendAt));
+
+	     log.info("메시지 개수: {}", messages.size());
+
+	     for (Chat chat : messages) {
+	         String senderName = (chat.getSender() != null) ? chat.getSender().getName() : "알 수 없음";
+	         boolean isMine = chat.getSender() != null && chat.getSender().getId().equals(user.getId());
+	         String senderType = isMine ? "[내 메시지]" : "[다른 사람 메시지]";
+	         String msgType = (chat.getFileYn() != null && chat.getFileYn()) ? "[파일]" : "[텍스트]";
+	         String fileInfo = "";
+
+	         // 파일 메시지면 파일명 출력 (messageFiles 연관관계 활용)
+	         if (chat.getFileYn() != null && chat.getFileYn()) {
+	             List<MessageFile> files = chat.getMessageFiles();
+	             if (files != null && !files.isEmpty()) {
+	                 fileInfo = "파일명: " + files.get(0).getFileName();
+	             } else {
+	                 fileInfo = "파일명 없음";
+	             }
+	         }
+
+	         log.info("{} [{}] {} {}: {} {}", senderType, chat.getSendAt(), senderName, msgType, chat.getMessageContent(), fileInfo);
+
+	     }
+
+	     // 날짜 오름차순 검증
+	     for (int i = 1; i < messages.size(); i++) {
+	         assertTrue(messages.get(i - 1).getSendAt().isBefore(messages.get(i).getSendAt()) ||
+	                    messages.get(i - 1).getSendAt().isEqual(messages.get(i).getSendAt()),
+	                    "메시지가 날짜 오름차순으로 정렬되어야 함");
+	     }
 	 }
 	 
 	 @Test
@@ -1164,19 +1159,22 @@ public class ChatWebSocketHandlerTest {
 	    @Transactional
 	    @DisplayName("채팅메시지에 온 안읽은 메시지를 토스트 메시지로 표시")
 	    void testUnreadChatToastMessage() {
-	    	// 1. 이메일 로그인 사용자 정보 조회
+	        // 1. 이메일 로그인 사용자 정보 조회
 	        String email = "choimeeyoung2@gmail.com";
 	        User user = userRepository.findByEmail(email)
 	            .orElseThrow(() -> new IllegalArgumentException("사용자 없음: " + email));
 	        Integer userId = user.getId();
 
-	    	
-	        // 2. 내가 속한 채팅방 목록 조회
-	        List<Integer> chatRoomIds = chatRoomService.getChatRoomIdsByUserId(userId);
-	        
-	     // 3. 각 채팅방의 안읽은 메시지 조회 (fetch join으로 sender 미리 로딩)
+	        // 2. 내가 속한 채팅방 목록 조회 (DTO 리스트 반환됨)
+	        List<ChatRoomLatestMessageResponseDTO> chatRoomDTOs = chatRoomService.getChatRoomIdsByUserId(userId);
+
+	        // 2-1. roomId 리스트로 변환
+	        List<Integer> chatRoomIds = chatRoomDTOs.stream()
+	            .map(ChatRoomLatestMessageResponseDTO::getRoomId)
+	            .collect(Collectors.toList());
+
+	        // 3. 각 채팅방의 안읽은 메시지 조회 (fetch join으로 sender 미리 로딩)
 	        for (Integer roomId : chatRoomIds) {
-	            // ★ 변경된 fetch join 메서드 사용!
 	            List<Chat> unreadChats = chatRepository.findByChatRoom_IdAndReadYnIsFalseWithSender(roomId);
 	            System.out.println("여기 들어옴");
 	            System.out.println("unreadChats: " + unreadChats.toString());
@@ -1202,7 +1200,6 @@ public class ChatWebSocketHandlerTest {
 	                // 4. 토스트 클릭 시, 해당 채팅방의 모든 안읽은 메시지 읽음 처리
 	                for (Chat chat : unreadChats) {
 	                    chat.markRead();
-	                    
 	                }
 
 	                // 읽음 처리 검증 (fetch join 필요 없음)
@@ -1210,80 +1207,74 @@ public class ChatWebSocketHandlerTest {
 	                assertTrue(afterRead.isEmpty());
 	            }
 	        }
-	    	
 	    }
 	    
 	    
-	    @Test
-	    @DisplayName("사용자가 채팅방을 선택해서 채팅방에 메시지 전송시 다른 사용자들이 접속중이 아닌 경우 안읽은 사람 수 표시해주기")
-	    void testSendChatMessageAndUnreadStatus() {
-	    	// 1. 사용자가 로그인을 한다
-	        String email = "choimeeyoung2@gmail.com";
-	        User user = userRepository.findByEmail(email)
-	            .orElseThrow(() -> new IllegalArgumentException("사용자 없음: " + email));
-	        Integer userId = user.getId();
-	    	
-	        // 2. 내가 참여중인 채팅방 목록을 보여준다
-	        List<Integer> chatRoomIds = chatRoomService.getChatRoomIdsByUserId(userId);
-	        assertFalse(chatRoomIds.isEmpty());
-	    	
-	        // 3. 채팅방 하나 선택(첫번째 방)
-	        Integer roomId = 4;
-	        ChatRoom chatRoom = chatRoomService.findById(roomId);
-	    	
-	        // 4. 메시지 전송
-	        String message = "테스트 메시지 전송7";
-	        Chat sentChat = chatRoomService.sendChatMessage(roomId, userId, message);
-	    	
-	        // 5. 채팅방의 참여자 목록 조회
-	        List<Integer> participantIds = chatRoomService.getParticipantIds(roomId);
 
-	        // 6. 현재 채팅방에 접속중인 사용자 목록 조회 (WebSocketHandler 활용)
-	        List<Integer> connectedUserIds = chatWebSocketHandler.getConnectedUserIdsInRoom(roomId);
+@Test
+@DisplayName("사용자가 채팅방을 선택해서 채팅방에 메시지 전송시 다른 사용자들이 접속중이 아닌 경우 안읽은 사람 수 표시해주기")
+void testSendChatMessageAndUnreadStatus() {
+    // 1. 사용자가 로그인을 한다
+    String email = "choimeeyoung2@gmail.com";
+    User user = userRepository.findByEmail(email)
+        .orElseThrow(() -> new IllegalArgumentException("사용자 없음: " + email));
+    Integer userId = user.getId();
 
-	        // 7. 현재 참여자 중 미접속자(알림 받을 대상) 계산
-	        List<Integer> notConnectedUserIds = participantIds.stream()
-	            .filter(pid -> !connectedUserIds.contains(pid))
-	            .collect(Collectors.toList());
+    // 2. 내가 참여중인 채팅방 목록을 보여준다
+    List<ChatRoomLatestMessageResponseDTO> chatRoomDTOs = chatRoomService.getChatRoomIdsByUserId(userId);
+    assertFalse(chatRoomDTOs.isEmpty());
 
-	        // 8. 미접속자에게 알림 메시지 전송
-	        for (Integer pid : notConnectedUserIds) {
-	            String alertMsg = user.getName() + "님으로부터 채팅메시지가 도착했습니다.";
-	            // log.info("[알림] userId {}" , pid ,", message: {}" , alertMsg);  // ← 기존 오류
-	            log.info("[알림] userId {}, message: {}", pid, alertMsg); // ← 수정
-	        }
+    // 3. 채팅방 하나 선택(첫번째 방)
+    Integer roomId = chatRoomDTOs.get(0).getRoomId(); // 첫번째 방의 roomId (예시로 0번째 인덱스)
+    ChatRoom chatRoom = chatRoomService.findById(roomId);
 
-	        // 9. 미접속자 수(즉, 읽지 않은 인원) 계산
-	        int unreadCount = notConnectedUserIds.size();
+    // 4. 메시지 전송
+    String message = "테스트 메시지 전송7";
+    Chat sentChat = chatRoomService.sendChatMessage(roomId, userId, message);
 
-	        // 10. 방금 전송한 채팅 메시지의 readYn이 false(0)이면 미읽음 처리
-	        assertNotNull(sentChat);
-	        assertFalse(Boolean.TRUE.equals(sentChat.getReadYn())); // 기본값 false 또는 0
+    // 5. 채팅방의 참여자 목록 조회
+    List<Integer> participantIds = chatRoomService.getParticipantIds(roomId);
 
-	        // 11. 화면 표시: 메시지 옆에 "미읽음 X명" 표시
-	        log.info("미읽음: {}명", unreadCount); // ← 수정
+    // 6. 현재 채팅방에 접속중인 사용자 목록 조회 (WebSocketHandler 활용)
+    List<Integer> connectedUserIds = chatWebSocketHandler.getConnectedUserIdsInRoom(roomId);
 
-	        // 12. 한 명 읽음 처리 후 미읽음
-	        if (unreadCount > 0) {
-	            Integer firstUnreadUserId = notConnectedUserIds.get(0);
-	            sentChat.markRead();
-	            chatRepository.save(sentChat);
-	            int newUnreadCount = unreadCount - 1;
-	            log.info("한 명 읽음 처리 후 미읽음: {}명", newUnreadCount); // ← 수정
-	        }
+    // 7. 현재 참여자 중 미접속자(알림 받을 대상) 계산
+    List<Integer> notConnectedUserIds = participantIds.stream()
+        .filter(pid -> !connectedUserIds.contains(pid))
+        .collect(Collectors.toList());
 
-	        // 13. 채팅 메시지 정렬 검증
-	        List<Chat> chats = chatRepository.findByChatRoomIdOrderBySendAtAsc(roomId);
-	        for (Chat c : chats) {
-	            String align = c.getSender().getId().equals(userId) ? "오른쪽" : "왼쪽";
-	            log.info("채팅[{}] - 정렬: {}, 시간: {}", c.getMessageContent(), align, c.getSendAt()); // ← 수정
-	        }
-	    	
-	    	
-	    	
-	    	
-	    	
-	    }
+    // 8. 미접속자에게 알림 메시지 전송
+    for (Integer pid : notConnectedUserIds) {
+        String alertMsg = user.getName() + "님으로부터 채팅메시지가 도착했습니다.";
+        log.info("[알림] userId {}, message: {}", pid, alertMsg);
+    }
+
+    // 9. 미접속자 수(즉, 읽지 않은 인원) 계산
+    int unreadCount = notConnectedUserIds.size();
+
+    // 10. 방금 전송한 채팅 메시지의 readYn이 false(0)이면 미읽음 처리
+    assertNotNull(sentChat);
+    assertFalse(Boolean.TRUE.equals(sentChat.getReadYn())); // 기본값 false 또는 0
+
+    // 11. 화면 표시: 메시지 옆에 "미읽음 X명" 표시
+    log.info("미읽음: {}명", unreadCount);
+
+    // 12. 한 명 읽음 처리 후 미읽음
+    if (unreadCount > 0) {
+        Integer firstUnreadUserId = notConnectedUserIds.get(0);
+        sentChat.markRead();
+        chatRepository.save(sentChat);
+        int newUnreadCount = unreadCount - 1;
+        log.info("한 명 읽음 처리 후 미읽음: {}명", newUnreadCount);
+    }
+
+    // 13. 채팅 메시지 정렬 검증
+    List<Chat> chats = chatRepository.findByChatRoomIdOrderBySendAtAsc(roomId);
+    for (Chat c : chats) {
+        String align = c.getSender().getId().equals(userId) ? "오른쪽" : "왼쪽";
+        log.info("채팅[{}] - 정렬: {}, 시간: {}", c.getMessageContent(), align, c.getSendAt());
+    }
+}
 	 
 	 
 }

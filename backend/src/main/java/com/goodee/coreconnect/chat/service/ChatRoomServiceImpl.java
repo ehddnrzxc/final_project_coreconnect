@@ -2,6 +2,7 @@ package com.goodee.coreconnect.chat.service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +21,7 @@ import com.goodee.coreconnect.common.notification.dto.NotificationPayload; // DT
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
 import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.approval.repository.DocumentRepository;
+import com.goodee.coreconnect.chat.dto.response.ChatRoomLatestMessageResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatRoomSummaryResponseDTO;
 import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.chat.entity.ChatMessageReadStatus;
@@ -277,12 +279,32 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	}
 
 	@Override
-	public List<Integer> getChatRoomIdsByUserId(Integer userId) {
+	public List<ChatRoomLatestMessageResponseDTO> getChatRoomIdsByUserId(Integer userId) {
+		// 내가 참여중인 채팅방 엔티티 리스트 조회
 		List<ChatRoomUser> chatRoomUsers = chatRoomUserRepository.findByUserId(userId);
-		return chatRoomUsers.stream()
-				.map(cru -> cru.getChatRoom().getId())
-				.distinct()
-				.collect(Collectors.toList());
+		List<ChatRoom> chatRooms = chatRoomUsers.stream()
+	            .map(ChatRoomUser::getChatRoom)
+	            .distinct()
+	            .collect(Collectors.toList());
+
+	    // 2. 각 채팅방별 마지막 메시지 조회
+	    List<ChatRoomLatestMessageResponseDTO> result = new ArrayList<>();
+	    for (ChatRoom room : chatRooms) {
+	        Chat lastMessage = room.getChats().stream()
+	                .max(Comparator.comparing(Chat::getSendAt))
+	                .orElse(null);
+
+	        result.add(ChatRoomLatestMessageResponseDTO.builder()
+	                .roomId(room.getId())
+	                .roomName(room.getRoomName())
+	                .lastMessageId(lastMessage != null ? lastMessage.getId() : null)
+	                .lastMessageContent(lastMessage != null ? lastMessage.getMessageContent() : null)
+	                .lastSenderName(lastMessage != null && lastMessage.getSender() != null ? lastMessage.getSender().getName() : null)
+	                .lastMessageTime(lastMessage != null ? lastMessage.getSendAt() : null)
+	                .build());
+	    }
+		
+		return result;
 	}
 
 	@Transactional
@@ -335,9 +357,12 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	}
 
 	@Override
-	public List<Chat> getLatestMessagesByUserId(Integer userId) {
-		List<Integer> roomIds = getChatRoomIdsByUserId(userId);
-        return chatRepository.findLatestMessageByChatRoomIds(roomIds);
+	public List<Integer> getLatestMessagesByUserId(Integer userId) {
+		 List<ChatRoomLatestMessageResponseDTO> roomInfos = getChatRoomIdsByUserId(userId);
+		    return roomInfos.stream()
+		            .map(ChatRoomLatestMessageResponseDTO::getRoomId)
+		            .distinct()
+		            .collect(Collectors.toList());
 	}
 
 	
