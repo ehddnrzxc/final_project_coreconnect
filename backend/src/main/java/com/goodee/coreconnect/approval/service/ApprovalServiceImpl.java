@@ -27,6 +27,7 @@ import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.approval.entity.File;
 import com.goodee.coreconnect.approval.entity.Template;
 import com.goodee.coreconnect.approval.enums.ApprovalLineStatus;
+import com.goodee.coreconnect.approval.enums.ApprovalLineType;
 import com.goodee.coreconnect.approval.enums.DocumentStatus;
 import com.goodee.coreconnect.approval.repository.ApprovalLineRepository;
 import com.goodee.coreconnect.approval.repository.DocumentRepository;
@@ -58,7 +59,6 @@ public class ApprovalServiceImpl implements ApprovalService {
   private final UserRepository userRepository;
   private final ApprovalLineRepository approvalLineRepository;
   private final S3Service s3Service;
-
   private final WebSocketDeliveryService webSocketDeliveryService;
   private final NotificationRepository notificationRepository;
 
@@ -71,11 +71,11 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     // 1. 기안자(User) 및 양식(Template) 조회
     User drafter = findUserByEmail(email);
-    Template template = templateRepository.findById(requestDTO.getTemplateId())
-        .orElseThrow(() -> new EntityNotFoundException("해당 템플릿을 찾을 수 없습니다. ID: " + requestDTO.getTemplateId()));
+    Template template = findTemplateById(requestDTO.getTemplateId());
 
     // 2. 문서 엔티티 생성
     Document document = requestDTO.toEntity(template, drafter);
+    
     // 3. 결재선 엔티티 생성 (N+1 해결)
     List<ApprovalLineRequestDTO> approvalLines = requestDTO.getApprovalLines(); // DTO에서 순서가 보장된 ID List
     // 객체 리스트에서 UserId 리스트를 추출
@@ -100,10 +100,10 @@ public class ApprovalServiceImpl implements ApprovalService {
         throw new EntityNotFoundException("결재선에 포함된 사용자를 찾을 수 없습니다. ID: " + lines.getUserId());
       }
 
-      lines.toEntity(document, drafter, order.getAndIncrement());
+      lines.toEntity(document, approver, order.getAndIncrement());
     });
 
-    // 4. (추가) 첨부파일 처리 (S3 업로드)
+    // 4. 첨부파일 처리 (S3 업로드)
     if (files != null && !files.isEmpty()) {
       try {
         for (MultipartFile file : files) {
@@ -133,8 +133,9 @@ public class ApprovalServiceImpl implements ApprovalService {
     // --- 알림 전송 로직 (첫번째 결재자에게) ---
     // 7. 첫번째 결재자 찾기
     ApprovalLine firstLine = savedDocument.getApprovalLines().stream()
-        .min(Comparator.comparing(ApprovalLine::getApprovalLineOrder))
-        .orElse(null);
+        .filter(line -> line.getApprovalLineStatus() == ApprovalLineStatus.WAITING) // WAITING 상태인 사람 중에서
+        .min(Comparator.comparing(ApprovalLine::getApprovalLineOrder)) // 가장 순서가 빠른 사람
+        .orElse(null); // (모두 참조일 경우 null이 될 수 있으나, submit()에서 방어됨)
 
     if (firstLine != null) {
       User firstApprover = firstLine.getApprover();
@@ -168,8 +169,7 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     // 1. 기안자(User) 및 양식(Template) 조회
     User drafter = findUserByEmail(email);
-    Template template = templateRepository.findById(requestDTO.getTemplateId())
-        .orElseThrow(() -> new EntityNotFoundException("해당 템플릿을 찾을 수 없습니다. ID: " + requestDTO.getTemplateId()));
+    Template template = findTemplateById(requestDTO.getTemplateId());
 
     // 2. 문서 엔티티 생성 (기본 상태: DRAFT)
     Document document = Document.createDocument(
@@ -201,7 +201,7 @@ public class ApprovalServiceImpl implements ApprovalService {
         if (approver == null) {
           throw new EntityNotFoundException("결재선에 포함된 사용자를 찾을 수 없습니다. ID: " + lineDTO.getUserId());
         }
-        lineDTO.toEntity(document, drafter, order.getAndIncrement());
+        lineDTO.toEntity(document, approver, order.getAndIncrement());
       });
     }
 
@@ -437,26 +437,79 @@ public class ApprovalServiceImpl implements ApprovalService {
       throw new IllegalStateException("현재 사용자의 결재 차례가 아닙니다.");
     }
 
+    ApprovalLineType currentType = currentLine.getApprovalLineType();
+
     // 결재선 엔티티 로직 호출 (WAITING -> REJECTED)
     currentLine.reject(requestDTO.getApprovalComment());
 
-    // 문서 엔티티 로직 호출 (IN_PROGRESS -> REJECTED)
-    document.reject();
+    if (currentType == ApprovalLineType.APPROVE) {
+      document.reject();
+      // --- 알림 전송 로직 (기안자에게) ---
+      User drafter = document.getUser(); // 기안자
+      String message = "상신하신 결재가 반려되었습니다.";
 
-    // --- 알림 전송 로직 (기안자에게) ---
-    User drafter = document.getUser(); // 기안자
-    String message = "상신하신 결재가 반려되었습니다.";
+      NotificationPayload payload = createNotificationPayload(
+          drafter.getId(),     // 받는사람 (기안자)
+          currentUserId,       // 보낸사람 (반려한 결재자)
+          currentUser.getName(),
+          message,
+          document.getId()
+          );
 
-    NotificationPayload payload = createNotificationPayload(
-        drafter.getId(),     // 받는사람 (기안자)
-        currentUserId,       // 보낸사람 (반려한 결재자)
-        currentUser.getName(),
-        message,
-        document.getId()
-        );
+      saveNotificationToDB(payload, drafter, document);
+      webSocketDeliveryService.sendToUser(drafter.getId(), payload);
+    } else if (currentType == ApprovalLineType.AGREE) {
+      // === '합의' 반려(비합의) 로직 ===
+      // '합의'자가 반려(비합의)해도 문서는 중단되지 않고 계속 진행됩니다.
+      // (document.reject()를 호출하지 않음)
 
-    saveNotificationToDB(payload, drafter, document);
-    webSocketDeliveryService.sendToUser(drafter.getId(), payload);
+      // '승인' 로직과 동일하게, 다음 결재자가 있는지 확인
+      // Document.updateStatusAfterApproval()가 '합의' 비합의를 처리
+      document.updateStatusAfterApproval();
+
+      // --- 알림 전송 로직 (다음 결재자 또는 기안자에게) ---
+
+      // CASE 1: '합의'자 반려(비합의) 후 결재가 완료된 경우
+      if (document.getDocumentStatus() == DocumentStatus.COMPLETED) {
+        User drafter = document.getUser(); // 기안자
+        // '비합의'가 포함된 완료 알림 메시지
+        String message = "상신하신 결재가 최종 승인되었습니다. (" + currentUser.getName() + "님 비합의)";
+
+        NotificationPayload payload = createNotificationPayload(
+            drafter.getId(),     // 받는사람 (기안자)
+            currentUserId,       // 보낸사람 (비합의한 합의자)
+            currentUser.getName(),
+            message,
+            document.getId()
+            );
+
+        saveNotificationToDB(payload, drafter, document);
+        webSocketDeliveryService.sendToUser(drafter.getId(), payload);
+      } else if (document.getDocumentStatus() == DocumentStatus.IN_PROGRESS) {
+        // 다음 결재자 찾기
+        ApprovalLine nextLine = document.getApprovalLines().stream()
+            .filter(line -> line.getApprovalLineStatus() == ApprovalLineStatus.WAITING)
+            .min(Comparator.comparing(ApprovalLine::getApprovalLineOrder))
+            .orElse(null); // 다음 결재자가 없으면 null
+
+        if (nextLine != null) {
+          User nextApprover = nextLine.getApprover();
+          User drafter = document.getUser(); // 기안자
+          String message = drafter.getName() + "님으로부터 새로운 결재 요청이 도착했습니다.";
+
+          NotificationPayload payload = createNotificationPayload(
+              nextApprover.getId(), // 받는사람 (다음 결재자)
+              drafter.getId(),      // 보낸사람 (기안자)
+              drafter.getName(),
+              message,
+              document.getId()
+              );
+
+          saveNotificationToDB(payload, nextApprover, document);
+          webSocketDeliveryService.sendToUser(nextApprover.getId(), payload);
+        }
+      } 
+    }
   }
 
   /**
@@ -476,8 +529,7 @@ public class ApprovalServiceImpl implements ApprovalService {
    */
   @Override
   public TemplateDetailResponseDTO getTemplateDetail(Integer templateId) {
-    Template template = templateRepository.findById(templateId)
-        .orElseThrow(() -> new EntityNotFoundException("템플릿을 찾을 수 없습니다. ID: " + templateId));
+    Template template = findTemplateById(templateId);
 
     return TemplateDetailResponseDTO.toDTO(template);
   }
@@ -487,6 +539,11 @@ public class ApprovalServiceImpl implements ApprovalService {
   private User findUserByEmail(String email) {
     return userRepository.findByEmail(email)
         .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다. Email: " + email));
+  }
+  
+  private Template findTemplateById(Integer templateId) {
+    return templateRepository.findById(templateId)
+        .orElseThrow(() -> new EntityNotFoundException("템플릿(양식)을 찾을 수 없습니다. ID: " + templateId));
   }
 
 

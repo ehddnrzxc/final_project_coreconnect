@@ -10,6 +10,7 @@ import java.util.Set;
 import org.hibernate.annotations.CreationTimestamp;
 
 import com.goodee.coreconnect.approval.enums.ApprovalLineStatus;
+import com.goodee.coreconnect.approval.enums.ApprovalLineType;
 import com.goodee.coreconnect.approval.enums.DocumentStatus;
 import com.goodee.coreconnect.user.entity.User;
 
@@ -100,8 +101,13 @@ public class Document {
   public void submit() {
     if (this.documentStatus != DocumentStatus.DRAFT)
       throw new IllegalStateException("임시 저장 상태의 문서만 상신할 수 있습니다.");
-    if (this.approvalLines.isEmpty())
-      throw new IllegalStateException("결재선이 지정되지 않은 문서는 상신할 수 없습니다.");
+    
+    boolean hasRequiredLine = this.approvalLines.stream()
+        .anyMatch(line -> line.getApprovalLineType() == ApprovalLineType.AGREE || line.getApprovalLineType() == ApprovalLineType.APPROVE);
+    
+    if (!hasRequiredLine)
+      throw new IllegalStateException("결재선(결재 또는 합의)이 지정되지 않은 문서는 상신할 수 없습니다.");
+
     this.documentStatus = DocumentStatus.IN_PROGRESS;
   }
 
@@ -130,9 +136,13 @@ public class Document {
    */
   public void updateStatusAfterApproval() {
     if (this.documentStatus != DocumentStatus.IN_PROGRESS) return;
-    boolean allApproved = this.approvalLines.stream()
-        .allMatch(line -> line.getApprovalLineStatus() == ApprovalLineStatus.APPROVED);
-    if (allApproved) this.complete();
+
+    boolean allRequiredLinesProcessd = this.approvalLines.stream()
+        .filter(line -> line.getApprovalLineType() == ApprovalLineType.AGREE || line.getApprovalLineType() == ApprovalLineType.APPROVE)
+        .allMatch(line -> line.getApprovalLineStatus() != ApprovalLineStatus.WAITING);
+    if (allRequiredLinesProcessd)
+      this.complete();
+    
   }
 
   /**
