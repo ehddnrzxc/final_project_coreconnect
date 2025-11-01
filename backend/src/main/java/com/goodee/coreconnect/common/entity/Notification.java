@@ -53,6 +53,9 @@ public class Notification {
    @Column(name = "notification_message")
    private String notificationMessage;
    
+   @ManyToOne
+   @JoinColumn(name = "sender_id")
+   private User sender;
    
    // N : 1 관계 (채팅메시지 테이블과 매핑)
    @ManyToOne(fetch = FetchType.LAZY)
@@ -81,7 +84,8 @@ public class Notification {
            Boolean notificationSentYn,
            Boolean notificationDeletedYn,
            LocalDateTime notificationSentAt,
-           LocalDateTime notificationReadAt
+           LocalDateTime notificationReadAt,
+           User sender
    ) {
        Notification notification = new Notification();
        notification.user = user;
@@ -94,6 +98,7 @@ public class Notification {
        notification.notificationDeletedYn = notificationDeletedYn != null ? notificationDeletedYn : false;
        notification.notificationSentAt = notificationSentAt;
        notification.notificationReadAt = notificationReadAt;
+       notification.sender = sender;
        return notification;
    }
    

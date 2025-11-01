@@ -60,6 +60,12 @@ public class NotificationService {
         User recipient = userRepository.findById(recipientId)
             .orElseThrow(() -> new IllegalArgumentException("알림 수신자 없음: " + recipientId));
 
+        User sender = null;
+        if (senderId != null) {
+            sender = userRepository.findById(senderId)
+                .orElseThrow(() -> new IllegalArgumentException("알림 발신자 없음: " + senderId));
+        }
+        
          // --- 여기서 알림 타입별로 chatId/roomId 필수 체크 ---
         // 채팅 알림 타입은 없음. 만약 chatId/roomId가 값이 들어오면 무시하거나 로깅
         if ((type == NotificationType.EMAIL || type == NotificationType.NOTICE || type == NotificationType.APPROVAL || type == NotificationType.SCHEDULE)
@@ -80,7 +86,8 @@ public class NotificationService {
                 false,
                 false,
                 LocalDateTime.now(), // 알림 생성 시각
-                null
+                null,
+                sender
         );
         notificationRepository.save(notification); // DB 저장
 

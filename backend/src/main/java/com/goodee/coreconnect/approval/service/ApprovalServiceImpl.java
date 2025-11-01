@@ -527,6 +527,7 @@ public class ApprovalServiceImpl implements ApprovalService {
    */
   private void saveNotificationToDB(NotificationPayload payload, User recipient, Document document) {
     try {
+      User senderUser = userRepository.findById(payload.getSenderId()).orElse(null); // sender 정보 조회
       // (Notification 팩토리 메소드 정상 사용 확인)
       Notification notification = Notification.createNotification(
           recipient, 
@@ -538,7 +539,8 @@ public class ApprovalServiceImpl implements ApprovalService {
           false,    // sentYn
           false,    // deletedYn
           null,     // sentAt
-          null      // readAt
+          null,      // readAt
+          senderUser // sender
           );
 
       Notification savedNotification = notificationRepository.save(notification);

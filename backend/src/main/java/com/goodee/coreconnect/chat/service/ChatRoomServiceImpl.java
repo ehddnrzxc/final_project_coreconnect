@@ -186,7 +186,8 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	                     false,
 	                     false,
 	                     LocalDateTime.now(),
-	                     null
+	                     null,
+	                     sender
 	             );
 	    		
 	    	} else {
@@ -200,7 +201,8 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	                     false,
 	                     false,
 	                     LocalDateTime.now(),
-	                     null
+	                     null,
+	                     sender
 	             );	
 	    	}
 	    	
