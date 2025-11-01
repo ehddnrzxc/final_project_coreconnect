@@ -40,9 +40,11 @@ import com.goodee.coreconnect.chat.dto.response.NotificationReadResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ReplyMessageRequestDTO;
 import com.goodee.coreconnect.chat.dto.response.UnreadNotificationSummaryDTO;
 import com.goodee.coreconnect.chat.entity.Chat;
+import com.goodee.coreconnect.chat.entity.ChatMessageReadStatus;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
 import com.goodee.coreconnect.chat.entity.ChatRoomUser;
 import com.goodee.coreconnect.chat.entity.MessageFile;
+import com.goodee.coreconnect.chat.repository.ChatMessageReadStatusRepository;
 import com.goodee.coreconnect.chat.repository.ChatRepository;
 import com.goodee.coreconnect.chat.repository.ChatRoomUserRepository;
 import com.goodee.coreconnect.chat.repository.MessageFileRepository;
@@ -74,14 +76,15 @@ public class ChatMessageController {
     private final ChatRoomUserRepository chatRoomUserRepository;
     private final MessageFileRepository messageFileRepository;
     private final NotificationRepository notificationRepository;
+    private final ChatMessageReadStatusRepository chatMessageReadStatusRepository;
     private final NotificationService notificationService;
     private final WebSocketDeliveryService webSocketDeliveryService;
     private final S3Service s3Service;
 	
 	@Operation(summary = "채팅방 생성", description = "새로운 채팅방을 생성합니다.")
 	@PostMapping
-    public ResponseEntity<ChatRoom> createChatRoom(
-    		Principal principal, // ← 이렇게!
+    public ResponseEntity<ChatRoomResponseDTO> createChatRoom(
+    		Principal principal, 
             @RequestBody CreateRoomRequestDTO request
     		
     		) {  // 2. 방 이름, 초대할 ID 목록
@@ -90,7 +93,7 @@ public class ChatMessageController {
         // 서비스를 호출할 때 로그인한 사용자 정보(creatorEmail)를 넘겨줍니다.
         ChatRoom newChatRoom = chatRoomService.createChatRoom(creatorEmail, request.getUserIds(), creatorEmail);
         
-        return new ResponseEntity<>(newChatRoom, HttpStatus.CREATED);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ChatRoomResponseDTO.fromEntity(newChatRoom));
     }
 	
 	/**
@@ -124,6 +127,9 @@ public class ChatMessageController {
 		// 채팅 저장
 		Chat savedChat = chatRoomService.sendChatMessage(req.getRoomId(), req.getSenderId(), req.getContent());
 	
+		// 메시지별 미읽은 인원수 업데이트
+		chatRoomService.updateUnreadCountForMessages(req.getRoomId());
+				
 		// 저장 실패
 		if (savedChat == null) {
 			ResponseDTO<ChatResponseDTO> err = ResponseDTO.<ChatResponseDTO>builder()
@@ -197,6 +203,9 @@ public class ChatMessageController {
 	@Operation(summary = "채팅방의 메시지 조회(오름차순)", description = "선택한 채팅방의 메시지를 날짜 기준 오름차순으로 정렬해 조회합니다.")
 	@GetMapping("/{roomId}/messages")
 	public ResponseEntity<ResponseDTO<List<ChatMessageResponseDTO>>> getChatRoomMessagesByChatRoomId(@PathVariable("roomId") Integer roomId) {
+		// 메시지별 미읽은 인원수 DB 최신화
+		chatRoomService.updateUnreadCountForMessages(roomId);
+		
 		ChatRoom chatRoom = chatRoomService.findById(roomId);
 		List<Chat> messages = chatRoom.getChats();
 		messages.sort(Comparator.comparing(Chat::getSendAt));
@@ -236,6 +245,10 @@ public class ChatMessageController {
 		if (replyChat == null) {
 			ChatResponseDTO.fromEntity(replyChat);
 		}
+		
+		// 답신 메시지 저장 후 미읽은 인원 수 DB 업데이트
+		chatRoomService.updateUnreadCountForMessages(roomId);
+		
 		ChatResponseDTO dto = ChatResponseDTO.fromEntity(replyChat);
 		return ResponseEntity.status(HttpStatus.CREATED).body(ResponseDTO.success(dto, "답신 메시지 저장 성공"));		
 	}
@@ -274,6 +287,10 @@ public class ChatMessageController {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 					.body(ResponseDTO.internalError("파일 메시지 저장 실패"));
 		}
+		
+		// 메시지 저장 후 미읽은 인원 수 DB 업데이트
+		chatRoomService.updateUnreadCountForMessages(roomId);
+				
 		messageFileRepository.save(fileEntity);
 		ChatResponseDTO dto = ChatResponseDTO.fromEntity(chat);
 		// fileUrl도 DTO에 포함
@@ -388,7 +405,7 @@ public class ChatMessageController {
     @Operation(summary = "채팅 메시지 전송시 알림 발송", description = "채팅 메시지 전송시 알림 발송")
     @PostMapping("/rooms/{roomId}/messages")
     public ResponseEntity<ResponseDTO<ChatResponseDTO>> sendChatMessageAndNotify(
-            @PathVariable Integer roomId,
+            @PathVariable("roomId") Integer roomId,
             @AuthenticationPrincipal String email,
             @RequestBody SendMessageRequestDTO req
     ) {
@@ -399,7 +416,7 @@ public class ChatMessageController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ResponseDTO.success(dto, "메시지 전송 및 알림 발송 성공"));
     }
 
-    // 4. 나에게 온 알림만 조회
+    // 17. 나에게 온 알림만 조회
     @Operation(summary = " 나에게 온 알림만 조회", description = " 나에게 온 알림만 조회")
     @GetMapping("/notifications")
     public ResponseEntity<ResponseDTO<List<NotificationDTO>>> getMyNotifications(@AuthenticationPrincipal String email) {
@@ -420,6 +437,26 @@ public class ChatMessageController {
         return ResponseEntity.ok(ResponseDTO.success(dtoList, "나에게 온 알림 조회 성공"));
     }
     
-    
+    // 17. 내가 참여중인 채팅방의 안읽은 메시지 개수/목록 조회
+    @Operation(summary = " 내가 참여중인 채팅방의 안읽은 메시지 개수/목록 조회", description = " 내가 참여중인 채팅방에서 내가 아직 안읽은 메시지 개수/목록 조회")
+    @GetMapping("/messages/unread")
+    public ResponseEntity<ResponseDTO<List<ChatMessageResponseDTO>>> getUnreadMessages(@AuthenticationPrincipal String email) {
+    	User user = userRepository.findByEmail(email).orElseThrow();
+	    // chat_message_read_status에서 내가 안읽은 메시지만 조회
+	    List<ChatMessageReadStatus> unreadStatuses = chatMessageReadStatusRepository.findByUserIdAndReadYnFalse(user.getId());
+	    List<Integer> roomIds = chatRoomService.getChatRoomIdsByUserId(user.getId());
+	    // 각 채팅방별 미읽은 인원수 업데이트
+	    for (Integer roomId : roomIds) {
+	    	chatRoomService.updateUnreadCountForMessages(roomId);
+	    }
+	    
+	    
+	    
+	    // 해당 Chat 엔티티를 DTO로 반환
+	    List<ChatMessageResponseDTO> dtoList = unreadStatuses.stream()
+	        .map(status -> ChatMessageResponseDTO.fromEntity(status.getChat()))
+	        .collect(Collectors.toList());
+	    return ResponseEntity.ok(ResponseDTO.success(dtoList, "내 미읽은 채팅 메시지 조회 성공"));
+    }
     
 }

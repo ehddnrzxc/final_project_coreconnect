@@ -27,6 +27,7 @@ public class ChatMessageResponseDTO {
 	private Integer roomId;
 	private Integer senderId;
 	private String senderName;
+	private Integer unreadCount; // 추가: 미읽은 인원 수
 	
 	 // 추가: Chat 객체를 DTO로 변환하는 메서드
     public static ChatMessageResponseDTO fromEntity(Chat chat) {
@@ -40,6 +41,7 @@ public class ChatMessageResponseDTO {
                 .roomId(chat.getChatRoom() != null ? chat.getChatRoom().getId() : null)
                 .senderId(chat.getSender() != null ? chat.getSender().getId() : null)
                 .senderName(chat.getSender() != null ? chat.getSender().getName() : null)
+                .unreadCount(chat.getUnreadCount() != null ? chat.getUnreadCount() : 0) // null-safe
                 .build();
     }
 }

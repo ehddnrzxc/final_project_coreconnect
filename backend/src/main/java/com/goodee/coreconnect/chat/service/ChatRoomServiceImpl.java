@@ -2,20 +2,25 @@ package com.goodee.coreconnect.chat.service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.socket.WebSocketSession;
 
 import com.goodee.coreconnect.chat.event.NotificationCreatedEvent;
+import com.goodee.coreconnect.chat.handler.ChatWebSocketHandler;
 import com.goodee.coreconnect.common.dto.request.NotificationRequestDTO;
 import com.goodee.coreconnect.common.entity.Notification;
 import com.goodee.coreconnect.common.notification.dto.NotificationPayload; // DTO import 추가
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
 import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.approval.repository.DocumentRepository;
+import com.goodee.coreconnect.chat.dto.response.ChatRoomSummaryResponseDTO;
 import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.chat.entity.ChatMessageReadStatus;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
@@ -283,17 +288,17 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	@Transactional
 	@Override
 	public Chat sendChatMessage(Integer roomId, Integer senderId, Object contentOrFile) {
-		
+		// 1. 채팅방/사용자 조회
 		ChatRoom chatRoom = chatRoomRepository.findById(roomId).orElseThrow(() -> new IllegalArgumentException("채팅방 없음: " + roomId));
 		User sender = userRepository.findById(senderId)
 	            .orElseThrow(() -> new IllegalArgumentException("사용자 없음: " + senderId));
 		
 		Chat chat;
 		if (contentOrFile instanceof String) {
-		    // 텍스트 메시지
+		    // 텍스트 메시지 저장
 		    chat = Chat.createChat(chatRoom, sender, (String) contentOrFile, false, null, LocalDateTime.now());
 		} else if (contentOrFile instanceof MessageFile) {
-			// 파일 메시지
+			// 파일 메시지 저장
 			chat = Chat.createChat(chatRoom, sender, null, true, null, LocalDateTime.now());
 			chat = chatRepository.save(chat);
 			
@@ -313,6 +318,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 		chat = chatRepository.save(chat);
 		
 		// 여기에서 ChatMessageReadStatus 저장
+		// 2. 참여자별 읽음 상태 생성 (알림용 Notification 테이블 사용하지 않음)
 	    List<ChatRoomUser> participants = chatRoomUserRepository.findByChatRoomId(roomId);
 	    for (ChatRoomUser cru : participants) {
 	        User participant = cru.getUser();
@@ -352,7 +358,130 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 		return chatMessageReadStatusRepository.countUnreadByRoomId(roomId);
 	}
 	
+	@Transactional(readOnly = true)
+    @Override
+    public List<ChatRoomSummaryResponseDTO> getChatRoomSummariesByUserId(Integer userId) {
+        // 1. 내가 참여중인 채팅방 ID 목록
+        List<Integer> roomIds = chatRoomUserRepository.findByUserId(userId)
+                .stream()
+                .map(cru -> cru.getChatRoom().getId())
+                .distinct()
+                .collect(Collectors.toList());
+
+        // 2. 각 채팅방별 내가 안읽은 메시지 개수 조회
+        List<Object[]> unreadCounts = chatMessageReadStatusRepository.countUnreadByRoomIdForUser(userId);
+        Map<Integer, Integer> unreadCountMap = new HashMap<>();
+        for (Object[] arr : unreadCounts) {
+            unreadCountMap.put((Integer) arr[0], ((Long) arr[1]).intValue());
+        }
+
+        // 3. 각 채팅방의 최신 메시지 조회
+        List<Chat> lastMessages = chatRepository.findLatestMessagesByRoomIds(roomIds);
+        Map<Integer, Chat> lastMessageMap = lastMessages.stream()
+                .collect(Collectors.toMap(
+                        chat -> chat.getChatRoom().getId(),
+                        chat -> chat
+                ));
+
+        // 4. 각 채팅방의 이름 조회
+        Map<Integer, String> roomNameMap = chatRoomRepository.findAllById(roomIds)
+                .stream()
+                .collect(Collectors.toMap(ChatRoom::getId, ChatRoom::getRoomName));
+
+        // 5. 결과 DTO 생성
+        List<ChatRoomSummaryResponseDTO> result = new ArrayList<>();
+        for (Integer roomId : roomIds) {
+            Chat lastMsg = lastMessageMap.get(roomId);
+            result.add(ChatRoomSummaryResponseDTO.builder()
+                    .roomId(roomId)
+                    .roomName(roomNameMap.get(roomId))
+                    .unreadCount(unreadCountMap.getOrDefault(roomId, 0))
+                    .lastMessageId(lastMsg != null ? lastMsg.getId() : null)
+                    .lastMessageContent(lastMsg != null ? lastMsg.getMessageContent() : null)
+                    .lastSenderName(lastMsg != null && lastMsg.getSender() != null ? lastMsg.getSender().getName() : null)
+                    .lastMessageTime(lastMsg != null ? lastMsg.getSendAt() : null)
+                    .build());
+        }
+        return result;
+    }
 	
-	
-	
+	// 읽음 업데이트
+	// 채팅방에 참여자가 여러명일 떄, 누군가 메시지를 읽거나 메시지를 또 보내면 chat_message_read_status의 이전 메시지들도 읽음 처리와 ㄱ읽은 시간 업데이트가 되어야 함
+	@Transactional
+	public void markMessagesAsRead(Integer roomId, Integer userId) {
+	    // 1. 해당 채팅방에서 내가 안읽은 메시지 상태 전부 조회
+	    List<ChatMessageReadStatus> unreadStatuses =
+	        chatMessageReadStatusRepository.findUnreadMessagesByRoomIdAndUserId(roomId, userId);
+
+	    // 2. 상태를 모두 읽음 처리 및 시간 업데이트
+	    for (ChatMessageReadStatus status : unreadStatuses) {
+	        status.markRead(); // 내부적으로 readYn=true, readAt=now
+	        chatMessageReadStatusRepository.save(status);
+	    }
+	}
+
+	/** 채팅방에서 현재 접속 중인 인원 id 리스트 반환 */
+    @Override
+    public List<Integer> getConnectedUserIdsInRoom(Integer roomId) {
+        // WebSocketHandler의 userSessions 맵을 주입받거나 싱글톤/컨텍스트에서 가져와야 함
+        // 예시: ChatWebSocketHandler.userSessions 맵을 static으로 선언해서 접근하거나,
+        // 혹은 ChatWebSocketHandler에서 Service로 전달받는 구조로 구현해야 함.
+        // 여기서는 직접 구현 예시 (실제 사용 시 핸들러와 연결 필요)
+        // 실제 구현은 핸들러에서 userSessions 맵을 받아서 아래처럼 처리
+
+        // 아래는 실제 핸들러에서 구현한 코드 참고용
+        // return chatWebSocketHandler.getConnectedUserIdsInRoom(roomId);
+    	log.info("roomId: {}", roomId);
+    	
+    	
+    	List<Integer> connectedUserIds = new ArrayList<>();
+        for (Map.Entry<Integer, WebSocketSession> entry : ChatWebSocketHandler.userSessions.entrySet()) {
+            Integer userId = entry.getKey();
+            WebSocketSession session = entry.getValue();
+            if (session != null && session.isOpen()) {
+                Object sessionRoomId = session.getAttributes().get("roomId");
+                if (sessionRoomId != null && sessionRoomId.equals(roomId)) {
+                    connectedUserIds.add(userId);
+                }
+            }
+        }
+    	
+    	
+        // 만약 의존성 주입/싱글톤으로 userSessions를 접근할 수 없다면, 아래는 스텁
+        return connectedUserIds;
+    }
+
+    /** 각 메시지별 안읽은 인원 수 DB 업데이트(필요시 사용) */
+    @Override
+    public void updateUnreadCountForMessages(Integer roomId) {
+        
+    	// 현재 채팅방에 접속중인 사용자 id 리스트 확보
+    	List<Integer> connectedUserIds = getConnectedUserIdsInRoom(roomId);
+    	log.info("connectedUserIds: {}", connectedUserIds);
+    	
+    	// 각 접속중인 사용자에 대해 미읽은 메시지 읽음 처리
+    	for (Integer userId : connectedUserIds) {
+    		chatMessageReadStatusRepository.markMessagesAsReadInRoomForUser(roomId, userId, LocalDateTime.now());
+    	}
+    	
+    	
+    	// 각 메시지별로 readYn=false인 인원 수 집계
+        List<Object[]> unreadCounts = chatMessageReadStatusRepository.countUnreadByRoomId(roomId);
+        Map<Integer, Integer> unreadCountMap = new HashMap<>();
+        for (Object[] arr : unreadCounts) {
+            Integer chatId = (Integer) arr[0];
+            Integer unreadCount = ((Long) arr[1]).intValue();
+            unreadCountMap.put(chatId, unreadCount);
+        }
+
+        // 모든 메시지를 가져와서 unreadCount 필드를 업데이트
+        List<Chat> allChats = chatRepository.findByChatRoomId(roomId);
+        for (Chat chat : allChats) {
+            Integer count = unreadCountMap.getOrDefault(chat.getId(), 0);
+            chat.setUnreadCount(count); // 엔티티 필드에 값 설정
+            chatRepository.save(chat);  // DB에 저장/업데이트
+        }
+
+        log.debug("RoomId {}: 각 메시지별 unreadCount DB에 저장 완료", roomId);
+    }	
 }

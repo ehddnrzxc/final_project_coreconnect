@@ -3,6 +3,7 @@ package com.goodee.coreconnect.chat.service;
 import java.util.List;
 
 import com.goodee.coreconnect.approval.entity.Document;
+import com.goodee.coreconnect.chat.dto.response.ChatRoomSummaryResponseDTO;
 import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
 import com.goodee.coreconnect.chat.entity.ChatRoomUser;
@@ -55,4 +56,14 @@ public interface ChatRoomService {
     List<Notification> getNotificationsByUserId(Integer userId);
     
     List<Object[]> countUnreadByRoomId(Integer roomId);
+    
+    List<ChatRoomSummaryResponseDTO> getChatRoomSummariesByUserId(Integer userId);
+
+    void markMessagesAsRead(Integer roomId, Integer userId);
+
+    /** 채팅방에서 현재 접속 중인 인원 id 리스트 반환 */
+    List<Integer> getConnectedUserIdsInRoom(Integer roomId);
+
+    /** 각 메시지별 안읽은 인원 수 DB 업데이트(필요시 사용) */
+    void updateUnreadCountForMessages(Integer roomId);
 }

@@ -56,4 +56,21 @@ public class ChatMessageReadStatus {
 		this.readYn = true;
 		this.readAt = LocalDateTime.now();
 	}
+	
+	public Chat getChat() {
+        return chat;
+    }
+    public User getUser() {
+        return user;
+    }
+    public Boolean getReadYn() {
+        return readYn;
+    }
+    public LocalDateTime getReadAt() {
+        return readAt;
+    }
+    public Integer getId() {
+        return id;
+    }
+	
 }
