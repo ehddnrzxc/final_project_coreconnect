@@ -370,7 +370,15 @@ public class ChatMessageController {
                 .toList();
         int unreadCount = filtered.size();
         Notification latest = filtered.isEmpty() ? null : filtered.get(0);
-        UnreadNotificationSummaryDTO dto = UnreadNotificationSummaryDTO.from(latest, unreadCount);
+
+        // ★ 로그 추가 위치
+        if (latest != null) {
+            log.info("sentAt on fetch: {}", latest.getNotificationSentAt());
+        }
+
+        int unreadNotificationCount = filtered.size();
+        Notification latestNotification = filtered.isEmpty() ? null : filtered.get(0);
+        UnreadNotificationSummaryDTO dto = UnreadNotificationSummaryDTO.from(latestNotification, unreadNotificationCount);
         return ResponseEntity.ok(ResponseDTO.success(dto, "미읽은 알림 요약 조회 성공"));
     }
     
