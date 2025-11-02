@@ -26,6 +26,7 @@ public class ChatMessageSenderTypeResponseDTO {
     private String senderName;
     private boolean isMine;      // 내 메시지 여부
     private String senderType;   // "[내 메시지]" / "[다른 사람 메시지]"
+    private Integer unreadCount; // 추가: 미읽은 인원 수
     
     /**
      * Chat 엔티티와 현재 사용자 ID를 받아서 DTO로 변환
@@ -45,6 +46,7 @@ public class ChatMessageSenderTypeResponseDTO {
                 .senderName(chat.getSender() != null ? chat.getSender().getName() : null)
                 .isMine(isMine)
                 .senderType(senderType)
+                .unreadCount(chat.getUnreadCount() != null ? chat.getUnreadCount() : 0)
                 .build();
     }
 }

@@ -73,7 +73,14 @@ public class ApprovalLine {
     a.approver = approver;
     a.approvalLineOrder = approvalLineOrder;
     a.approvalLineType = approvalLineType;
-    a.approvalLineStatus = ApprovalLineStatus.WAITING; // 대기 (스키마 기본값) - WAITING, 승인 - APPROVED, 반려 - REJECTED
+
+    if (approvalLineType == ApprovalLineType.REFER) {
+      a.approvalLineStatus = ApprovalLineStatus.APPROVED;  // 참조일 경우 결재 대기열에 포함이 되지 않도록 바로 승인처리.
+      a.approvalLineProcessedAt = LocalDateTime.now();
+    } else {
+      a.approvalLineStatus = ApprovalLineStatus.WAITING;
+    }
+    
     document.addApprovalLine(a);
     return a;
   }
@@ -108,11 +115,15 @@ public class ApprovalLine {
    * 결재 상태를 다시 WAITING으로 초기화
    */
   public void cancel() {
-    if (this.approvalLineStatus != ApprovalLineStatus.WAITING) {
-      this.approvalLineStatus = ApprovalLineStatus.WAITING;
-      this.approvalLineComment = null;
-      this.approvalLineProcessedAt = null;
+    
+    if (this.approvalLineType == ApprovalLineType.AGREE || this.approvalLineType == ApprovalLineType.APPROVE) {
+      if (this.approvalLineStatus != ApprovalLineStatus.WAITING) {
+        this.approvalLineStatus = ApprovalLineStatus.WAITING;
+        this.approvalLineComment = null;
+        this.approvalLineProcessedAt = null;
+      }
     }
+    
   }
 
 }

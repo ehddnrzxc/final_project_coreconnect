@@ -20,9 +20,10 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Getter
-@AllArgsConstructor
+@NoArgsConstructor // ★ 롬복 기본 생성자(생략 가능, 직접 protected Notification() {} 써도 OK)
 @Entity
 @Table(name = "notification")
 public class Notification {
@@ -53,6 +54,9 @@ public class Notification {
    @Column(name = "notification_message")
    private String notificationMessage;
    
+   @ManyToOne
+   @JoinColumn(name = "sender_id")
+   private User sender;
    
    // N : 1 관계 (채팅메시지 테이블과 매핑)
    @ManyToOne(fetch = FetchType.LAZY)
@@ -69,7 +73,7 @@ public class Notification {
    @JoinColumn(name = "user_id")
    private User user;
    
-   protected Notification() {}
+  // protected Notification() {}
    
    public static Notification createNotification(
            User user,
@@ -81,7 +85,8 @@ public class Notification {
            Boolean notificationSentYn,
            Boolean notificationDeletedYn,
            LocalDateTime notificationSentAt,
-           LocalDateTime notificationReadAt
+           LocalDateTime notificationReadAt,
+           User sender
    ) {
        Notification notification = new Notification();
        notification.user = user;
@@ -94,6 +99,7 @@ public class Notification {
        notification.notificationDeletedYn = notificationDeletedYn != null ? notificationDeletedYn : false;
        notification.notificationSentAt = notificationSentAt;
        notification.notificationReadAt = notificationReadAt;
+       notification.sender = sender;
        return notification;
    }
    

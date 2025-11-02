@@ -4,6 +4,7 @@ import com.goodee.coreconnect.chat.entity.ChatRoomUser;
 import com.goodee.coreconnect.user.entity.User;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -13,15 +14,28 @@ import lombok.ToString;
 @AllArgsConstructor
 @Getter
 @Setter
+@Builder
 @ToString
 public class ChatUserResponseDTO {
 	private Integer id;
 	private String name;
 	private String email;	
 	
-	public static ChatUserResponseDTO fromEntity(ChatRoomUser cru) {
+
+    // ChatRoomUser → DTO
+    public static ChatUserResponseDTO fromEntity(ChatRoomUser cru) {
         if (cru == null || cru.getUser() == null) return null;
         User user = cru.getUser();
-        return new ChatUserResponseDTO(user.getId(), user.getName(), user.getEmail());
+        return fromEntity(user);
+    }
+
+    // User → DTO
+    public static ChatUserResponseDTO fromEntity(User user) {
+        if (user == null) return null;
+        return ChatUserResponseDTO.builder()
+                .id(user.getId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .build();
     }
 }
