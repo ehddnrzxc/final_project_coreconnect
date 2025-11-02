@@ -19,10 +19,10 @@ public class NotificationPayload {
     private Integer roomId;
     private Integer senderId;
     private String senderName;
+    private String receiverName; // 반드시 선언
     private String message;
     private String notificationType;
     private LocalDateTime createdAt;
-
   
 	
 	
