@@ -23,6 +23,7 @@ import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.approval.repository.DocumentRepository;
 import com.goodee.coreconnect.chat.dto.response.ChatRoomLatestMessageResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatRoomSummaryResponseDTO;
+import com.goodee.coreconnect.chat.dto.response.UnreadNotificationListDTO;
 import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.chat.entity.ChatMessageReadStatus;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
@@ -55,7 +56,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	private final MessageFileRepository messageFileRepository;
     private final ChatMessageReadStatusRepository chatMessageReadStatusRepository;
     private final ApplicationEventPublisher eventPublisher;
-
+    
 	@Transactional(readOnly = true)
 	@Override
 	public List<Integer> getParticipantIds(Integer roomId) {
@@ -510,5 +511,26 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         }
 
         log.debug("RoomId {}: 각 메시지별 unreadCount DB에 저장 완료", roomId);
-    }	
+    }
+    
+
+    @Override
+    public List<UnreadNotificationListDTO> getUnreadNotificationsExceptLatest(
+        Integer userId, List<NotificationType> allowedTypes) {
+
+        List<Notification> unreadList = notificationRepository.findUnreadByUserIdAndTypesOrderBySentAtDesc(userId, allowedTypes);
+
+        // 디버깅 로그 추가
+        log.info("unreadList.size: {}", unreadList.size());
+        unreadList.forEach(n -> log.info("NotificationId: {}, ReadYn: {}, DeletedYn: {}, UserId: {}, Type: {}",
+                n.getId(), n.getNotificationReadYn(), n.getNotificationDeletedYn(), n.getUser().getId(), n.getNotificationType()));
+
+        // 리스트가 2개 이상일 때만, 가장 최근 알림 제외
+        if (unreadList.size() <= 1) return List.of();
+        return unreadList.subList(1, unreadList.size())
+                .stream()
+                .map(UnreadNotificationListDTO::from)
+                .collect(Collectors.toList());
+    }
+    
 }

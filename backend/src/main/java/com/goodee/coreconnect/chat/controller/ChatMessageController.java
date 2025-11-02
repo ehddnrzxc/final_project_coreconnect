@@ -41,6 +41,7 @@ import com.goodee.coreconnect.chat.dto.response.ChatUnreadCountDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatUserResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.NotificationReadResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ReplyMessageRequestDTO;
+import com.goodee.coreconnect.chat.dto.response.UnreadNotificationListDTO;
 import com.goodee.coreconnect.chat.dto.response.UnreadNotificationSummaryDTO;
 import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.chat.entity.ChatMessageReadStatus;
@@ -370,15 +371,7 @@ public class ChatMessageController {
                 .toList();
         int unreadCount = filtered.size();
         Notification latest = filtered.isEmpty() ? null : filtered.get(0);
-
-        // ★ 로그 추가 위치
-        if (latest != null) {
-            log.info("sentAt on fetch: {}", latest.getNotificationSentAt());
-        }
-
-        int unreadNotificationCount = filtered.size();
-        Notification latestNotification = filtered.isEmpty() ? null : filtered.get(0);
-        UnreadNotificationSummaryDTO dto = UnreadNotificationSummaryDTO.from(latestNotification, unreadNotificationCount);
+        UnreadNotificationSummaryDTO dto = UnreadNotificationSummaryDTO.from(latest, unreadCount);
         return ResponseEntity.ok(ResponseDTO.success(dto, "미읽은 알림 요약 조회 성공"));
     }
     
@@ -468,6 +461,7 @@ public class ChatMessageController {
     }
     
     // 17. 내가 참여중인 채팅방의 안읽은 메시지 개수/목록 조회
+    @Operation(summary = "내가 참여중인 채팅방의 안읽은 메시지 개수/목록 조회", description = "내가 참여중인 채팅방의 안읽은 메시지 개수/목록 조회")
     @GetMapping("/messages/unread")
     public ResponseEntity<ResponseDTO<Map<String, Object>>> getUnreadMessages(@AuthenticationPrincipal String email) {
         User user = userRepository.findByEmail(email).orElseThrow();
@@ -498,6 +492,19 @@ public class ChatMessageController {
         responseMap.put("roomNames", roomIdToName);  // roomId→roomName 매핑
 
         return ResponseEntity.ok(ResponseDTO.success(responseMap, "내 미읽은 채팅 메시지 + 방 이름 목록 조회 성공"));
+    }
+    
+    @Operation(summary = "나에게 온 안읽은 알림 개수 클릭 시, 가장 최근에 온 알림을 제외한 나머지 안읽은 알림 리스트를 반환", description = "나에게 온 안읽은 알림 개수 클릭 시, 가장 최근에 온 알림을 제외한 나머지 안읽은 알림 리스트를 반환")
+    @GetMapping("/unread/list")
+    public ResponseEntity<List<UnreadNotificationListDTO>> getUnreadNotificationsExceptLatest(
+            @AuthenticationPrincipal String email,
+            @RequestParam(name = "unreadCount", required = false) Integer unreadCountParam
+    ) {
+        User user = userRepository.findByEmail(email).orElseThrow();
+        List<NotificationType> allowedTypes = List.of(NotificationType.EMAIL, NotificationType.NOTICE, NotificationType.APPROVAL, NotificationType.SCHEDULE);
+
+        List<UnreadNotificationListDTO> unreadDtos = chatRoomService.getUnreadNotificationsExceptLatest(user.getId(), allowedTypes);
+        return ResponseEntity.ok(unreadDtos);
     }
     
 }

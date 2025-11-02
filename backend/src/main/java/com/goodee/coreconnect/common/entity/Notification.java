@@ -23,6 +23,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
+@NoArgsConstructor // ★ 롬복 기본 생성자(생략 가능, 직접 protected Notification() {} 써도 OK)
 @Entity
 @Table(name = "notification")
 public class Notification {
@@ -72,7 +73,7 @@ public class Notification {
    @JoinColumn(name = "user_id")
    private User user;
    
-   protected Notification() {}
+  // protected Notification() {}
    
    public static Notification createNotification(
            User user,

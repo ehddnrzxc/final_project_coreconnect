@@ -5,6 +5,7 @@ import java.util.List;
 import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.chat.dto.response.ChatRoomLatestMessageResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatRoomSummaryResponseDTO;
+import com.goodee.coreconnect.chat.dto.response.UnreadNotificationListDTO;
 import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
 import com.goodee.coreconnect.chat.entity.ChatRoomUser;
@@ -68,5 +69,6 @@ public interface ChatRoomService {
     /** 각 메시지별 안읽은 인원 수 DB 업데이트(필요시 사용) */
     void updateUnreadCountForMessages(Integer roomId);
     
+    List<UnreadNotificationListDTO> getUnreadNotificationsExceptLatest(Integer userId, List<NotificationType> allowedTypes);
     
 }
