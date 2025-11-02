@@ -2,6 +2,7 @@ package com.goodee.coreconnect.chat.service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,7 +21,9 @@ import com.goodee.coreconnect.common.notification.dto.NotificationPayload; // DT
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
 import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.approval.repository.DocumentRepository;
+import com.goodee.coreconnect.chat.dto.response.ChatRoomLatestMessageResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatRoomSummaryResponseDTO;
+import com.goodee.coreconnect.chat.dto.response.UnreadNotificationListDTO;
 import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.chat.entity.ChatMessageReadStatus;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
@@ -53,7 +56,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	private final MessageFileRepository messageFileRepository;
     private final ChatMessageReadStatusRepository chatMessageReadStatusRepository;
     private final ApplicationEventPublisher eventPublisher;
-
+    
 	@Transactional(readOnly = true)
 	@Override
 	public List<Integer> getParticipantIds(Integer roomId) {
@@ -184,7 +187,8 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	                     false,
 	                     false,
 	                     LocalDateTime.now(),
-	                     null
+	                     null,
+	                     sender
 	             );
 	    		
 	    	} else {
@@ -198,7 +202,8 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	                     false,
 	                     false,
 	                     LocalDateTime.now(),
-	                     null
+	                     null,
+	                     sender
 	             );	
 	    	}
 	    	
@@ -277,12 +282,32 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	}
 
 	@Override
-	public List<Integer> getChatRoomIdsByUserId(Integer userId) {
+	public List<ChatRoomLatestMessageResponseDTO> getChatRoomIdsByUserId(Integer userId) {
+		// 내가 참여중인 채팅방 엔티티 리스트 조회
 		List<ChatRoomUser> chatRoomUsers = chatRoomUserRepository.findByUserId(userId);
-		return chatRoomUsers.stream()
-				.map(cru -> cru.getChatRoom().getId())
-				.distinct()
-				.collect(Collectors.toList());
+		List<ChatRoom> chatRooms = chatRoomUsers.stream()
+	            .map(ChatRoomUser::getChatRoom)
+	            .distinct()
+	            .collect(Collectors.toList());
+
+	    // 2. 각 채팅방별 마지막 메시지 조회
+	    List<ChatRoomLatestMessageResponseDTO> result = new ArrayList<>();
+	    for (ChatRoom room : chatRooms) {
+	        Chat lastMessage = room.getChats().stream()
+	                .max(Comparator.comparing(Chat::getSendAt))
+	                .orElse(null);
+
+	        result.add(ChatRoomLatestMessageResponseDTO.builder()
+	                .roomId(room.getId())
+	                .roomName(room.getRoomName())
+	                .lastMessageId(lastMessage != null ? lastMessage.getId() : null)
+	                .lastMessageContent(lastMessage != null ? lastMessage.getMessageContent() : null)
+	                .lastSenderName(lastMessage != null && lastMessage.getSender() != null ? lastMessage.getSender().getName() : null)
+	                .lastMessageTime(lastMessage != null ? lastMessage.getSendAt() : null)
+	                .build());
+	    }
+		
+		return result;
 	}
 
 	@Transactional
@@ -335,9 +360,12 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	}
 
 	@Override
-	public List<Chat> getLatestMessagesByUserId(Integer userId) {
-		List<Integer> roomIds = getChatRoomIdsByUserId(userId);
-        return chatRepository.findLatestMessageByChatRoomIds(roomIds);
+	public List<Integer> getLatestMessagesByUserId(Integer userId) {
+		 List<ChatRoomLatestMessageResponseDTO> roomInfos = getChatRoomIdsByUserId(userId);
+		    return roomInfos.stream()
+		            .map(ChatRoomLatestMessageResponseDTO::getRoomId)
+		            .distinct()
+		            .collect(Collectors.toList());
 	}
 
 	
@@ -483,5 +511,26 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         }
 
         log.debug("RoomId {}: 각 메시지별 unreadCount DB에 저장 완료", roomId);
-    }	
+    }
+    
+
+    @Override
+    public List<UnreadNotificationListDTO> getUnreadNotificationsExceptLatest(
+        Integer userId, List<NotificationType> allowedTypes) {
+
+        List<Notification> unreadList = notificationRepository.findUnreadByUserIdAndTypesOrderBySentAtDesc(userId, allowedTypes);
+
+        // 디버깅 로그 추가
+        log.info("unreadList.size: {}", unreadList.size());
+        unreadList.forEach(n -> log.info("NotificationId: {}, ReadYn: {}, DeletedYn: {}, UserId: {}, Type: {}",
+                n.getId(), n.getNotificationReadYn(), n.getNotificationDeletedYn(), n.getUser().getId(), n.getNotificationType()));
+
+        // 리스트가 2개 이상일 때만, 가장 최근 알림 제외
+        if (unreadList.size() <= 1) return List.of();
+        return unreadList.subList(1, unreadList.size())
+                .stream()
+                .map(UnreadNotificationListDTO::from)
+                .collect(Collectors.toList());
+    }
+    
 }

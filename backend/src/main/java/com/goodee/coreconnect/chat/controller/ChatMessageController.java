@@ -3,7 +3,9 @@ package com.goodee.coreconnect.chat.controller;
 import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import io.jsonwebtoken.io.IOException;
@@ -33,11 +35,13 @@ import com.goodee.coreconnect.chat.dto.request.SendMessageRequestDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatMessageResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatMessageSenderTypeResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatResponseDTO;
+import com.goodee.coreconnect.chat.dto.response.ChatRoomLatestMessageResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatRoomResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatUnreadCountDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatUserResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.NotificationReadResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ReplyMessageRequestDTO;
+import com.goodee.coreconnect.chat.dto.response.UnreadNotificationListDTO;
 import com.goodee.coreconnect.chat.dto.response.UnreadNotificationSummaryDTO;
 import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.chat.entity.ChatMessageReadStatus;
@@ -187,12 +191,25 @@ public class ChatMessageController {
 	@GetMapping("/messages")
 	public ResponseEntity<ResponseDTO<List<ChatMessageResponseDTO>>> getMyChatMessages(@AuthenticationPrincipal String email) {
 		User user = userRepository.findByEmail(email).orElseThrow();
-		List<Integer> roomIds = chatRoomService.getChatRoomIdsByUserId(user.getId());
-		List<Chat> chats = chatRepository.findByChatRoomIds(roomIds);
-		List<ChatMessageResponseDTO> dtoList = chats.stream()
-	                .map(ChatMessageResponseDTO::fromEntity)
-	                .collect(Collectors.toList());
-		return ResponseEntity.ok(ResponseDTO.success(dtoList, "내 채팅방 메시지 조회 성공"));
+
+	    // 1. 내가 참여중인 채팅방 정보 리스트(DTO) 가져오기
+	    List<ChatRoomLatestMessageResponseDTO> roomDtoList = chatRoomService.getChatRoomIdsByUserId(user.getId());
+
+	    // 2. roomId만 추출
+	    List<Integer> roomIds = roomDtoList.stream()
+	        .map(ChatRoomLatestMessageResponseDTO::getRoomId)
+	        .collect(Collectors.toList());
+
+	    // 3. roomId로 전체 채팅 메시지 조회
+	    List<Chat> chats = chatRepository.findByChatRoomIds(roomIds);
+
+	    // 4. 채팅 메시지 DTO 변환
+	    List<ChatMessageResponseDTO> chatDtoList = chats.stream()
+	        .map(ChatMessageResponseDTO::fromEntity)
+	        .collect(Collectors.toList());
+
+	    // 5. 응답 반환
+	    return ResponseEntity.ok(ResponseDTO.success(chatDtoList, "내 채팅방 메시지 조회 성공"));
 	}
 	
 	
@@ -382,12 +399,18 @@ public class ChatMessageController {
     @Operation(summary = "내가 참여중인 채팅방들의 마지막 메시지만 조회", description = "내가 참여중인 채팅방들의 마지막 메시지만 조회")
     @GetMapping("/rooms/messages/latest")
     public ResponseEntity<ResponseDTO<List<ChatMessageResponseDTO>>> getLatestMessages(@AuthenticationPrincipal String email) {
-        User user = userRepository.findByEmail(email).orElseThrow();
-        List<Chat> latestChats = chatRoomService.getLatestMessagesByUserId(user.getId());
-        List<ChatMessageResponseDTO> dtoList = latestChats.stream()
-                .map(ChatMessageResponseDTO::fromEntity)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(ResponseDTO.success(dtoList, "내 채팅방별 마지막 메시지 조회 성공"));
+    	 User user = userRepository.findByEmail(email).orElseThrow();
+    	 // 1. roomId 리스트 받기
+    	 List<Integer> roomIds = chatRoomService.getLatestMessagesByUserId(user.getId());
+         // 2. 각 roomId별 마지막 메시지 조회 (예시: 쿼리로 한번에 조회)
+         List<Chat> lastMessages = chatRepository.findLatestMessageByChatRoomIds(roomIds);
+
+         // 3. Chat → DTO 변환
+         List<ChatMessageResponseDTO> dtoList = lastMessages.stream()
+            .map(ChatMessageResponseDTO::fromEntity)
+            .collect(Collectors.toList());
+        
+         return ResponseEntity.ok(ResponseDTO.success(dtoList, "내 채팅방별 마지막 메시지 조회 성공"));
     }
 
     // 15. 내가 참여중인 채팅방에서 각 메시지별 읽지 않은 인원 수 표시
@@ -438,25 +461,50 @@ public class ChatMessageController {
     }
     
     // 17. 내가 참여중인 채팅방의 안읽은 메시지 개수/목록 조회
-    @Operation(summary = " 내가 참여중인 채팅방의 안읽은 메시지 개수/목록 조회", description = " 내가 참여중인 채팅방에서 내가 아직 안읽은 메시지 개수/목록 조회")
+    @Operation(summary = "내가 참여중인 채팅방의 안읽은 메시지 개수/목록 조회", description = "내가 참여중인 채팅방의 안읽은 메시지 개수/목록 조회")
     @GetMapping("/messages/unread")
-    public ResponseEntity<ResponseDTO<List<ChatMessageResponseDTO>>> getUnreadMessages(@AuthenticationPrincipal String email) {
-    	User user = userRepository.findByEmail(email).orElseThrow();
-	    // chat_message_read_status에서 내가 안읽은 메시지만 조회
-	    List<ChatMessageReadStatus> unreadStatuses = chatMessageReadStatusRepository.findByUserIdAndReadYnFalse(user.getId());
-	    List<Integer> roomIds = chatRoomService.getChatRoomIdsByUserId(user.getId());
-	    // 각 채팅방별 미읽은 인원수 업데이트
-	    for (Integer roomId : roomIds) {
-	    	chatRoomService.updateUnreadCountForMessages(roomId);
-	    }
-	    
-	    
-	    
-	    // 해당 Chat 엔티티를 DTO로 반환
-	    List<ChatMessageResponseDTO> dtoList = unreadStatuses.stream()
-	        .map(status -> ChatMessageResponseDTO.fromEntity(status.getChat()))
-	        .collect(Collectors.toList());
-	    return ResponseEntity.ok(ResponseDTO.success(dtoList, "내 미읽은 채팅 메시지 조회 성공"));
+    public ResponseEntity<ResponseDTO<Map<String, Object>>> getUnreadMessages(@AuthenticationPrincipal String email) {
+        User user = userRepository.findByEmail(email).orElseThrow();
+
+        // 1. 서비스에서 방/마지막 메시지 DTO 리스트 가져오기
+        List<ChatRoomLatestMessageResponseDTO> chatRooms  = chatRoomService.getChatRoomIdsByUserId(user.getId());
+        
+        // 2. roomId 리스트 추출
+        List<Integer> roomIds = chatRooms.stream()
+            .map(ChatRoomLatestMessageResponseDTO::getRoomId)
+            .collect(Collectors.toList());
+        
+        // 3. 미읽은 메시지 목록 조회
+        List<ChatMessageReadStatus> unreadStatuses = chatMessageReadStatusRepository.findByUserIdAndReadYnFalse(user.getId());
+        List<ChatMessageResponseDTO> unreadMessages = unreadStatuses.stream()
+            .map(status -> ChatMessageResponseDTO.fromEntity(status.getChat()))
+            .collect(Collectors.toList());
+        
+        // 4. roomId→roomName 매핑
+        Map<Integer, String> roomIdToName = chatRooms.stream()
+        		.collect(Collectors.toMap(ChatRoomLatestMessageResponseDTO::getRoomId, ChatRoomLatestMessageResponseDTO::getRoomName));
+
+        // 응답용 Map 생성
+        // 5. 응답용 Map
+        Map<String, Object> responseMap = new HashMap<>();
+        responseMap.put("rooms", chatRooms); // 방 요약 정보(마지막 메시지 포함)
+        responseMap.put("messages", unreadMessages); // 미읽은 메시지 목록
+        responseMap.put("roomNames", roomIdToName);  // roomId→roomName 매핑
+
+        return ResponseEntity.ok(ResponseDTO.success(responseMap, "내 미읽은 채팅 메시지 + 방 이름 목록 조회 성공"));
+    }
+    
+    @Operation(summary = "나에게 온 안읽은 알림 개수 클릭 시, 가장 최근에 온 알림을 제외한 나머지 안읽은 알림 리스트를 반환", description = "나에게 온 안읽은 알림 개수 클릭 시, 가장 최근에 온 알림을 제외한 나머지 안읽은 알림 리스트를 반환")
+    @GetMapping("/unread/list")
+    public ResponseEntity<List<UnreadNotificationListDTO>> getUnreadNotificationsExceptLatest(
+            @AuthenticationPrincipal String email,
+            @RequestParam(name = "unreadCount", required = false) Integer unreadCountParam
+    ) {
+        User user = userRepository.findByEmail(email).orElseThrow();
+        List<NotificationType> allowedTypes = List.of(NotificationType.EMAIL, NotificationType.NOTICE, NotificationType.APPROVAL, NotificationType.SCHEDULE);
+
+        List<UnreadNotificationListDTO> unreadDtos = chatRoomService.getUnreadNotificationsExceptLatest(user.getId(), allowedTypes);
+        return ResponseEntity.ok(unreadDtos);
     }
     
 }

@@ -44,4 +44,6 @@ public interface ChatRepository extends JpaRepository<Chat, Integer> {
     // 7. 각 채팅방의 가장 마지막(최신) 메시지
     @Query("SELECT c FROM Chat c WHERE c.chatRoom.id IN :roomIds AND c.sendAt = (SELECT MAX(c2.sendAt) FROM Chat c2 WHERE c2.chatRoom.id = c.chatRoom.id)")
     List<Chat> findLatestMessagesByRoomIds(@Param("roomIds") List<Integer> roomIds);
+    
+    
 }
