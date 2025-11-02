@@ -1,6 +1,7 @@
 package com.goodee.coreconnect.schedule.dto.request;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.goodee.coreconnect.department.entity.Department;
@@ -52,6 +53,9 @@ public class RequestScheduleDTO {
   private String location;
   
   private ScheduleVisibility visibility;
+  
+  /** 추가 참여자 ID 목록 (OWNER 제외) */
+  private List<Integer> participantIds;
 
   /** DTO → Entity 변환 */
   public Schedule toEntity(User user,

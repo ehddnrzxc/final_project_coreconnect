@@ -10,7 +10,7 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 /**
- * 게시판 카테고리 등록/수정 요청 DTO
+ * 게시판 카테고리 요청 DTO
  */
 public class BoardCategoryRequestDTO {
 

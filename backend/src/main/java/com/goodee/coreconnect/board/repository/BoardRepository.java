@@ -34,6 +34,9 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
         ORDER BY b.pinned DESC, b.noticeYn DESC, b.createdAt DESC
     """)
     Page<Board> findAllOrderByPinnedNoticeAndCreated(Pageable pageable);
+    
+    /** 현재 상단고정 게시글 조회용 */
+    List<Board> findByPinnedTrueAndDeletedYnFalse();
 
     // ─────────────── 선택형 검색 ───────────────
     /** 제목으로 검색 */

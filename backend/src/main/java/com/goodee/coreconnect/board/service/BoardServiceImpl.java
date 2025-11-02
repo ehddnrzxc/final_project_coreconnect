@@ -14,6 +14,8 @@ import com.goodee.coreconnect.board.entity.Board;
 import com.goodee.coreconnect.board.entity.BoardCategory;
 import com.goodee.coreconnect.board.repository.BoardCategoryRepository;
 import com.goodee.coreconnect.board.repository.BoardRepository;
+import com.goodee.coreconnect.common.notification.service.NotificationService;
+import com.goodee.coreconnect.common.notification.enums.NotificationType;
 import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
@@ -29,6 +31,7 @@ public class BoardServiceImpl implements BoardService {
     private final BoardRepository boardRepository;
     private final BoardCategoryRepository categoryRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     /** 게시글 등록 (이메일 기반) */
     @Override
@@ -47,19 +50,57 @@ public class BoardServiceImpl implements BoardService {
         // 카테고리 확인
         BoardCategory category = categoryRepository.findByIdAndDeletedYnFalse(dto.getCategoryId())
                 .orElseThrow(() -> new EntityNotFoundException("카테고리를 찾을 수 없습니다."));
+        
+        // 새 글이 상단고정일 경우 기존 고정글 해제
+        if (Boolean.TRUE.equals(dto.getPinned())) {
+            List<Board> pinnedBoards = boardRepository.findByPinnedTrueAndDeletedYnFalse();
+            for (Board pinned : pinnedBoards) {
+                pinned.unpin(); // 기존 고정글 해제
+            }
+        }
 
-        // 엔티티 생성
-        Board board = Board.createBoard(
-                user,
-                category,
-                dto.getTitle(),
-                dto.getContent(),
-                dto.getNoticeYn(),
-                dto.getPrivateYn(),
-                dto.getPinned()
-        );
-
+        // 게시글 저장
+        Board board = dto.toEntity(user, category);
         Board saved = boardRepository.save(board);
+
+        // 공지글일 경우 -> 알림 전송
+        if (Boolean.TRUE.equals(dto.getNoticeYn())) {
+            String message = "새 공지사항이 등록되었습니다: " + dto.getTitle();
+
+            if (user.getRole() == Role.ADMIN) {
+                // 전체 유저 조회
+                List<Integer> allUserIds = userRepository.findAll().stream()
+                                                         .map(u -> u.getId())
+                                                         .filter(id -> !id.equals(user.getId())) // 작성자 본인은 제외
+                                                         .toList();
+
+                notificationService.sendNotificationToUsers(allUserIds,
+                                                            NotificationType.NOTICE,
+                                                            message,
+                                                            null, null,
+                                                            user.getId(),
+                                                            user.getName());
+
+            } else if (user.getRole() == Role.MANAGER) {
+                // 자신의 부서 유저만 조회
+                Integer deptId = user.getDepartment() != null ? user.getDepartment().getId() : null;
+                if (deptId != null) {
+                    List<Integer> deptUserIds = userRepository.findAll().stream()
+                                                              .filter(u -> u.getDepartment() != null && u.getDepartment().getId().equals(deptId))
+                                                              .map(u -> u.getId())
+                                                              .filter(id -> !id.equals(user.getId())) // 작성자 본인은 제외
+                                                              .toList();
+
+                    notificationService.sendNotificationToUsers(deptUserIds,
+                                                                NotificationType.NOTICE,
+                                                                message,
+                                                                null, null,
+                                                                user.getId(),
+                                                                user.getName());
+                }
+            }
+        }
+        
         return BoardResponseDTO.toDTO(saved);
     }
 
@@ -155,7 +196,7 @@ public class BoardServiceImpl implements BoardService {
         Page<Board> boardPage = boardRepository.findByDeletedYnFalse(pageable);
         List<BoardResponseDTO> dtoList = boardPage.getContent()
                                                   .stream()
-                                                  .map(BoardResponseDTO::toDTO)
+                                                  .map(board -> BoardResponseDTO.toDTO(board))
                                                   .toList();
         return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());
     }
@@ -167,7 +208,7 @@ public class BoardServiceImpl implements BoardService {
         Page<Board> boardPage = boardRepository.findByCategoryIdAndDeletedYnFalse(categoryId, pageable);
         List<BoardResponseDTO> dtoList = boardPage.getContent()
                                                   .stream()
-                                                  .map(BoardResponseDTO::toDTO)
+                                                  .map(board -> BoardResponseDTO.toDTO(board))
                                                   .toList();
         return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());
     }
@@ -179,7 +220,7 @@ public class BoardServiceImpl implements BoardService {
         Page<Board> boardPage = boardRepository.findByUserEmailAndDeletedYnFalse(email, pageable);
         List<BoardResponseDTO> dtoList = boardPage.getContent()
                                                   .stream()
-                                                  .map(BoardResponseDTO::toDTO)
+                                                  .map(board -> BoardResponseDTO.toDTO(board))
                                                   .toList();
         return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());
     }
@@ -190,7 +231,7 @@ public class BoardServiceImpl implements BoardService {
     public List<BoardResponseDTO> getNoticeBoards() {
         List<Board> boardList = boardRepository.findByNoticeYnTrueAndDeletedYnFalse();
         return boardList.stream()
-                         .map(BoardResponseDTO::toDTO)
+                         .map(board -> BoardResponseDTO.toDTO(board))
                          .toList();
     }
     
@@ -202,7 +243,7 @@ public class BoardServiceImpl implements BoardService {
 
         List<BoardResponseDTO> dtoList = boardPage.getContent()
                                                   .stream()
-                                                  .map(BoardResponseDTO::toDTO)
+                                                  .map(board -> BoardResponseDTO.toDTO(board))
                                                   .toList();
 
         return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());
@@ -223,8 +264,10 @@ public class BoardServiceImpl implements BoardService {
 
         List<BoardResponseDTO> dtoList = result.getContent()
                                                .stream()
-                                               .map(BoardResponseDTO::toDTO)
+                                               .map(board -> BoardResponseDTO.toDTO(board))
                                                .toList();
         return new PageImpl<>(dtoList, pageable, result.getTotalElements());
     }
+    
+    
 }

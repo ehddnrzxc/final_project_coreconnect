@@ -86,9 +86,9 @@ public class DocumentRepositoryTest {
         
         // --- 3. 결재선 생성 ---
         // doc2 (drafter1, IN_PROGRESS) -> approver1이 결재
-        ApprovalLine line1 = ApprovalLine.createApprovalLine(doc2_inprogress, approver1, 1, ApprovalLineType.APPROVE, ApprovalLineStatus.WAITING);
+        ApprovalLine line1 = ApprovalLine.createApprovalLine(doc2_inprogress, approver1, 1, ApprovalLineType.APPROVE);
         // doc4 (drafter2, IN_PROGRESS) -> approver1이 결재
-        ApprovalLine line2 = ApprovalLine.createApprovalLine(doc4_noise, approver1, 1, ApprovalLineType.APPROVE, ApprovalLineStatus.WAITING);
+        ApprovalLine line2 = ApprovalLine.createApprovalLine(doc4_noise, approver1, 1, ApprovalLineType.APPROVE);
         
         approvalLineRepository.saveAll(List.of(line1, line2));
         approvalLineRepository.flush();

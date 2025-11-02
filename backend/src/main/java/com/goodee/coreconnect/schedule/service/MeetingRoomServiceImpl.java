@@ -7,8 +7,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.goodee.coreconnect.schedule.dto.MeetingRoomDTO;
+import com.goodee.coreconnect.schedule.dto.response.ResponseScheduleDTO;
 import com.goodee.coreconnect.schedule.entity.MeetingRoom;
+import com.goodee.coreconnect.schedule.entity.Schedule;
 import com.goodee.coreconnect.schedule.repository.MeetingRoomRepository;
+import com.goodee.coreconnect.schedule.repository.ScheduleRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -18,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 public class MeetingRoomServiceImpl implements MeetingRoomService {
 
   private final MeetingRoomRepository meetingRoomRepository;
+  private final ScheduleRepository scheduleRepository;
 
   /** 회의실 생성 */
   @Override
@@ -85,5 +89,19 @@ public class MeetingRoomServiceImpl implements MeetingRoomService {
             .stream()
             .map(MeetingRoomDTO::toDTO)
             .collect(Collectors.toList());
+  }
+  
+  /** 특정 회의실의 예약된 일정 조회 */
+  @Override
+  @Transactional(readOnly = true)
+  public List<ResponseScheduleDTO> getSchedulesByMeetingRoom(Integer meetingRoomId) {
+    MeetingRoom room = meetingRoomRepository.findById(meetingRoomId)
+        .orElseThrow(() -> new IllegalArgumentException("회의실을 찾을 수 없습니다."));
+
+    List<Schedule> schedules = scheduleRepository.findByMeetingRoomAndDeletedYnFalse(room);
+
+    return schedules.stream()
+        .map(ResponseScheduleDTO::toDTO)
+        .collect(Collectors.toList());
   }
 }

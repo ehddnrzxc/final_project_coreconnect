@@ -34,10 +34,10 @@ public class BoardCategoryController {
         BoardCategoryResponseDTO created = boardCategoryService.createCategory(dto, email);
 
         ResponseDTO<BoardCategoryResponseDTO> res = ResponseDTO.<BoardCategoryResponseDTO>builder()
-                .status(HttpStatus.CREATED.value())
-                .message("카테고리가 등록되었습니다.")
-                .data(created)
-                .build();
+                                                               .status(HttpStatus.CREATED.value())
+                                                               .message("카테고리가 등록되었습니다.")
+                                                               .data(created)
+                                                               .build();
 
         return ResponseEntity.status(HttpStatus.CREATED).body(res);
     }
@@ -52,10 +52,10 @@ public class BoardCategoryController {
         BoardCategoryResponseDTO updated = boardCategoryService.updateCategory(categoryId, dto, email);
 
         ResponseDTO<BoardCategoryResponseDTO> res = ResponseDTO.<BoardCategoryResponseDTO>builder()
-                .status(HttpStatus.OK.value())
-                .message("카테고리가 수정되었습니다.")
-                .data(updated)
-                .build();
+                                                               .status(HttpStatus.OK.value())
+                                                               .message("카테고리가 수정되었습니다.")
+                                                               .data(updated)
+                                                               .build();
 
         return ResponseEntity.ok(res);
     }
@@ -69,9 +69,9 @@ public class BoardCategoryController {
         boardCategoryService.deleteCategory(categoryId, email);
 
         ResponseDTO<Void> res = ResponseDTO.<Void>builder()
-                .status(HttpStatus.NO_CONTENT.value())
-                .message("카테고리가 삭제되었습니다.")
-                .build();
+                                           .status(HttpStatus.NO_CONTENT.value())
+                                           .message("카테고리가 삭제되었습니다.")
+                                           .build();
 
         return ResponseEntity.status(HttpStatus.NO_CONTENT).body(res);
     }
@@ -84,10 +84,10 @@ public class BoardCategoryController {
         List<BoardCategoryResponseDTO> list = boardCategoryService.getAllCategories();
 
         ResponseDTO<List<BoardCategoryResponseDTO>> res = ResponseDTO.<List<BoardCategoryResponseDTO>>builder()
-                .status(HttpStatus.OK.value())
-                .message("카테고리 목록 조회 성공 (관리자 전용)")
-                .data(list)
-                .build();
+                                                                     .status(HttpStatus.OK.value())
+                                                                     .message("카테고리 목록 조회 성공 (관리자 전용)")
+                                                                     .data(list)
+                                                                     .build();
 
         return ResponseEntity.ok(res);
     }

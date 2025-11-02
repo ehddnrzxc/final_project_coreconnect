@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import com.goodee.coreconnect.department.entity.Department;
 import com.goodee.coreconnect.schedule.entity.MeetingRoom;
 import com.goodee.coreconnect.schedule.entity.Schedule;
 import com.goodee.coreconnect.schedule.entity.ScheduleCategory;
@@ -24,6 +25,9 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Integer> {
 
   /** 특정 회의실의 일정 목록 (삭제 제외) */
   List<Schedule> findByMeetingRoomAndDeletedYnFalse(MeetingRoom meetingRoom);
+  
+  /** 특정 부서의 일정 목록 (삭제 제외) */
+  List<Schedule> findByDepartmentAndDeletedYnFalse(Department department);
   
   /** 특정 카테고리에 속한 '삭제되지 않은' 일정 목록 조회 */
   List<Schedule> findByCategoryAndDeletedYnFalse(ScheduleCategory category);

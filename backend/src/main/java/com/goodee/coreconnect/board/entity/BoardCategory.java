@@ -20,7 +20,7 @@ public class BoardCategory {
     @Column(name = "board_category_name", length = 50, nullable = false)
     private String name;
 
-    @Column(name = "board_category_order_no")
+    @Column(name = "board_category_order_no, unique = true")
     private Integer orderNo = 0;
 
     @Column(name = "board_category_deleted_yn", nullable = false)
@@ -36,6 +36,7 @@ public class BoardCategory {
       BoardCategory category = new BoardCategory();
       category.name = name;
       category.orderNo = orderNo != null ? orderNo : 0;
+      category.deletedYn = false;
       return category;
     }
 

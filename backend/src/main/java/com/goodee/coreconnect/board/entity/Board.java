@@ -73,6 +73,18 @@ public class Board {
 
     @OneToMany(mappedBy = "board", cascade = CascadeType.ALL)
     private List<BoardFile> files = new ArrayList<>();
+    
+    /** Auditing + 수동 제어 */
+    @PrePersist
+    public void onPrePersist() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = null; // 등록 시 updatedAt 비움
+    }
+
+    @PreUpdate
+    public void onPreUpdate() {
+        this.updatedAt = LocalDateTime.now(); // 수정 시에만 갱신
+    }
 
 
     // ─────────────── 생성 메서드 ───────────────
@@ -89,7 +101,6 @@ public class Board {
         if (noticeYn != null) board.noticeYn = noticeYn;
         if (privateYn != null) board.privateYn = privateYn;
         if (pinned != null) board.pinned = pinned;
-        board.createdAt = LocalDateTime.now();
         return board;
     }
 
@@ -105,7 +116,6 @@ public class Board {
         if (noticeYn != null) this.noticeYn = noticeYn;
         if (privateYn != null) this.privateYn = privateYn;
         if (pinned != null) this.pinned = pinned;
-        this.updatedAt = LocalDateTime.now();
     }
 
     /** 조회수 증가 */
@@ -116,5 +126,14 @@ public class Board {
     /** Soft Delete */
     public void delete() {
         this.deletedYn = true;
+    }
+    
+    /** pinned 상태 제어 */
+    public void pin() {
+      this.pinned = true;
+    }
+
+    public void unpin() {
+      this.pinned = false;
     }
 }

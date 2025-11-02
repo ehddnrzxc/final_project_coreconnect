@@ -17,7 +17,7 @@ public record UserDTO(
     String deptName,
     LocalDateTime joinDate
 ) {
-    public static UserDTO from(User u) {
+    public static UserDTO toDTO(User u) {
         return new UserDTO(
             u.getId(),
             u.getEmail(),

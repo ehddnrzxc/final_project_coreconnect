@@ -18,6 +18,11 @@ public interface BoardCategoryRepository extends JpaRepository<BoardCategory, In
      * 카테고리명 중복 여부 확인 (삭제 제외)
      */
     boolean existsByNameAndDeletedYnFalse(String name);
+    
+    /**
+     * 카테고리 순서번호 중복 확인 
+     */
+    boolean existsByOrderNoAndDeletedYnFalse(Integer orderNo);
 
     /**
      * 단일 카테고리 조회 (삭제 제외)
