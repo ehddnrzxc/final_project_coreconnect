@@ -101,7 +101,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler{
 	// 텍스트 메시지 수신 시 실행되는 콜백
 	@Override
 	protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-		// 메시지(JSON) 파싱
+		// 1. 메시지(JSON) 파싱
 		JsonNode node = objectMapper.readTree(message.getPayload());
 		Integer senderId = getUserIdFromSession(session); // 송신자 ID 추출
 
@@ -110,25 +110,29 @@ public class ChatWebSocketHandler extends TextWebSocketHandler{
         String chatContent = node.has("content") ? node.get("content").asText() : null; // 채팅 내용 추출
         if (roomId == null || chatContent == null) return; // 값 없으면 처리 중단
 
+        // 2. DB 저장
+        Chat chat = chatRoomService.sendChatMessage(roomId, senderId, chatContent);
+        
+        
         // 메시지 전송 직후에 읽음 처리 (이전 메시지들 모두)
-        markMessagesAsRead(roomId, senderId);
+        //markMessagesAsRead(roomId, senderId);
         
         // 채팅 저장 및 읽음 상태 생성
-        Chat chat = chatRoomService.sendChatMessage(roomId, senderId, chatContent); // chat 저장 로직
+        Chat chatMessage = chatRoomService.sendChatMessage(roomId, senderId, chatContent); // chat 저장 로직
 
-        // 채팅방 참여자 목록 조회
+        // 3. 채팅방 참여자 목록 조회
         List<Integer> participantIds = chatRoomService.getParticipantIds(roomId);
 
-        // 채팅 메시지 DTO 생성
+        // 4. 채팅 메시지 DTO 생성
         ChatResponseDTO dto = ChatResponseDTO.builder()
-                .id(chat.getId()) // 메시지 PK
-                .messageContent(chat.getMessageContent()) // 메시지 내용
-                .sendAt(chat.getSendAt()) // 발송 시각
-                .fileYn(chat.getFileYn()) // 파일 여부
-                .fileUrl(chat.getFileUrl()) // 파일 URL
-                .roomId(chat.getChatRoom().getId()) // 채팅방 PK
+                .id(chatMessage.getId()) // 메시지 PK
+                .messageContent(chatMessage.getMessageContent()) // 메시지 내용
+                .sendAt(chatMessage.getSendAt()) // 발송 시각
+                .fileYn(chatMessage.getFileYn()) // 파일 여부
+                .fileUrl(chatMessage.getFileUrl()) // 파일 URL
+                .roomId(chatMessage.getChatRoom().getId()) // 채팅방 PK
                 .senderId(senderId) // 송신자 PK
-                .senderName(chat.getSender() != null ? chat.getSender().getName() : null) // 송신자 이름
+                .senderName(chatMessage.getSender() != null ? chat.getSender().getName() : null) // 송신자 이름
                 //.notificationType("CHAT") // 문자열 "CHAT" 직접 할당 (enum 사용x)
                 .build();
 
