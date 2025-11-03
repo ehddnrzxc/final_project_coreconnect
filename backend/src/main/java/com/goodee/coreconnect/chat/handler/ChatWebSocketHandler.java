@@ -110,35 +110,33 @@ public class ChatWebSocketHandler extends TextWebSocketHandler{
         String chatContent = node.has("content") ? node.get("content").asText() : null; // 채팅 내용 추출
         if (roomId == null || chatContent == null) return; // 값 없으면 처리 중단
 
-        // 2. DB 저장
-        Chat chat = chatRoomService.sendChatMessage(roomId, senderId, chatContent);
-        
+        // 2. DB 저장 + DTO 반환 (서비스에서 한번만 저장/DTO 리턴)
+        ChatResponseDTO dto = chatRoomService.saveChatAndReturnDTO(roomId, senderId, chatContent);
         
         // 메시지 전송 직후에 읽음 처리 (이전 메시지들 모두)
         //markMessagesAsRead(roomId, senderId);
         
-        // 채팅 저장 및 읽음 상태 생성
-        Chat chatMessage = chatRoomService.sendChatMessage(roomId, senderId, chatContent); // chat 저장 로직
-
+      
         // 3. 채팅방 참여자 목록 조회
         List<Integer> participantIds = chatRoomService.getParticipantIds(roomId);
 
         // 4. 채팅 메시지 DTO 생성
-        ChatResponseDTO dto = ChatResponseDTO.builder()
-                .id(chatMessage.getId()) // 메시지 PK
-                .messageContent(chatMessage.getMessageContent()) // 메시지 내용
-                .sendAt(chatMessage.getSendAt()) // 발송 시각
-                .fileYn(chatMessage.getFileYn()) // 파일 여부
-                .fileUrl(chatMessage.getFileUrl()) // 파일 URL
-                .roomId(chatMessage.getChatRoom().getId()) // 채팅방 PK
-                .senderId(senderId) // 송신자 PK
-                .senderName(chatMessage.getSender() != null ? chat.getSender().getName() : null) // 송신자 이름
-                //.notificationType("CHAT") // 문자열 "CHAT" 직접 할당 (enum 사용x)
-                .build();
+//        ChatResponseDTO dto = ChatResponseDTO.builder()
+//                .id(chatMessage.getId()) // 메시지 PK
+//                .messageContent(chatMessage.getMessageContent()) // 메시지 내용
+//                .sendAt(chatMessage.getSendAt()) // 발송 시각
+//                .fileYn(chatMessage.getFileYn()) // 파일 여부
+//                .fileUrl(chatMessage.getFileUrl()) // 파일 URL
+//                .roomId(chatMessage.getChatRoom().getId()) // 채팅방 PK
+//                .senderId(senderId) // 송신자 PK
+//                .senderName(chatMessage.getSender() != null ? chatMessage.getSender().getName() : null) // 송신자 이름
+//                //.notificationType("CHAT") // 문자열 "CHAT" 직접 할당 (enum 사용x)
+//                .build();
 
+        // 4. 채팅 메시지 chatMessage를 바로 사용
         String payload = objectMapper.writeValueAsString(dto); // DTO를 JSON 문자열로 직렬화
 
-        // 채팅방에 접속중인 참여자들에게만 websocket으로 실시간으로 메시지 푸시
+        // 5. 채팅방에 접속중인 참여자들에게만 websocket으로 실시간으로 메시지 푸시
         List<Integer> connectedUserIds = new ArrayList<>();
         for (Integer pid : participantIds) {
             WebSocketSession s = userSessions.get(pid); // 참여자 세션 조회
@@ -147,7 +145,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler{
             }
         }
 		
-        // 미접속자(오프라인)는 DB에 unread 상태로 남은 -> 클라이언트가 주기적으로 조회해서 토스트/뱃지 안내
+        // 6. 미접속자(오프라인)는 DB에 unread 상태로 남은 -> 클라이언트가 주기적으로 조회해서 토스트/뱃지 안내
 		// 프론트에서는 unread 상태를 rest/소켓으로 주기적으로 조회해 토스트/뱃지 표시
         List<Integer> notConnectedUserIds = participantIds.stream()
         		.filter(pid -> !connectedUserIds.contains(pid))
@@ -155,20 +153,16 @@ public class ChatWebSocketHandler extends TextWebSocketHandler{
         int unreadCount = notConnectedUserIds.size();
         
         for (Integer offlineUserId : notConnectedUserIds) {
-        	// 알림용 메시지 예시
-        	String alerMsg = chat.getSender().getName() + "님으로부터 새로운 채팅 메시지가 도착했습니다";
-        	// WebSocketDeliveryService로 알림 푸시
-        	webSocketDeliveryService.sendToUser(offlineUserId, alerMsg);
-        	List<ChatMessageReadStatus> unreadMessages = chatMessageReadStatusRepository.findByUserIdAndReadYnFalse(offlineUserId);
-        	
-        	int unreadChatCount = unreadMessages.size();
-        	if (unreadChatCount > 0) {
-        		String toastMsg = unreadMessages.get(0).getChat().getSender().getName()
-        				+ "님으로부터 " + unreadChatCount + "개의 채팅 메시지가 도착했습니다";
-        		webSocketDeliveryService.sendToUser(offlineUserId, toastMsg);
-        	}
+            // 알림 메시지는 DTO 값을 즉시 사용!
+            String alerMsg = dto.getSenderName() + "님으로부터 새로운 채팅 메시지가 도착했습니다";
+            webSocketDeliveryService.sendToUser(offlineUserId, alerMsg);
+
+            // Toast 메시지는 서비스에서 미리 만들어 온 값으로만 사용!
+            String toastMsg = chatRoomService.getUnreadToadMsgForUser(offlineUserId);
+            if (toastMsg != null) {
+                webSocketDeliveryService.sendToUser(offlineUserId, toastMsg);
+            }
         }
-        
        
         
 	}
@@ -191,15 +185,21 @@ public class ChatWebSocketHandler extends TextWebSocketHandler{
 			}
 		}
 		
-		if (token == null) {
-			// 쿼리 파라미터에서 accessToken 추출
-			String query = session.getUri().getQuery();
-			if (query != null && query.startsWith("accessToken=")) {
-				token = query.substring("accessToken=".length());
-				log.info("getUserIdFromSession() token == null - token: {}", token);
-			}
-		}
-		
+		// 2. 쿼리 파라미터에서 robust하게 accessToken 추출
+	    if (token == null) {
+	        String query = session.getUri().getQuery();
+	        if (query != null) {
+	            String[] params = query.split("&");
+	            for (String param : params) {
+	                String[] kv = param.split("=");
+	                if (kv.length == 2 && kv[0].equals("accessToken")) {
+	                    token = kv[1];
+	                    log.info("getUserIdFromSession() - token by query: {}", token);
+	                    break;
+	                }
+	            }
+	        }
+	    }
 		// 토큰 없으면 null
 		if (token == null) {
 	        log.warn("getUserIdFromSession - JWT 토큰 없음 (헤더/쿼리 모두 없음)");

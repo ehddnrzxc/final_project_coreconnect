@@ -3,6 +3,7 @@ package com.goodee.coreconnect.chat.service;
 import java.util.List;
 
 import com.goodee.coreconnect.approval.entity.Document;
+import com.goodee.coreconnect.chat.dto.response.ChatResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatRoomLatestMessageResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatRoomSummaryResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.UnreadNotificationListDTO;
@@ -71,4 +72,9 @@ public interface ChatRoomService {
     
     List<UnreadNotificationListDTO> getUnreadNotificationsExceptLatest(Integer userId, List<NotificationType> allowedTypes);
     
+    ChatResponseDTO saveChatAndReturnDTO(Integer roomId, Integer senderId, String content);
+
+    String getUnreadToadMsgForUser(Integer offlineUserId);
+
+
 }

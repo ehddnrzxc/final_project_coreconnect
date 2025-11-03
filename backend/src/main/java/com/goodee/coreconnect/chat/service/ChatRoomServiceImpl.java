@@ -21,6 +21,7 @@ import com.goodee.coreconnect.common.notification.dto.NotificationPayload; // DT
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
 import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.approval.repository.DocumentRepository;
+import com.goodee.coreconnect.chat.dto.response.ChatResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatRoomLatestMessageResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatRoomSummaryResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.UnreadNotificationListDTO;
@@ -532,5 +533,38 @@ public class ChatRoomServiceImpl implements ChatRoomService {
                 .map(UnreadNotificationListDTO::from)
                 .collect(Collectors.toList());
     }
+
+	@Override
+	public ChatResponseDTO saveChatAndReturnDTO(Integer roomId, Integer senderId, String content) {
+		Chat chat = sendChatMessage(roomId, senderId, content); // chat 저장
+	    // Lazy 필드 모두 트랜잭션 내에서 강제 초기화(접근)
+	    chat.getSender().getName(); // 강제 초기화
+	    chat.getChatRoom().getId(); // 강제 초기화
+
+	    return ChatResponseDTO.builder()
+	        .id(chat.getId())
+	        .messageContent(chat.getMessageContent())
+	        .sendAt(chat.getSendAt())
+	        .fileYn(chat.getFileYn())
+	        .fileUrl(chat.getFileUrl())
+	        .roomId(chat.getChatRoom().getId())
+	        .senderId(chat.getSender().getId())
+	        .senderName(chat.getSender().getName())
+	        .build();
+	}
+
+	@Transactional
+	@Override
+	public String getUnreadToadMsgForUser(Integer offlineUserId) {
+		List<ChatMessageReadStatus> unreadMessages = chatMessageReadStatusRepository.fetchUnreadWithSender(offlineUserId);
+	    int unreadChatCount = unreadMessages.size();
+	    if (unreadChatCount > 0) {
+	        ChatMessageReadStatus status = unreadMessages.get(0);
+	        // 아래 LAZY 접근은 트랜잭션 내이므로 OK!
+	        String senderName = status.getChat().getSender().getName();
+	        return senderName + "님으로부터 " + unreadChatCount + "개의 채팅 메시지가 도착했습니다";
+	    }
+	    return null;
+	}
     
 }

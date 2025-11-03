@@ -119,17 +119,17 @@ public class ChatMessageController {
 		}
 			
 		// 유효성 검증
-		if (req == null || req.getRoomId() == null || req.getSenderId() == null) { // 필수값 체크
-			ResponseDTO<ChatResponseDTO> bad = ResponseDTO.<ChatResponseDTO>builder()
-					.status(HttpStatus.BAD_REQUEST.value())
-					.message("채팅방ID와 전송자ID는 필수값 입니다.")
-					.data(null)
-					.build();
-			return ResponseEntity.badRequest().body(bad); // 400 반환
-		}
+//		if (req == null || req.getRoomId() == null || req.getSenderId() == null) { // 필수값 체크
+//			ResponseDTO<ChatResponseDTO> bad = ResponseDTO.<ChatResponseDTO>builder()
+//					.status(HttpStatus.BAD_REQUEST.value())
+//					.message("채팅방ID와 전송자ID는 필수값 입니다.")
+//					.data(null)
+//					.build();
+//			return ResponseEntity.badRequest().body(bad); // 400 반환
+//		}
 	
 		// 채팅 저장
-		Chat savedChat = chatRoomService.sendChatMessage(req.getRoomId(), req.getSenderId(), req.getContent());
+		Chat savedChat = chatRoomService.sendChatMessage(req.getRoomId(), 0, req.getContent());
 	
 		// 메시지별 미읽은 인원수 업데이트
 		chatRoomService.updateUnreadCountForMessages(req.getRoomId());
@@ -152,7 +152,7 @@ public class ChatMessageController {
 			.fileYn(savedChat.getFileYn())
 			.fileUrl(savedChat.getFileUrl())
 			.roomId(savedChat.getChatRoom() != null ? savedChat.getChatRoom().getId() : req.getRoomId())
-            .senderId(savedChat.getSender() != null ? savedChat.getSender().getId() : req.getSenderId())
+//            .senderId(savedChat.getSender() != null ? savedChat.getSender().getId() : req.getSenderId())
             .senderName(savedChat.getSender() != null ? savedChat.getSender().getName() : null)
             .build();
 			
