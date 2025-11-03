@@ -12,6 +12,7 @@ import com.goodee.coreconnect.user.dto.request.ChangeUserDepartmentDTO;
 import com.goodee.coreconnect.user.dto.request.ChangeUserJobGradeDTO;
 import com.goodee.coreconnect.user.service.UserServiceImpl;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -33,7 +34,7 @@ public class UserController {
         return ResponseEntity.ok("프로필 이미지 업로드 성공");
     }
 
-    /**  프로필 이미지 조회 */
+    /** 프로필 이미지 조회 */
     @GetMapping("/profile-image")
     public ResponseEntity<Map<String, String>> getProfileImageUrl(
             @AuthenticationPrincipal String email) {
@@ -53,7 +54,7 @@ public class UserController {
     /** 사용자의 직급 변경 */
     @PutMapping("/{id}/job-grade")
     ResponseEntity<Void> changeUserJobGrade(@PathVariable("id") Integer id,
-                                            @RequestBody ChangeUserJobGradeDTO req) {
+                                            @Valid @RequestBody ChangeUserJobGradeDTO req) {
       userService.moveUserToJobGrade(id, req.jobGrade());
       return ResponseEntity.noContent().build();
     }

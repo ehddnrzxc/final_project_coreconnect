@@ -30,19 +30,7 @@ public class AdminUserController {
   private final UserService userService;
   
   /**
-   * [관리자] 신규 사용자 생성
-   *
-   * <p>요청 예시:
-   * <pre>
-   * POST /api/v1/admin/users
-   * Content-Type: application/json
-   *
-   * {
-   *   "email": "user@example.com",
-   *   "name": "홍길동",
-   *   "role": "USER"
-   * }
-   * </pre>
+   * 신규 사용자 생성
    *
    * @param req 신규 사용자 생성 요청 DTO
    * @return 생성된 사용자 정보를 담은 UserDTO
@@ -53,14 +41,9 @@ public class AdminUserController {
   }
   
   /**
-   * [관리자] 사용자 상태 변경 (활성/비활성)
-   *
-   * <p>요청 예시:
-   * <pre>
-   * DELETE /api/v1/admin/users/61?status=INACTIVE
-   * </pre>
-   *
-   * <p>지정된 사용자 ID의 상태를 ACTIVE 또는 INACTIVE로 변경합니다.
+   * 사용자 상태 변경 (활성/비활성)
+   * 
+   * 지정된 사용자 ID의 상태를 ACTIVE 또는 INACTIVE로 변경합니다.
    * 회원 탈퇴, 계정 비활성화 등 관리용으로 사용됩니다.
    *
    * @param id 변경할 사용자 ID (PathVariable)
@@ -71,6 +54,7 @@ public class AdminUserController {
     userService.changeStatus(id, status);
   }
   
+  /** 유저 목록 조회 */
   @GetMapping
   public List<UserDTO> findAllUsers() {
     return userService.findAllUsers();

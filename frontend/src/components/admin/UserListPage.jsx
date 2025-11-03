@@ -1,4 +1,3 @@
-// src/pages/admin/AdminUserListPage.jsx
 import React, { useEffect, useState } from "react";
 import { getAdminUsers } from "../../api/userAPI";
 

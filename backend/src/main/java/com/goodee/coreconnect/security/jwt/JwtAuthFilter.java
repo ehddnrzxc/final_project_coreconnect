@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.List;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -16,6 +17,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * JwtAuthFilter
+ * - 모든 HTTP 요청마다 한 번씩 실행되는 JWT 인증 필터.
+ * - 요청 헤더의 JWT 토큰을 검사하고, 인증 정보(SecurityContext)를 설정한다. 
+ * - OncePerRequestFilter를 상속하여 요청당 한 번만 실행되도록 보장한다.
+ */
 @Component
 @Slf4j
 public class JwtAuthFilter extends OncePerRequestFilter {
@@ -26,6 +33,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         this.jwtProvider = jwtProvider;
     }
 
+    /**
+     * 요청에서 JWT 토큰을 확인하고 검증한 뒤 유효하면 SecurityContext에 인증 정보를 저장하는 메서드
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
             throws ServletException, IOException {
@@ -38,7 +48,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         // WebSocket 인증 제외
         // WebSocket 연결에서는 핸드쉐이크 과정이 HTTP와 다르기 때문에 JWT 인증을 따로 적용하거나 핸들러에서 직접 인증을 처리하는 경우가 많음
-     // Swagger, API Docs, WebSocket 인증 제외
+        // Swagger, API Docs, WebSocket 인증 제외
         if (
     	    uri.startsWith("/ws/chat") ||
     	    uri.equals("/swagger-ui.html") ||
@@ -80,7 +90,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         // 인증 정보 로그 (컨트롤러 진입 직전)
-        var authentication = SecurityContextHolder.getContext().getAuthentication();
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         log.info("[JWT][After Filter] SecurityContext 인증 정보: " + authentication);
         if (authentication != null) {
           log.info("[JWT][After Filter] Principal: " + authentication.getPrincipal());

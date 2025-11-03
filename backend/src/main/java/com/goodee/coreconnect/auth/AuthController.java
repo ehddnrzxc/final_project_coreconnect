@@ -28,6 +28,8 @@ import lombok.RequiredArgsConstructor;
  * 로그인, 로그아웃 로직을 수행하는 컨트롤러
  */
 
+
+/** 이메일/비밀번호를 검증하고 Access Token + Refresh Token을 발급 */
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
@@ -88,6 +90,8 @@ public class AuthController {
       return ResponseEntity.ok(result);
   }
 
+  
+  /** 쿠키의 Refresh Token을 검증하여 새로운 Access Token을 재발급 */
   @Operation(summary = "Refresh Token", description = "만료된 Access Token을 Refresh Token(쿠키)로 재발급합니다.")
   @PostMapping("/refresh")
   public ResponseEntity<Map<String,String>> refresh(
@@ -104,6 +108,8 @@ public class AuthController {
     }
   }
 
+  
+  /** Refresh Token 쿠키를 삭제하여 로그아웃 처리 */
   @Operation(summary = "로그아웃", description = "Refresh Token을 제거하고 로그아웃 기능을 수행합니다.")
   @PostMapping("/logout")
   public ResponseEntity<Void> logout(HttpServletResponse res) {

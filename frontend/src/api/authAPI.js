@@ -1,16 +1,22 @@
+/**
+ * 로그인, 로그아웃, 토큰 재발급 등 인증 전용 HTTP 요청을 담당하는 모듈.
+ * http.js - axios 기본 세팅(토큰 자동첨부, 401 처리 등)
+ * authAPI.js - 인증 관련 API 함수 모음
+ */
+
 import http from "./http";
 
 // 로그인
 export async function login(email, password) {
   const { data } = await http.post("/auth/login", { email, password });
   console.log("서버 응답:", data);
-  return data; // { accessToken, user }
+  return data; 
 }
 
 // 액세스 재발급
 export async function refreshAccessToken() {
   const { data } = await http.post("/auth/refresh", {}); 
-  return data; // { accessToken }
+  return data; 
 }
 
 // 로그아웃

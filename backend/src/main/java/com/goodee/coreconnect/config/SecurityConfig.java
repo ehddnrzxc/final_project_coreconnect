@@ -9,6 +9,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -19,7 +21,6 @@ import com.goodee.coreconnect.security.jwt.JwtAuthFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
 
 @Configuration
 @EnableMethodSecurity
@@ -34,9 +35,13 @@ public class SecurityConfig {
      * 즉 설정 파일의 값을 읽어서 변수에 자동으로 넣어주는 역할이다. 
      */
     @Value("${security.mode:secure}")
-    private String securityMode;
+    private String securityMode; // 개발용 or 배포용
     private final JwtAuthFilter jwtAuthFilter;
 
+    /**
+     * Spring Security의 전체 보안 규칙을 설정하는 Bean.
+     * 인증/인가, 세션 정책, 예외 처리, JWT 필터 등을 구성한다.
+     */
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -82,6 +87,10 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /**
+     * Cors 허용 규칙을 정의하는 Bean.
+     * 프론트엔드에서 오는 요청을 허용할 도메인, 메서드, 헤더를 지정한다.
+     */
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration c = new CorsConfiguration();
@@ -95,8 +104,12 @@ public class SecurityConfig {
         return s;
     }
 
+    /**
+     * 비밀번호를 암호화하기 위한 Bean.
+     * BCrypt 알고리즘을 사용하여 안전하게 비밀번호를 해시 처리한다.
+     */
     @Bean
-    public org.springframework.security.crypto.password.PasswordEncoder passwordEncoder() {
-        return new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
+    PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 }
