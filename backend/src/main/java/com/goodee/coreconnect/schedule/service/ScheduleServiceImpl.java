@@ -6,8 +6,6 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.goodee.coreconnect.department.entity.Department;
-import com.goodee.coreconnect.department.repository.DepartmentRepository;
 import com.goodee.coreconnect.schedule.dto.request.RequestScheduleDTO;
 import com.goodee.coreconnect.schedule.dto.response.ResponseScheduleDTO;
 import com.goodee.coreconnect.schedule.entity.MeetingRoom;
@@ -31,7 +29,6 @@ public class ScheduleServiceImpl implements ScheduleService {
 
   private final ScheduleRepository scheduleRepository;
   private final UserRepository userRepository;
-  private final DepartmentRepository departmentRepository;
   private final MeetingRoomRepository meetingRoomRepository;
   private final ScheduleCategoryRepository categoryRepository;
   private final ScheduleParticipantRepository scheduleParticipantRepository;
@@ -43,10 +40,6 @@ public class ScheduleServiceImpl implements ScheduleService {
 
     User user = userRepository.findByEmail(email)
         .orElseThrow(() -> new IllegalArgumentException("유저가 존재하지 않습니다."));
-
-    Department department = (dto.getDeptId() != null)
-        ? departmentRepository.findById(dto.getDeptId()).orElse(null)
-        : null;
 
     MeetingRoom meetingRoom = (dto.getMeetingRoomId() != null)
         ? meetingRoomRepository.findById(dto.getMeetingRoomId()).orElse(null)
@@ -71,7 +64,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     }
 
     // 일정 생성
-    Schedule schedule = dto.toEntity(user, department, meetingRoom, category);
+    Schedule schedule = dto.toEntity(user, meetingRoom, category);
     Schedule savedSchedule = scheduleRepository.save(schedule);
     
     // 일정 생성자(owner) 자동 등록
@@ -106,9 +99,6 @@ public class ScheduleServiceImpl implements ScheduleService {
     Schedule schedule = scheduleRepository.findById(id)
         .orElseThrow(() -> new IllegalArgumentException("해당 일정이 존재하지 않습니다."));
 
-    Department department = (dto.getDeptId() != null)
-        ? departmentRepository.findById(dto.getDeptId()).orElse(null)
-        : null;
 
     MeetingRoom newMeetingRoom = (dto.getMeetingRoomId() != null)
         ? meetingRoomRepository.findById(dto.getMeetingRoomId()).orElse(null)
@@ -152,8 +142,7 @@ public class ScheduleServiceImpl implements ScheduleService {
         dto.getEndDateTime(),
         dto.getVisibility(),
         newMeetingRoom,
-        category,
-        department);
+        category);
     
     // 참여자 수정 로직 
     if (dto.getParticipantIds() != null) {
@@ -231,19 +220,6 @@ public class ScheduleServiceImpl implements ScheduleService {
     return ResponseScheduleDTO.toDTO(schedule);
   }
   
-  /** 부서별 일정 조회 (readOnly) */
-  @Override
-  @Transactional(readOnly = true)
-  public List<ResponseScheduleDTO> getSchedulesByDepartment(Integer deptId) {
-
-      Department department = departmentRepository.findById(deptId)
-          .orElseThrow(() -> new IllegalArgumentException("부서를 찾을 수 없습니다."));
-
-      return scheduleRepository.findByDepartmentAndDeletedYnFalse(department)
-          .stream()
-          .map(ResponseScheduleDTO::toDTO)
-          .collect(Collectors.toList());
-  }
 
   /** 회의실별 일정 조회 (readOnly) */
   @Override
