@@ -1,0 +1,150 @@
+.profile-card__meta { display: flex; flex-direction: column; gap: 4px; }
+.profile-card__name { font-size: 20px; font-weight: 700; }
+.profile-card__dept { color: var(--muted); font-size: 14px; }
+
+.profile-card__edit { display: inline-flex; align-items: center; gap: 6px; }
+.profile-card__edit i { font-size: 14px; }
+.profile-card__metric { text-align: center; margin: 12px 0 8px; }
+.profile-card__metric-num { font-size: 40px; font-weight: 800; color: var(--brand); line-height: 1; }
+.profile-card__metric-label { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+.profile-card__list {
+  list-style: none; margin: 8px 0 0; padding: 10px 0 0;
+  border-top: 1px solid var(--border);
+}
+.profile-card__list li {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 2px; color: var(--muted); font-size: 14px;
+}
+.profile-card__list li b { font-weight: 700; color: #6b7280; }
+.profile-card__list li b.is-blue { color: var(--brand); }
+
+/* ── Profile Card (DaouOffice 스타일) ── */
+.profile-card {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+}
+
+/* 이미지 없을 때 기본 아이콘 */
+.profile__avatar.placeholder {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: #f3f4f6;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  margin: 0 auto;
+}
+
+
+
+/* 헤더 레이아웃: 100px + 텍스트 */
+.profile-card__head {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+/* 아바타 + 변경링크를 세로로 */
+.profile-card__avatarCol {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* 왼쪽 정렬 */
+  gap: 6px;
+}
+
+/* 아바타 통일(원형 썸네일 100px) */
+.profile-card__avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border);
+  box-shadow: 0 1px 2px rgba(0,0,0,.06);
+}
+
+/* "프로필 사진 변경" 링크 스타일 */
+.profile-card__editLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.profile-card__editLink:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+/* 이름/부서 */
+.profile-card__meta { display: flex; flex-direction: column; gap: 4px; }
+.profile-card__name { font-size: 20px; font-weight: 700; }
+.profile-card__dept { color: var(--muted); font-size: 14px; }
+
+/* 작은 화면 보정 */
+@media (max-width: 480px) {
+  .profile-card__head { grid-template-columns: 80px 1fr; }
+  .profile-card__avatar { width: 80px; height: 80px; }
+  .profile-card__name { font-size: 18px; }
+}
+
+.quick-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.quick {
+  background: #f3f4f6;
+  border: none;
+  border-radius: 10px;
+  padding: 14px 10px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.quick__emoji {
+  display: block;
+  font-size: 20px;
+  margin-bottom: 4px;
+}
+
+/* Attendance */
+.attendance { display:flex; justify-content:space-between; align-items:center; gap:12px; }
+.attendance__left { display:flex; align-items:center; gap:10px; }
+.attendance__icon { font-size:20px; }
+.attendance__right { display:flex; align-items:center; gap:12px; }
+
+/* Report row */
+.report { display:flex; align-items:center; justify-content:space-between; }
+
+/* Badge */
+.badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; }
+.badge--green { background:#e7f7ef; color:#0b8f51; }
+
+/* Mail shortcut */
+.mail-shortcut { display:flex; align-items:center; justify-content:space-between; }
+
+/* Calendar */
+.calendar { display:flex; flex-direction:column; gap:8px; }
+.calendar__head { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; text-align:center; color:var(--muted); }
+.calendar__body { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+.calendar__cell { padding:10px; border:1px solid var(--border); border-radius:8px; text-align:right; }
+.calendar__cell.is-today { outline:2px solid var(--brand); }
+
+/* Lists / bullets */
+.list--divide .list__row { border-bottom:1px solid var(--border); }
+.bullet { list-style:disc; padding-left:18px; color:var(--text); }
+
+/* Expense / Tiles / Vehicle */
+.expense { display:flex; align-items:center; justify-content:space-between; }
+.tile-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+.tile { border:1px solid var(--border); border-radius:10px; padding:12px; background:#fff; }
+.vehicle { display:flex; align-items:center; justify-content:space-between; }

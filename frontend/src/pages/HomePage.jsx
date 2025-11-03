@@ -1,11 +1,11 @@
 import React, { useState } from "react";
-import { NavLink, Link, useOutletContext } from "react-router-dom";
+import { Link, useOutletContext } from "react-router-dom";
 import { getMyProfileImage, uploadMyProfileImage } from "../api/userAPI";
 import Card from "../components/ui/Card";
-import "../app.css";
+import "./home.css";
 
 /* ─ Page ─ */
-export default function Home({ onLogout }) {
+export default function Home() {
   const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
   const email = storedUser.email || "";
   const displayName = storedUser.name || "이름을 불러오지 못했습니다.";
