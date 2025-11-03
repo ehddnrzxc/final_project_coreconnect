@@ -12,11 +12,11 @@ import com.goodee.coreconnect.common.dto.response.ResponseDTO;
 import com.goodee.coreconnect.department.dto.response.OrganizationTreeDTO;
 import com.goodee.coreconnect.department.service.OrganizationService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
-/**
- * 조직도 조회 전용 컨트롤러
- */
+@Tag(name = "Organization API", description = "조직도 조회 API")
 @RestController
 @RequestMapping("/api/v1/organ") 
 @RequiredArgsConstructor
@@ -24,6 +24,7 @@ public class OrganizationController {
 
     private final OrganizationService organizationService;
 
+    @Operation(summary = "조직도 전체 조회", description = "부서 트리 구조 및 구성원 정보를 포함한 전체 조직도를 조회합니다.")
     @GetMapping
     public ResponseEntity<ResponseDTO<List<OrganizationTreeDTO>>> getOrganizationTree() {
         List<OrganizationTreeDTO> result = organizationService.getOrganizationTree();
