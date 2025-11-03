@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED) // ✅ 외부에서 new 차단
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(
     name = "leave_request",
     indexes = {
@@ -54,9 +54,8 @@ public class LeaveRequest {
     )
     private User user;
 
-    // ───────────────────────────────
-    // ✅ 정적 팩토리 메서드
-    // ───────────────────────────────
+
+    /** 정적 팩토리 메서드 */
     public static LeaveRequest createLeaveRequest(
             User user,
             LocalDate startDate,
@@ -73,10 +72,6 @@ public class LeaveRequest {
         leave.status = LeaveStatus.PENDING; // 기본값: 대기 상태
         return leave;
     }
-
-    // ───────────────────────────────
-    // ✅ 도메인 행위
-    // ───────────────────────────────
 
     /** 휴가 승인 */
     public void approve() {

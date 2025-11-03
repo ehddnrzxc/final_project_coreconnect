@@ -7,6 +7,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import com.goodee.coreconnect.user.entity.Role;
@@ -15,29 +16,44 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 
+/**
+ * JwtProvider 
+ * JWT(Json Web Token)을 제공(발급)하고 검증하는 역할을 수행한다.
+ * 로그인 시 사용자 정보를 기반으로 JWT Access Token과 Refresh Token을 생성
+ * 클라이언트 요청 시 전달된 토큰에서 사용자 정보(email, role 등)를 추출 
+ * 토큰이 위조되거나 만료되지 않았는지 검증
+ */
 @Component
 public class JwtProvider {
 
-    // 데모 키(운영에선 환경변수/Secret Manager 사용)
-    private static final String SECRET = "this_is_a_very_long_secret_key_for_jwt_example_12345678901234567890";
-    private final Key key = Keys.hmacShaKeyFor(SECRET.getBytes());
-
-    /** Access 토큰 생성 (권장: subject는 setSubject로, role은 클레임으로) */
+    // 환경변수에서 @Value로 JWT_SECRET_KEY 불러오기
+    @Value("${jwt.secret}")
+    private String SECRET;
+    private Key key;
+    
+    /** @PostConstruct는 Spring의 모든 주입이 끝난 뒤 실행됨 */
+    @PostConstruct
+    public void init() {
+      this.key = Keys.hmacShaKeyFor(SECRET.getBytes());
+    }
+    
+    /** Access 토큰 발급 */
     public String createAccess(String email, Role role, int minutes) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", role.name()); 
 
         return Jwts.builder()
-                .setSubject(email) // ✅ 표준 subject
-                .addClaims(claims) // ✅ 커스텀 클레임
+                .setSubject(email) 
+                .addClaims(claims) 
                 .setIssuedAt(new Date())
                 .setExpiration(Date.from(Instant.now().plus(Duration.ofMinutes(minutes))))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    /** Refresh 토큰 생성 */
+    /** Refresh 토큰 발급 */
     public String createRefresh(String subject, long days) {
         return Jwts.builder()
                 .setSubject(subject)
@@ -47,7 +63,7 @@ public class JwtProvider {
                 .compact();
     }
 
-    /** subject(email) 추출 */
+    /** 토큰에서 사용자 이메일 추출 */
     public String getSubject(String token) {
     	if (token == null || token.trim().isEmpty()) {
             throw new IllegalArgumentException("JWT token must not be null or empty");
@@ -55,12 +71,12 @@ public class JwtProvider {
         return getAllClaims(token).getSubject();
     }
 
-    /** role 추출 */
+    /** 토큰에서 사용자 역할 추출 */
     public String getRole(String token) {
         return getAllClaims(token).get("role", String.class);
     }
 
-    /** 공통: 모든 클레임 파싱 */
+    /** 토큰을 복호화해서 본문(Claims)을 반환 */
     private Claims getAllClaims(String token) {
     	if (token == null || token.trim().isEmpty()) {
             throw new IllegalArgumentException("JWT token must not be null or empty");
@@ -72,10 +88,14 @@ public class JwtProvider {
                 .getBody();
     }
 
-    /** (옵션) 유효성 검사 */
+    /** 
+     * 유효성 검사
+     * 파싱에 성공하면 true
+     * 만료되었거나 서명이 잘못된 경우 false 반환
+     */
     public boolean isValid(String token) {
         try {
-            getAllClaims(token); // 파싱되면 OK
+            getAllClaims(token); 
             return true;
         } catch (Exception e) {
             return false;

@@ -32,8 +32,7 @@ public class ProfileImage {
     private LocalDateTime uploadedAt;
 
 
-    // 정적 팩토리 메서드
-
+    /** 정적 팩토리 메서드 */
     public static ProfileImage createProfileImage(User user, String imageUrl, boolean thumbnailYn) {
         ProfileImage profileImage = new ProfileImage();
         profileImage.user = user;
@@ -43,15 +42,12 @@ public class ProfileImage {
         return profileImage;
     }
 
-
-    // 도메인 메소드
-
-    /* 썸네일 여부 변경 */
+    /** 썸네일 여부 변경 */
     public void changeThumbnail(boolean thumbnailYn) {
         this.thumbnailYn = thumbnailYn;
     }
 
-    /* 이미지 URL 변경 (예: 교체 시) */
+    /** 이미지 URL 변경 */
     public void changeImageUrl(String newUrl) {
         this.imageUrl = newUrl;
     }

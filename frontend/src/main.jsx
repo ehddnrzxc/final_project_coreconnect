@@ -1,7 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import {
-  BrowserRouter,
   createBrowserRouter,
   RouterProvider,
   Navigate,
@@ -26,10 +25,12 @@ function ProtectedRoute({ children }) {
 }
 
 /* 전체 라우트 구조 */
+
+// createBrowserRouter 사용: 객체 기반. 라우트 구조를 JSON처럼 데이터로 정의 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <App />, // 공통 레이아웃
+    element: <App />, // App.jsx: 공통 레이아웃
     children: [
       {
         path: "home",

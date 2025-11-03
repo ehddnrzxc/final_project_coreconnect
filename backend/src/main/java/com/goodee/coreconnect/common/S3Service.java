@@ -27,7 +27,7 @@ public class S3Service {
     @Value("${cloud.aws.s3.bucket}")
     private String bucket;
 
-    // 1️⃣ 업로드
+    /** 프로필 이미지 업로드 */
     public String uploadProfileImage(MultipartFile file, String username) throws IOException {
         String key = "profile/" + username + "/" + file.getOriginalFilename();
 
@@ -38,10 +38,10 @@ public class S3Service {
                 .build();
 
         s3Client.putObject(request, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
-        return key; // DB에 저장할 key
+        return key; 
     }
 
-    // 2️⃣ URL 생성 (public 접근용)
+    /** 공용: 업로드된 S3 객체의 key를 받아, 해당 파일에 접근할 수 있는 전체 URL을 생성하여 반환 */
     public String getFileUrl(String key) {
         GetUrlRequest request = GetUrlRequest.builder()
                 .bucket(bucket)

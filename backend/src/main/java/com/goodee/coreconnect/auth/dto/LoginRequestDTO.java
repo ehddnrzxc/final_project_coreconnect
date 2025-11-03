@@ -5,6 +5,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
+// 당장은 미사용 DTO입니다. 나중에 AuthController에서 사용하도록 변경 예정.
+
 /*
  *  @JsonIgnorePropertiese(ignoreUnknown = true)
  *  Jackson이 JSON -> 객체로 변환할 때 "모르는 필드"를 무시하도록 하는 설정.

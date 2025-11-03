@@ -30,7 +30,7 @@ public class Department {
     @OneToMany(mappedBy = "department", cascade = CascadeType.ALL, orphanRemoval = false)
     private List<User> users = new ArrayList<>();
     
-    /** 계층 구조(자기참조 관계) */
+    // 계층 구조(자기참조 관계)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
     private Department parent; 
@@ -40,7 +40,7 @@ public class Department {
 
 
 
-    // 정적 팩토리 메서드
+    /** 정적 팩토리 메서드 */
     public static Department createDepartment(String deptName, Integer deptOrderNo) {
         Department dept = new Department();
         dept.deptName = deptName;

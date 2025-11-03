@@ -129,7 +129,7 @@ public class User {
     }
 
 
-    // ─────────────── 연관관계 편의 메서드 ───────────────
+    // ─────────────── 연관관계 편의 메서드(나중에 필요하면 추가) ───────────────
 
     /** 게시글 추가 */
 //    public void addBoard(Board board) {
@@ -166,6 +166,7 @@ public class User {
 //        chatRoomUser.assignUser(this);
 //    }
 //
+    
     /** 부서 변경 */
     public void changeDepartment(Department department) {
         if (this.department != null) {

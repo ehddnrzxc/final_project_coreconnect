@@ -1,5 +1,6 @@
 package com.goodee.coreconnect.user.entity;
 
+/** 사용자의 직급을 나타내는 Enum */
 public enum JobGrade {
     INTERN("인턴"),
     STAFF("사원"),
