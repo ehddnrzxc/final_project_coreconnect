@@ -175,18 +175,20 @@ export default function ChatLayout() {
   }, [selectedRoomId]);
 
   // WebSocket 연결: 방 변경시 새로 연결
-  useEffect(() => {
-    if (!selectedRoomId || !accessToken) return;
-    if (socket && socket.readyState === 1) socket.close();
-    const wsUrl = `${WEBSOCKET_BASE}?roomId=${selectedRoomId}&accessToken=${accessToken}`;
-    console.log("[WebSocket 연결 시도]", wsUrl);
-    const ws = new WebSocket(wsUrl);
+  const socketRef = useRef(null);
 
+
+useEffect(() => {
+  if (!selectedRoomId || !accessToken) return;
+  let shouldReconnect = true;
+  function connect() {
+    const wsUrl = `${WEBSOCKET_BASE}?roomId=${selectedRoomId}&accessToken=${accessToken}`;
+    const ws = new WebSocket(wsUrl);
     ws.onopen = () => {
       console.log("[WebSocket 연결됨!]");
     };
     ws.onmessage = (event) => {
-      console.log("[WebSocket 메시지 수신]", event.data);
+      // 메시지 수신 처리
       try {
         const msg = JSON.parse(event.data);
         setMessages((prev) => [...prev, msg]);
@@ -196,16 +198,25 @@ export default function ChatLayout() {
     };
     ws.onclose = () => {
       console.log("[WebSocket 연결 종료]");
+      // 만약 정말 방을 떠난 것이면 재연결 안함
+      // 그렇지 않다면 자동 재연결
+      if (shouldReconnect) {
+        setTimeout(() => { connect(); }, 1000); // 1초 후 재연결 시도
+      }
     };
     ws.onerror = (e) => {
       console.error("[WebSocket 에러]", e);
     };
-    setSocket(ws);
+    socketRef.current = ws;
+  }
 
-    return () => {
-      ws.close();
-    };
-  }, [selectedRoomId, accessToken]);
+  connect();
+
+  return () => {
+    shouldReconnect = false; // cleanup 시 재연결 중지
+    if (socketRef.current) socketRef.current.close();
+  };
+}, [selectedRoomId, accessToken]);
 
   const selectedRoom = roomList.find((r) => r.roomId === selectedRoomId);
 
@@ -218,25 +229,22 @@ export default function ChatLayout() {
   };
 
   // 메시지 전송
-  const handleSend = () => {
-    const message = inputRef.current.value;
-    console.log("[버튼 클릭됨]", { selectedRoomId, message, socket });
-    if (socket && socket.readyState === 1 && message.trim()) {
-      // 백엔드 DTO SendMessageRequestDTO 에 맞춰 전송!
-      const payload = JSON.stringify({
-        roomId: selectedRoomId,
-        // senderId: userId,
-        content: message,
-        fileYn: false,
-        fileUrl: null
-      });
-      console.log("[WebSocket 전송]", payload);
-      socket.send(payload);
-      inputRef.current.value = "";
-    } else {
-      console.log("[소켓 미연결 혹은 메시지 없음]");
-    }
-  };
+ const handleSend = () => {
+  const message = inputRef.current.value;
+  const currSocket = socketRef.current;
+  if (currSocket && currSocket.readyState === 1 && message.trim()) {
+    const payload = JSON.stringify({
+      roomId: selectedRoomId,
+      content: message,
+      fileYn: false,
+      fileUrl: null
+    });
+    currSocket.send(payload);
+    inputRef.current.value = "";
+  } else {
+    console.log("[소켓 미연결 혹은 메시지 없음]", currSocket?.readyState);
+  }
+};
 
   return (
     <Box className="chat-layout" sx={{ background: "#fafbfc", minHeight: "100vh", display: "flex", flexDirection: "row" }}>
@@ -415,7 +423,9 @@ export default function ChatLayout() {
                     },
                     "&::-webkit-scrollbar-track": { background: "#f8fbfd" }
                   }}>
-                  {messages.map(msg => {
+                  {messages
+                  .filter(msg => msg.messageContent && msg.messageContent.trim() !== "") // 빈 메시지 제외!
+                  .map(msg => {
                     const isMe = msg.senderName === userName;
                     return (
                       <Box key={msg.id}
@@ -520,14 +530,14 @@ export default function ChatLayout() {
                       <AttachFileIcon />
                     </IconButton>
                   </label>
-                  <Button
-                    variant="contained"
-                    color="success"
-                    sx={{ minWidth: 36, px: 2, borderRadius: 2 }}
-                    onClick={handleSend}
-                  >
-                    <SendIcon />
-                  </Button>
+                 <Button
+                  variant="contained"
+                  color="success"
+                  onClick={handleSend}
+                  disabled={!socketRef.current || socketRef.current.readyState !== 1}
+                >
+                  <SendIcon />
+                </Button>
                 </Box>
               </>
             )}

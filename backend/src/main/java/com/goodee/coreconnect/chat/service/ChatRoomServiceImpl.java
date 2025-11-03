@@ -534,24 +534,17 @@ public class ChatRoomServiceImpl implements ChatRoomService {
                 .collect(Collectors.toList());
     }
 
-	@Override
-	public ChatResponseDTO saveChatAndReturnDTO(Integer roomId, Integer senderId, String content) {
-		Chat chat = sendChatMessage(roomId, senderId, content); // chat 저장
-	    // Lazy 필드 모두 트랜잭션 내에서 강제 초기화(접근)
-	    chat.getSender().getName(); // 강제 초기화
-	    chat.getChatRoom().getId(); // 강제 초기화
+    @Override
+    public ChatResponseDTO saveChatAndReturnDTO(Integer roomId, Integer senderId, String content) {
+        Chat chat = sendChatMessage(roomId, senderId, content); // chat 저장
+        // Lazy 필드 강제 초기화(필요시)
+        chat.getSender().getName();
+        chat.getChatRoom().getId();
+        log.info("sendAt: {}", chat.getSendAt());
 
-	    return ChatResponseDTO.builder()
-	        .id(chat.getId())
-	        .messageContent(chat.getMessageContent())
-	        .sendAt(chat.getSendAt())
-	        .fileYn(chat.getFileYn())
-	        .fileUrl(chat.getFileUrl())
-	        .roomId(chat.getChatRoom().getId())
-	        .senderId(chat.getSender().getId())
-	        .senderName(chat.getSender().getName())
-	        .build();
-	}
+        // ⭐⭐⭐ 반드시 fromEntity를 통해 String sendAt을 넣어준다!
+        return ChatResponseDTO.fromEntity(chat);
+    }
 
 	@Transactional
 	@Override
