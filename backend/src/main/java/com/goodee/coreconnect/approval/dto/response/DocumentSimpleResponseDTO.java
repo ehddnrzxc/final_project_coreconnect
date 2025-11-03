@@ -20,6 +20,7 @@ public class DocumentSimpleResponseDTO {
   private String writerName;
   private DocumentStatus documentStatus;
   private LocalDateTime createdAt;
+  private String templateName;
   
   public static DocumentSimpleResponseDTO toDTO(Document document) {
     return DocumentSimpleResponseDTO.builder()
@@ -28,6 +29,7 @@ public class DocumentSimpleResponseDTO {
         .writerName(document.getUser().getName())
         .documentStatus(document.getDocumentStatus())
         .createdAt(document.getCreatedAt())
+        .templateName(document.getTemplate().getTemplateName())
         .build();
   }
   
