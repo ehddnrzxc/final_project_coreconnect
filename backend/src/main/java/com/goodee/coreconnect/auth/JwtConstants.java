@@ -5,8 +5,8 @@ package com.goodee.coreconnect.auth;
  */
 
 public class JwtConstants {
-  // Access Token: 24시간
-  public static final int ACCESS_TOKEN_MINUTES = 60*24; 
+  // Access Token: 1시간
+  public static final int ACCESS_TOKEN_MINUTES = 60; 
   // Refresh Token: 7일
   public static final int REFRESH_TOKEN_DAYS = 7;
 }

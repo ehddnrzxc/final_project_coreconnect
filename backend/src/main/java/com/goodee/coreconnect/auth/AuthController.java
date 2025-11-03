@@ -61,8 +61,8 @@ public class AuthController {
       Role role = user.getRole();
 
       // 토큰 생성
-      String access = jwt.createAccess(email, role, 10);   
-      String refresh = jwt.createRefresh(email, 7);  
+      String access = jwt.createAccess(email, role, JwtConstants.ACCESS_TOKEN_MINUTES);   
+      String refresh = jwt.createRefresh(email, JwtConstants.REFRESH_TOKEN_DAYS);  
 
       // HttpOnly Refresh Token 쿠키 설정
       ResponseCookie cookie = ResponseCookie.from("refresh_token", refresh)
@@ -70,7 +70,7 @@ public class AuthController {
           .secure(false)       
           .sameSite("Lax")     
           .path("/")
-          .maxAge(Duration.ofDays(7))
+          .maxAge(Duration.ofDays(JwtConstants.REFRESH_TOKEN_DAYS))
           .build();
 
       res.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
