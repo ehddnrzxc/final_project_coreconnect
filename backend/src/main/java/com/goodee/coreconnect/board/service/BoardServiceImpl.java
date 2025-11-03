@@ -3,8 +3,8 @@ package com.goodee.coreconnect.board.service;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,10 +12,12 @@ import com.goodee.coreconnect.board.dto.request.BoardRequestDTO;
 import com.goodee.coreconnect.board.dto.response.BoardResponseDTO;
 import com.goodee.coreconnect.board.entity.Board;
 import com.goodee.coreconnect.board.entity.BoardCategory;
+import com.goodee.coreconnect.board.entity.BoardViewHistory;
 import com.goodee.coreconnect.board.repository.BoardCategoryRepository;
 import com.goodee.coreconnect.board.repository.BoardRepository;
-import com.goodee.coreconnect.common.notification.service.NotificationService;
+import com.goodee.coreconnect.board.repository.BoardViewHistoryRepository;
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
+import com.goodee.coreconnect.common.notification.service.NotificationService;
 import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
@@ -32,6 +34,7 @@ public class BoardServiceImpl implements BoardService {
     private final BoardCategoryRepository categoryRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final BoardViewHistoryRepository viewHistoryRepository;
 
     /** 게시글 등록 (이메일 기반) */
     @Override
@@ -144,14 +147,12 @@ public class BoardServiceImpl implements BoardService {
                     .orElseThrow(() -> new EntityNotFoundException("카테고리를 찾을 수 없습니다."));
         }
 
-        board.updateBoard(
-                category,
-                dto.getTitle(),
-                dto.getContent(),
-                dto.getNoticeYn(),
-                dto.getPrivateYn(),
-                dto.getPinned()
-        );
+        board.updateBoard(category,
+                          dto.getTitle(),
+                          dto.getContent(),
+                          dto.getNoticeYn(),
+                          dto.getPrivateYn(),
+                          dto.getPinned());
 
         return BoardResponseDTO.toDTO(board);
     }
@@ -169,10 +170,18 @@ public class BoardServiceImpl implements BoardService {
         board.getFiles().forEach(file -> file.delete());
     }
 
-    /** 게시글 상세 조회 (조회수 증가 포함) */
+    /** 게시글 상세 조회 (조회수 중복 방지 포함) */
     @Override
     @Transactional(readOnly = false)
     public BoardResponseDTO getBoardById(Integer boardId) {
+      
+        // 로그인 유무 확인
+        User loginUser = User.getAuthenticatedUser(userRepository);
+        if (loginUser == null) {
+            throw new SecurityException("게시글은 로그인 후에만 조회할 수 있습니다."); 
+        }
+      
+        // 게시글 조회
         Board board = boardRepository.findById(boardId)
                 .orElseThrow(() -> new EntityNotFoundException("게시글을 찾을 수 없습니다."));
 
@@ -180,20 +189,21 @@ public class BoardServiceImpl implements BoardService {
             throw new IllegalStateException("삭제된 게시글입니다.");
         }
         
+        // 비공개 게시글 접근 권한 검사
         if (board.getPrivateYn()) {
-          User loginUser = User.getAuthenticatedUser(userRepository);
-          if (loginUser == null) {
-              throw new SecurityException("비공개 게시글은 로그인 후 조회할 수 있습니다.");
-          }
-
-          if (!loginUser.getId().equals(board.getUser().getId())
-                  && loginUser.getRole() != Role.ADMIN
-                  && loginUser.getRole() != Role.MANAGER) {
-              throw new SecurityException("비공개 게시글은 작성자 또는 관리자만 조회할 수 있습니다.");
-          }
-      }
-
-        board.increaseViewCount();
+            if (!loginUser.getId().equals(board.getUser().getId())
+                    && loginUser.getRole() != Role.ADMIN) {
+                throw new SecurityException("비공개 게시글은 작성자 또는 관리자만 조회할 수 있습니다.");
+            }
+        }
+        
+        // 조회수 중복 방지 로직
+        boolean alreadyViewed = viewHistoryRepository.existsByUserAndBoard(loginUser, board);
+        if (!alreadyViewed) {
+            board.increaseViewCount();
+            viewHistoryRepository.save(BoardViewHistory.create(loginUser, board));
+        }
+        
         return BoardResponseDTO.toDTO(board);
     }
 
@@ -202,8 +212,7 @@ public class BoardServiceImpl implements BoardService {
     @Transactional(readOnly = true)
     public Page<BoardResponseDTO> getAllBoards(Pageable pageable) {
         Page<Board> boardPage = boardRepository.findByDeletedYnFalse(pageable);
-        List<BoardResponseDTO> dtoList = boardPage.getContent()
-                                                  .stream()
+        List<BoardResponseDTO> dtoList = boardPage.getContent().stream()
                                                   .map(board -> BoardResponseDTO.toDTO(board))
                                                   .toList();
         return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());

@@ -52,10 +52,12 @@ public class BoardResponseDTO {
                                           .categoryName(board.getCategory() != null ? board.getCategory().getName() : null)
                                           .files(board.getFiles() != null ? board.getFiles().stream()
                                                                                   .map(file -> BoardFileResponseDTO.toDTO(file))
-                                                                                  .collect(Collectors.toList()) : List.of())
+                                                                                  .collect(Collectors.toList()) 
+                                                                           : List.of())
                                           .replies(board.getReplies() != null ? board.getReplies().stream()
                                                                                       .map(reply -> BoardReplyResponseDTO.toDTO(reply))
-                                                                                      .collect(Collectors.toList()) : List.of())
+                                                                                      .collect(Collectors.toList()) 
+                                                                               : List.of())
                                           .build();
     }
 }

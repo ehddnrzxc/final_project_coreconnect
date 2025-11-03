@@ -57,10 +57,10 @@ public class BoardFileController {
         BoardFileResponseDTO file = boardFileService.getFile(fileId);
 
         ResponseDTO<BoardFileResponseDTO> res = ResponseDTO.<BoardFileResponseDTO>builder()
-                .status(HttpStatus.OK.value())
-                .message("파일 조회 성공")
-                .data(file)
-                .build();
+                                                           .status(HttpStatus.OK.value())
+                                                           .message("파일 조회 성공")
+                                                           .data(file)
+                                                           .build();
 
         return ResponseEntity.ok(res);
     }
