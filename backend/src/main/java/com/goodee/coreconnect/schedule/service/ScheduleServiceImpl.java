@@ -6,6 +6,8 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.goodee.coreconnect.common.notification.enums.NotificationType;
+import com.goodee.coreconnect.common.notification.service.NotificationService;
 import com.goodee.coreconnect.schedule.dto.request.RequestScheduleDTO;
 import com.goodee.coreconnect.schedule.dto.response.ResponseScheduleDTO;
 import com.goodee.coreconnect.schedule.entity.MeetingRoom;
@@ -32,6 +34,7 @@ public class ScheduleServiceImpl implements ScheduleService {
   private final MeetingRoomRepository meetingRoomRepository;
   private final ScheduleCategoryRepository categoryRepository;
   private final ScheduleParticipantRepository scheduleParticipantRepository;
+  private final NotificationService notificationService;
 
 
   /** 일정 생성 */
@@ -88,8 +91,28 @@ public class ScheduleServiceImpl implements ScheduleService {
 
         ScheduleParticipant member = ScheduleParticipant.createParticipant(savedSchedule, participantUser, ScheduleRole.MEMBER);
         scheduleParticipantRepository.save(member);
+        
+        // 알림 발송 (참여자)
+        notificationService.sendNotification(
+                participantUser.getId(),
+                NotificationType.SCHEDULE,
+                "[일정 등록] '" + savedSchedule.getTitle() + "' 일정에 초대되었습니다.",
+                null, null,
+                user.getId(),
+                user.getName()
+        );
       }
     }
+    
+    // 본인(OWNER)에게도 알림
+    notificationService.sendNotification(
+            user.getId(),
+            NotificationType.SCHEDULE,
+            "[일정 등록 완료] '" + savedSchedule.getTitle() + "' 일정이 생성되었습니다.",
+            null, null,
+            user.getId(),
+            user.getName()
+    );
 
     return ResponseScheduleDTO.toDTO(savedSchedule);
   }
@@ -186,10 +209,33 @@ public class ScheduleServiceImpl implements ScheduleService {
           ScheduleParticipant newMember =
                   ScheduleParticipant.createParticipant(schedule, newUser, ScheduleRole.MEMBER);
           scheduleParticipantRepository.save(newMember);
+          
+          // 새로 추가된 참여자에게 알림
+          notificationService.sendNotification(
+                  newUser.getId(),
+                  NotificationType.SCHEDULE,
+                  "[일정 수정] '" + schedule.getTitle() + "' 일정에 새로 추가되었습니다.",
+                  null, null,
+                  schedule.getUser().getId(),
+                  schedule.getUser().getName()
+          );
         }
       }
     }
-
+    
+    // 모든 참여자에게 수정 알림
+    List<ScheduleParticipant> allParticipants = scheduleParticipantRepository.findByScheduleAndDeletedYnFalse(schedule);
+    for (ScheduleParticipant p : allParticipants) {
+        notificationService.sendNotification(
+                p.getUser().getId(),
+                NotificationType.SCHEDULE,
+                "[일정 수정] '" + schedule.getTitle() + "' 일정이 변경되었습니다.",
+                null, null,
+                schedule.getUser().getId(),
+                schedule.getUser().getName()
+        );   
+    }
+        
     return ResponseScheduleDTO.toDTO(schedule);
   }
 
