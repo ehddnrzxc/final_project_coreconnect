@@ -6,6 +6,11 @@ html, body {
   overflow: hidden;
 }
 
+/* 원하는 div에 margin-left: 100px 적용 (MuiBox-root css-18oatls) */
+.MuiBox-root.css-18oatls {
+  margin-left: 100px !important;
+}
+
 .chat-center-wrap {
   display: flex;
   justify-content: center;

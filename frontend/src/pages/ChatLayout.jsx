@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { NavLink } from "react-router-dom";
 import {
   Box,
-  Grid,
   Typography,
   List,
   ListItem,
@@ -84,19 +83,6 @@ function ChatHeader() {
           채팅
         </Typography>
       </Box>
-      {/* <Box sx={{ flex: 1, display: "flex", justifyContent: "center" }}>
-        <TextField
-          variant="outlined"
-          size="small"
-          placeholder="메시지 검색"
-          sx={{
-            width: 330,
-            height: 36,
-            borderRadius: 2,
-            background: "#f7f8fa"
-          }}
-        />
-      </Box> */}
       <Box
         sx={{
           display: "flex",
@@ -278,7 +264,7 @@ export default function ChatLayout() {
             background: "#fff",
             borderRight: "1px solid #e3e8ef",
             boxShadow: "none",
-            borderRadius: 0,    // ← 둥근모서리·그림자 제거
+            borderRadius: 0,
             display: "flex",
             flexDirection: "column",
             p: 0,
@@ -290,7 +276,7 @@ export default function ChatLayout() {
                 variant="fullWidth"
                 sx={{
                   borderBottom: "1px solid #e3e8ef",
-                  background: "#f9fafb", // 밝은 줄
+                  background: "#f9fafb",
                   mb: 0,
                   minHeight: 44
                 }}
@@ -399,197 +385,207 @@ export default function ChatLayout() {
             background: "#f8fbfd",
             display: "flex",
             flexDirection: "column",
-            borderRadius: 0, // 팝업 느낌 배제
+            borderRadius: 0,
             boxShadow: "none",
           }}>
-            {/* 최상단 바 */}
-            {selectedRoom &&
-              <Box sx={{
-                display: "flex",
-                alignItems: "center",
-                pt: 2,
-                px: 4,
-                pb: 1,
-                borderBottom: "1px solid #e3e8ef"
-              }}>
-                <Avatar sx={{ bgcolor: "#10c16d", mr: 2, width: 33, height: 33 }}>
-                  {selectedRoom.roomName?.[0]?.toUpperCase()}
+            {/* 최상단 바 & 메시지 영역 Fragment로 해결! */}
+            {selectedRoom && (
+              <>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  pb: 1,
+                  borderBottom: "1px solid #e3e8ef",
+                  background: "#f8fbfd",
+                  height: 64,
+                  position: "relative",     // 아이콘을 절대 위치 줄 수 있음
+                }}
+              >
+                <Avatar sx={{
+                  bgcolor: "#10c16d",
+                  mr: 2,
+                  width: 33,
+                  height: 33,
+                  ml: 2
+                }}>{selectedRoom.roomName?.[0]?.toUpperCase()}
                 </Avatar>
                 <Typography
                   sx={{
                     fontWeight: 700,
                     fontSize: 18,
                     color: "#1aaf54",
-                    flex: 1
                   }}
                 >
                   {selectedRoom.roomName}
                 </Typography>
-                <IconButton><PhoneIcon /></IconButton>
-                <IconButton><VideoCallIcon /></IconButton>
-                <IconButton><GroupIcon /></IconButton>
-                <IconButton><MoreVertIcon /></IconButton>
-              </Box>
-            }
-            {/* 메시지 리스트 */}
-            <Box
-              className="chat-room-msg-list"
-              sx={{
-                flex: 1,
-                width: "100%",
-                overflowY: "auto",
-                px: 4, pt: 2.5, pb: 2.5,
-                display: "flex", flexDirection: "column",
-                gap: 0.5,
-                scrollbarWidth: "thin",
-                "&::-webkit-scrollbar": { width: 8 },
-                "&::-webkit-scrollbar-thumb": {
-                  background: "#e4eaf3",
-                  borderRadius: "7px"
-                },
-                "&::-webkit-scrollbar-track": { background: "#f8fbfd" }
-              }}
-            >
-              {selectedRoom && messages.map(msg => {
-                const isMe = msg.senderName === userName;
-                return (
-                  <Box
-                    key={msg.id}
-                    sx={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: isMe ? "flex-end" : "flex-start",
-                      mb: 1.7,
-                      width: "100%",
-                    }}
-                  >
-                    {!isMe && (
-                      <Typography
-                        variant="caption"
-                        color="#7d87ab"
-                        sx={{ mb: 0.5, fontWeight: 600, fontSize: 14 }}
-                      >
-                        {msg.senderName}
-                      </Typography>
-                    )}
-                    {/* 버블 + unreadCount Badge 위치 */}
-                    <Box sx={{ display: "flex", alignItems: "center", maxWidth: "330px" }}>
-                      {/* 내가 보낸 메시지면 왼쪽에 뱃지 */}
-                      {isMe && msg.unreadCount > 0 && (
-                        <Badge
-                          badgeContent={msg.unreadCount}
-                          sx={{
-                            mr: 1,
-                            "& .MuiBadge-badge": {
-                              background: "none",
-                              color: "#f6c745",
-                              fontWeight: 700,
-                              borderRadius: "8px",
-                              fontSize: "13px"
-                            }
-                          }}
-                        />
-                      )}
-                      {/* 메시지 버블 */}
-                      <Box
-                        sx={{
-                          display: "inline-block",
-                          fontSize: 15,
-                          px: 2,
-                          py: 1,
-                          borderRadius: "10px",
-                          mb: 0.5,
-                          bgcolor: isMe ? "#ffe585" : "#f7f9fc",
-                          color: isMe ? "#1aaf54" : "#222",
-                          boxShadow: "none",
-                          width: "fit-content",
-                          maxWidth: "270px",
-                          wordBreak: "break-all",
-                          border: isMe ? "none" : "1px solid #e4eaf3"
-                        }}
-                      >
-                        {msg.fileYn ? "[파일]" : msg.messageContent || ""}
-                      </Box>
-                      {/* 상대 메시지라면 오른쪽에 뱃지 */}
-                      {!isMe && msg.unreadCount > 0 && (
-                        <Badge
-                          badgeContent={msg.unreadCount}
-                          sx={{
-                            ml: 1,
-                            "& .MuiBadge-badge": {
-                              background: "none",
-                              color: "#f6c745",
-                              fontWeight: 700,
-                              borderRadius: "8px",
-                              fontSize: "13px"
-                            }
-                          }}
-                        />
-                      )}
-                    </Box>
-                    {/* 시간 표시 */}
-                    <Typography
-                      sx={{
-                        fontSize: 12,
-                        color: "#b0b6ce",
-                        alignSelf: isMe ? "flex-end" : "flex-start",
-                        mt: 0.5
-                      }}
-                    >
-                      {formatTime(msg.sendAt)}
-                    </Typography>
-                  </Box>
-                );
-              })}
-            </Box>
-            {/* 입력창 */}
-            {selectedRoom &&
-              <Box
-                sx={{
-                  width: "100%",
+                {/* 오른쪽 아이콘 그룹을 absolute로 끝에! */}
+                <Box sx={{
                   display: "flex",
                   alignItems: "center",
-                  px: 4,
-                  py: 2.1,
-                  borderTop: "1px solid #e3e8ef",
-                  gap: 1,
-                  background: "#f8fbfd"
-                }}
-              >
-                <TextField
-                  inputRef={inputRef}
-                  variant="outlined"
-                  size="small"
-                  placeholder="메시지 입력"
-                  sx={{ flex: 1, background: "#fff", borderRadius: 2 }}
-                />
-                <label htmlFor="chat-file-upload">
-                  <input
-                    type="file"
-                    multiple
-                    style={{ display: "none" }}
-                    id="chat-file-upload"
-                    accept="image/*,application/pdf,application/zip,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.txt,.hwp"
-                    onChange={handleFileUpload}
-                  />
-                  <IconButton color="primary" component="span" sx={{ bgcolor: "#fff" }}>
-                    <AttachFileIcon />
-                  </IconButton>
-                </label>
-                <Button
-                  variant="contained"
-                  color="success"
-                  sx={{ minWidth: 36, px: 2, borderRadius: 2 }}
-                >
-                  <SendIcon />
-                </Button>
+                  gap: 2,
+                  position: "absolute",
+                  top: 0,
+                  right: 16,           // 브라우저 끝에서 16px 떨어짐 (필요시 0으로 붙임)
+                  height: "100%",
+                  justifyContent: "flex-end"
+                }}>
+                  <IconButton><PhoneIcon /></IconButton>
+                  <IconButton><VideoCallIcon /></IconButton>
+                  <IconButton><GroupIcon /></IconButton>
+                  <IconButton><MoreVertIcon /></IconButton>
+                </Box>
               </Box>
-            }
+                <Box
+                  className="chat-room-msg-list"
+                  sx={{
+                    flex: 1,
+                    width: "100%",
+                    overflowY: "auto",
+                    px: 4, pt: 2.5, pb: 2.5,
+                    display: "flex", flexDirection: "column",
+                    gap: 0.5,
+                    scrollbarWidth: "thin",
+                    "&::-webkit-scrollbar": { width: 8 },
+                    "&::-webkit-scrollbar-thumb": {
+                      background: "#e4eaf3",
+                      borderRadius: "7px"
+                    },
+                    "&::-webkit-scrollbar-track": { background: "#f8fbfd" }
+                  }}
+                >
+                  {messages.map(msg => {
+                    const isMe = msg.senderName === userName;
+                    return (
+                      <Box
+                        key={msg.id}
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: isMe ? "flex-end" : "flex-start",
+                          mb: 1.7,
+                          width: "100%",
+                        }}
+                      >
+                        {!isMe && (
+                          <Typography
+                            variant="caption"
+                            color="#7d87ab"
+                            sx={{ mb: 0.5, fontWeight: 600, fontSize: 14 }}
+                          >
+                            {msg.senderName}
+                          </Typography>
+                        )}
+                        <Box sx={{ display: "flex", alignItems: "center", maxWidth: "330px" }}>
+                          {isMe && msg.unreadCount > 0 && (
+                            <Badge
+                              badgeContent={msg.unreadCount}
+                              sx={{
+                                mr: 1,
+                                "& .MuiBadge-badge": {
+                                  background: "none",
+                                  color: "#f6c745",
+                                  fontWeight: 700,
+                                  borderRadius: "8px",
+                                  fontSize: "13px"
+                                }
+                              }}
+                            />
+                          )}
+                          <Box
+                            sx={{
+                              display: "inline-block",
+                              fontSize: 15,
+                              px: 2,
+                              py: 1,
+                              borderRadius: "10px",
+                              mb: 0.5,
+                              bgcolor: isMe ? "#ffe585" : "#f7f9fc",
+                              color: isMe ? "#1aaf54" : "#222",
+                              boxShadow: "none",
+                              width: "fit-content",
+                              maxWidth: "270px",
+                              wordBreak: "break-all",
+                              border: isMe ? "none" : "1px solid #e4eaf3"
+                            }}
+                          >
+                            {msg.fileYn ? "[파일]" : msg.messageContent || ""}
+                          </Box>
+                          {!isMe && msg.unreadCount > 0 && (
+                            <Badge
+                              badgeContent={msg.unreadCount}
+                              sx={{
+                                ml: 1,
+                                "& .MuiBadge-badge": {
+                                  background: "none",
+                                  color: "#f6c745",
+                                  fontWeight: 700,
+                                  borderRadius: "8px",
+                                  fontSize: "13px"
+                                }
+                              }}
+                            />
+                          )}
+                        </Box>
+                        <Typography
+                          sx={{
+                            fontSize: 12,
+                            color: "#b0b6ce",
+                            alignSelf: isMe ? "flex-end" : "flex-start",
+                            mt: 0.5
+                          }}
+                        >
+                          {formatTime(msg.sendAt)}
+                        </Typography>
+                      </Box>
+                    );
+                  })}
+                </Box>
+                <Box
+                  sx={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    px: 4,
+                    py: 2.1,
+                    borderTop: "1px solid #e3e8ef",
+                    gap: 1,
+                    background: "#f8fbfd"
+                  }}
+                >
+                  <TextField
+                    inputRef={inputRef}
+                    variant="outlined"
+                    size="small"
+                    placeholder="메시지 입력"
+                    sx={{ flex: 1, background: "#fff", borderRadius: 2 }}
+                  />
+                  <label htmlFor="chat-file-upload">
+                    <input
+                      type="file"
+                      multiple
+                      style={{ display: "none" }}
+                      id="chat-file-upload"
+                      accept="image/*,application/pdf,application/zip,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.txt,.hwp"
+                      onChange={handleFileUpload}
+                    />
+                    <IconButton color="primary" component="span" sx={{ bgcolor: "#fff" }}>
+                      <AttachFileIcon />
+                    </IconButton>
+                  </label>
+                  <Button
+                    variant="contained"
+                    color="success"
+                    sx={{ minWidth: 36, px: 2, borderRadius: 2 }}
+                  >
+                    <SendIcon />
+                  </Button>
+                </Box>
+              </>
+            )}
           </Box>
         </Box>
       </Box>
     </Box>
   );
 }
-
-// ... ChatHeader, ChatSidebar 함수는 기존과 동일하게 둡니다.
