@@ -1,8 +1,90 @@
+/* 바깥 스크롤 없게, 높이 꽉 채움 */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.chat-center-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  /* min-height, padding 등 기존 유지 */
+  margin-top: 32px;      /* ← 여기서 여백을 원하는 만큼만 유지! (예: 24px ~ 40px 내외로 조절) */
+}
+
+/* 메시지 정렬/배경색 구분 추가 */
+.chat-msg.my .msg-bubble,
+.msg-bubble.mine {
+  background: #ffe585;
+  color: #1aaf54;
+}
+.chat-msg.other .msg-bubble,
+.msg-bubble.other {
+  background: #fff;
+  color: #222;
+  border: 1px solid #d6dee1;
+}
+.chat-msg.my {
+  align-items: flex-end;
+}
+.chat-msg.other {
+  align-items: flex-start;
+}
+
+/* 채팅방 목록 박스 높이 고정 + 스크롤*/
+.chat-list-col-inner {
+  height: 600px;
+  max-height: 600px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #fff;
+}
+/* 채팅방 목록 리스트 자체를 스크롤 영역으로 지정 */
+.chat-room-list, .MuiList-root {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  height: calc(100% - 72px); /* header/tabs 영역 높이 빼는 방식, 72px은 예시. 상황에 따라 60~90값으로 직접 테스트 */
+  max-height: 100%;
+  margin: 0;
+  padding: 0 8px;
+  scrollbar-width: thin;
+  scrollbar-color: #d0f3e7 #eaf3fb;
+}
+
+.chat-room-list::-webkit-scrollbar {
+  width: 9px;
+}
+.chat-room-list::-webkit-scrollbar-thumb {
+  background: #d0f3e7;
+}
+.chat-room-list::-webkit-scrollbar-track {
+  background: #eaf3fb;
+}
+
+/* chat-list-header는 고정, 아래만 스크롤됨 */
+.chat-list-header {
+  padding: 0 28px 6px 26px;
+  font-size: 16px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-shrink: 0;
+}
+
+
+
 .chat-layout {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  min-height: 100vh;
   background: #fafbfc;
+  overflow: hidden;     /* 바깥 스크롤 제거 */
 }
 
 .chat-header {
@@ -58,6 +140,8 @@
   display: flex;
   flex: 1;
   min-height: 0;
+  background: #fff;
+  overflow: hidden;      /* 바깥 스크롤 제거 */
 }
 
 .chat-sidebar {
@@ -129,9 +213,11 @@
   flex: 1;
   width: 100%;
   min-width: 0;
-  gap: 0;
+  justify-content: center;        /* 가운데 정렬로 변경*/
+  gap: 40px;                     
   padding-top: 44px;
-  background: #fafbfc;
+  /* background: #fafbfc; */
+  margin: 0 auto; /* 가운데 정렬 */
 }
 .chat-list-col {
   width: 420px;
@@ -139,14 +225,27 @@
   display: flex;
   justify-content: center;
   align-items: flex-start;
+  margin-right: 0;  
 }
+
+.chat-list-col,
+.chat-room-col {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
 .chat-list-col-inner {
   width: 440px;
   background: #fff;
   border-radius: 22px;
-  margin-left: 12px;
+  margin-left: 0;
   padding: 18px 0 22px 0;
   box-shadow: 0 2px 13px #dadada1a;
+  height: 600px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  justify-content: center;
 }
 .chat-list-header {
   padding: 0 28px 6px 26px;
@@ -261,19 +360,20 @@
   display: flex;
   justify-content: center;
   align-items: flex-start;
+  margin-left: 0; 
 }
 .chat-room-col-inner {
   background: #eaf3fb;
   border-radius: 25px;
   box-shadow: 0 3px 14px #c1c5cc33;
-  margin-left: 17px;
+  margin-left: -200px; 
   width: 410px;
-  min-height: 510px;
+  min-height: 510px; /* 메시지 창의 최소/최대 높이 고정 */
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  padding: 30px 18px 18px 24px;
-  position: relative;
+  padding: 30px 18px 18px 24px; /* 패딩도 양쪽 줄임 */
+  position: relative; /* 가운데 정렬 */
 }
 .chat-room-top-bar {
   display: flex;
@@ -303,17 +403,36 @@
   font-size: 18px;
 }
 
+/* 메시지 리스트 스크롤 고정 */
 .chat-room-msg-list {
   flex: 1;
   width: 100%;
   min-height: 260px;
+  max-height: 510px; /* 원하는 높이로 변경 */
   padding-top: 6px;
   padding-bottom: 4px;
   display: flex;
   flex-direction: column;
   gap: 0;
   overflow-y: auto;
+  /* 스크롤바 */
+  scrollbar-width: thin;
+  scrollbar-color: #d0f3e7 #eaf3fb;
 }
+
+.chat-room-msg-list::-webkit-scrollbar {
+  width: 9px;
+}
+.chat-room-msg-list::-webkit-scrollbar-thumb {
+  background: #d0f3e7;
+  border-radius: 7px;
+}
+.chat-room-msg-list::-webkit-scrollbar-track {
+  background: #eaf3fb;
+}
+
+
+
 .chat-msg {
   margin-bottom: 10px;
   display: flex;

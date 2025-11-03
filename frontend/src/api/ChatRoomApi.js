@@ -7,3 +7,9 @@ export async function fetchChatRoomsLatest() {
   const res = await http.get("/chat/rooms/messages/latest");
   return res.data;
 }
+
+// 채팅방별 전체 메시지 (roomId 기준)
+export async function fetchChatRoomMessages(roomId) {
+  const res = await http.get(`/chat/${roomId}/messages`);
+  return res.data;
+}
