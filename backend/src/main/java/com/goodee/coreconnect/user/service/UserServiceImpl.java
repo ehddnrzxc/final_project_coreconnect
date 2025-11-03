@@ -16,6 +16,7 @@ import com.goodee.coreconnect.department.repository.DepartmentRepository;
 import com.goodee.coreconnect.user.dto.request.CreateUserReqDTO;
 import com.goodee.coreconnect.user.dto.response.UserDTO;
 import com.goodee.coreconnect.user.entity.JobGrade;
+import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.Status;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
@@ -144,6 +145,18 @@ public class UserServiceImpl implements UserService {
           .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
       
       user.changeJobGrade(jobGrade);
+    }
+    
+    /**
+     * 유저의 권한(Role) 변경 메소드
+     */
+    @Override
+    @Transactional
+    public void moveUserToRole(Integer userId, Role newRole) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+
+        user.changeRole(newRole);
     }
 
 }

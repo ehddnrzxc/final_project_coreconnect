@@ -5,23 +5,35 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.goodee.coreconnect.board.dto.request.BoardReplyRequestDTO;
 import com.goodee.coreconnect.board.dto.response.BoardReplyResponseDTO;
 import com.goodee.coreconnect.board.service.BoardReplyService;
 import com.goodee.coreconnect.common.dto.response.ResponseDTO;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
+@Tag(name = "Board Reply API", description = "게시글 댓글 및 대댓글 관리 API")
 @RestController
 @RequestMapping("/api/v1/board-reply")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "bearerAuth")
 public class BoardReplyController {
 
     private final BoardReplyService replyService;
 
-    /** 댓글 등록 */
+    @Operation(summary = "댓글 등록", description = "로그인한 사용자가 댓글을 등록합니다.")
     @PostMapping
     public ResponseEntity<ResponseDTO<BoardReplyResponseDTO>> createReply(
             @RequestBody BoardReplyRequestDTO dto,
@@ -38,7 +50,7 @@ public class BoardReplyController {
         return ResponseEntity.status(HttpStatus.CREATED).body(res);
     }
 
-    /** 댓글 수정 (본인만 가능) */
+    @Operation(summary = "댓글 수정", description = "본인이 작성한 댓글을 수정합니다.")
     @PutMapping("/{replyId}")
     public ResponseEntity<ResponseDTO<BoardReplyResponseDTO>> updateReply(
             @PathVariable("replyId") Integer replyId,
@@ -56,7 +68,7 @@ public class BoardReplyController {
         return ResponseEntity.ok(res);
     }
 
-    /** 댓글 삭제 (Soft Delete, 본인만 가능) */
+    @Operation(summary = "댓글 삭제", description = "본인이 작성한 댓글을 Soft Delete 방식으로 삭제합니다.")
     @DeleteMapping("/{replyId}")
     public ResponseEntity<ResponseDTO<Void>> deleteReply(
             @PathVariable("replyId") Integer replyId,
@@ -72,7 +84,7 @@ public class BoardReplyController {
         return ResponseEntity.status(HttpStatus.NO_CONTENT).body(res);
     }
 
-    /** 게시글별 댓글 목록 조회 (대댓글 포함) */
+    @Operation(summary = "게시글별 댓글 목록 조회", description = "게시글 ID 기준으로 댓글 및 대댓글을 모두 조회합니다.")
     @GetMapping("/board/{boardId}")
     public ResponseEntity<ResponseDTO<List<BoardReplyResponseDTO>>> getRepliesByBoard(
             @PathVariable("boardId") Integer boardId

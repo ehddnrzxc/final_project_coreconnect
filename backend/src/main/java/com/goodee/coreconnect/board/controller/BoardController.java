@@ -28,10 +28,6 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
-/**
- * 게시글 관련 REST 컨트롤러
- * - 등록, 수정, 삭제, 조회, 검색 등 게시판 주요 기능 담당
- */
 @Tag(name = "Board API", description = "게시판 및 공지사항 관련 기능 API")
 @RestController
 @RequestMapping("/api/v1/boards")

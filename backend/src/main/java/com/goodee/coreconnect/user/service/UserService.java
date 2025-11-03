@@ -8,6 +8,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.goodee.coreconnect.user.dto.request.CreateUserReqDTO;
 import com.goodee.coreconnect.user.dto.response.UserDTO;
 import com.goodee.coreconnect.user.entity.JobGrade;
+import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.Status;
 
 public interface UserService {
@@ -19,5 +20,6 @@ public interface UserService {
   public List<UserDTO> findAllUsers();
   public void moveUserToDepartment(Integer userId, Integer newDeptId);
   public void moveUserToJobGrade(Integer userId, JobGrade jobGrade);
+  public void moveUserToRole(Integer userId, Role newRole);
 
 }

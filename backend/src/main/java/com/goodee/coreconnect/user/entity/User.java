@@ -185,7 +185,14 @@ public class User {
       }
     }
 
+    /** 권한(Role) 변경 */
+    public void changeRole(Role newRole) {
+      if (newRole != null) {
+        this.role = newRole;
+      }
+    }
 
+    
     // ─────────────── 도메인 행위 ───────────────
 
     /** 회원 비활성화 */
@@ -211,6 +218,7 @@ public class User {
     public void changePhone(String newPhone) {
         this.phone = newPhone;
     }
+    
     
  // ─────────────── 편의(인증) 메서드 ───────────────
 
