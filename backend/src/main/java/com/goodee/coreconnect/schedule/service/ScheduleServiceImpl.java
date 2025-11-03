@@ -6,6 +6,8 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.goodee.coreconnect.common.notification.enums.NotificationType;
+import com.goodee.coreconnect.common.notification.service.NotificationService;
 import com.goodee.coreconnect.schedule.dto.request.RequestScheduleDTO;
 import com.goodee.coreconnect.schedule.dto.response.ResponseScheduleDTO;
 import com.goodee.coreconnect.schedule.entity.MeetingRoom;
@@ -32,6 +34,7 @@ public class ScheduleServiceImpl implements ScheduleService {
   private final MeetingRoomRepository meetingRoomRepository;
   private final ScheduleCategoryRepository categoryRepository;
   private final ScheduleParticipantRepository scheduleParticipantRepository;
+  private final NotificationService notificationService;
 
 
   /** 일정 생성 */
@@ -51,14 +54,16 @@ public class ScheduleServiceImpl implements ScheduleService {
 
     // 회의실 중복 예약 방지
     if (meetingRoom != null) {
-      boolean overlap = !scheduleRepository
-          .findOverlappingSchedules(meetingRoom, dto.getStartDateTime(), dto.getEndDateTime())
-          .isEmpty();
+      boolean overlap = scheduleRepository.existsOverlappingSchedule(
+              meetingRoom,
+              dto.getStartDateTime(),
+              dto.getEndDateTime()
+      );
 
       if (overlap) {
         throw new IllegalArgumentException("해당 시간대에 이미 예약된 회의실입니다.");
       }
-
+      
       // 회의실 예약 시 자동 비활성화 (예약 중 상태)
       meetingRoom.changeAvailability(false);
     }
@@ -86,8 +91,28 @@ public class ScheduleServiceImpl implements ScheduleService {
 
         ScheduleParticipant member = ScheduleParticipant.createParticipant(savedSchedule, participantUser, ScheduleRole.MEMBER);
         scheduleParticipantRepository.save(member);
+        
+        // 알림 발송 (참여자)
+        notificationService.sendNotification(
+                participantUser.getId(),
+                NotificationType.SCHEDULE,
+                "[일정 등록] '" + savedSchedule.getTitle() + "' 일정에 초대되었습니다.",
+                null, null,
+                user.getId(),
+                user.getName()
+        );
       }
     }
+    
+    // 본인(OWNER)에게도 알림
+    notificationService.sendNotification(
+            user.getId(),
+            NotificationType.SCHEDULE,
+            "[일정 등록 완료] '" + savedSchedule.getTitle() + "' 일정이 생성되었습니다.",
+            null, null,
+            user.getId(),
+            user.getName()
+    );
 
     return ResponseScheduleDTO.toDTO(savedSchedule);
   }
@@ -113,15 +138,24 @@ public class ScheduleServiceImpl implements ScheduleService {
 
     // 중복 예약 방지 (자기 자신 제외)
     if (newMeetingRoom != null) {
-      boolean overlap = !scheduleRepository
-          .findOverlappingSchedules(newMeetingRoom, dto.getStartDateTime(), dto.getEndDateTime())
-          .stream()
-          .filter(s -> !s.getId().equals(id))
-          .toList()
-          .isEmpty();
+      // 겹치는 일정이 있는지 확인
+      boolean overlap = scheduleRepository.existsOverlappingSchedule(
+              newMeetingRoom,
+              dto.getStartDateTime(),
+              dto.getEndDateTime()
+      );
 
+      // 단, 자기 자신(same id)은 제외해야 함
       if (overlap) {
-        throw new IllegalArgumentException("해당 시간대에 이미 예약된 회의실입니다.");
+        // 기존 일정이 동일 회의실 및 동일 시간대면 예외로 판단하지 않음
+        boolean sameRoomSameTime =
+                 newMeetingRoom.equals(oldMeetingRoom)
+                 && schedule.getStartDateTime().equals(dto.getStartDateTime())
+                 && schedule.getEndDateTime().equals(dto.getEndDateTime());
+
+        if (!sameRoomSameTime) {
+          throw new IllegalArgumentException("해당 시간대에 이미 예약된 회의실입니다.");
+        }
       }
 
       // 새 회의실 예약 시 비활성화 처리
@@ -175,10 +209,33 @@ public class ScheduleServiceImpl implements ScheduleService {
           ScheduleParticipant newMember =
                   ScheduleParticipant.createParticipant(schedule, newUser, ScheduleRole.MEMBER);
           scheduleParticipantRepository.save(newMember);
+          
+          // 새로 추가된 참여자에게 알림
+          notificationService.sendNotification(
+                  newUser.getId(),
+                  NotificationType.SCHEDULE,
+                  "[일정 수정] '" + schedule.getTitle() + "' 일정에 새로 추가되었습니다.",
+                  null, null,
+                  schedule.getUser().getId(),
+                  schedule.getUser().getName()
+          );
         }
       }
     }
-
+    
+    // 모든 참여자에게 수정 알림
+    List<ScheduleParticipant> allParticipants = scheduleParticipantRepository.findByScheduleAndDeletedYnFalse(schedule);
+    for (ScheduleParticipant p : allParticipants) {
+        notificationService.sendNotification(
+                p.getUser().getId(),
+                NotificationType.SCHEDULE,
+                "[일정 수정] '" + schedule.getTitle() + "' 일정이 변경되었습니다.",
+                null, null,
+                schedule.getUser().getId(),
+                schedule.getUser().getName()
+        );   
+    }
+        
     return ResponseScheduleDTO.toDTO(schedule);
   }
 

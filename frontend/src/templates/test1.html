@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>비자발급 신청</title>
+    <!-- Tailwind CSS CDN 로드 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Inter 폰트 로드 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Noto Sans KR 폰트를 기본 폰트로 설정합니다. */
+        body {
+            font-family: 'Noto Sans KR', 'Inter', sans-serif;
+        }
+        
+        /* 테이블 테두리를 이미지와 유사하게 만들기 위한 설정입니다.
+          Tailwind의 border-collapse와 각 td/th의 border 클래스를 함께 사용합니다.
+        */
+        .approval-table td {
+            vertical-align: middle; /* 기본 세로 정렬을 가운데로 */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 md:p-8">
+
+    <!-- 전체 양식 컨테이너 -->
+    <div class="max-w-4xl mx-auto bg-white p-6 md:p-10 shadow-lg rounded-xl border border-gray-200">
+
+        <!-- 1. 문서 제목 -->
+        <h1 class="text-3xl font-bold text-center mb-8 text-gray-800">
+            비자발급 신청
+        </h1>
+
+        <!-- 2. 상단 정보 (기안자 정보 + 결재란) -->
+        <div class="flex flex-col md:flex-row justify-between items-start gap-4 mb-6">
+
+            <!-- 2-1. 기안자 정보 테이블 (왼쪽) -->
+            <table class="w-full md:w-3/5 border-collapse">
+                <tbody>
+                    <tr>
+                        <td class="bg-gray-100 p-3 font-semibold text-gray-700 w-1/4 border border-gray-400 text-center">기안자</td>
+                        <td class="p-3 border border-gray-400 text-gray-900">김인쇄</td>
+                    </tr>
+                    <tr>
+                        <td class="bg-gray-100 p-3 font-semibold text-gray-700 border border-gray-400 text-center">소속</td>
+                        <td class="p-3 border border-gray-400 text-gray-900">경영</td>
+                    </tr>
+                    <tr>
+                        <td class="bg-gray-100 p-3 font-semibold text-gray-700 border border-gray-400 text-center">기안일</td>
+                        <td class="p-3 border border-gray-400 text-gray-900">2025-11-03(월)</td>
+                    </tr>
+                    <tr>
+                        <td class="bg-gray-100 p-3 font-semibold text-gray-700 border border-gray-400 text-center">문서번호</td>
+                        <td class="p-3 border border-gray-400 h-[45px]"></td> <!-- 높이를 다른 행과 유사하게 맞춤 -->
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- 2-2. 결재란 테이블 (오른쪽) -->
+            <table class="w-full md:w-auto text-center border-collapse approval-table">
+                <tbody>
+                    <tr>
+                        <!-- '신청' 셀: 2개 행을 병합 -->
+                        <td rowspan="2" class="bg-gray-100 p-3 font-semibold text-gray-700 w-12 border border-gray-400">
+                            신<br>청
+                        </td>
+                        <!-- '차장' 셀: 직책 -->
+                        <td class="bg-gray-100 p-3 font-semibold text-gray-700 w-28 border border-gray-400">
+                            차장
+                        </td>
+                    </tr>
+                    <tr>
+                        <!-- '김인쇄' 셀: 이름. align-bottom으로 텍스트를 하단에 배치 -->
+                        <td class="p-3 h-24 align-bottom border border-gray-400 text-gray-900">
+                            김인쇄
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+        </div> <!-- end of 상단 정보 -->
+
+        <!-- 3. 메인 콘텐츠 (비자명, 사유) -->
+        <table class="w-full border-collapse">
+            <tbody>
+                <tr>
+                    <td class="bg-gray-100 p-3 font-semibold text-gray-700 w-[120px] md:w-1/6 border border-gray-400 text-center">
+                        비자명
+                    </td>
+                    <td class="p-3 border border-gray-400">
+                        <!-- 입력 필드 -->
+                        <input 
+                            type="text" 
+                            class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                            placeholder="비자명을 입력하세요">
+                    </td>
+                </tr>
+                <tr>
+                    <td class="bg-gray-100 p-3 font-semibold text-gray-700 border border-gray-400 text-center">
+                        발급요청 사유
+                    </td>
+                    <td class="p-3 border border-gray-400">
+                        <!-- 텍스트 영역 -->
+                        <textarea 
+                            class="w-full p-2 border border-gray-300 rounded-md h-48 md:h-60 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                            placeholder="비자 발급이 필요한 사유를 자세히 기재하세요."></textarea>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+    </div> <!-- end of 전체 양식 컨테이너 -->
+
+</body>
+</html>

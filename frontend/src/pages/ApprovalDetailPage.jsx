@@ -38,7 +38,7 @@ const ApprovalDetailPage = () => {
         setLoading(true);
         setError(null);
 
-        // (수정) 백엔드 상세 조회 API 호출
+        // 백엔드 상세 조회 API 호출
         // GET /api/v1/approvals/{documentId}
         const response = await http.get(`/approvals/${documentId}`);
         

@@ -20,6 +20,7 @@ import UserListPage from "./components/admin/UserListPage";
 import ChatHomePage from "./pages/ChatHomePage";
 import ChatLayout from "./pages/ChatLayout";
 import ApprovalDetailPage from "./pages/ApprovalDetailPage";
+import TemplateEditor from "./templates/TemplateEditor";
 
 /* 로그인 보호용 라우트 */
 function ProtectedRoute({ children }) {
@@ -74,7 +75,7 @@ const router = createBrowserRouter([
           },
           {
             path: "new", // /e-approval/new (새 결재 진행)
-            element: <ApprovalWritePage />,
+            element: <TemplateEditor />,
           },
           {
             path: "forms", // /e-approval/forms (자주 쓰는 양식)

@@ -56,11 +56,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     	    uri.startsWith("/v3/api-docs") ||
     	    uri.startsWith("/swagger-resources") ||
     	    uri.startsWith("/webjars")
-    	) {
+    	  ) {
     	    chain.doFilter(req, res);
     	    return;
-    	}
-
+    	  }
+        // Refresh 경로는 JWT 인증 검사 제외
+        if(uri.startsWith("/api/v1/auth/refresh")) {
+          chain.doFilter(req, res);
+          return;
+        }
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             final String token = authHeader.substring(7);
 

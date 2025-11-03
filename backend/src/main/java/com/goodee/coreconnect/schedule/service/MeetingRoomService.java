@@ -1,5 +1,6 @@
 package com.goodee.coreconnect.schedule.service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import com.goodee.coreconnect.schedule.dto.MeetingRoomDTO;
@@ -27,5 +28,11 @@ public interface MeetingRoomService {
   
   /** 특정 회의실의 예약 일정 조회 */
   List<ResponseScheduleDTO> getSchedulesByMeetingRoom(Integer meetingRoomId);
+  
+  /** 특정 시간대에 단일 회의실 예약 가능 여부 검사 */
+  boolean isMeetingRoomAvailable(Integer meetingRoomId, LocalDateTime start, LocalDateTime end);
+  
+  /** 특정 시간대 예약 가능한 회의실 조회 */
+  List<MeetingRoomDTO> getAvailableRooms(LocalDateTime start, LocalDateTime end);
   
 }
