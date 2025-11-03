@@ -20,6 +20,10 @@ const Topbar = ({ onLogout, avatarUrl }) => {
               관리자 콘솔
             </button>
           )}
+          {/*채팅 아이콘 버튼 추가 */}
+          <button className="icon-btn" aria-label="Chat" onClick={() => navigate('/chat')}>
+            <i className='fa-solid fa-comment-dots'></i>
+          </button>
           <button className="icon-btn" aria-label="Gifts">
             <i className="fa-solid fa-gift" />
           </button>
