@@ -6,6 +6,10 @@ import org.springframework.context.annotation.Configuration;
 
 import com.goodee.coreconnect.department.service.DepartmentService;
 
+/**
+ * 애플리케이션 시작 시 기본 부서 데이터를 초기화하는 설정 클래스.
+ * 부서 테이블이 비어 있을 경우, 기본 조직 구조를 자동으로 생성한다. 
+ */
 @Configuration
 public class DepartmentSeeder {
   
@@ -28,8 +32,6 @@ public class DepartmentSeeder {
         Integer design = departmentService.create("디자인", 40, ceoOffice);
         Integer security = departmentService.create("전산/보안", 50, ceoOffice);
       }
-      
-      
     };
   }
 }

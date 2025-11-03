@@ -15,6 +15,11 @@ import com.goodee.coreconnect.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * AdminSeeder
+ * - 애플리케이션 최초 실행 시 시스템 관리자 계정을 자동으로 생성하는 설정 클래스.
+ * - DB에 관리자가 없을 경우, 기본 관리자 유저를 1회 생성한다. 
+ */
 @Configuration
 @RequiredArgsConstructor
 public class AdminSeeder {
@@ -29,11 +34,13 @@ public class AdminSeeder {
     private static final String ADMIN_RAW_PASSWORD = "coreconnect@admin"; 
     private static final Integer ADMIN_DEPT_ID = null; 
 
+    /** Spring Boot 시작 시 자동 실행되는 CommandLineRunner Bean. */
     @Bean
-    public CommandLineRunner seedAdminRunner() {
-        return args -> seedAdminIfNeeded();
+    CommandLineRunner seedAdminRunner() {
+      return args -> seedAdminIfNeeded();
     }
 
+    /** 관리자 계정이 존재하지 않는 경우만 실행 */
     @Transactional
     protected void seedAdminIfNeeded() {
         if (userRepository.existsByEmail(ADMIN_EMAIL)) {
@@ -45,21 +52,19 @@ public class AdminSeeder {
             dept = departmentRepository.findById(ADMIN_DEPT_ID)
                     .orElse(null);
         }
-
+        
+        // 비밀번호 암호화
         String encoded = passwordEncoder.encode(ADMIN_RAW_PASSWORD);
 
         User admin = User.createUser(
-                encoded,                // password (BCrypt)
-                ADMIN_NAME,             // name
-                Role.ADMIN,             // role
-                ADMIN_EMAIL,            // email
-                ADMIN_PHONE,            // phone
-                dept,                   // department (null 가능)
-                null                    // jobGrade (초기값: null)
+                encoded,               
+                ADMIN_NAME,             
+                Role.ADMIN,             
+                ADMIN_EMAIL,           
+                ADMIN_PHONE,           
+                dept,                   
+                null                   
         );
-
-        // 상태 등 추가 설정이 필요하면 여기서 조정 가능
-        // admin.deactivate(); // 예: 비활성화 등
 
         userRepository.save(admin);
     }

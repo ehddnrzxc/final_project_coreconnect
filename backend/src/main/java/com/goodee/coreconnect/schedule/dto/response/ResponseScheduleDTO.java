@@ -30,8 +30,6 @@ public class ResponseScheduleDTO {
   
   private String userName;
   
-  private String deptName;
-  
   private String categoryName;
   
   private String meetingRoomName;
@@ -52,8 +50,6 @@ public class ResponseScheduleDTO {
 
     if (entity.getUser() != null)
       dto.userName = entity.getUser().getName();
-    if (entity.getDepartment() != null)
-      dto.deptName = entity.getDepartment().getDeptName();
     if (entity.getCategory() != null)
       dto.categoryName = entity.getCategory().getName();
     if (entity.getMeetingRoom() != null)

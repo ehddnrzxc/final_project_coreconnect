@@ -1,4 +1,3 @@
-// com/goodee/coreconnect/user/dto/response/UserDto.java
 package com.goodee.coreconnect.user.dto.response;
 
 import java.time.LocalDateTime;
@@ -17,6 +16,7 @@ public record UserDTO(
     String deptName,
     LocalDateTime joinDate
 ) {
+    /** 정적 팩토리 생성자 메서드 */
     public static UserDTO toDTO(User u) {
         return new UserDTO(
             u.getId(),

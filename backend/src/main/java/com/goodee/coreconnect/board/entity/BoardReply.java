@@ -57,6 +57,7 @@ public class BoardReply {
     @JoinColumn(name = "board_id", nullable = false)
     private Board board;
     
+    
     /** Auditing + 수동 제어 */
     @PrePersist
     public void onPrePersist() {
@@ -68,7 +69,6 @@ public class BoardReply {
     public void onPreUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
-
 
     // ─────────────── 생성 메서드 ───────────────
     public static BoardReply createReply(User user, Board board, BoardReply parentReply, String content) {
@@ -84,6 +84,7 @@ public class BoardReply {
         return reply;
     }
 
+    
     // ─────────────── 도메인 행위 ───────────────
     /** 댓글 수정 */
     public void updateReply(String content) {

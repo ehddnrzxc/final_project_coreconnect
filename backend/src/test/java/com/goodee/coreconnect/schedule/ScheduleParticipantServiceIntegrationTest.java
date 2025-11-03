@@ -45,18 +45,18 @@ public class ScheduleParticipantServiceIntegrationTest {
   private User testUser;
   private Schedule testSchedule;
 
-  @BeforeEach
-  void setUp() {
-    testUser = userRepository.findById(10)
-            .orElseThrow(() -> new IllegalStateException("user_id=10 유저가 없습니다."));
-
-    testSchedule = scheduleRepository.save(
-            Schedule.createSchedule(testUser, null, null, null,
-                    "참여자 테스트 일정", "내용입니다",
-                    LocalDateTime.now().plusHours(1),
-                    LocalDateTime.now().plusHours(2),
-                    "회의실A", ScheduleVisibility.PUBLIC));
-  }
+//  @BeforeEach
+//  void setUp() {
+//    testUser = userRepository.findById(10)
+//            .orElseThrow(() -> new IllegalStateException("user_id=10 유저가 없습니다."));
+//
+//    testSchedule = scheduleRepository.save(
+//            Schedule.createSchedule(testUser, null, null, null,
+//                    "참여자 테스트 일정", "내용입니다",
+//                    LocalDateTime.now().plusHours(1),
+//                    LocalDateTime.now().plusHours(2),
+//                    "회의실A", ScheduleVisibility.PUBLIC));
+//  }
 
   @Test
   @DisplayName("1️⃣ 참여자 추가 테스트 (이메일 기반)") 

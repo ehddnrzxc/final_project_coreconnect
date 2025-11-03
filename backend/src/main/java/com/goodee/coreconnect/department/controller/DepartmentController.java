@@ -19,8 +19,10 @@ import com.goodee.coreconnect.department.dto.response.DepartmentFlatDTO;
 import com.goodee.coreconnect.department.dto.response.DepartmentTreeDTO;
 import com.goodee.coreconnect.department.service.DepartmentService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+/** 부서와 관련된 CRUD를 수행하는 컨트롤러. */
 @RestController
 @RequestMapping("/api/v1/departments")
 @RequiredArgsConstructor
@@ -28,40 +30,41 @@ public class DepartmentController {
   
   private final DepartmentService departmentService;
   
-  // 부서 조회(트리 형식)
+  /** 부서 조회(트리 형식) */
   @GetMapping("/tree")
   public ResponseEntity<List<DepartmentTreeDTO>> getTree() {
     return ResponseEntity.ok(departmentService.getDepartmentTree());
   }
   
-  // 부서 조회(평탄화 방식)
+  /** 부서 조회(평탄화 방식) */
   @GetMapping("/flat")
   public ResponseEntity<List<DepartmentFlatDTO>> getDepartmentsFlat() {
       return ResponseEntity.ok(departmentService.getDepartmentListFlat());
   }
   
-  // 생성
+  /** 생성 */
   @PostMapping
-  public ResponseEntity<Integer> create(@RequestBody CreateRequestDTO req) {
+  public ResponseEntity<Integer> create(@Valid @RequestBody CreateRequestDTO req) {
     Integer id = departmentService.create(req.name(), req.orderNo(), req.parentId());
     return ResponseEntity.ok(id);
   }
   
-  // 기본정보 수정(이름/정렬)
+  /** 기본정보 수정(이름/정렬) */
   @PutMapping("/{id}")
-  public ResponseEntity<Void> update(@PathVariable Integer id, @RequestBody UpdateRequestDTO req) {
+  public ResponseEntity<Void> update(@PathVariable Integer id, 
+                                     @Valid @RequestBody UpdateRequestDTO req) {
     departmentService.updateBasic(id, req.name(), req.OrderNo());
-    return ResponseEntity.noContent().build(); // 요청은 성공했지만 리턴할 본문은 없음.
+    return ResponseEntity.noContent().build(); 
   }
   
-  // 이동(상위부서 변경)
+  /** 이동(상위부서 변경) */
   @PutMapping("/{id}/move")
   public ResponseEntity<Void> move(@PathVariable Integer id, @RequestBody MoveRequestDTO req) {
     departmentService.move(id, req.parentId());
     return ResponseEntity.noContent().build();
   }
   
-  // 삭제
+  /** 부서 삭제 */
   @DeleteMapping("/{id}")
   public ResponseEntity<Void> delete(@PathVariable Integer id) {
     departmentService.delete(id);

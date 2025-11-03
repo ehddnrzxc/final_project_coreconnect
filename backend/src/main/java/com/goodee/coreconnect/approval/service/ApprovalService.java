@@ -89,5 +89,19 @@ public interface ApprovalService {
    * @return 템플릿 상세 DTO
    */
   TemplateDetailResponseDTO getTemplateDetail(Integer templateId);
+  
+  /**
+   * 전자결재 홈에 표시할 기안 진행 문서
+   * @param email 현재 사용자 email
+   * @return DRAFT, IN_PROGRESS 상태의 문서 목록
+   */
+  List<DocumentSimpleResponseDTO> getMyPendingDocuments(String email);
+  
+  /**
+   * 전자결재 홈에 표시할 완료 문서
+   * @param email 현재 사용자 email
+   * @return COMPLETED, REJECTED 상태의 문서 목록
+   */
+  List<DocumentSimpleResponseDTO> getMyCompletedDocuments(String email);
 
 }

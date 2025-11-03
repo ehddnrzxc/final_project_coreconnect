@@ -1,7 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import {
-  BrowserRouter,
   createBrowserRouter,
   RouterProvider,
   Navigate,
@@ -20,6 +19,7 @@ import AdminHome from "./components/admin/AdminHome";
 import UserListPage from "./components/admin/UserListPage";
 import ChatHomePage from "./pages/ChatHomePage";
 import ChatLayout from "./pages/ChatLayout";
+import ApprovalDetailPage from "./pages/ApprovalDetailPage";
 
 /* 로그인 보호용 라우트 */
 function ProtectedRoute({ children }) {
@@ -28,10 +28,12 @@ function ProtectedRoute({ children }) {
 }
 
 /* 전체 라우트 구조 */
+
+// createBrowserRouter 사용: 객체 기반. 라우트 구조를 JSON처럼 데이터로 정의 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <App />, // 공통 레이아웃
+    element: <App />, // App.jsx: 공통 레이아웃
     children: [
       {
         path: "home",
@@ -84,7 +86,7 @@ const router = createBrowserRouter([
           },
           {
             path: "doc/:documentId", // /e-approval/doc/123 (결재 상세)
-            element: <div>결재 상세 페이지</div>, // 임시
+            element: <ApprovalDetailPage />,
           },
         ],
       },

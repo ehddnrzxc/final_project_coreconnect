@@ -2,6 +2,7 @@ package com.goodee.coreconnect.approval.service;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -283,6 +284,58 @@ public class ApprovalServiceImpl implements ApprovalService {
     return currentTurnLines.stream()
         .map(ApprovalLine::getDocument) // 문서를 가져옴 (Fetch Join됨)
         .distinct() // 문서 중복 제거
+        .map(DocumentSimpleResponseDTO::toDTO)
+        .collect(Collectors.toList());
+  }
+  
+  /**
+   * 전자결재 홈에 표시할 기안 진행 문서
+   */
+  @Override
+  public List<DocumentSimpleResponseDTO> getMyPendingDocuments(String email) {
+    User user = findUserByEmail(email);
+    
+    // 1. "진행중" 상태 정의 (임시저장, 진행중)
+    List<DocumentStatus> pendingStatuses = Arrays.asList(
+        DocumentStatus.DRAFT, 
+        DocumentStatus.IN_PROGRESS
+    );
+
+    // 2. N+1이 해결된 쿼리로 조회
+    List<Document> documents = documentRepository.findByUserAndStatusInWithJoins(
+        user,
+        pendingStatuses,
+        false
+    );
+
+    // 3. DTO로 변환 (목록이므로 SimpleDTO 사용)
+    return documents.stream()
+        .map(DocumentSimpleResponseDTO::toDTO)
+        .collect(Collectors.toList());
+  }
+
+  /**
+   * 전자결재 홈에 표시할 완료 문서
+   */
+  @Override
+  public List<DocumentSimpleResponseDTO> getMyCompletedDocuments(String email) {
+    User user = findUserByEmail(email);
+    
+    // 1. "완료" 상태 정의 (완료, 반려)
+    List<DocumentStatus> completedStatuses = Arrays.asList(
+        DocumentStatus.COMPLETED, 
+        DocumentStatus.REJECTED
+    );
+
+    // 2. N+1이 해결된 쿼리로 조회
+    List<Document> documents = documentRepository.findByUserAndStatusInWithJoins(
+        user,
+        completedStatuses,
+        false
+    );
+
+    // 3. DTO로 변환 (목록이므로 SimpleDTO 사용)
+    return documents.stream()
         .map(DocumentSimpleResponseDTO::toDTO)
         .collect(Collectors.toList());
   }

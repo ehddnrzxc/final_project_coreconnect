@@ -5,23 +5,34 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.goodee.coreconnect.board.dto.response.BoardFileResponseDTO;
 import com.goodee.coreconnect.board.service.BoardFileService;
 import com.goodee.coreconnect.common.dto.response.ResponseDTO;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
+@Tag(name = "Board File API", description = "게시글 첨부파일 업로드/조회/삭제 API")
 @RestController
 @RequestMapping("/api/v1/board-file")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "bearerAuth")
 public class BoardFileController {
 
     private final BoardFileService boardFileService;
 
-    // 파일 업로드
+    @Operation(summary = "파일 업로드", description = "게시글 ID를 기준으로 파일을 업로드합니다.")
     @PostMapping("/{boardId}/upload")
     public ResponseEntity<ResponseDTO<List<BoardFileResponseDTO>>> uploadFiles(
             @PathVariable("boardId") Integer boardId,
@@ -38,7 +49,7 @@ public class BoardFileController {
         return ResponseEntity.status(HttpStatus.CREATED).body(res);
     }
 
-    // 단일 파일 조회 (다운로드 or 미리보기)
+    @Operation(summary = "단일 파일 조회", description = "파일 ID를 기준으로 단일 파일 정보를 조회합니다.")
     @GetMapping("/{fileId}")
     public ResponseEntity<ResponseDTO<BoardFileResponseDTO>> getFile(
             @PathVariable("fileId") Integer fileId
@@ -54,7 +65,7 @@ public class BoardFileController {
         return ResponseEntity.ok(res);
     }
 
-    // 게시글별 파일 목록 조회
+    @Operation(summary = "게시글별 파일 목록 조회", description = "특정 게시글에 첨부된 파일 목록을 조회합니다.")
     @GetMapping("/board/{boardId}")
     public ResponseEntity<ResponseDTO<List<BoardFileResponseDTO>>> getFilesByBoard(
             @PathVariable("boardId") Integer boardId
@@ -70,7 +81,7 @@ public class BoardFileController {
         return ResponseEntity.ok(res);
     }
 
-    // 파일 삭제 (Soft Delete)
+    @Operation(summary = "파일 삭제", description = "파일을 Soft Delete 방식으로 삭제합니다.")
     @DeleteMapping("/{fileId}")
     public ResponseEntity<ResponseDTO<Void>> deleteFile(
             @PathVariable("fileId") Integer fileId,

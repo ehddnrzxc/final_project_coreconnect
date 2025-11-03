@@ -68,13 +68,6 @@ public class ScheduleController {
   public List<ResponseScheduleDTO> getUserSchedules(@RequestParam("userId") Integer userId) {
     return scheduleService.getUserSchedules(userId);
   }
-  
-  /** 특정 부서의 일정 목록 조회 */
-  @Operation(summary = "부서별 일정 조회", description = "특정 부서의 모든 일정을 조회합니다.")
-  @GetMapping(params = "deptId")
-  public List<ResponseScheduleDTO> getSchedulesByDepartment(@RequestParam("deptId") Integer deptId) {
-    return scheduleService.getSchedulesByDepartment(deptId);
-  }
 
   /** 특정 회의실의 일정 목록 조회 */
   @Operation(summary = "회의실 일정 조회", description = "특정 회의실의 일정을 조회합니다.")

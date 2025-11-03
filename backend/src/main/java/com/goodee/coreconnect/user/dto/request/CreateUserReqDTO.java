@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+/** 신규 사용자 생성 요청용 DTO */
 public record CreateUserReqDTO(
  @Email 
  @NotBlank 
