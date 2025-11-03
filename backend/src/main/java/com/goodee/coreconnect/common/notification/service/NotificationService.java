@@ -14,6 +14,7 @@ import com.goodee.coreconnect.common.notification.enums.NotificationType;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -60,6 +61,12 @@ public class NotificationService {
         User recipient = userRepository.findById(recipientId)
             .orElseThrow(() -> new IllegalArgumentException("알림 수신자 없음: " + recipientId));
 
+        User sender = null;
+        if (senderId != null) {
+            sender = userRepository.findById(senderId)
+                .orElseThrow(() -> new IllegalArgumentException("알림 발신자 없음: " + senderId));
+        }
+        
          // --- 여기서 알림 타입별로 chatId/roomId 필수 체크 ---
         // 채팅 알림 타입은 없음. 만약 chatId/roomId가 값이 들어오면 무시하거나 로깅
         if ((type == NotificationType.EMAIL || type == NotificationType.NOTICE || type == NotificationType.APPROVAL || type == NotificationType.SCHEDULE)
@@ -80,22 +87,21 @@ public class NotificationService {
                 false,
                 false,
                 LocalDateTime.now(), // 알림 생성 시각
-                null
+                null,
+                sender
         );
         notificationRepository.save(notification); // DB 저장
 
         // 공통 DTO 생성 (채팅 알림이 아니므로 chatId/roomId는 null)
-        NotificationPayload payload = new NotificationPayload(
-            notification.getId(), // 알림 ID
-            recipientId,          // 수신자 ID
-            chatId,               // 채팅 알림이 아니므로 null
-            roomId,               // 채팅 알림이 아니므로 null
-            senderId,             // 발신자 ID
-            senderName,           // 발신자 이름
-            message,              // 메시지
-            type.name(),          // 알림 타입명
-            notification.getNotificationSentAt() != null ? notification.getNotificationSentAt() : LocalDateTime.now() // 생성 시각
-        );
+        NotificationPayload payload = new NotificationPayload();
+        payload.setNotificationId(notification.getId());
+        payload.setSenderId(notification.getSender() != null ? notification.getSender().getId() : null);
+        payload.setSenderName(notification.getSender() != null ? notification.getSender().getName() : "");
+        payload.setRecipientId(notification.getUser() != null ? notification.getUser().getId() : null);
+        payload.setReceiverName(notification.getUser() != null ? notification.getUser().getName() : "");
+        payload.setMessage(notification.getNotificationMessage());
+        payload.setNotificationType(type.name());
+        payload.setCreatedAt(notification.getNotificationSentAt() != null ? notification.getNotificationSentAt() : LocalDateTime.now());
 
         // 실시간 WebSocket 푸시
         webSocketDeliveryService.sendToUser(recipientId, payload);
@@ -116,9 +122,41 @@ public class NotificationService {
         Integer senderId,           // 발신자 ID
         String senderName           // 발신자 이름
     ) {
+    	User sender = userRepository.findById(senderId)
+                .orElseThrow(() -> new EntityNotFoundException("알림 발신자 없음: " + senderId));
+
         for (Integer recipientId : recipientIds) {
-            sendNotification(recipientId, type, message, chatId, roomId, senderId, senderName); // 각각에게 알림 전송
+            User receiver = userRepository.findById(recipientId)
+                .orElseThrow(() -> new EntityNotFoundException("알림 수신자 없음: " + recipientId));
+
+            Notification notification = Notification.createNotification(
+                receiver,    // 수신자(User)
+                type,
+                message,
+                null,
+                null,
+                false,
+                false,
+                false,
+                LocalDateTime.now(),
+                null,
+                sender      // 발신자(User)
+            );
+         // 로그 찍기
+            log.info("sentAt on save: {}", notification.getNotificationSentAt());
+            notificationRepository.save(notification);
+
+            NotificationPayload payload = new NotificationPayload();
+            payload.setNotificationId(notification.getId());
+            payload.setSenderId(sender.getId());
+            payload.setSenderName(sender.getName());
+            payload.setRecipientId(receiver.getId()); // recipientId로 수정
+            payload.setReceiverName(receiver.getName());
+            payload.setMessage(message);
+            payload.setNotificationType(type.name());
+            payload.setCreatedAt(notification.getNotificationSentAt());
+
+            webSocketDeliveryService.sendToUser(recipientId, payload);
         }
     }
-
 }

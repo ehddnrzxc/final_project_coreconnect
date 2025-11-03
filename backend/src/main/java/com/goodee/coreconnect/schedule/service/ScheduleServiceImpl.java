@@ -230,6 +230,20 @@ public class ScheduleServiceImpl implements ScheduleService {
         .orElseThrow(() -> new IllegalArgumentException("해당 일정이 존재하지 않습니다."));
     return ResponseScheduleDTO.toDTO(schedule);
   }
+  
+  /** 부서별 일정 조회 (readOnly) */
+  @Override
+  @Transactional(readOnly = true)
+  public List<ResponseScheduleDTO> getSchedulesByDepartment(Integer deptId) {
+
+      Department department = departmentRepository.findById(deptId)
+          .orElseThrow(() -> new IllegalArgumentException("부서를 찾을 수 없습니다."));
+
+      return scheduleRepository.findByDepartmentAndDeletedYnFalse(department)
+          .stream()
+          .map(ResponseScheduleDTO::toDTO)
+          .collect(Collectors.toList());
+  }
 
   /** 회의실별 일정 조회 (readOnly) */
   @Override

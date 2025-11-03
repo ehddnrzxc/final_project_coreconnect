@@ -21,4 +21,7 @@ public interface ScheduleService {
   /** 특정 회의실의 일정 목록 조회 (삭제되지 않은 일정만 반환) */
   List<ResponseScheduleDTO> getSchedulesByMeetingRoom(Integer meetingRoomId);
   
+  /** 특정 부서의 일정 목록 조회 (삭제되지 않은 일정만 반환) */
+  List<ResponseScheduleDTO> getSchedulesByDepartment(Integer deptId);
+  
 }
