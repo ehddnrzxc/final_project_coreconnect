@@ -4,7 +4,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.goodee.coreconnect.department.entity.Department;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.goodee.coreconnect.schedule.enums.ScheduleVisibility;
 import com.goodee.coreconnect.user.entity.User;
 
@@ -39,9 +39,11 @@ public class Schedule {
   private String content;
 
   @Column(name = "sch_start_datetime", nullable = false)
+  @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
   private LocalDateTime startDateTime;
 
   @Column(name = "sch_end_datetime", nullable = false)
+  @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
   private LocalDateTime endDateTime;
 
   @Column(name = "sch_location", length = 100)
@@ -75,10 +77,6 @@ public class Schedule {
   @JoinColumn(name = "mt_id")
   private MeetingRoom meetingRoom;
   
-  /** N:1 (department 테이블과 매핑) */
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "dept_id")
-  private Department department;
   
   /** 1:N (scheduleParticipant(일정 참여자) 관계 추가) */
   @OneToMany(mappedBy = "schedule", fetch = FetchType.LAZY)
@@ -88,7 +86,6 @@ public class Schedule {
   protected Schedule() {};
   
   public static Schedule createSchedule(User user,
-                                          Department department,
                                           MeetingRoom meetingRoom,
                                           ScheduleCategory category,
                                           String title,
@@ -99,7 +96,6 @@ public class Schedule {
                                           ScheduleVisibility visibility) {
     Schedule schedule = new Schedule();
     schedule.user = user;
-    schedule.department = department;
     schedule.meetingRoom = meetingRoom;
     schedule.category = category;
     schedule.title = title;
@@ -146,8 +142,7 @@ public class Schedule {
                       LocalDateTime end,
                       ScheduleVisibility visibility,
                       MeetingRoom meetingRoom,
-                      ScheduleCategory category,
-                      Department department) {
+                      ScheduleCategory category) {
     this.title = title;
     this.content = content;
     this.location = location;
@@ -156,7 +151,6 @@ public class Schedule {
     this.visibility = visibility;
     this.meetingRoom = meetingRoom;
     this.category = category;
-    this.department = department;
     
     // 회의실 수정 시에도 관계 동기화
     if (meetingRoom != null) {

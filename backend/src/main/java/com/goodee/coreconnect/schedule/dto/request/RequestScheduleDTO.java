@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.goodee.coreconnect.department.entity.Department;
 import com.goodee.coreconnect.schedule.entity.MeetingRoom;
 import com.goodee.coreconnect.schedule.entity.Schedule;
 import com.goodee.coreconnect.schedule.entity.ScheduleCategory;
@@ -28,9 +27,7 @@ import lombok.ToString;
 @Builder
 @ToString
 public class RequestScheduleDTO {
-  
-  private Integer deptId;
-  
+    
   private Integer meetingRoomId;
   
   private Integer categoryId;
@@ -42,11 +39,11 @@ public class RequestScheduleDTO {
   private String content;
   
   @NotNull
-  @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")
+  @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
   private LocalDateTime startDateTime;
   
   @NotNull
-  @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm")
+  @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
   private LocalDateTime endDateTime;
   
   @Size(max = 100, message = "장소는 100자 이하로 입력해주세요.")
@@ -59,12 +56,10 @@ public class RequestScheduleDTO {
 
   /** DTO → Entity 변환 */
   public Schedule toEntity(User user,
-                            Department department,
                             MeetingRoom meetingRoom,
                             ScheduleCategory category) {
     
     return Schedule.createSchedule(user,
-                                    department,
                                     meetingRoom,
                                     category,
                                     title,
