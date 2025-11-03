@@ -45,6 +45,14 @@ public class BoardServiceImpl implements BoardService {
             if (user.getRole() != Role.ADMIN && user.getRole() != Role.MANAGER) {
                 throw new SecurityException("공지글은 관리자 또는 매니저만 등록할 수 있습니다.");
             }
+            
+            // 공지글이면서 비공개로 요청한 경우 예외 처리
+            if (Boolean.TRUE.equals(dto.getPrivateYn())) {
+                throw new IllegalArgumentException("공지글은 비공개로 설정할 수 없습니다.");
+            }
+            
+            // 공지글은 항상 공개 처리 (비공개 옵션 무시)
+            dto.setPrivateYn(false);
         }
 
         // 카테고리 확인

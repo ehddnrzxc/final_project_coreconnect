@@ -23,7 +23,7 @@ public class OrganizationServiceImpl implements OrganizationService {
     public List<OrganizationTreeDTO> getOrganizationTree() {
         List<Department> roots = departmentRepository.findByParentIsNullOrderByDeptOrderNoAsc();
         return roots.stream()
-                .map(OrganizationTreeDTO::from)
-                .collect(Collectors.toList());
+                     .map(dept -> OrganizationTreeDTO.from(dept))
+                     .collect(Collectors.toList());
     }
 }
