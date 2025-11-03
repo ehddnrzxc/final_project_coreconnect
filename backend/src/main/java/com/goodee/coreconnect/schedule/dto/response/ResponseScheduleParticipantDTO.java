@@ -2,6 +2,7 @@ package com.goodee.coreconnect.schedule.dto.response;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.goodee.coreconnect.schedule.entity.ScheduleParticipant;
 import com.goodee.coreconnect.schedule.enums.ScheduleRole;
 
@@ -15,13 +16,22 @@ import lombok.ToString;
 public class ResponseScheduleParticipantDTO {
 
   private Integer id;
+  
   private Integer scheduleId;
+  
   private String scheduleTitle;
+  
   private Integer userId;
+  
   private String userName;
+  
   private String deptName;
+  
   private ScheduleRole role;
+  
+  @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
   private LocalDateTime createdAt;
+  
 
   /** Entity → DTO 변환 */
   public static ResponseScheduleParticipantDTO toDTO(ScheduleParticipant entity) {

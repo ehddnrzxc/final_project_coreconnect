@@ -2,6 +2,7 @@ package com.goodee.coreconnect.schedule.entity;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.goodee.coreconnect.schedule.enums.ScheduleRole;
 import com.goodee.coreconnect.user.entity.User;
 
@@ -33,9 +34,11 @@ public class ScheduleParticipant {
   private ScheduleRole role;  // OWNER / MEMBER
 
   @Column(name = "sch_part_created_at", nullable = false)
+  @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
   private LocalDateTime createdAt;
   
   @Column(name = "sch_part_updated_at")
+  @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
   private LocalDateTime updatedAt;
 
   @Column(name = "sch_part_deleted_yn", nullable = false)
@@ -82,11 +85,6 @@ public class ScheduleParticipant {
     return participant;
   }
   
-  /** 참여자 역할 변경 */
-  public void changeRole(ScheduleRole role) {
-    this.role = role;
-    this.updatedAt = LocalDateTime.now();
-  }
   
   /** Soft Delete 처리 */
   public void delete() {

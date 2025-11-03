@@ -1,7 +1,11 @@
 package com.goodee.coreconnect.schedule.controller;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -74,6 +78,40 @@ public class MeetingRoomController {
   @GetMapping(params = "meetingRoomId")
   public List<ResponseScheduleDTO> getSchedulesByRoom(@RequestParam("meetingRoomId") Integer meetingRoomId) {
     return meetingRoomService.getSchedulesByMeetingRoom(meetingRoomId);
+  }
+  
+  /** 특정 시간대 해당 회의실 예약 가능 여부 조회  */
+  @Operation(summary = "회의실 예약 가능 여부 확인", description = "특정 시간대에 해당 회의실이 예약 가능한지 확인합니다.")
+  @GetMapping("/availability")
+  public ResponseEntity<?> checkAvailability(
+      @RequestParam("id") Integer meetingRoomId,
+      @RequestParam("start") @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime start,
+      @RequestParam("end") @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime end) {
+    
+    boolean available = meetingRoomService.isMeetingRoomAvailable(meetingRoomId, start, end);
+
+    return ResponseEntity.ok(Map.of(
+            "meetingRoomId", meetingRoomId,
+            "start", start,
+            "end", end,
+            "available", available
+    ));
+  }
+  
+  /** 특정 시간대 예약 가능한 회의실 조회 */
+  @Operation(summary = "예약 가능한 회의실 전체 조회", description = "특정 시간대에 예약 가능한 모든 회의실을 조회합니다.")
+  @GetMapping("/available")
+  public ResponseEntity<?> getAvailableRooms(      
+      @RequestParam("start") @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime start,
+      @RequestParam("end") @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime end) {
+
+    List<MeetingRoomDTO> availableRooms = meetingRoomService.getAvailableRooms(start, end);
+
+    return ResponseEntity.ok(Map.of(
+            "start", start,
+            "end", end,
+            "availableRooms", availableRooms
+    ));
   }
   
 }

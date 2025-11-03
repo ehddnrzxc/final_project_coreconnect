@@ -1,5 +1,6 @@
 package com.goodee.coreconnect.schedule.service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -104,4 +105,36 @@ public class MeetingRoomServiceImpl implements MeetingRoomService {
         .map(ResponseScheduleDTO::toDTO)
         .collect(Collectors.toList());
   }
+  
+  /** 특정 시간대에 해당 회의실이 예약 가능한지 검사 */
+  @Override
+  @Transactional(readOnly = true)
+  public boolean isMeetingRoomAvailable(Integer meetingRoomId, LocalDateTime start, LocalDateTime end) {
+    MeetingRoom meetingRoom = meetingRoomRepository.findById(meetingRoomId)
+            .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회의실입니다."));
+
+    // ScheduleRepository에서 겹치는 일정이 있는지 확인
+    boolean overlap = scheduleRepository.existsOverlappingSchedule(meetingRoom, start, end);
+
+    // false → 예약 가능 / true → 예약 불가능
+    return !overlap;
+  }
+  
+  @Override
+  @Transactional(readOnly = true)
+  public List<MeetingRoomDTO> getAvailableRooms(LocalDateTime start, LocalDateTime end) {
+    // 1️⃣ 전체 회의실 중 deletedYn = false인 것만 조회
+    List<MeetingRoom> allRooms = meetingRoomRepository.findByDeletedYn(false);
+
+    // 2️⃣ 각 회의실마다 겹치는 일정이 있는지 검사
+    return allRooms.stream()
+            .filter(room -> {
+                boolean overlap = scheduleRepository.existsOverlappingSchedule(room, start, end);
+                return !overlap; // 겹침이 없으면 예약 가능
+            })
+            .map(MeetingRoomDTO::toDTO)
+            .toList();
+  }
+  
+  
 }
