@@ -17,6 +17,8 @@ import ApprovalWritePage from "./pages/ApprovalWritePage";
 import ApprovalLayout from "./pages/ApprovalLayout";
 import AdminHome from "./components/admin/AdminHome";
 import UserListPage from "./components/admin/UserListPage";
+import ChatHomePage from "./pages/ChatHomePage";
+import ChatLayout from "./pages/ChatLayout";
 import ApprovalDetailPage from "./pages/ApprovalDetailPage";
 
 /* 로그인 보호용 라우트 */
@@ -40,6 +42,23 @@ const router = createBrowserRouter([
             <HomePage />
           </ProtectedRoute>
         ),
+      },
+      {
+        path: "chat", // chat 진입시
+        element: (
+          <ProtectedRoute>
+            <ChatLayout/>
+          </ProtectedRoute>
+        ),
+        children: [
+          {
+            index: true, // chat 경로에 접속 시 기본적으로 이 컴포넌트로 렌더링
+            element: <ChatHomePage/>
+          },
+          // 나중에 /chat/:roomId, /chat/new 등 추가 가능
+        ] 
+
+
       },
       {
         path: "e-approval",
