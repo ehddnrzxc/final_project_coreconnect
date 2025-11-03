@@ -29,17 +29,27 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Integer> {
   List<Schedule> findByCategoryAndDeletedYnFalse(ScheduleCategory category);
 
   /**
-   * 같은 회의실에서 겹치는 시간대가 있는 일정이 존재하는지 확인
-   * (시작시간 < 기존 종료시간 && 종료시간 > 기존 시작시간)
+   * @param meetingRoom 확인할 회의실 엔티티
+   * @param start 새로 예약하려는 시작 시각
+   * @param end 새로 예약하려는 종료 시각
+   * @return true → 겹침 있음 (예약 불가) / false → 겹침 없음 (예약 가능)
+   *
+   * JPQL 설명:
+   *  - 동일 회의실(meetingRoom)
+   *  - 삭제되지 않은 일정(deletedYn = false)
+   *  - (새 예약 시작 < 기존 종료) AND (새 예약 종료 > 기존 시작) 조건이면 겹침
    */
-  @Query("SELECT s FROM Schedule s " +
-         "WHERE s.meetingRoom = :meetingRoom " +
-         "AND s.deletedYn = false " +
-         "AND (:start < s.endDateTime AND :end > s.startDateTime)")
-  List<Schedule> findOverlappingSchedules(
-          @Param("meetingRoom") MeetingRoom meetingRoom,
-          @Param("start") LocalDateTime start,
-          @Param("end") LocalDateTime end
+  @Query("""
+      SELECT CASE WHEN COUNT(s) > 0 THEN true ELSE false END
+      FROM Schedule s
+      WHERE s.meetingRoom = :meetingRoom
+        AND s.deletedYn = false
+        AND (:start < s.endDateTime AND :end > s.startDateTime)
+  """)
+  boolean existsOverlappingSchedule(
+      @Param("meetingRoom") MeetingRoom meetingRoom,
+      @Param("start") LocalDateTime start,
+      @Param("end") LocalDateTime end
   );
 
 }

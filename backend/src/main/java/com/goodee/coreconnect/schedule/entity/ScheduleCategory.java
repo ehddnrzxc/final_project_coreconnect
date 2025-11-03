@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.goodee.coreconnect.user.entity.User;
 
@@ -39,9 +40,11 @@ public class ScheduleCategory {
   @Column(name = "sch_category_deleted_yn", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
   private Boolean deletedYn = false;  // 삭제 여부 (기본값 false)
 
+  @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
   @Column(name = "sch_category_created_at", nullable = false)
   private LocalDateTime createdAt;
 
+  @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
   @Column(name = "sch_category_updated_at")
   private LocalDateTime updatedAt;
 
