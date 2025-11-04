@@ -40,7 +40,12 @@ public class TemplateAdminServiceImpl implements TemplateAdminService {
    */
   @Override
   public Integer createTemplate(TemplateRequestDTO requestDTO, String adminEmail) {
+
     User admin = findUserByEmail(adminEmail);
+
+    if (templateRepository.existsByTemplateKey(requestDTO.getTemplateKey())) {
+      throw new IllegalArgumentException("이미 사용 중인 양식 Key입니다.");
+    }
 
     Template newTemplate = requestDTO.toEntity(admin);
 
@@ -80,9 +85,16 @@ public class TemplateAdminServiceImpl implements TemplateAdminService {
     // 영속성 컨텍스트에 엔티티 로드
     Template template = findTemplateById(templateId);
 
+    templateRepository.findByTemplateKey(requestDTO.getTemplateKey()).ifPresent(t -> {
+      if (!t.getId().equals(template.getId())) {
+        throw new IllegalArgumentException("이미 사용 중인 양식 Key입니다.");
+      }
+    });
+    
     // 엔티티의 update 메소드 호출 (JPA 더티 체킹)
     template.updateTemplate(
         requestDTO.getTemplateName(),
+        requestDTO.getTemplateKey(),
         requestDTO.getTemplateContent()
         );
   }
