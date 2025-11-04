@@ -19,7 +19,7 @@ const ToastList = ({ rooms, formatTime }) => {
 
   useEffect(() => {
     if (openToasts.length > 0) {
-      const timers = openToasts.map((toast, idx) =>
+      const timers = openToasts.map((toast) =>
         setTimeout(() => {
           setOpenToasts(prev => prev.map(t =>
             t.roomId === toast.roomId ? {...t, open: false} : t

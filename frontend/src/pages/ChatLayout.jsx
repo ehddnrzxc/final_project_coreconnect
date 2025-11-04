@@ -24,7 +24,8 @@ import Button from "@mui/material/Button";
 
 import {
   fetchChatRoomMessages,
-  fetchChatRoomsLatest
+  fetchChatRoomsLatest,
+  fetchUnreadmessages 
 } from "../api/ChatRoomApi";
 
 // MUI Slide Transition (오른쪽 상단 → 왼쪽)
@@ -135,6 +136,25 @@ export default function ChatLayout() {
   const inputRef = useRef();
   const unreadRoomCount = roomList.filter((room) => room.unreadCount > 0).length;
   const messagesEndRef = useRef(null);
+  const [unreadRooms, setUnreadRooms] = useState([]); 
+
+  useEffect(() => {
+    console.log("unreadRooms 값 확인:", unreadRooms);
+  }, [unreadRooms]);
+
+
+  useEffect(() => {
+    async function loadUnreadRooms() {
+      try {
+        const res = await fetchUnreadmessages();
+        // 백엔드 구조에 따라 roomsWithUnread에서 가져옴!
+        setUnreadRooms(res?.data?.roomsWithUnread || []);
+      } catch (err) {
+        console.error("미읽음 방 조회 실패", err);
+      }
+    }
+  loadUnreadRooms();
+}, []);
 
   useEffect(() => {
     async function loadRooms() {
@@ -296,6 +316,8 @@ export default function ChatLayout() {
 
   return (
     <Box className="chat-layout" sx={{ background: "#fafbfc", minHeight: "100vh", display: "flex", flexDirection: "row" }}>
+      {/* 1. 토스트 알림 최상단! */}
+      <ToastList rooms={unreadRooms} formatTime={formatTime} />
       <ChatSidebar unreadRoomCount={unreadRoomCount} />
       <Box sx={{
         flex: 1, display: "flex", flexDirection: "column",
