@@ -1,5 +1,21 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  AppBar,
+  Toolbar,
+  Box,
+  TextField,
+  InputAdornment,
+  IconButton,
+  Button,
+  Avatar,
+} from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
+import MessageIcon from '@mui/icons-material/Message';
+import RedeemIcon from "@mui/icons-material/Redeem";
+import NotificationsNoneIcon from "@mui/icons-material/NotificationsNone";
+import LogoutIcon from "@mui/icons-material/Logout";
+import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 
 const Topbar = ({ onLogout, avatarUrl }) => {
 
@@ -8,35 +24,99 @@ const Topbar = ({ onLogout, avatarUrl }) => {
   const isAdmin = user?.role === "ADMIN";
 
   return (
-    <header className="topbar">
-      <div className="topbar__inner">
-        <div className="search">
-          <i className="fa-solid fa-magnifying-glass search__icon" />
-          <input className="search__input" placeholder="검색어를 입력하세요" />
-        </div>
-        <div className="topbar__actions">
+    <AppBar
+      position="static"
+      elevation={0}
+      sx={{
+        bgcolor: "#ffffff",
+        borderBottom: "1px solid #e5e7eb",
+        color: "text.primary",
+      }}
+    >
+      <Toolbar
+        sx={{
+          minHeight: 60,
+          px: 2,
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 2,
+        }}
+      >
+        {/* 검색 */}
+        <Box sx={{ flex: 1, maxWidth: 420 }}>
+          <TextField
+            size="small"
+            fullWidth
+            placeholder="검색어를 입력하세요"
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            }}
+          />
+        </Box>
+
+        {/* 오른쪽 액션들 */}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+          }}
+        >
           {isAdmin && (
-            <button className="btn btn--admin" onClick={() => navigate("/admin")}>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<AdminPanelSettingsIcon />}
+              onClick={() => navigate("/admin")}
+              sx={{
+                textTransform: "none",
+                borderRadius: 999,
+              }}
+            >
               관리자 콘솔
-            </button>
+            </Button>
           )}
-          {/*채팅 아이콘 버튼 추가 */}
-          <button className="icon-btn" aria-label="Chat" onClick={() => navigate('/chat')}>
-            <i className='fa-solid fa-comment-dots'></i>
-          </button>
-          <button className="icon-btn" aria-label="Gifts">
-            <i className="fa-solid fa-gift" />
-          </button>
-          <button className="icon-btn" aria-label="Notifications">
-            <i className="fa-regular fa-bell" />
-          </button>
-          {avatarUrl && <img className="avatar" src={avatarUrl} alt="me" />}
-          <button className="btn btn--ghost" onClick={onLogout}>
+
+          <IconButton
+            size="small"
+            onClick={() => navigate("/chat")}
+            aria-label="Chat"
+          >
+            <MessageIcon />
+          </IconButton>
+
+          <IconButton size="small" aria-label="Gifts">
+            <RedeemIcon />
+          </IconButton>
+
+          <IconButton size="small" aria-label="Notifications">
+            <NotificationsNoneIcon />
+          </IconButton>
+
+          {avatarUrl && (
+            <Avatar
+              src={avatarUrl}
+              alt="me"
+              sx={{ width: 32, height: 32, ml: 0.5 }}
+            />
+          )}
+
+          <Button
+            size="small"
+            color="inherit"
+            startIcon={<LogoutIcon />}
+            onClick={onLogout}
+            sx={{ textTransform: "none" }}
+          >
             로그아웃
-          </button>
-        </div>
-      </div>
-    </header>
+          </Button>
+        </Box>
+      </Toolbar>
+    </AppBar>
   );
 };
 

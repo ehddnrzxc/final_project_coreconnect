@@ -2,13 +2,24 @@ import React, { useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { getMyProfileImage, uploadMyProfileImage } from "../api/userAPI";
 import Card from "../components/ui/Card";
-import "./home.css";
+import {
+  Box,
+  Button,
+  Container,
+  Grid,
+  Typography,
+  List,
+  ListItem,
+  ListItemText,
+  Chip,
+  LinearProgress,
+} from "@mui/material";
 
 /* ─ Page ─ */
 export default function Home() {
   const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
   const email = storedUser.email || "";
-  const displayName = storedUser.name || "이름을 불러오지 못했습니다.";
+  const displayName = storedUser.name || "";
   const grade = storedUser.jobGrade;
   const deptName = storedUser.departmentName;
 
@@ -66,252 +77,545 @@ export default function Home() {
       : DEFAULT_AVATAR;
 
   return (
-    <div className="container">
+    <Container maxWidth="lg" sx={{ py: 2, px: 2 }}>
       {/* Row 1 */}
-      <div className="grid grid--3">
-        <Card title="">
-          <div className="profile-card">
-            {/* 상단: 아바타/이름/부서 */}
-            <div className="profile-card__head">
-              {/* 왼쪽: 아바타 + 변경 링크 */}
-              <div className="profile-card__avatarCol">
-                <img
+      <Grid container spacing={2} sx={{ mb: 2 }}>
+        {/* 프로필 카드 */}
+        <Grid item xs={12} md={4}>
+          <Card>
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "110px 1fr",
+                columnGap: 2,
+                alignItems: "center",
+                mb: 1.5,
+              }}
+            >
+              {/* 아바타 + 변경 */}
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 1,
+                }}
+              >
+                <Box
+                  component="img"
                   src={avatarUrl}
-                  className="profile-card__avatar"
                   alt="프로필 이미지"
+                  sx={{
+                    width: 100,
+                    height: 100,
+                    borderRadius: "50%",
+                    objectFit: "cover",
+                    border: "2px solid #e5e7eb",
+                    boxShadow: "0 1px 2px rgba(0,0,0,.06)",
+                  }}
                 />
-
-                <label
-                  className="profile-card__editLink"
-                  style={{ opacity: loading ? 0.6 : 1 }}
+                <Box
+                  component="label"
+                  sx={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 1,
+                    fontSize: 13,
+                    color: "#6b7280",
+                    cursor: loading ? "default" : "pointer",
+                    opacity: loading ? 0.6 : 1,
+                  }}
                 >
-                  {loading ? (
-                    <>
-                      <i className="fa-solid fa-spinner fa-spin" /> 업로드 중...
-                    </>
-                  ) : (
-                    <>
-                      <i className="fa-regular fa-pen-to-square" /> 프로필 사진
-                      변경
-                    </>
-                  )}
+                  <Typography variant="body2" color="text.secondary">
+                    {loading ? "업로드 중..." : "프로필 사진 변경"}
+                  </Typography>
                   <input
                     type="file"
                     accept="image/*"
-                    style={{ display: "none" }}
+                    hidden
                     onChange={handleFileChange}
                     disabled={loading}
                   />
-                </label>
-              </div>
+                </Box>
+              </Box>
 
-              {/* 오른쪽: 이름/부서 */}
-              <div className="profile-card__meta">
-                <div className="profile-card__name">
+              {/* 이름 / 부서 */}
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                <Typography variant="h6" fontWeight={700}>
                   {displayName} {grade}
-                </div>
-                <div className="profile-card__dept"> {deptName} </div>
-              </div>
-            </div>
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {deptName}
+                </Typography>
+              </Box>
+            </Box>
 
-            {/* 가운데: 오늘의 일정 숫자 */}
-            <div className="profile-card__metric">
-              <div className="profile-card__metric-num">0</div>
-              <div className="profile-card__metric-label">오늘의 일정</div>
-            </div>
+            {/* 오늘 일정 */}
+            <Box sx={{ textAlign: "center", my: 1 }}>
+              <Typography
+                variant="h3"
+                sx={{ fontWeight: 800, color: "#00a0e9", lineHeight: 1 }}
+              >
+                0
+              </Typography>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 0.5 }}
+              >
+                오늘의 일정
+              </Typography>
+            </Box>
 
             {/* 하단 리스트 */}
-            <ul className="profile-card__list">
-              <li>
-                <span>내 커뮤니티 새글</span>
-                <b>0</b>
-              </li>
-              <li>
-                <span>내 예약/대여 현황</span>
-                <b>0</b>
-              </li>
-              <li>
-                <span>참여할 설문</span>
-                <b className="is-blue">1</b>
-              </li>
-              <li>
-                <span>작성할 보고</span>
-                <b className="is-blue">14</b>
-              </li>
-              <li>
-                <span>결재할 문서</span>
-                <b className="is-blue">1</b>
-              </li>
-              <li>
-                <span>결재 수신 문서</span>
-                <b>0</b>
-              </li>
-              <li>
-                <span>내 잔여 연차</span>
-                <b className="is-blue">5d</b>
-              </li>
-            </ul>
+            <List
+              dense
+              sx={{ mt: 1, pt: 1, borderTop: "1px solid #e5e7eb" }}
+            >
+              {[
+                ["내 커뮤니티 새글", "0", false],
+                ["내 예약/대여 현황", "0", false],
+                ["참여할 설문", "1", true],
+                ["작성할 보고", "14", true],
+                ["결재할 문서", "1", true],
+                ["결재 수신 문서", "0", false],
+                ["내 잔여 연차", "5d", true],
+              ].map(([label, value, highlight], idx) => (
+                <ListItem
+                  key={idx}
+                  sx={{
+                    px: 0,
+                    py: 0.5,
+                    borderBottom: "1px solid #e5e7eb",
+                    "&:last-of-type": { borderBottom: "none" },
+                  }}
+                  secondaryAction={
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontWeight: 700,
+                        color: highlight ? "#00a0e9" : "#6b7280",
+                      }}
+                    >
+                      {value}
+                    </Typography>
+                  }
+                >
+                  <ListItemText
+                    primary={
+                      <Typography variant="body2" color="text.secondary">
+                        {label}
+                      </Typography>
+                    }
+                  />
+                </ListItem>
+              ))}
+            </List>
 
-            {error && <p className="text--danger">{error}</p>}
-          </div>
-        </Card>
+            {error && (
+              <Typography
+                variant="body2"
+                color="error"
+                sx={{ mt: 1, whiteSpace: "pre-line" }}
+              >
+                {error}
+              </Typography>
+            )}
+          </Card>
+        </Grid>
 
-        <Card title="메일 리스트" right={<Link to="#">받은메일함</Link>}>
-          <ul className="list list--divide">
-            {[
-              { from: "권시정", title: "[커뮤니티 폐쇄] '테스트 커뮤니티'" },
-              { from: "postmaster", title: "[NDR] Delivery Failure Notice" },
-              { from: "오늘", title: "[Approval] 결재 문서" },
-            ].map((m, i) => (
-              <li key={i} className="list__row">
-                <div className="list__text">
-                  <span className="text--muted">{m.from}</span>
-                  <span className="text--title">{m.title}</span>
-                </div>
-                <button className="btn btn--ghost">보기</button>
-              </li>
-            ))}
-          </ul>
-        </Card>
+        {/* 메일 리스트 */}
+        <Grid item xs={12} md={4}>
+          <Card
+            title="메일 리스트"
+            right={
+              <Button
+                component={Link}
+                to="#"
+                size="small"
+                sx={{ textTransform: "none" }}
+              >
+                받은메일함
+              </Button>
+            }
+          >
+            <List dense>
+              {[
+                { from: "권시정", title: "[커뮤니티 폐쇄] '테스트 커뮤니티'" },
+                { from: "postmaster", title: "[NDR] Delivery Failure Notice" },
+                { from: "오늘", title: "[Approval] 결재 문서" },
+              ].map((m, i) => (
+                <ListItem
+                  key={i}
+                  sx={{
+                    px: 0,
+                    py: 0.75,
+                    borderBottom: "1px solid #e5e7eb",
+                  }}
+                  secondaryAction={
+                    <Button size="small" sx={{ textTransform: "none" }}>
+                      보기
+                    </Button>
+                  }
+                >
+                  <ListItemText
+                    primary={
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ mb: 0.25 }}
+                      >
+                        {m.from}
+                      </Typography>
+                    }
+                    secondary={
+                      <Typography variant="body2">{m.title}</Typography>
+                    }
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </Card>
+        </Grid>
 
-        <Card title="근태" right={<span>2025-10-24</span>}>
-          <div className="attendance">
-            <div className="attendance__left">
-              <div className="attendance__icon">🕒</div>
-              <div>
-                <div className="text--muted">출근 시간</div>
-                <div className="text--bold">09:31</div>
-              </div>
-            </div>
-            <div className="attendance__right">
-              <div>
-                <div className="text--muted">주간누적</div>
-                <div className="text--bold">38h 20m</div>
-              </div>
-              <button className="btn btn--primary">퇴근하기</button>
-            </div>
-          </div>
-          <div className="progress">
-            <div className="progress__bar" style={{ width: "60%" }} />
-          </div>
-        </Card>
-      </div>
+        {/* 근태 */}
+        <Grid item xs={12} md={4}>
+          <Card
+            title="근태"
+            right={
+              <Typography variant="body2" color="text.secondary">
+                2025-10-24
+              </Typography>
+            }
+          >
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 2,
+                mb: 2,
+              }}
+            >
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                <Box sx={{ fontSize: 24 }}>🕒</Box>
+                <Box>
+                  <Typography variant="body2" color="text.secondary">
+                    출근 시간
+                  </Typography>
+                  <Typography variant="subtitle2" fontWeight={600}>
+                    09:31
+                  </Typography>
+                </Box>
+              </Box>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                <Box>
+                  <Typography variant="body2" color="text.secondary">
+                    주간누적
+                  </Typography>
+                  <Typography variant="subtitle2" fontWeight={600}>
+                    38h 20m
+                  </Typography>
+                </Box>
+                <Button variant="contained" size="small">
+                  퇴근하기
+                </Button>
+              </Box>
+            </Box>
+            <LinearProgress
+              variant="determinate"
+              value={60}
+              sx={{ height: 8, borderRadius: 999 }}
+            />
+          </Card>
+        </Grid>
+      </Grid>
 
       {/* Row 2 */}
-      <div className="grid grid--3">
-        <div className="grid grid--2 span-2">
-          <Card title="작성할 보고" right={<Link to="#">보고 작성</Link>}>
-            <div className="report">
-              <div>
-                <div className="badge badge--green">제 2회차</div>
-                <div className="report__date">10/29 (수)</div>
-                <div className="text--muted">test</div>
-              </div>
-              <button className="btn btn--ghost">작성하기</button>
-            </div>
-          </Card>
-
-          <Card title="Quick Menu">
-            <div className="quick-grid">
-              {[
-                { label: "메일쓰기", emoji: "✉️" },
-                { label: "연락처 추가", emoji: "👤" },
-                { label: "일정등록", emoji: "🗓️" },
-                { label: "게시판 글쓰기", emoji: "📝" },
-                { label: "설문작성", emoji: "📊" },
-                { label: "다운로드", emoji: "💾" },
-              ].map((q) => (
-                <button key={q.label} className="quick">
-                  <span className="quick__emoji">{q.emoji}</span>
-                  <span className="quick__label">{q.label}</span>
-                </button>
-              ))}
-            </div>
-          </Card>
-
-          <Card title="전사게시판 최근글">
-            <ul className="bullet">
-              <li>공지 테스트[2] — 2025-09-18</li>
-              <li>보안 공지 — 2025-09-05</li>
-            </ul>
-          </Card>
-
-          <Card title="메일함 바로가기">
-            <div className="mail-shortcut">
-              <div className="text--muted">
-                받은메일함 1 • 오늘메일함 0 • 중요메일함 0
-              </div>
-              <button className="btn btn--primary">이동</button>
-            </div>
-          </Card>
-        </div>
-
-        <div className="grid">
-          <Card title="캘린더" right={"2025.10"}>
-            <div className="calendar">
-              <div className="calendar__head">
-                {["일", "월", "화", "수", "목", "금", "토"].map((d) => (
-                  <div key={d}>{d}</div>
-                ))}
-              </div>
-              <div className="calendar__body">
-                {Array.from({ length: 31 }, (_, i) => i + 1).map((n) => (
-                  <div
-                    key={n}
-                    className={"calendar__cell" + (n === 24 ? " is-today" : "")}
+      <Grid container spacing={2} sx={{ mb: 2 }}>
+        {/* 왼쪽 2칸 */}
+        <Grid item xs={12} md={8}>
+          <Grid container spacing={2}>
+            {/* 작성할 보고 */}
+            <Grid item xs={12} md={4}>
+              <Card
+                title="작성할 보고"
+                right={
+                  <Button
+                    component={Link}
+                    to="#"
+                    size="small"
+                    sx={{ textTransform: "none" }}
                   >
-                    {n}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Card>
+                    보고 작성
+                  </Button>
+                }
+              >
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <Box>
+                    <Chip
+                      label="제 2회차"
+                      size="small"
+                      color="success"
+                      sx={{ mb: 0.5 }}
+                    />
+                    <Typography variant="body2" sx={{ mb: 0.25 }}>
+                      10/29 (수)
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      test
+                    </Typography>
+                  </Box>
+                  <Button size="small" sx={{ textTransform: "none" }}>
+                    작성하기
+                  </Button>
+                </Box>
+              </Card>
+            </Grid>
 
-          <Card title="최근 알림">
-            <ul className="list">
-              <li>근무상태가 출근으로 변경되었습니다. • 1시간 전</li>
-              <li>커뮤니티 폐쇄 알림 • 2시간 전</li>
-              <li>지각 처리되었습니다 • 오늘</li>
-            </ul>
-          </Card>
-        </div>
-      </div>
+            {/* Quick Menu */}
+            <Grid item xs={12} md={4}>
+              <Card title="Quick Menu">
+                <Grid container spacing={1.5}>
+                  {[
+                    { label: "메일쓰기", emoji: "✉️" },
+                    { label: "연락처 추가", emoji: "👤" },
+                    { label: "일정등록", emoji: "🗓️" },
+                    { label: "게시판 글쓰기", emoji: "📝" },
+                    { label: "설문작성", emoji: "📊" },
+                    { label: "다운로드", emoji: "💾" },
+                  ].map((q) => (
+                    <Grid item xs={4} key={q.label}>
+                      <Button
+                        fullWidth
+                        variant="outlined"
+                        size="small"
+                        sx={{
+                          flexDirection: "column",
+                          py: 1.2,
+                          textTransform: "none",
+                          borderRadius: 2,
+                          bgcolor: "#f3f4f6",
+                          borderColor: "transparent",
+                          "&:hover": {
+                            bgcolor: "#e5e7eb",
+                            borderColor: "transparent",
+                          },
+                        }}
+                      >
+                        <Box sx={{ fontSize: 20, mb: 0.5 }}>{q.emoji}</Box>
+                        <Typography variant="caption">{q.label}</Typography>
+                      </Button>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Card>
+            </Grid>
+
+            {/* 전사게시판 최근글 */}
+            <Grid item xs={12} md={4}>
+              <Card title="전사게시판 최근글">
+                <List dense sx={{ pl: 2, listStyleType: "disc" }}>
+                  <ListItem sx={{ display: "list-item", px: 0 }}>
+                    <ListItemText
+                      primary="공지 테스트[2] — 2025-09-18"
+                      primaryTypographyProps={{ variant: "body2" }}
+                    />
+                  </ListItem>
+                  <ListItem sx={{ display: "list-item", px: 0 }}>
+                    <ListItemText
+                      primary="보안 공지 — 2025-09-05"
+                      primaryTypographyProps={{ variant: "body2" }}
+                    />
+                  </ListItem>
+                </List>
+              </Card>
+            </Grid>
+
+            {/* 메일함 바로가기 */}
+            <Grid item xs={12} md={4}>
+              <Card title="메일함 바로가기">
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <Typography variant="body2" color="text.secondary">
+                    받은메일함 1 • 오늘메일함 0 • 중요메일함 0
+                  </Typography>
+                  <Button variant="contained" size="small">
+                    이동
+                  </Button>
+                </Box>
+              </Card>
+            </Grid>
+          </Grid>
+        </Grid>
+
+        {/* 오른쪽 1칸 */}
+        <Grid item xs={12} md={4}>
+          <Grid container spacing={2}>
+            {/* 캘린더 */}
+            <Grid item xs={12}>
+              <Card title="캘린더" right="2025.10">
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(7, 1fr)",
+                      textAlign: "center",
+                      color: "text.secondary",
+                      mb: 1,
+                    }}
+                  >
+                    {["일", "월", "화", "수", "목", "금", "토"].map((d) => (
+                      <Typography key={d} variant="caption">
+                        {d}
+                      </Typography>
+                    ))}
+                  </Box>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(7, 1fr)",
+                      gap: 0.75,
+                    }}
+                  >
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map((n) => (
+                      <Box
+                        key={n}
+                        sx={{
+                          p: 1,
+                          border: "1px solid #e5e7eb",
+                          borderRadius: 1.5,
+                          textAlign: "right",
+                          fontSize: 13,
+                          ...(n === 24 && {
+                            outline: "2px solid #00a0e9",
+                          }),
+                        }}
+                      >
+                        {n}
+                      </Box>
+                    ))}
+                  </Box>
+                </Box>
+              </Card>
+            </Grid>
+
+            {/* 최근 알림 */}
+            <Grid item xs={12}>
+              <Card title="최근 알림">
+                <List dense sx={{ pl: 1 }}>
+                  <ListItem sx={{ px: 0, py: 0.5 }}>
+                    <ListItemText
+                      primary="근무상태가 출근으로 변경되었습니다. • 1시간 전"
+                      primaryTypographyProps={{ variant: "body2" }}
+                    />
+                  </ListItem>
+                  <ListItem sx={{ px: 0, py: 0.5 }}>
+                    <ListItemText
+                      primary="커뮤니티 폐쇄 알림 • 2시간 전"
+                      primaryTypographyProps={{ variant: "body2" }}
+                    />
+                  </ListItem>
+                  <ListItem sx={{ px: 0, py: 0.5 }}>
+                    <ListItemText
+                      primary="지각 처리되었습니다 • 오늘"
+                      primaryTypographyProps={{ variant: "body2" }}
+                    />
+                  </ListItem>
+                </List>
+              </Card>
+            </Grid>
+          </Grid>
+        </Grid>
+      </Grid>
 
       {/* Row 3 */}
-      <div className="grid grid--2">
-        <Card title="내 경비관리" right="2025.10">
-          <div className="expense">
-            <div>법인카드 0원 • 경비/일반 영수증 172,013원</div>
-            <button className="btn btn--ghost">영수증 제출</button>
-          </div>
-          <div className="tile-grid">
-            <div className="tile">
-              <div className="text--muted">미결재</div>
-              <div className="text--bold">2건</div>
-            </div>
-            <div className="tile">
-              <div className="text--muted">결재중</div>
-              <div className="text--bold">0건</div>
-            </div>
-            <div className="tile">
-              <div className="text--muted">결재완료</div>
-              <div className="text--bold">1건</div>
-            </div>
-          </div>
-        </Card>
+      <Grid container spacing={2}>
+        {/* 내 경비관리 */}
+        <Grid item xs={12} md={4}>
+          <Card title="내 경비관리" right="2025.10">
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 1.5,
+              }}
+            >
+              <Typography variant="body2">
+                법인카드 0원 • 경비/일반 영수증 172,013원
+              </Typography>
+              <Button size="small" sx={{ textTransform: "none" }}>
+                영수증 제출
+              </Button>
+            </Box>
+            <Grid container spacing={1.5}>
+              {[
+                ["미결재", "2건"],
+                ["결재중", "0건"],
+                ["결재완료", "1건"],
+              ].map(([label, value]) => (
+                <Grid item xs={4} key={label}>
+                  <Box
+                    sx={{
+                      border: "1px solid #e5e7eb",
+                      borderRadius: 2,
+                      p: 1.5,
+                      bgcolor: "#ffffff",
+                    }}
+                  >
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mb: 0.5 }}
+                    >
+                      {label}
+                    </Typography>
+                    <Typography variant="body2" fontWeight={600}>
+                      {value}
+                    </Typography>
+                  </Box>
+                </Grid>
+              ))}
+            </Grid>
+          </Card>
+        </Grid>
 
-        <Card title="차량운행일지" right="2025.10">
-          <div className="vehicle">
-            <div>
-              <div className="text--bold">영업 3 (소나타)</div>
-              <div className="text--muted">
-                미결재된 운행일지가 1건 있습니다
-              </div>
-            </div>
-            <button className="btn btn--ghost">결재 요청하기</button>
-          </div>
-        </Card>
-      </div>
-    </div>
+        {/* 차량운행일지 */}
+        <Grid item xs={12} md={6}>
+          <Card title="차량운행일지" right="2025.10">
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Box>
+                <Typography variant="subtitle2" fontWeight={600}>
+                  영업 3 (소나타)
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  미결재된 운행일지가 1건 있습니다
+                </Typography>
+              </Box>
+              <Button size="small" sx={{ textTransform: "none" }}>
+                결재 요청하기
+              </Button>
+            </Box>
+          </Card>
+        </Grid>
+      </Grid>
+    </Container>
   );
 }
