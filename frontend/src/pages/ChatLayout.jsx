@@ -134,6 +134,9 @@ export default function ChatLayout() {
   const inputRef = useRef();
   const unreadRoomCount = roomList.filter((room) => room.unreadCount > 0).length;
 
+  // 채팅방 메시지 하단 스크롤 ref 추가
+  const messagesEndRef = useRef(null);
+
   // 채팅방 목록 로딩 (REST)
   useEffect(() => {
     async function loadRooms() {
@@ -149,7 +152,7 @@ export default function ChatLayout() {
     loadRooms();
   }, []);
 
-  // 채팅 메시지(REST로 최초/변경시 가져오기)
+  // 채팅 메시지(REST로 최초/방 재선택/전체 조회시)
   useEffect(() => {
     async function loadMessages() {
       if (selectedRoomId) {
@@ -164,6 +167,13 @@ export default function ChatLayout() {
     }
     loadMessages();
   }, [selectedRoomId]);
+
+  // 새 메시지가 오거나 메시지 리스트가 바뀔 때마다, 스크롤 최하단 이동!
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
 
   // WebSocket 연결: 방 변경시 새로 연결
   const socketRef = useRef(null);
@@ -530,6 +540,8 @@ export default function ChatLayout() {
                         </Box>
                       );
                     })}
+                  {/* 👇 채팅 메시지 마지막에 스크롤 ref 추가 */}
+                  <div ref={messagesEndRef} />
                 </Box>
                 <Box sx={{
                   width: "100%",
