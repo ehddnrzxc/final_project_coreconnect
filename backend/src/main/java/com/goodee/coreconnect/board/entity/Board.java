@@ -4,13 +4,21 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
 import com.goodee.coreconnect.user.entity.User;
 
-import jakarta.persistence.*;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -18,7 +26,6 @@ import lombok.NoArgsConstructor;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@EntityListeners(AuditingEntityListener.class)
 @Table(name = "board")
 public class Board {
 
@@ -46,11 +53,9 @@ public class Board {
     @Column(name = "board_view_count", nullable = false)
     private Integer viewCount = 0;
 
-    @CreatedDate
     @Column(name = "board_created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    @LastModifiedDate
     @Column(name = "board_updated_at")
     private LocalDateTime updatedAt;
 
@@ -75,20 +80,19 @@ public class Board {
     private List<BoardFile> files = new ArrayList<>();
     
     
-    /** Auditing + 수동 제어 */
+    /** 
+     * 엔티티 최초 저장 시각 초기화
+     * - createdAt: 현재 시각으로 설정
+     * - updatedAt: 등록 시에는 null 유지
+     */
     @PrePersist
     public void onPrePersist() {
         this.createdAt = LocalDateTime.now();
-        this.updatedAt = null; // 등록 시 updatedAt 비움
-    }
-
-    @PreUpdate
-    public void onPreUpdate() {
-        this.updatedAt = LocalDateTime.now(); // 수정 시에만 갱신
+        this.updatedAt = null; 
     }
 
     // ─────────────── 생성 메서드 ───────────────
-    public static Board createBoard(User user, BoardCategory category, String title, String content, Boolean noticeYn, Boolean privateYn, Boolean pinned) {
+    public static Board createBoard(User user, BoardCategory category, String title, String content, Boolean noticeYn, Boolean pinned, Boolean privateYn) {
         if (user == null) throw new IllegalArgumentException("작성자는 반드시 지정되어야 합니다.");
         if (category == null) throw new IllegalArgumentException("카테고리는 반드시 지정되어야 합니다.");
         if (title == null || title.isBlank()) throw new IllegalArgumentException("게시글 제목은 비어 있을 수 없습니다.");
@@ -99,23 +103,25 @@ public class Board {
         board.title = title;
         board.content = content;
         if (noticeYn != null) board.noticeYn = noticeYn;
-        if (privateYn != null) board.privateYn = privateYn;
         if (pinned != null) board.pinned = pinned;
+        if (privateYn != null) board.privateYn = privateYn;
         return board;
     }
 
 
     // ─────────────── 도메인 행위 ───────────────
     /** 게시글 수정 */
-    public void updateBoard(BoardCategory category, String title, String content, Boolean noticeYn, Boolean privateYn, Boolean pinned) {
+    public void updateBoard(BoardCategory category, String title, String content, Boolean noticeYn, Boolean pinned, Boolean privateYn) {
         if (title == null || title.isBlank()) throw new IllegalArgumentException("게시글 제목은 비어 있을 수 없습니다.");
         
         this.category = (category != null) ? category : this.category;
         this.title = title;
         this.content = content;
         if (noticeYn != null) this.noticeYn = noticeYn;
-        if (privateYn != null) this.privateYn = privateYn;
         if (pinned != null) this.pinned = pinned;
+        if (privateYn != null) this.privateYn = privateYn;
+        
+        this.updatedAt = LocalDateTime.now();
     }
 
     /** 조회수 증가 */

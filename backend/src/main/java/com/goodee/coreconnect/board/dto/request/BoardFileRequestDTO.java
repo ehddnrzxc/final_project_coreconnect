@@ -11,7 +11,7 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 /**
- * 파일 업로드 요청 DTO
+ * 파일 요청 DTO
  * - S3 업로드 후 반환된 key를 포함
  */
 public class BoardFileRequestDTO {

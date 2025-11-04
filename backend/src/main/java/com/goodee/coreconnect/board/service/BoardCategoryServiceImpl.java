@@ -74,6 +74,7 @@ public class BoardCategoryServiceImpl implements BoardCategoryService {
         return BoardCategoryResponseDTO.toDTO(category);
     }
 
+    /** 카테고리 삭제 (관리자 전용, Soft Delete) */
     @Override
     public void deleteCategory(Integer categoryId, String email) {
         checkAdminRole(email);

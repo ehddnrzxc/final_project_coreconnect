@@ -26,7 +26,7 @@ import lombok.RequiredArgsConstructor;
 
 @Tag(name = "Board Category API", description = "게시판 카테고리 관리 (관리자 전용)")
 @RestController
-@RequestMapping("/api/v1/board-cate")
+@RequestMapping("/api/v1/board-category")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "bearerAuth")
 public class BoardCategoryController {
@@ -86,9 +86,7 @@ public class BoardCategoryController {
 
     @Operation(summary = "전체 카테고리 목록 조회", description = "모든 게시판 카테고리를 조회합니다. (관리자 전용)")
     @GetMapping
-    public ResponseEntity<ResponseDTO<List<BoardCategoryResponseDTO>>> getAllCategories(
-            @AuthenticationPrincipal String email
-    ) {
+    public ResponseEntity<ResponseDTO<List<BoardCategoryResponseDTO>>> getAllCategories(@AuthenticationPrincipal String email) {
         List<BoardCategoryResponseDTO> list = boardCategoryService.getAllCategories();
 
         ResponseDTO<List<BoardCategoryResponseDTO>> res = ResponseDTO.<List<BoardCategoryResponseDTO>>builder()

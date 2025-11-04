@@ -30,7 +30,7 @@ import lombok.RequiredArgsConstructor;
 
 @Tag(name = "Board API", description = "게시판 및 공지사항 관련 기능 API")
 @RestController
-@RequestMapping("/api/v1/boards")
+@RequestMapping("/api/v1/board")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "bearerAuth")  // Swagger에서 JWT 토큰 인증 헤더 활성화
 public class BoardController {
@@ -87,9 +87,7 @@ public class BoardController {
 
     @Operation(summary = "게시글 상세 조회", description = "게시글의 상세 내용을 조회합니다. (조회수가 증가합니다.)")
     @GetMapping("/{boardId}")
-    public ResponseEntity<ResponseDTO<BoardResponseDTO>> getBoardDetail(
-            @PathVariable("boardId") Integer boardId
-    ) {
+    public ResponseEntity<ResponseDTO<BoardResponseDTO>> getBoardDetail(@PathVariable("boardId") Integer boardId) {
         BoardResponseDTO response = boardService.getBoardById(boardId);
 
         ResponseDTO<BoardResponseDTO> res = ResponseDTO.<BoardResponseDTO>builder()
