@@ -191,6 +191,7 @@ export default function ChatLayout() {
         try {
           const msg = JSON.parse(event.data);
           setMessages((prev) => [...prev, msg]);
+          handleNewMessage(msg);
         } catch(err) {
           console.warn("메시지 파싱 오류:", err);
         }
@@ -261,6 +262,26 @@ export default function ChatLayout() {
       console.log("[소켓 미연결 혹은 메시지 없음]", currSocket?.readyState);
     }
   };
+
+  // 새 메시지 수신
+  const handleNewMessage = msg => {
+    setMessages(prev => [...prev, msg]);
+    setRoomList(prevRoomList => {
+      // 방 목록에서 해당 roomId에 최신 메시지를 갱신
+      return prevRoomList.map(room => room.roomId === msg.roomId ?
+        {
+          ...room,
+          messageContent: msg.messageContent,
+          fileYn: msg.fileYn,
+          sendAt: msg.sendAt,
+          unreadCount: msg.unreadCount,
+        }
+        : room
+      );
+    });
+  };
+
+
 
   return (
     <Box className="chat-layout" sx={{ background: "#fafbfc", minHeight: "100vh", display: "flex", flexDirection: "row" }}>
