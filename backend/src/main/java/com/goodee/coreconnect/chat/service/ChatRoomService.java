@@ -72,7 +72,7 @@ public interface ChatRoomService {
     
     List<UnreadNotificationListDTO> getUnreadNotificationsExceptLatest(Integer userId, List<NotificationType> allowedTypes);
     
-    ChatResponseDTO saveChatAndReturnDTO(Integer roomId, Integer senderId, String content);
+    ChatResponseDTO saveChatAndReturnDTO(Integer roomId, Integer senderId, String content, int unreadCount);
 
     String getUnreadToadMsgForUser(Integer offlineUserId);
 

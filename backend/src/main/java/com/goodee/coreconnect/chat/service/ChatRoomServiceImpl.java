@@ -535,14 +535,18 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     }
 
     @Override
-    public ChatResponseDTO saveChatAndReturnDTO(Integer roomId, Integer senderId, String content) {
+    public ChatResponseDTO saveChatAndReturnDTO(Integer roomId, Integer senderId, String content, int unreadCount) {
         Chat chat = sendChatMessage(roomId, senderId, content); // chat 저장
+        // unreadCount 반영
+        chat.setUnreadCount(unreadCount);
         // Lazy 필드 강제 초기화(필요시)
         chat.getSender().getName();
         chat.getChatRoom().getId();
         log.info("sendAt: {}", chat.getSendAt());
+        // DB에 저장
+        chatRepository.save(chat);
 
-        // ⭐⭐⭐ 반드시 fromEntity를 통해 String sendAt을 넣어준다!
+        // 반드시 fromEntity를 통해 String sendAt을 넣어준다!
         return ChatResponseDTO.fromEntity(chat);
     }
 

@@ -28,6 +28,7 @@ import com.goodee.coreconnect.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import java.util.Objects;
 
 @Slf4j
 @Component
@@ -60,30 +61,33 @@ public class ChatWebSocketHandler extends TextWebSocketHandler{
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
     	// JWT에서 사용자 ID 추출
     	Integer userId = getUserIdFromSession(session);
-        Integer roomId = getRoomIdFromSession(session);
-
-        log.info("afterConnectionEstablished - userId: {}", userId);
+    	Integer roomId = getRoomIdFromSession(session);
+    	
+    	log.info("afterConnectionEstablished - userId: {}", userId);
         log.info("afterConnectionEstablished - roomId: {}", roomId);
-
-        // 여기서 반드시 session attributes에 roomId 넣기!
+        
+        // 반드시 session attributes에 roomId 넣기! (이걸 빼먹으면 연결 추적 불가능)
         if (roomId != null) {
             session.getAttributes().put("roomId", roomId);
+            log.info("session.getAttributes().put(roomId): {}", roomId);
+        } else {
+            log.warn("WebSocket 연결에 roomId 없음 - 클라이언트 URI query를 확인하세요.");
         }
-        
-    	if (userId != null) {
-    		 log.info("afterConnectionEstablished - userId: {}", userId);
-    		// 세션을 맵에 등록
-    		userSessions.put(userId, session);
-    		webSocketDeliveryService.registerSession(userId, session);
-    		
-    		// 사용자가 입장한 채팅방 id 추출
-            roomId = getRoomIdFromSession(session); // session attribute 혹은 파라미터에서 추출
-            log.info("afterConnectionEstablished - roomId: {}", roomId);
+
+        // 세션 맵에 등록 - userSessions에 (userId, session)
+        if (userId != null) {
+            userSessions.put(userId, session);
+            webSocketDeliveryService.registerSession(userId, session);
+
+            log.info("userSessions.put 완료 - userId: {}, roomId: {}", userId, roomId);
+
+            // 방 입장시 안읽은 메시지 읽음 처리
             if (roomId != null) {
-                // 안읽은 메시지 읽음 처리
-                chatRoomService.markMessagesAsRead(roomId, userId); // 이 함수가 readYn/updateAt 처리
+                chatRoomService.markMessagesAsRead(roomId, userId);
             }
-    	}
+        } else {
+            log.warn("WebSocket 연결에 userId 없음 - JWT token/Authorization 문제 체크!");
+        }
     }
     
     // 클라이언트(WebSocket) 연결 해제 시 호출
@@ -101,72 +105,61 @@ public class ChatWebSocketHandler extends TextWebSocketHandler{
 	// 텍스트 메시지 수신 시 실행되는 콜백
 	@Override
 	protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-		// 1. 메시지(JSON) 파싱
-		JsonNode node = objectMapper.readTree(message.getPayload());
-		Integer senderId = getUserIdFromSession(session); // 송신자 ID 추출
+	    JsonNode node = objectMapper.readTree(message.getPayload());
+	    Integer senderId = getUserIdFromSession(session);
 
-        // roomId, content 추출
-        Integer roomId = node.has("roomId") ? node.get("roomId").asInt() : null; // roomId 추출
-        String chatContent = node.has("content") ? node.get("content").asText() : null; // 채팅 내용 추출
-        if (roomId == null || chatContent == null) return; // 값 없으면 처리 중단
+	    Integer roomId = node.has("roomId") ? node.get("roomId").asInt() : null;
+	    String chatContent = node.has("content") ? node.get("content").asText() : null;
+	    if (roomId == null || chatContent == null) return;
 
-        // 2. DB 저장 + DTO 반환 (서비스에서 한번만 저장/DTO 리턴)
-        ChatResponseDTO dto = chatRoomService.saveChatAndReturnDTO(roomId, senderId, chatContent);
-        
-        // 메시지 전송 직후에 읽음 처리 (이전 메시지들 모두)
-        //markMessagesAsRead(roomId, senderId);
-        
-      
-        // 3. 채팅방 참여자 목록 조회
-        List<Integer> participantIds = chatRoomService.getParticipantIds(roomId);
+	    // 전체 참가자
+	    List<Integer> participantIds = chatRoomService.getParticipantIds(roomId);
+	    log.info("senderId: {}", senderId);
+	    log.info("participantIds: {}", participantIds);
 
-        // 4. 채팅 메시지 DTO 생성
-//        ChatResponseDTO dto = ChatResponseDTO.builder()
-//                .id(chatMessage.getId()) // 메시지 PK
-//                .messageContent(chatMessage.getMessageContent()) // 메시지 내용
-//                .sendAt(chatMessage.getSendAt()) // 발송 시각
-//                .fileYn(chatMessage.getFileYn()) // 파일 여부
-//                .fileUrl(chatMessage.getFileUrl()) // 파일 URL
-//                .roomId(chatMessage.getChatRoom().getId()) // 채팅방 PK
-//                .senderId(senderId) // 송신자 PK
-//                .senderName(chatMessage.getSender() != null ? chatMessage.getSender().getName() : null) // 송신자 이름
-//                //.notificationType("CHAT") // 문자열 "CHAT" 직접 할당 (enum 사용x)
-//                .build();
+	    // 본인 제외 - Objects.equals로 안전 비교
+	    List<Integer> otherParticipantIds = participantIds.stream()
+	        .filter(pid -> senderId != null && !Objects.equals(pid, senderId))
+	        .collect(Collectors.toList());
+	    log.info("otherParticipantIds: {}", otherParticipantIds);
 
-        // 4. 채팅 메시지 chatMessage를 바로 사용
-        String payload = objectMapper.writeValueAsString(dto); // DTO를 JSON 문자열로 직렬화
+	    // 접속중인 인원 리스트 - 본인 제외
+	    List<Integer> connectedUserIds = getConnectedUserIdsInRoom(roomId);
+	    log.info("connectedUserIds: {}", connectedUserIds);
 
-        // 5. 채팅방에 접속중인 참여자들에게만 websocket으로 실시간으로 메시지 푸시
-        List<Integer> connectedUserIds = new ArrayList<>();
-        for (Integer pid : participantIds) {
-            WebSocketSession s = userSessions.get(pid); // 참여자 세션 조회
-            if (s != null && s.isOpen()) {
-                s.sendMessage(new TextMessage(payload)); // 메시지 전송
-            }
-        }
-		
-        // 6. 미접속자(오프라인)는 DB에 unread 상태로 남은 -> 클라이언트가 주기적으로 조회해서 토스트/뱃지 안내
-		// 프론트에서는 unread 상태를 rest/소켓으로 주기적으로 조회해 토스트/뱃지 표시
-        List<Integer> notConnectedUserIds = participantIds.stream()
-        		.filter(pid -> !connectedUserIds.contains(pid))
-        		.collect(Collectors.toList());
-        int unreadCount = notConnectedUserIds.size();
-        
-        for (Integer offlineUserId : notConnectedUserIds) {
-            // 알림 메시지는 DTO 값을 즉시 사용!
-            String alerMsg = dto.getSenderName() + "님으로부터 새로운 채팅 메시지가 도착했습니다";
-            webSocketDeliveryService.sendToUser(offlineUserId, alerMsg);
+	    List<Integer> otherConnectedUserIds = connectedUserIds.stream()
+	        .filter(pid -> senderId != null && !Objects.equals(pid, senderId))
+	        .collect(Collectors.toList());
+	    log.info("otherConnectedUserIds: {}", otherConnectedUserIds);
 
-            // Toast 메시지는 서비스에서 미리 만들어 온 값으로만 사용!
-            String toastMsg = chatRoomService.getUnreadToadMsgForUser(offlineUserId);
-            if (toastMsg != null) {
-                webSocketDeliveryService.sendToUser(offlineUserId, toastMsg);
-            }
-        }
-       
-        
+	    // unreadCount 계산
+	    int unreadCount = otherParticipantIds.size() - otherConnectedUserIds.size();
+	    if (unreadCount < 0) unreadCount = 0;
+
+	    log.info("unreadCount: {}", unreadCount);
+
+	    ChatResponseDTO dto = chatRoomService.saveChatAndReturnDTO(roomId, senderId, chatContent, unreadCount);
+
+	    String payload = objectMapper.writeValueAsString(dto);
+
+	    // 전체 참가자에게 메시지 push
+	    for (Integer pid : participantIds) {
+	        WebSocketSession s = userSessions.get(pid);
+	        if (s != null && s.isOpen()) {
+	            s.sendMessage(new TextMessage(payload));
+	        }
+	    }
+
+	    for (Integer offlineUserId : participantIds) {
+	        String alerMsg = dto.getSenderName() + "님으로부터 새로운 채팅 메시지가 도착했습니다";
+	        webSocketDeliveryService.sendToUser(offlineUserId, alerMsg);
+
+	        String toastMsg = chatRoomService.getUnreadToadMsgForUser(offlineUserId);
+	        if (toastMsg != null) {
+	            webSocketDeliveryService.sendToUser(offlineUserId, toastMsg);
+	        }
+	    }
 	}
-	
 	
 	
 	/**

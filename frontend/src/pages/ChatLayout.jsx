@@ -133,11 +133,8 @@ export default function ChatLayout() {
   const accessToken = localStorage.getItem("accessToken");
   const inputRef = useRef();
   const unreadRoomCount = roomList.filter((room) => room.unreadCount > 0).length;
-
-  // 채팅방 메시지 하단 스크롤 ref 추가
   const messagesEndRef = useRef(null);
 
-  // 채팅방 목록 로딩 (REST)
   useEffect(() => {
     async function loadRooms() {
       setLoading(true);
@@ -152,7 +149,6 @@ export default function ChatLayout() {
     loadRooms();
   }, []);
 
-  // 채팅 메시지(REST로 최초/방 재선택/전체 조회시)
   useEffect(() => {
     async function loadMessages() {
       if (selectedRoomId) {
@@ -168,14 +164,12 @@ export default function ChatLayout() {
     loadMessages();
   }, [selectedRoomId]);
 
-  // 새 메시지가 오거나 메시지 리스트가 바뀔 때마다, 스크롤 최하단 이동!
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
 
-  // WebSocket 연결: 방 변경시 새로 연결
   const socketRef = useRef(null);
 
   useEffect(() => {
@@ -199,7 +193,7 @@ export default function ChatLayout() {
       ws.onclose = () => {
         console.log("[WebSocket 연결 종료]");
         if (shouldReconnect) {
-          setTimeout(() => { connect(); }, 1000); // 1초 후 재연결 시도
+          setTimeout(() => { connect(); }, 1000);
         }
       };
       ws.onerror = (e) => {
@@ -207,9 +201,7 @@ export default function ChatLayout() {
       };
       socketRef.current = ws;
     }
-
     connect();
-
     return () => {
       shouldReconnect = false;
       if (socketRef.current) socketRef.current.close();
@@ -245,7 +237,6 @@ export default function ChatLayout() {
     e.target.value = "";
   };
 
-  // 메시지 전송
   const handleSend = () => {
     const message = inputRef.current.value;
     const currSocket = socketRef.current;
@@ -263,11 +254,9 @@ export default function ChatLayout() {
     }
   };
 
-  // 새 메시지 수신
   const handleNewMessage = msg => {
     setMessages(prev => [...prev, msg]);
     setRoomList(prevRoomList => {
-      // 방 목록에서 해당 roomId에 최신 메시지를 갱신
       return prevRoomList.map(room => room.roomId === msg.roomId ?
         {
           ...room,
@@ -280,8 +269,6 @@ export default function ChatLayout() {
       );
     });
   };
-
-
 
   return (
     <Box className="chat-layout" sx={{ background: "#fafbfc", minHeight: "100vh", display: "flex", flexDirection: "row" }}>
@@ -463,6 +450,7 @@ export default function ChatLayout() {
                     .filter(msg => msg.fileYn || (msg.messageContent && msg.messageContent.trim() !== ""))
                     .map(msg => {
                       const isMe = msg.senderName === userName;
+                      // Badge 위치 조건
                       return (
                         <Box key={msg.id}
                           sx={{
@@ -480,20 +468,21 @@ export default function ChatLayout() {
                             </Typography>
                           )}
                           <Box sx={{ display: "flex", alignItems: "center", maxWidth: "330px" }}>
+                            {/* 내 메시지면 왼쪽 뱃지 */}
                             {isMe && msg.unreadCount > 0 && (
-                              <Badge badgeContent={msg.unreadCount}
-                                sx={{
-                                  mr: 1,
-                                  "& .MuiBadge-badge": {
-                                    background: "none",
-                                    color: "#f6c745",
-                                    fontWeight: 700,
-                                    borderRadius: "8px",
-                                    fontSize: "13px"
-                                  }
-                                }}
-                              />
+                              <Badge badgeContent={msg.unreadCount} sx={{
+                                mr: 1,
+                                "& .MuiBadge-badge": {
+                                  background: "#f6c745",
+                                  color: "#222",
+                                  fontWeight: 700,
+                                  borderRadius: "8px",
+                                  fontSize: "13px"
+                                }
+                              }}/>
                             )}
+
+                            {/* 메시지 본문 */}
                             <Box
                               sx={{
                                 display: "inline-block",
@@ -506,7 +495,6 @@ export default function ChatLayout() {
                               }}>
                               {msg.fileYn && msg.fileUrl
                                 ? (
-                                  // 이미지 파일이면 이미지 띄움!
                                   msg.fileUrl.match(/\.(jpg|jpeg|png|gif|bmp|webp)$/i) ?
                                     <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer">
                                       <img
@@ -533,19 +521,18 @@ export default function ChatLayout() {
                                 : (msg.messageContent || "")
                               }
                             </Box>
+                            {/* 남 메시지면 오른쪽 뱃지 */}
                             {!isMe && msg.unreadCount > 0 && (
-                              <Badge badgeContent={msg.unreadCount}
-                                sx={{
-                                  ml: 1,
-                                  "& .MuiBadge-badge": {
-                                    background: "none",
-                                    color: "#f6c745",
-                                    fontWeight: 700,
-                                    borderRadius: "8px",
-                                    fontSize: "13px"
-                                  }
-                                }}
-                              />
+                              <Badge badgeContent={msg.unreadCount} sx={{
+                                ml: 1,
+                                "& .MuiBadge-badge": {
+                                  background: "#f6c745",
+                                  color: "#222",
+                                  fontWeight: 700,
+                                  borderRadius: "8px",
+                                  fontSize: "13px"
+                                }
+                              }}/>
                             )}
                           </Box>
                           <Typography
@@ -561,7 +548,6 @@ export default function ChatLayout() {
                         </Box>
                       );
                     })}
-                  {/* 👇 채팅 메시지 마지막에 스크롤 ref 추가 */}
                   <div ref={messagesEndRef} />
                 </Box>
                 <Box sx={{
