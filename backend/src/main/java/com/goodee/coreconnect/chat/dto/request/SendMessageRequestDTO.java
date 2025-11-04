@@ -16,7 +16,7 @@ import lombok.ToString;
 public class SendMessageRequestDTO {
 	
 	private Integer roomId;
-	private Integer senderId;
+//	private Integer senderId;
 	private String content;
 	private Boolean fileYn;
 	private String fileUrl;

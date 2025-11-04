@@ -99,73 +99,58 @@ public class ChatMessageController {
         
         return ResponseEntity.status(HttpStatus.CREATED).body(ChatRoomResponseDTO.fromEntity(newChatRoom));
     }
-	
 	/**
 	 * 메시지 전송
-	 * */
+	 */
 	@Operation(summary = "채팅 메시지 전송", description = "채팅 메시지를 전송하고 알림을 생성합니다.")
 	@PostMapping("/messages")
 	public ResponseEntity<ResponseDTO<ChatResponseDTO>> sendMessage(@RequestBody SendMessageRequestDTO req, @AuthenticationPrincipal String email) {
-		// 인증 사용자 조회
-		User authUser = userRepository.findByEmail(email).orElse(null);
-		// 인증 실패
-		if (authUser == null) {
-			 ResponseDTO<ChatResponseDTO> bad = ResponseDTO.<ChatResponseDTO>builder()
-                    .status(HttpStatus.UNAUTHORIZED.value())
-                    .message("로그인이 필요합니다.")
-                    .data(null)
-                    .build();
-             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(bad); // 401 반환
-		}
-			
-		// 유효성 검증
-		if (req == null || req.getRoomId() == null || req.getSenderId() == null) { // 필수값 체크
-			ResponseDTO<ChatResponseDTO> bad = ResponseDTO.<ChatResponseDTO>builder()
-					.status(HttpStatus.BAD_REQUEST.value())
-					.message("채팅방ID와 전송자ID는 필수값 입니다.")
-					.data(null)
-					.build();
-			return ResponseEntity.badRequest().body(bad); // 400 반환
-		}
-	
-		// 채팅 저장
-		Chat savedChat = chatRoomService.sendChatMessage(req.getRoomId(), req.getSenderId(), req.getContent());
-	
-		// 메시지별 미읽은 인원수 업데이트
-		chatRoomService.updateUnreadCountForMessages(req.getRoomId());
-				
-		// 저장 실패
-		if (savedChat == null) {
-			ResponseDTO<ChatResponseDTO> err = ResponseDTO.<ChatResponseDTO>builder()
-					.status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-					.message("채팅 메시지가 올바르지 않습니다.")
-					.data(null)
-					.build();
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(err); // 500 반환
-		}
-		
-		// 응답 DTO 생성
-		ChatResponseDTO response = ChatResponseDTO.builder() 
-			.id(savedChat.getId())
-			.messageContent(savedChat.getMessageContent())
-			.sendAt(savedChat.getSendAt() != null ? savedChat.getSendAt() : LocalDateTime.now())
-			.fileYn(savedChat.getFileYn())
-			.fileUrl(savedChat.getFileUrl())
-			.roomId(savedChat.getChatRoom() != null ? savedChat.getChatRoom().getId() : req.getRoomId())
-            .senderId(savedChat.getSender() != null ? savedChat.getSender().getId() : req.getSenderId())
-            .senderName(savedChat.getSender() != null ? savedChat.getSender().getName() : null)
-            .build();
-			
-		// 성공 응답 DTO 생성
-		ResponseDTO<ChatResponseDTO> success = ResponseDTO.<ChatResponseDTO>builder() // 성공 응답 DTO 생성
-            .status(HttpStatus.CREATED.value())
-            .message("Message sent")
-            .data(response)
-            .build();
-		
-		return ResponseEntity.status(HttpStatus.CREATED).body(success); // 성공 응답 반환
+	    // 1. 인증 사용자 체크
+	    User authUser = userRepository.findByEmail(email).orElse(null);
+	    if (authUser == null) {
+	        ResponseDTO<ChatResponseDTO> bad = ResponseDTO.<ChatResponseDTO>builder()
+	            .status(HttpStatus.UNAUTHORIZED.value())
+	            .message("로그인이 필요합니다.")
+	            .data(null)
+	            .build();
+	        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(bad);
+	    }
+
+	    // 2. 유효성 체크 (roomId, content)
+	    if (req == null || req.getRoomId() == null || req.getContent() == null || req.getContent().trim().isEmpty()) {
+	        ResponseDTO<ChatResponseDTO> bad = ResponseDTO.<ChatResponseDTO>builder()
+	            .status(HttpStatus.BAD_REQUEST.value())
+	            .message("채팅방ID와 메시지 내용은 필수값입니다.")
+	            .data(null)
+	            .build();
+	        return ResponseEntity.badRequest().body(bad);
+	    }
+
+	    // 3. 채팅 저장 ★ senderId는 인증에서 가져오기!
+	    Chat savedChat = chatRoomService.sendChatMessage(req.getRoomId(), authUser.getId(), req.getContent());
+	    chatRoomService.updateUnreadCountForMessages(req.getRoomId());
+
+	    if (savedChat == null) {
+	        ResponseDTO<ChatResponseDTO> err = ResponseDTO.<ChatResponseDTO>builder()
+	            .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
+	            .message("채팅 메시지가 올바르지 않습니다.")
+	            .data(null)
+	            .build();
+	        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(err);
+	    }
+
+	    // 4. 응답 DTO 변환 (시간/필드 일관)
+	    ChatResponseDTO response = ChatResponseDTO.fromEntity(savedChat); // 반드시 변환 메서드!
+	    // -- 위에서 sendAt은 ISO8601 형식 String!
+
+	    ResponseDTO<ChatResponseDTO> success = ResponseDTO.<ChatResponseDTO>builder()
+	        .status(HttpStatus.CREATED.value())
+	        .message("Message sent")
+	        .data(response)
+	        .build();
+
+	    return ResponseEntity.status(HttpStatus.CREATED).body(success);
 	}
-	
 
 	/**
 	 * 3. 채팅방 참여자 목록 조회

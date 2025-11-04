@@ -41,5 +41,9 @@ public interface ChatMessageReadStatusRepository extends JpaRepository<ChatMessa
            "WHERE r.chat.chatRoom.id = :roomId AND r.user.id = :userId AND r.readYn = false")
     int markMessagesAsReadInRoomForUser(@Param("roomId") Integer roomId, @Param("userId") Integer userId, @Param("now") java.time.LocalDateTime now);
     
-    
+    @Query("SELECT r FROM ChatMessageReadStatus r "
+    	     + "JOIN FETCH r.chat c "
+    	     + "JOIN FETCH c.sender "
+    	     + "WHERE r.user.id = :userId AND r.readYn = false")
+    	List<ChatMessageReadStatus> fetchUnreadWithSender(@Param("userId") Integer userId);
 }

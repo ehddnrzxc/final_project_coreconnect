@@ -39,7 +39,14 @@ function getUserName() {
     return "";
   }
 }
-
+function getUserId() {
+  try {
+    const user = JSON.parse(localStorage.getItem("user"));
+    return user?.id || null;
+  } catch {
+    return null;
+  }
+}
 function formatTime(sendAt) {
   if (!sendAt) return "";
   const d = new Date(sendAt);
@@ -61,123 +68,67 @@ function formatTime(sendAt) {
   }
 }
 
-// --- ChatHeader 컴포넌트 추가! ---
+// --- ChatHeader ---
 function ChatHeader() {
   return (
-    <Box
-      className="chat-header"
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        height: "56px",
-        background: "#fff",
-        borderBottom: "1px solid #f0f1f4",
-        px: 3,
-        gap: 2
-      }}
-    >
+    <Box className="chat-header" sx={{
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      height: "56px", background: "#fff", borderBottom: "1px solid #f0f1f4",
+      px: 3, gap: 2
+    }}>
       <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
         <PersonIcon sx={{ fontSize: 26, color: "#10c16d" }} />
         <Typography sx={{ fontSize: 20, fontWeight: 600, color: "#222" }}>
           채팅
         </Typography>
       </Box>
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 2,
-          fontSize: 22,
-          color: "#bbb"
-        }}
-      >
-        <IconButton>
-          <NotificationsNoneIcon />
-        </IconButton>
-        <IconButton>
-          <PersonIcon />
-        </IconButton>
+      <Box sx={{
+        display: "flex", alignItems: "center", gap: 2,
+        fontSize: 22, color: "#bbb"
+      }}>
+        <IconButton><NotificationsNoneIcon /></IconButton>
+        <IconButton><PersonIcon /></IconButton>
       </Box>
     </Box>
   );
 }
 
-// --- ChatSidebar 컴포넌트 추가! ---
+// --- ChatSidebar ---
 function ChatSidebar({ unreadRoomCount }) {
   return (
-    <Box
-      component="aside"
-      className="chat-sidebar"
-      sx={{
-        width: 62,
-        background: "#f7f8fa",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        pt: 1.5,
-        gap: 1.5,
-        borderRight: "1px solid #f0f1f4"
-      }}
-    >
-      <IconButton 
-        component={NavLink}
-        to="/chat/new"
-        color="success"
-        sx={{
-          width: 42,
-          height: 42,
-          borderRadius: "50%",
-          mb: 0.5,
-          bgcolor: "#10c16d",
-          color: "#fff",
-          fontSize: 22
-        }}>
+    <Box component="aside" className="chat-sidebar" sx={{
+      width: 62, background: "#f7f8fa", display: "flex",
+      flexDirection: "column", alignItems: "center", pt: 1.5, gap: 1.5,
+      borderRight: "1px solid #f0f1f4"
+    }}>
+      <IconButton component={NavLink} to="/chat/new" color="success" sx={{
+        width: 42, height: 42, borderRadius: "50%", mb: 0.5,
+        bgcolor: "#10c16d", color: "#fff", fontSize: 22
+      }}>
         <AddIcon />
       </IconButton>
-      <IconButton
-        component={NavLink}
-        to="/chat/sort"
-        sx={{
-          width: 42,
-          height: 42,
-          borderRadius: "50%",
-          bgcolor: "#fff",
-          color: "#10c16d",
-          fontSize: 20
-        }}>
+      <IconButton component={NavLink} to="/chat/sort" sx={{
+        width: 42, height: 42, borderRadius: "50%",
+        bgcolor: "#fff", color: "#10c16d", fontSize: 20
+      }}>
         <SortIcon />
       </IconButton>
-      <IconButton
-        component={NavLink}
-        to="/chat/notice"
-        sx={{
-          width: 42,
-          height: 42,
-          borderRadius: "50%",
-          bgcolor: "#fff",
-          color: "#2db8ff",
-          fontSize: 20,
-          position: "relative"
-        }}>
+      <IconButton component={NavLink} to="/chat/notice" sx={{
+        width: 42, height: 42, borderRadius: "50%", bgcolor: "#fff", color: "#2db8ff",
+        fontSize: 20, position: "relative"
+      }}>
         <NotificationsNoneIcon />
         {unreadRoomCount > 0 && (
-          <Badge
-            badgeContent={unreadRoomCount}
-            color="error"
-            sx={{
-              position: "absolute",
-              top: 0,
-              right: 0,
-              fontSize: 13
-            }}
-          />
+          <Badge badgeContent={unreadRoomCount} color="error" sx={{
+            position: "absolute", top: 0, right: 0, fontSize: 13
+          }} />
         )}
       </IconButton>
-      {/* 필요시 추가 버튼 */}
     </Box>
   );
 }
+
+const WEBSOCKET_BASE = "ws://localhost:8080/ws/chat";
 
 export default function ChatLayout() {
   const [roomList, setRoomList] = useState([]);
@@ -185,19 +136,20 @@ export default function ChatLayout() {
   const [selectedRoomId, setSelectedRoomId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [tabIdx, setTabIdx] = useState(0);
+  const [socket, setSocket] = useState(null);
   const userName = getUserName();
+  // const userId = getUserId();
+  const accessToken = localStorage.getItem("accessToken");
   const inputRef = useRef();
-
   const unreadRoomCount = roomList.filter((room) => room.unreadCount > 0).length;
 
+  // 채팅방 목록 로딩 (REST)
   useEffect(() => {
     async function loadRooms() {
       setLoading(true);
       const res = await fetchChatRoomsLatest();
       if (res && res.status === 200 && Array.isArray(res.data)) {
-        const sortedRooms = [...res.data].sort(
-          (a, b) => new Date(b.sendAt) - new Date(a.sendAt)
-        );
+        const sortedRooms = [...res.data].sort((a, b) => new Date(b.sendAt) - new Date(a.sendAt));
         setRoomList(sortedRooms);
         setSelectedRoomId(sortedRooms[0]?.roomId ?? null);
       }
@@ -206,14 +158,13 @@ export default function ChatLayout() {
     loadRooms();
   }, []);
 
+  // 채팅 메시지(REST로 최초/변경시 가져오기)
   useEffect(() => {
     async function loadMessages() {
       if (selectedRoomId) {
         const res = await fetchChatRoomMessages(selectedRoomId);
         if (res && res.status === 200 && Array.isArray(res.data)) {
-          const sorted = [...res.data].sort(
-            (a, b) => new Date(a.sendAt) - new Date(b.sendAt)
-          );
+          const sorted = [...res.data].sort((a, b) => new Date(a.sendAt) - new Date(b.sendAt));
           setMessages(sorted);
         } else {
           setMessages([]);
@@ -223,11 +174,53 @@ export default function ChatLayout() {
     loadMessages();
   }, [selectedRoomId]);
 
+  // WebSocket 연결: 방 변경시 새로 연결
+  const socketRef = useRef(null);
+
+
+useEffect(() => {
+  if (!selectedRoomId || !accessToken) return;
+  let shouldReconnect = true;
+  function connect() {
+    const wsUrl = `${WEBSOCKET_BASE}?roomId=${selectedRoomId}&accessToken=${accessToken}`;
+    const ws = new WebSocket(wsUrl);
+    ws.onopen = () => {
+      console.log("[WebSocket 연결됨!]");
+    };
+    ws.onmessage = (event) => {
+      // 메시지 수신 처리
+      try {
+        const msg = JSON.parse(event.data);
+        setMessages((prev) => [...prev, msg]);
+      } catch(err) {
+        console.warn("메시지 파싱 오류:", err);
+      }
+    };
+    ws.onclose = () => {
+      console.log("[WebSocket 연결 종료]");
+      // 만약 정말 방을 떠난 것이면 재연결 안함
+      // 그렇지 않다면 자동 재연결
+      if (shouldReconnect) {
+        setTimeout(() => { connect(); }, 1000); // 1초 후 재연결 시도
+      }
+    };
+    ws.onerror = (e) => {
+      console.error("[WebSocket 에러]", e);
+    };
+    socketRef.current = ws;
+  }
+
+  connect();
+
+  return () => {
+    shouldReconnect = false; // cleanup 시 재연결 중지
+    if (socketRef.current) socketRef.current.close();
+  };
+}, [selectedRoomId, accessToken]);
+
   const selectedRoom = roomList.find((r) => r.roomId === selectedRoomId);
 
-  if (loading) {
-    return <Box p={2}>채팅방 목록 로딩중...</Box>;
-  }
+  if (loading) return <Box p={2}>채팅방 목록 로딩중...</Box>;
 
   const handleFileUpload = (e) => {
     const files = e.target.files;
@@ -235,39 +228,42 @@ export default function ChatLayout() {
     e.target.value = "";
   };
 
+  // 메시지 전송
+ const handleSend = () => {
+  const message = inputRef.current.value;
+  const currSocket = socketRef.current;
+  if (currSocket && currSocket.readyState === 1 && message.trim()) {
+    const payload = JSON.stringify({
+      roomId: selectedRoomId,
+      content: message,
+      fileYn: false,
+      fileUrl: null
+    });
+    currSocket.send(payload);
+    inputRef.current.value = "";
+  } else {
+    console.log("[소켓 미연결 혹은 메시지 없음]", currSocket?.readyState);
+  }
+};
+
   return (
     <Box className="chat-layout" sx={{ background: "#fafbfc", minHeight: "100vh", display: "flex", flexDirection: "row" }}>
       <ChatSidebar unreadRoomCount={unreadRoomCount} />
       <Box sx={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        minHeight: "100vh",
-        background: "#fafbfc"
+        flex: 1, display: "flex", flexDirection: "column",
+        minHeight: "100vh", background: "#fafbfc"
       }}>
         <ChatHeader />
         <Box sx={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "row",
-          px: 5,
-          pt: 2,
-          gap: 2,
-          minHeight: 0,
+          flex: 1, display: "flex", flexDirection: "row",
+          px: 5, pt: 2, gap: 2, minHeight: 0,
         }}>
           {/* 채팅방 목록 */}
           <Box sx={{
-            flex: "0 0 420px",
-            minWidth: 350,
-            maxWidth: 470,
-            height: "calc(100vh - 56px - 32px)",
-            background: "#fff",
-            borderRight: "1px solid #e3e8ef",
-            boxShadow: "none",
-            borderRadius: 0,
-            display: "flex",
-            flexDirection: "column",
-            p: 0,
+            flex: "0 0 420px", minWidth: 350, maxWidth: 470,
+            height: "calc(100vh - 56px - 32px)", background: "#fff",
+            borderRight: "1px solid #e3e8ef", boxShadow: "none", borderRadius: 0,
+            display: "flex", flexDirection: "column", p: 0,
           }}>
             <Box sx={{ px: 0, pt: 0, pb: 1 }}>
               <Tabs
@@ -377,100 +373,71 @@ export default function ChatLayout() {
               ))}
             </List>
           </Box>
-          {/* 채팅방 메시지(오른쪽) */}
+          {/* 채팅 메시지 영역 */}
           <Box sx={{
-            flex: 1,
-            minWidth: "380px",
-            height: "calc(100vh - 56px - 32px)",
-            background: "#f8fbfd",
-            display: "flex",
-            flexDirection: "column",
-            borderRadius: 0,
-            boxShadow: "none",
+            flex: 1, minWidth: "380px",
+            height: "calc(100vh - 56px - 32px)", background: "#f8fbfd",
+            display: "flex", flexDirection: "column", borderRadius: 0, boxShadow: "none",
           }}>
-            {/* 최상단 바 & 메시지 영역 Fragment로 해결! */}
             {selectedRoom && (
               <>
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  pb: 1,
-                  borderBottom: "1px solid #e3e8ef",
-                  background: "#f8fbfd",
-                  height: 64,
-                  position: "relative",     // 아이콘을 절대 위치 줄 수 있음
-                }}
-              >
-                <Avatar sx={{
-                  bgcolor: "#10c16d",
-                  mr: 2,
-                  width: 33,
-                  height: 33,
-                  ml: 2
-                }}>{selectedRoom.roomName?.[0]?.toUpperCase()}
-                </Avatar>
-                <Typography
-                  sx={{
-                    fontWeight: 700,
-                    fontSize: 18,
-                    color: "#1aaf54",
-                  }}
-                >
-                  {selectedRoom.roomName}
-                </Typography>
-                {/* 오른쪽 아이콘 그룹을 absolute로 끝에! */}
                 <Box sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 2,
-                  position: "absolute",
-                  top: 0,
-                  right: 16,           // 브라우저 끝에서 16px 떨어짐 (필요시 0으로 붙임)
-                  height: "100%",
-                  justifyContent: "flex-end"
+                  display: "flex", alignItems: "center", pb: 1,
+                  borderBottom: "1px solid #e3e8ef", background: "#f8fbfd",
+                  height: 64, position: "relative",
                 }}>
-                  <IconButton><PhoneIcon /></IconButton>
-                  <IconButton><VideoCallIcon /></IconButton>
-                  <IconButton><GroupIcon /></IconButton>
-                  <IconButton><MoreVertIcon /></IconButton>
+                  <Avatar sx={{
+                    bgcolor: "#10c16d",
+                    mr: 2, width: 33, height: 33, ml: 2
+                  }}>{selectedRoom.roomName?.[0]?.toUpperCase()}
+                  </Avatar>
+                  <Typography sx={{
+                    fontWeight: 700, fontSize: 18, color: "#1aaf54",
+                  }}>
+                    {selectedRoom.roomName}
+                  </Typography>
+                  <Box sx={{
+                    position: "absolute",
+                    top: 0,
+                    right: 0,
+                    height: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 2
+                  }}>
+                    <IconButton><PhoneIcon /></IconButton>
+                    <IconButton><VideoCallIcon /></IconButton>
+                    <IconButton><GroupIcon /></IconButton>
+                    <IconButton><MoreVertIcon /></IconButton>
+                  </Box>
                 </Box>
-              </Box>
-                <Box
-                  className="chat-room-msg-list"
+                <Box className="chat-room-msg-list"
                   sx={{
-                    flex: 1,
-                    width: "100%",
-                    overflowY: "auto",
+                    flex: 1, width: "100%", overflowY: "auto",
                     px: 4, pt: 2.5, pb: 2.5,
-                    display: "flex", flexDirection: "column",
-                    gap: 0.5,
+                    display: "flex", flexDirection: "column", gap: 0.5,
                     scrollbarWidth: "thin",
                     "&::-webkit-scrollbar": { width: 8 },
                     "&::-webkit-scrollbar-thumb": {
-                      background: "#e4eaf3",
-                      borderRadius: "7px"
+                      background: "#e4eaf3", borderRadius: "7px"
                     },
                     "&::-webkit-scrollbar-track": { background: "#f8fbfd" }
-                  }}
-                >
-                  {messages.map(msg => {
+                  }}>
+                  {messages
+                  .filter(msg => msg.messageContent && msg.messageContent.trim() !== "") // 빈 메시지 제외!
+                  .map(msg => {
                     const isMe = msg.senderName === userName;
                     return (
-                      <Box
-                        key={msg.id}
+                      <Box key={msg.id}
                         sx={{
                           display: "flex",
                           flexDirection: "column",
                           alignItems: isMe ? "flex-end" : "flex-start",
-                          mb: 1.7,
-                          width: "100%",
+                          mb: 1.7, width: "100%",
                         }}
                       >
                         {!isMe && (
-                          <Typography
-                            variant="caption"
-                            color="#7d87ab"
+                          <Typography variant="caption" color="#7d87ab"
                             sx={{ mb: 0.5, fontWeight: 600, fontSize: 14 }}
                           >
                             {msg.senderName}
@@ -478,8 +445,7 @@ export default function ChatLayout() {
                         )}
                         <Box sx={{ display: "flex", alignItems: "center", maxWidth: "330px" }}>
                           {isMe && msg.unreadCount > 0 && (
-                            <Badge
-                              badgeContent={msg.unreadCount}
+                            <Badge badgeContent={msg.unreadCount}
                               sx={{
                                 mr: 1,
                                 "& .MuiBadge-badge": {
@@ -492,28 +458,19 @@ export default function ChatLayout() {
                               }}
                             />
                           )}
-                          <Box
-                            sx={{
-                              display: "inline-block",
-                              fontSize: 15,
-                              px: 2,
-                              py: 1,
-                              borderRadius: "10px",
-                              mb: 0.5,
-                              bgcolor: isMe ? "#ffe585" : "#f7f9fc",
-                              color: isMe ? "#1aaf54" : "#222",
-                              boxShadow: "none",
-                              width: "fit-content",
-                              maxWidth: "270px",
-                              wordBreak: "break-all",
-                              border: isMe ? "none" : "1px solid #e4eaf3"
-                            }}
-                          >
+                          <Box sx={{
+                            display: "inline-block",
+                            fontSize: 15, px: 2, py: 1, borderRadius: "10px", mb: 0.5,
+                            bgcolor: isMe ? "#ffe585" : "#f7f9fc",
+                            color: isMe ? "#1aaf54" : "#222", boxShadow: "none",
+                            width: "fit-content", maxWidth: "270px",
+                            wordBreak: "break-all",
+                            border: isMe ? "none" : "1px solid #e4eaf3"
+                          }}>
                             {msg.fileYn ? "[파일]" : msg.messageContent || ""}
                           </Box>
                           {!isMe && msg.unreadCount > 0 && (
-                            <Badge
-                              badgeContent={msg.unreadCount}
+                            <Badge badgeContent={msg.unreadCount}
                               sx={{
                                 ml: 1,
                                 "& .MuiBadge-badge": {
@@ -541,24 +498,24 @@ export default function ChatLayout() {
                     );
                   })}
                 </Box>
-                <Box
-                  sx={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    px: 4,
-                    py: 2.1,
-                    borderTop: "1px solid #e3e8ef",
-                    gap: 1,
-                    background: "#f8fbfd"
-                  }}
-                >
+                <Box sx={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  px: 4, py: 2.1,
+                  borderTop: "1px solid #e3e8ef",
+                  gap: 1,
+                  background: "#f8fbfd"
+                }}>
                   <TextField
                     inputRef={inputRef}
                     variant="outlined"
                     size="small"
                     placeholder="메시지 입력"
                     sx={{ flex: 1, background: "#fff", borderRadius: 2 }}
+                    onKeyDown={e => {
+                      if (e.key === "Enter") handleSend();
+                    }}
                   />
                   <label htmlFor="chat-file-upload">
                     <input
@@ -573,13 +530,14 @@ export default function ChatLayout() {
                       <AttachFileIcon />
                     </IconButton>
                   </label>
-                  <Button
-                    variant="contained"
-                    color="success"
-                    sx={{ minWidth: 36, px: 2, borderRadius: 2 }}
-                  >
-                    <SendIcon />
-                  </Button>
+                 <Button
+                  variant="contained"
+                  color="success"
+                  onClick={handleSend}
+                  disabled={!socketRef.current || socketRef.current.readyState !== 1}
+                >
+                  <SendIcon />
+                </Button>
                 </Box>
               </>
             )}
