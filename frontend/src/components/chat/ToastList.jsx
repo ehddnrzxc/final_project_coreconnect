@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from "react";
-import { Box, Snackbar, Slide, Paper, Typography, Badge } from "@mui/material";
+import React, { useState, useEffect } from "react";
+import { Snackbar, Slide, Paper, Box, Typography, Badge } from "@mui/material";
 
-// formatTime 함수는 ChatLayout에서 import 해서 prop으로 넘겨주거나, ToastList에서 직접 선언해도 됨
 function TransitionLeft(props) {
   return <Slide {...props} direction="left" />;
 }
@@ -19,11 +18,13 @@ const ToastList = ({ rooms, formatTime }) => {
 
   useEffect(() => {
     if (openToasts.length > 0) {
-      const timers = openToasts.map((toast) =>
+      const timers = openToasts.map(toast =>
         setTimeout(() => {
-          setOpenToasts(prev => prev.map(t =>
-            t.roomId === toast.roomId ? {...t, open: false} : t
-          ));
+          setOpenToasts(prev =>
+            prev.map(t =>
+              t.roomId === toast.roomId ? { ...t, open: false } : t
+            )
+          );
         }, 5000)
       );
       return () => timers.forEach(timerId => clearTimeout(timerId));
@@ -48,20 +49,28 @@ const ToastList = ({ rooms, formatTime }) => {
             }}>
               <Box sx={{ fontWeight: 700, fontSize: 15, mb: 0.7, display: "flex", alignItems: "center", gap: 1 }}>
                 <Badge
-                  badgeContent={room.unreadCount > 1 ? `+${room.unreadCount - 1}` : null}
-                  color="warning"
+                  badgeContent={room.unreadCount}
+                  color="error"
                   sx={{
                     mr: 1,
                     "& .MuiBadge-badge": {
-                      background: "#f6c745", color: "#222", borderRadius: "8px", fontWeight: 700, fontSize: "14px"
+                      background: "#f6c745",
+                      color: "#222",
+                      borderRadius: 8,
+                      fontWeight: 700,
+                      fontSize: "14px"
                     }
                   }}
                 />
-                <span>{room.lastUnreadMessageContent}</span>
+                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                  {room.lastUnreadMessageContent}
+                </Typography>
               </Box>
               <Box sx={{ fontSize: 13, display: "flex", gap: 1.3, alignItems: "center", mb: 0.6 }}>
-                <span>{room.lastUnreadMessageSenderName}</span>
-                <span>{formatTime ? formatTime(room.lastUnreadMessageTime) : ""}</span>
+                <Typography variant="body2">{room.lastUnreadMessageSenderName}</Typography>
+                <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                  {formatTime ? formatTime(room.lastUnreadMessageTime) : ""}
+                </Typography>
               </Box>
               <Box sx={{ fontSize: 12, color: "#abd0ff", opacity: 0.83 }}>
                 [{room.roomName}]

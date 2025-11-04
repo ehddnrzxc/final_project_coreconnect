@@ -450,67 +450,73 @@ public class ChatMessageController {
     @Operation(summary = "내가 참여중인 채팅방의 안읽은 메시지 개수/목록 조회", description = "내가 참여중인 채팅방의 안읽은 메시지 개수/목록 조회")
     @GetMapping("/messages/unread")
     public ResponseEntity<ResponseDTO<Map<String, Object>>> getUnreadMessages(@AuthenticationPrincipal String email) {
-    	// 응답용 Map 생성
-    	Map<String, Object> responseMap = new HashMap<>();
-    	
-    	User user = userRepository.findByEmail(email).orElseThrow();
+        // 1. 응답용 Map 생성
+        Map<String, Object> responseMap = new HashMap<>();
 
-        // 1. 서비스에서 방/마지막 메시지 DTO 리스트 가져오기
-        List<ChatRoomLatestMessageResponseDTO> chatRooms  = chatRoomService.getChatRoomIdsByUserId(user.getId());
+        // 2. 사용자 찾기 (로그인여부 검사)
+        User user = userRepository.findByEmail(email).orElseThrow();
+
+        // 3. 내가 참여중인 채팅방 목록 조회
+        List<ChatRoomLatestMessageResponseDTO> chatRooms = chatRoomService.getChatRoomIdsByUserId(user.getId());
+
+        // 4. 채팅방별 안읽은 메시지 개수, 마지막 메시지 정보 포함해서 응답용 리스트 생성
+        List<Map<String, Object>> roomsWithUnread = new ArrayList<>();
         
-        // 2. roomId 리스트 추출
+        for (ChatRoomLatestMessageResponseDTO room : chatRooms) {
+            // (1) 안읽은 메시지 개수
+            Integer unreadCount = chatMessageReadStatusRepository.countByUserIdAndChatRoomIdAndReadYnFalse(user.getId(), room.getRoomId());
+
+            // (2) 마지막 미읽음 메시지 정보 불러오기
+            ChatMessageReadStatus lastUnreadStatus = chatMessageReadStatusRepository.findLastUnreadStatusInRoomForUser(user.getId(), room.getRoomId());
+
+            // ***이 부분에 추가!***
+            Integer lastUnreadMessageId = lastUnreadStatus != null ? lastUnreadStatus.getChat().getId() : null;
+            String lastUnreadMessageContent = lastUnreadStatus != null ? lastUnreadStatus.getChat().getMessageContent() : null;
+            String lastUnreadSenderName = lastUnreadStatus != null && lastUnreadStatus.getChat().getSender() != null
+                ? lastUnreadStatus.getChat().getSender().getName() : null;
+            LocalDateTime lastUnreadMessageTime = lastUnreadStatus != null ? lastUnreadStatus.getChat().getSendAt() : null;
+
+            // 응답 map에 id도 추가
+            Map<String, Object> roomMap = new HashMap<>();
+            roomMap.put("roomId", room.getRoomId());
+            roomMap.put("roomName", room.getRoomName());
+            roomMap.put("unreadCount", unreadCount);
+            roomMap.put("lastUnreadMessageId", lastUnreadMessageId); // ← 추가!
+            roomMap.put("lastUnreadMessageContent", lastUnreadMessageContent);
+            roomMap.put("lastUnreadMessageSenderName", lastUnreadSenderName);
+            roomMap.put("lastUnreadMessageTime", lastUnreadMessageTime);
+
+            log.info(
+              "======== lastUnreadMessageId: {}, roomId: {}, unreadCount: {}, lastMessage: {}",
+              lastUnreadMessageId,
+              room.getRoomId(),
+              unreadCount,
+              lastUnreadMessageContent
+            );
+
+            roomsWithUnread.add(roomMap);
+        }
+
+        // 나머지 참고용 목록 및 데이터
         List<Integer> roomIds = chatRooms.stream()
             .map(ChatRoomLatestMessageResponseDTO::getRoomId)
             .collect(Collectors.toList());
-        
-        // 3. 미읽은 메시지 목록 조회
+
         List<ChatMessageReadStatus> unreadStatuses = chatMessageReadStatusRepository.findByUserIdAndReadYnFalse(user.getId());
-        
-        // 3-1. 채팅방별 미읽음 메시지 집계 (roomId별 그룹핑)
-        Map<Integer, List<ChatMessageReadStatus>> unreadByRoomId = unreadStatuses.stream()
-        		.collect(Collectors.groupingBy(status -> status.getChat().getChatRoom().getId()));
-        
-        // 5. rooms 결과를 직접 구성
-        List<Map<String, Object>> roomsWithUnread = new ArrayList<>();
-        
-        // roomId→roomName 매핑
+
         Map<Integer, String> roomIdToName = chatRooms.stream()
             .collect(Collectors.toMap(ChatRoomLatestMessageResponseDTO::getRoomId, ChatRoomLatestMessageResponseDTO::getRoomName));
-        
-        // 미읽은 메시지 목록 DTO 리스트로 변환
+
         List<ChatMessageResponseDTO> unreadMessages = unreadStatuses.stream()
             .map(status -> ChatMessageResponseDTO.fromEntity(status.getChat()))
             .collect(Collectors.toList());
-        
-        for (ChatRoomLatestMessageResponseDTO room : chatRooms) {
-        	List<ChatMessageReadStatus> unreadList = unreadByRoomId.getOrDefault(room.getRoomId(), new ArrayList<>());
-        	int unreadCount = unreadList.size();
-        	log.info("unreadCount: {}", unreadCount);
-        	Chat lastUnreadChat = unreadList.stream()
-        			.map(ChatMessageReadStatus::getChat)
-        			.max(Comparator.comparing(Chat::getSendAt))
-        			.orElse(null);
-        	
-        	Map<String, Object> roomMap = new HashMap<>();
-        	roomMap.put("roomId", room.getRoomId());
-        	roomMap.put("roomName", room.getRoomName());
-            roomMap.put("lastMessageId", room.getLastMessageId());
-            roomMap.put("lastMessageContent", room.getLastMessageContent());
-            roomMap.put("lastSenderName", room.getLastSenderName());
-            roomMap.put("lastMessageTime", room.getLastMessageTime());
-            roomMap.put("unreadCount", unreadCount);
-            roomMap.put("lastUnreadMessageContent", lastUnreadChat != null ? lastUnreadChat.getMessageContent() : null);
-            roomMap.put("lastUnreadMessageSenderName", 
-                lastUnreadChat != null && lastUnreadChat.getSender() != null ? lastUnreadChat.getSender().getName() : null);
-            roomMap.put("lastUnreadMessageTime", lastUnreadChat != null ? lastUnreadChat.getSendAt() : null);
-            roomsWithUnread.add(roomMap);
-        }
-        
+
+        // 최종 응답 구성 (프론트에 roomsWithUnread를 활용)
         responseMap.put("chatRooms", chatRooms);
         responseMap.put("roomNames", roomIdToName);
         responseMap.put("messages", unreadMessages);
         responseMap.put("roomsWithUnread", roomsWithUnread);
-        
+
         return ResponseEntity.ok(ResponseDTO.success(responseMap, "내 미읽은 채팅 메시지 + 방 이름 목록 조회 성공"));
     }
     

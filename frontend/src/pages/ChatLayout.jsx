@@ -21,6 +21,7 @@ import Avatar from "@mui/material/Avatar";
 import IconButton from "@mui/material/IconButton";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
+import ToastList from "../components/chat/ToastList";
 
 import {
   fetchChatRoomMessages,
@@ -292,7 +293,7 @@ export default function ChatLayout() {
   };
 
   // 채팅 메시지 토스트 알림
-  const ToastList = ({ rooms }) => (
+/*  const ToastList = ({ rooms }) => (
     <div className="toast-list">
       {rooms.filter(room => room.unreadCount > 0).map(room => (
         <div className = "toast" key={room.roomId}>
@@ -310,7 +311,7 @@ export default function ChatLayout() {
       }
     </div>
   )
-
+*/
 
 
 
