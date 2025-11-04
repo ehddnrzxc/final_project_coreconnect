@@ -62,12 +62,12 @@ public class BoardReply {
     @PrePersist
     public void onPrePersist() {
         this.createdAt = LocalDateTime.now();
-        this.updatedAt = null;
+        this.updatedAt = null; // 등록 시 updatedAt 비움
     }
 
     @PreUpdate
     public void onPreUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now(); // 수정 시에만 갱신
     }
 
     // ─────────────── 생성 메서드 ───────────────

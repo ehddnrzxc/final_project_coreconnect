@@ -223,8 +223,7 @@ public class BoardServiceImpl implements BoardService {
     @Transactional(readOnly = true)
     public Page<BoardResponseDTO> getBoardsByCategory(Integer categoryId, Pageable pageable) {
         Page<Board> boardPage = boardRepository.findByCategoryIdAndDeletedYnFalse(categoryId, pageable);
-        List<BoardResponseDTO> dtoList = boardPage.getContent()
-                                                  .stream()
+        List<BoardResponseDTO> dtoList = boardPage.getContent().stream()
                                                   .map(board -> BoardResponseDTO.toDTO(board))
                                                   .toList();
         return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());
@@ -235,8 +234,7 @@ public class BoardServiceImpl implements BoardService {
     @Transactional(readOnly = true)
     public Page<BoardResponseDTO> getBoardsByUser(String email, Pageable pageable) {
         Page<Board> boardPage = boardRepository.findByUserEmailAndDeletedYnFalse(email, pageable);
-        List<BoardResponseDTO> dtoList = boardPage.getContent()
-                                                  .stream()
+        List<BoardResponseDTO> dtoList = boardPage.getContent().stream()
                                                   .map(board -> BoardResponseDTO.toDTO(board))
                                                   .toList();
         return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());
@@ -247,9 +245,8 @@ public class BoardServiceImpl implements BoardService {
     @Transactional(readOnly = true)
     public List<BoardResponseDTO> getNoticeBoards() {
         List<Board> boardList = boardRepository.findByNoticeYnTrueAndDeletedYnFalse();
-        return boardList.stream()
-                         .map(board -> BoardResponseDTO.toDTO(board))
-                         .toList();
+        return boardList.stream().map(board -> BoardResponseDTO.toDTO(board))
+                                  .toList();
     }
     
     /** 게시판용 정렬된 목록 조회 (상단고정 -> 공지 -> 최신순) */
@@ -258,8 +255,7 @@ public class BoardServiceImpl implements BoardService {
     public Page<BoardResponseDTO> getBoardsOrdered(Pageable pageable) {
         Page<Board> boardPage = boardRepository.findAllOrderByPinnedNoticeAndCreated(pageable);
 
-        List<BoardResponseDTO> dtoList = boardPage.getContent()
-                                                  .stream()
+        List<BoardResponseDTO> dtoList = boardPage.getContent().stream()
                                                   .map(board -> BoardResponseDTO.toDTO(board))
                                                   .toList();
 
@@ -279,8 +275,7 @@ public class BoardServiceImpl implements BoardService {
             default -> throw new IllegalArgumentException("유효하지 않은 검색 타입입니다: " + type);
         }
 
-        List<BoardResponseDTO> dtoList = result.getContent()
-                                               .stream()
+        List<BoardResponseDTO> dtoList = result.getContent().stream()
                                                .map(board -> BoardResponseDTO.toDTO(board))
                                                .toList();
         return new PageImpl<>(dtoList, pageable, result.getTotalElements());

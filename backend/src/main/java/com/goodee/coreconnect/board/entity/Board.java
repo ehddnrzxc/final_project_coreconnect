@@ -50,7 +50,6 @@ public class Board {
     @Column(name = "board_created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    @LastModifiedDate
     @Column(name = "board_updated_at")
     private LocalDateTime updatedAt;
 
@@ -82,11 +81,6 @@ public class Board {
         this.updatedAt = null; // 등록 시 updatedAt 비움
     }
 
-    @PreUpdate
-    public void onPreUpdate() {
-        this.updatedAt = LocalDateTime.now(); // 수정 시에만 갱신
-    }
-
     // ─────────────── 생성 메서드 ───────────────
     public static Board createBoard(User user, BoardCategory category, String title, String content, Boolean noticeYn, Boolean pinned, Boolean privateYn) {
         if (user == null) throw new IllegalArgumentException("작성자는 반드시 지정되어야 합니다.");
@@ -116,6 +110,8 @@ public class Board {
         if (noticeYn != null) this.noticeYn = noticeYn;
         if (pinned != null) this.pinned = pinned;
         if (privateYn != null) this.privateYn = privateYn;
+        
+        this.updatedAt = LocalDateTime.now();
     }
 
     /** 조회수 증가 */

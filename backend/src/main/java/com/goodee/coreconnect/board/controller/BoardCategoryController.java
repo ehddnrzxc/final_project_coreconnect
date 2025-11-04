@@ -26,7 +26,7 @@ import lombok.RequiredArgsConstructor;
 
 @Tag(name = "Board Category API", description = "게시판 카테고리 관리 (관리자 전용)")
 @RestController
-@RequestMapping("/api/v1/board-cate")
+@RequestMapping("/api/v1/board-category")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "bearerAuth")
 public class BoardCategoryController {
