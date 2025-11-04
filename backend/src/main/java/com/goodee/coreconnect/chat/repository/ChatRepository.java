@@ -46,4 +46,11 @@ public interface ChatRepository extends JpaRepository<Chat, Integer> {
     List<Chat> findLatestMessagesByRoomIds(@Param("roomIds") List<Integer> roomIds);
     
     
+    // 8. 채팅방에서 메시지를 불러올때 파일이 있는 경우 파일들도 함께 조회
+    @Query("SELECT DISTINCT c FROM Chat c " + 
+    	   "LEFT JOIN FETCH c.messageFiles " + 
+    		"WHERE c.chatRoom.id = :roomId " + 
+    	   "ORDER BY c.sendAt ASC")
+    List<Chat> findAllChatsWithFilesByRoomId(@Param("roomId") Integer roomId);
+    
 }

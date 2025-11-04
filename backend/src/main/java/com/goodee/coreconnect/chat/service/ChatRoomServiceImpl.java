@@ -101,7 +101,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	@Override
 	public ChatRoom findById(Integer id) {
 		return chatRoomRepository.findById(id)
-				.orElseThrow(() -> new IllegalArgumentException("채팅방 없음: " + id));
+				.orElseThrow(() -> new IllegalArgumentException("채팅방 없음: "  + id));
 	}
 
 	@Transactional
@@ -535,14 +535,18 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     }
 
     @Override
-    public ChatResponseDTO saveChatAndReturnDTO(Integer roomId, Integer senderId, String content) {
+    public ChatResponseDTO saveChatAndReturnDTO(Integer roomId, Integer senderId, String content, int unreadCount) {
         Chat chat = sendChatMessage(roomId, senderId, content); // chat 저장
+        // unreadCount 반영
+        chat.setUnreadCount(unreadCount);
         // Lazy 필드 강제 초기화(필요시)
         chat.getSender().getName();
         chat.getChatRoom().getId();
         log.info("sendAt: {}", chat.getSendAt());
+        // DB에 저장
+        chatRepository.save(chat);
 
-        // ⭐⭐⭐ 반드시 fromEntity를 통해 String sendAt을 넣어준다!
+        // 반드시 fromEntity를 통해 String sendAt을 넣어준다!
         return ChatResponseDTO.fromEntity(chat);
     }
 
@@ -558,6 +562,17 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	        return senderName + "님으로부터 " + unreadChatCount + "개의 채팅 메시지가 도착했습니다";
 	    }
 	    return null;
+	}
+
+	@Override
+	public List<Chat> getChatsWithFilesByRoomId(Integer roomId) {
+		List<Chat> chats = chatRepository.findAllChatsWithFilesByRoomId(roomId);
+		if (chats == null || chats.isEmpty()) {
+			throw new IllegalArgumentException("채팅 메시지 없음: " + roomId);
+		} 
+		
+		
+		return chats;
 	}
     
 }

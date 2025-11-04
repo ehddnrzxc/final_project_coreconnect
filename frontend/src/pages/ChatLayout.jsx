@@ -1,20 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { NavLink } from "react-router-dom";
-import {
-  Box,
-  Typography,
-  List,
-  ListItem,
-  ListItemAvatar,
-  Avatar,
-  ListItemText,
-  Badge,
-  Tab,
-  Tabs,
-  IconButton,
-  TextField,
-  Button
-} from "@mui/material";
+import { Box, Snackbar, Slide, Paper, Typography, Badge } from "@mui/material";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import SendIcon from "@mui/icons-material/Send";
 import NotificationsNoneIcon from "@mui/icons-material/NotificationsNone";
@@ -25,11 +11,26 @@ import PhoneIcon from "@mui/icons-material/Phone";
 import VideoCallIcon from "@mui/icons-material/VideoCall";
 import GroupIcon from "@mui/icons-material/Group";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
-import "./ChatLayout.css";
+import Tabs from "@mui/material/Tabs";
+import Tab from "@mui/material/Tab";
+import List from "@mui/material/List";
+import ListItem from "@mui/material/ListItem";
+import ListItemAvatar from "@mui/material/ListItemAvatar";
+import ListItemText from "@mui/material/ListItemText";
+import Avatar from "@mui/material/Avatar";
+import IconButton from "@mui/material/IconButton";
+import TextField from "@mui/material/TextField";
+import Button from "@mui/material/Button";
+
 import {
   fetchChatRoomMessages,
   fetchChatRoomsLatest
 } from "../api/ChatRoomApi";
+
+// MUI Slide Transition (오른쪽 상단 → 왼쪽)
+function TransitionLeft(props) {
+  return <Slide {...props} direction="left" />;
+}
 
 function getUserName() {
   try {
@@ -39,14 +40,7 @@ function getUserName() {
     return "";
   }
 }
-function getUserId() {
-  try {
-    const user = JSON.parse(localStorage.getItem("user"));
-    return user?.id || null;
-  } catch {
-    return null;
-  }
-}
+
 function formatTime(sendAt) {
   if (!sendAt) return "";
   const d = new Date(sendAt);
@@ -136,14 +130,12 @@ export default function ChatLayout() {
   const [selectedRoomId, setSelectedRoomId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [tabIdx, setTabIdx] = useState(0);
-  const [socket, setSocket] = useState(null);
   const userName = getUserName();
-  // const userId = getUserId();
   const accessToken = localStorage.getItem("accessToken");
   const inputRef = useRef();
   const unreadRoomCount = roomList.filter((room) => room.unreadCount > 0).length;
+  const messagesEndRef = useRef(null);
 
-  // 채팅방 목록 로딩 (REST)
   useEffect(() => {
     async function loadRooms() {
       setLoading(true);
@@ -158,7 +150,6 @@ export default function ChatLayout() {
     loadRooms();
   }, []);
 
-  // 채팅 메시지(REST로 최초/변경시 가져오기)
   useEffect(() => {
     async function loadMessages() {
       if (selectedRoomId) {
@@ -174,77 +165,134 @@ export default function ChatLayout() {
     loadMessages();
   }, [selectedRoomId]);
 
-  // WebSocket 연결: 방 변경시 새로 연결
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
+
   const socketRef = useRef(null);
 
-
-useEffect(() => {
-  if (!selectedRoomId || !accessToken) return;
-  let shouldReconnect = true;
-  function connect() {
-    const wsUrl = `${WEBSOCKET_BASE}?roomId=${selectedRoomId}&accessToken=${accessToken}`;
-    const ws = new WebSocket(wsUrl);
-    ws.onopen = () => {
-      console.log("[WebSocket 연결됨!]");
+  useEffect(() => {
+    if (!selectedRoomId || !accessToken) return;
+    let shouldReconnect = true;
+    function connect() {
+      const wsUrl = `${WEBSOCKET_BASE}?roomId=${selectedRoomId}&accessToken=${accessToken}`;
+      const ws = new WebSocket(wsUrl);
+      ws.onopen = () => {
+        console.log("[WebSocket 연결됨!]");
+      };
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          // setMessages((prev) => [...prev, msg]);
+          handleNewMessage(msg);
+        } catch(err) {
+          console.warn("메시지 파싱 오류:", err);
+        }
+      };
+      ws.onclose = () => {
+        console.log("[WebSocket 연결 종료]");
+        if (shouldReconnect) {
+          setTimeout(() => { connect(); }, 1000);
+        }
+      };
+      ws.onerror = (e) => {
+        console.error("[WebSocket 에러]", e);
+      };
+      socketRef.current = ws;
+    }
+    connect();
+    return () => {
+      shouldReconnect = false;
+      if (socketRef.current) socketRef.current.close();
     };
-    ws.onmessage = (event) => {
-      // 메시지 수신 처리
-      try {
-        const msg = JSON.parse(event.data);
-        setMessages((prev) => [...prev, msg]);
-      } catch(err) {
-        console.warn("메시지 파싱 오류:", err);
-      }
-    };
-    ws.onclose = () => {
-      console.log("[WebSocket 연결 종료]");
-      // 만약 정말 방을 떠난 것이면 재연결 안함
-      // 그렇지 않다면 자동 재연결
-      if (shouldReconnect) {
-        setTimeout(() => { connect(); }, 1000); // 1초 후 재연결 시도
-      }
-    };
-    ws.onerror = (e) => {
-      console.error("[WebSocket 에러]", e);
-    };
-    socketRef.current = ws;
-  }
-
-  connect();
-
-  return () => {
-    shouldReconnect = false; // cleanup 시 재연결 중지
-    if (socketRef.current) socketRef.current.close();
-  };
-}, [selectedRoomId, accessToken]);
+  }, [selectedRoomId, accessToken]);
 
   const selectedRoom = roomList.find((r) => r.roomId === selectedRoomId);
 
   if (loading) return <Box p={2}>채팅방 목록 로딩중...</Box>;
 
-  const handleFileUpload = (e) => {
+  // 파일 업로드
+  const handleFileUpload = async (e) => {
     const files = e.target.files;
-    alert(`첨부파일 ${files[0]?.name} 업로드 로직 추가 예정`);
+    if (!files || files.length === 0 || !selectedRoomId) return;
+    const file = files[0];
+    const formData = new FormData();
+    formData.append("file", file);
+    try  {
+      const res = await fetch(`/api/v1/chat/${selectedRoomId}/messages/file`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        }, 
+        body: formData
+      });
+      if (!res.ok) throw new Error("파일 업로드 실패")
+      const result = await res.json();
+      const chatMessage = result.data;
+      setMessages((prev) => [...prev, chatMessage]);
+    } catch (err) {
+      alert("파일 업로드에 실패했습니다: " + err.message);
+    }
     e.target.value = "";
   };
 
-  // 메시지 전송
- const handleSend = () => {
-  const message = inputRef.current.value;
-  const currSocket = socketRef.current;
-  if (currSocket && currSocket.readyState === 1 && message.trim()) {
-    const payload = JSON.stringify({
-      roomId: selectedRoomId,
-      content: message,
-      fileYn: false,
-      fileUrl: null
+  const handleSend = () => {
+    const message = inputRef.current.value;
+    const currSocket = socketRef.current;
+    if (currSocket && currSocket.readyState === 1 && message.trim()) {
+      const payload = JSON.stringify({
+        roomId: selectedRoomId,
+        content: message,
+        fileYn: false,
+        fileUrl: null
+      });
+      currSocket.send(payload);
+      inputRef.current.value = "";
+    } else {
+      console.log("[소켓 미연결 혹은 메시지 없음]", currSocket?.readyState);
+    }
+  };
+
+  const handleNewMessage = msg => {
+    setMessages(prev => [...prev, msg]);
+    setRoomList(prevRoomList => {
+      return prevRoomList.map(room => room.roomId === msg.roomId ?
+        {
+          ...room,
+          messageContent: msg.messageContent,
+          fileYn: msg.fileYn,
+          sendAt: msg.sendAt,
+          unreadCount: msg.unreadCount,
+        }
+        : room
+      );
     });
-    currSocket.send(payload);
-    inputRef.current.value = "";
-  } else {
-    console.log("[소켓 미연결 혹은 메시지 없음]", currSocket?.readyState);
-  }
-};
+  };
+
+  // 채팅 메시지 토스트 알림
+  const ToastList = ({ rooms }) => (
+    <div className="toast-list">
+      {rooms.filter(room => room.unreadCount > 0).map(room => (
+        <div className = "toast" key={room.roomId}>
+          <div className="toast-main">{room.lastUnreadMessageContent}</div>
+          <div className="toast-meta">
+            <span>{room.lastUnreadMessageSenderName}</span>
+            <span></span>
+
+
+          </div>
+        </div>
+
+      ))
+
+      }
+    </div>
+  )
+
+
+
 
   return (
     <Box className="chat-layout" sx={{ background: "#fafbfc", minHeight: "100vh", display: "flex", flexDirection: "row" }}>
@@ -418,85 +466,113 @@ useEffect(() => {
                     display: "flex", flexDirection: "column", gap: 0.5,
                     scrollbarWidth: "thin",
                     "&::-webkit-scrollbar": { width: 8 },
-                    "&::-webkit-scrollbar-thumb": {
-                      background: "#e4eaf3", borderRadius: "7px"
-                    },
+                    "&::-webkit-scrollbar-thumb": { background: "#e4eaf3", borderRadius: "7px" },
                     "&::-webkit-scrollbar-track": { background: "#f8fbfd" }
-                  }}>
+                  }}
+                >
                   {messages
-                  .filter(msg => msg.messageContent && msg.messageContent.trim() !== "") // 빈 메시지 제외!
-                  .map(msg => {
-                    const isMe = msg.senderName === userName;
-                    return (
-                      <Box key={msg.id}
-                        sx={{
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: isMe ? "flex-end" : "flex-start",
-                          mb: 1.7, width: "100%",
-                        }}
-                      >
-                        {!isMe && (
-                          <Typography variant="caption" color="#7d87ab"
-                            sx={{ mb: 0.5, fontWeight: 600, fontSize: 14 }}
-                          >
-                            {msg.senderName}
-                          </Typography>
-                        )}
-                        <Box sx={{ display: "flex", alignItems: "center", maxWidth: "330px" }}>
-                          {isMe && msg.unreadCount > 0 && (
-                            <Badge badgeContent={msg.unreadCount}
-                              sx={{
-                                mr: 1,
-                                "& .MuiBadge-badge": {
-                                  background: "none",
-                                  color: "#f6c745",
-                                  fontWeight: 700,
-                                  borderRadius: "8px",
-                                  fontSize: "13px"
-                                }
-                              }}
-                            />
-                          )}
-                          <Box sx={{
-                            display: "inline-block",
-                            fontSize: 15, px: 2, py: 1, borderRadius: "10px", mb: 0.5,
-                            bgcolor: isMe ? "#ffe585" : "#f7f9fc",
-                            color: isMe ? "#1aaf54" : "#222", boxShadow: "none",
-                            width: "fit-content", maxWidth: "270px",
-                            wordBreak: "break-all",
-                            border: isMe ? "none" : "1px solid #e4eaf3"
-                          }}>
-                            {msg.fileYn ? "[파일]" : msg.messageContent || ""}
-                          </Box>
-                          {!isMe && msg.unreadCount > 0 && (
-                            <Badge badgeContent={msg.unreadCount}
-                              sx={{
-                                ml: 1,
-                                "& .MuiBadge-badge": {
-                                  background: "none",
-                                  color: "#f6c745",
-                                  fontWeight: 700,
-                                  borderRadius: "8px",
-                                  fontSize: "13px"
-                                }
-                              }}
-                            />
-                          )}
-                        </Box>
-                        <Typography
+                    .filter(msg => msg.fileYn || (msg.messageContent && msg.messageContent.trim() !== ""))
+                    .map(msg => {
+                      const isMe = msg.senderName === userName;
+                      // Badge 위치 조건
+                      return (
+                        <Box key={msg.id}
                           sx={{
-                            fontSize: 12,
-                            color: "#b0b6ce",
-                            alignSelf: isMe ? "flex-end" : "flex-start",
-                            mt: 0.5
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: isMe ? "flex-end" : "flex-start",
+                            mb: 1.7, width: "100%",
                           }}
                         >
-                          {formatTime(msg.sendAt)}
-                        </Typography>
-                      </Box>
-                    );
-                  })}
+                          {!isMe && (
+                            <Typography variant="caption" color="#7d87ab"
+                              sx={{ mb: 0.5, fontWeight: 600, fontSize: 14 }}
+                            >
+                              {msg.senderName}
+                            </Typography>
+                          )}
+                          <Box sx={{ display: "flex", alignItems: "center", maxWidth: "330px" }}>
+                            {/* 내 메시지면 왼쪽 뱃지 */}
+                            {isMe && msg.unreadCount > 0 && (
+                              <Badge badgeContent={msg.unreadCount} sx={{
+                                mr: 1,
+                                "& .MuiBadge-badge": {
+                                  background: "#f6c745",
+                                  color: "#222",
+                                  fontWeight: 700,
+                                  borderRadius: "8px",
+                                  fontSize: "13px"
+                                }
+                              }}/>
+                            )}
+
+                            {/* 메시지 본문 */}
+                            <Box
+                              sx={{
+                                display: "inline-block",
+                                fontSize: 15, px: 2, py: 1, borderRadius: "10px", mb: 0.5,
+                                bgcolor: isMe ? "#ffe585" : "#f7f9fc",
+                                color: isMe ? "#1aaf54" : "#222", boxShadow: "none",
+                                width: "fit-content", maxWidth: "270px",
+                                wordBreak: "break-all",
+                                border: isMe ? "none" : "1px solid #e4eaf3"
+                              }}>
+                              {msg.fileYn && msg.fileUrl
+                                ? (
+                                  msg.fileUrl.match(/\.(jpg|jpeg|png|gif|bmp|webp)$/i) ?
+                                    <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer">
+                                      <img
+                                        src={msg.fileUrl}
+                                        alt={msg.fileName || "이미지"}
+                                        style={{ maxWidth: "220px", maxHeight: "220px", borderRadius: 8 }}
+                                      />
+                                    </a>
+                                  :
+                                    <a
+                                      href={msg.fileUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      style={{
+                                        color: "#4a90e2",
+                                        textDecoration: "underline",
+                                        fontWeight: 600,
+                                        wordBreak: "break-all"
+                                      }}
+                                    >
+                                      {msg.fileName || "파일"}
+                                    </a>
+                                )
+                                : (msg.messageContent || "")
+                              }
+                            </Box>
+                            {/* 남 메시지면 오른쪽 뱃지 */}
+                            {!isMe && msg.unreadCount > 0 && (
+                              <Badge badgeContent={msg.unreadCount} sx={{
+                                ml: 1,
+                                "& .MuiBadge-badge": {
+                                  background: "#f6c745",
+                                  color: "#222",
+                                  fontWeight: 700,
+                                  borderRadius: "8px",
+                                  fontSize: "13px"
+                                }
+                              }}/>
+                            )}
+                          </Box>
+                          <Typography
+                            sx={{
+                              fontSize: 12,
+                              color: "#b0b6ce",
+                              alignSelf: isMe ? "flex-end" : "flex-start",
+                              mt: 0.5
+                            }}
+                          >
+                            {formatTime(msg.sendAt)}
+                          </Typography>
+                        </Box>
+                      );
+                    })}
+                  <div ref={messagesEndRef} />
                 </Box>
                 <Box sx={{
                   width: "100%",
@@ -530,14 +606,14 @@ useEffect(() => {
                       <AttachFileIcon />
                     </IconButton>
                   </label>
-                 <Button
-                  variant="contained"
-                  color="success"
-                  onClick={handleSend}
-                  disabled={!socketRef.current || socketRef.current.readyState !== 1}
-                >
-                  <SendIcon />
-                </Button>
+                  <Button
+                    variant="contained"
+                    color="success"
+                    onClick={handleSend}
+                    disabled={!socketRef.current || socketRef.current.readyState !== 1}
+                  >
+                    <SendIcon />
+                  </Button>
                 </Box>
               </>
             )}

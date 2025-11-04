@@ -2,6 +2,7 @@ package com.goodee.coreconnect.chat.controller;
 
 import java.security.Principal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -208,13 +209,13 @@ public class ChatMessageController {
 		// 메시지별 미읽은 인원수 DB 최신화
 		chatRoomService.updateUnreadCountForMessages(roomId);
 		
-		ChatRoom chatRoom = chatRoomService.findById(roomId);
-		List<Chat> messages = chatRoom.getChats();
-		messages.sort(Comparator.comparing(Chat::getSendAt));
+		List<Chat> messages = chatRoomService.getChatsWithFilesByRoomId(roomId);
+		
 		List<ChatMessageResponseDTO> dtoList = messages.stream()
 				.map(ChatMessageResponseDTO::fromEntity)
 				.collect(Collectors.toList());
-		return ResponseEntity.ok(ResponseDTO.success(dtoList, "채팅방 메시지 오름차순 조회 성공"));
+		
+		return ResponseEntity.ok(ResponseDTO.success(dtoList, "채팅방 메시지 오름차순 조회 성공"));		
 	}
 	
 	/**
@@ -449,7 +450,10 @@ public class ChatMessageController {
     @Operation(summary = "내가 참여중인 채팅방의 안읽은 메시지 개수/목록 조회", description = "내가 참여중인 채팅방의 안읽은 메시지 개수/목록 조회")
     @GetMapping("/messages/unread")
     public ResponseEntity<ResponseDTO<Map<String, Object>>> getUnreadMessages(@AuthenticationPrincipal String email) {
-        User user = userRepository.findByEmail(email).orElseThrow();
+    	// 응답용 Map 생성
+    	Map<String, Object> responseMap = new HashMap<>();
+    	
+    	User user = userRepository.findByEmail(email).orElseThrow();
 
         // 1. 서비스에서 방/마지막 메시지 DTO 리스트 가져오기
         List<ChatRoomLatestMessageResponseDTO> chatRooms  = chatRoomService.getChatRoomIdsByUserId(user.getId());
@@ -461,21 +465,50 @@ public class ChatMessageController {
         
         // 3. 미읽은 메시지 목록 조회
         List<ChatMessageReadStatus> unreadStatuses = chatMessageReadStatusRepository.findByUserIdAndReadYnFalse(user.getId());
+        
+        // 3-1. 채팅방별 미읽음 메시지 집계 (roomId별 그룹핑)
+        Map<Integer, List<ChatMessageReadStatus>> unreadByRoomId = unreadStatuses.stream()
+        		.collect(Collectors.groupingBy(status -> status.getChat().getChatRoom().getId()));
+        
+        // 5. rooms 결과를 직접 구성
+        List<Map<String, Object>> roomsWithUnread = new ArrayList<>();
+        
+        // roomId→roomName 매핑
+        Map<Integer, String> roomIdToName = chatRooms.stream()
+            .collect(Collectors.toMap(ChatRoomLatestMessageResponseDTO::getRoomId, ChatRoomLatestMessageResponseDTO::getRoomName));
+        
+        // 미읽은 메시지 목록 DTO 리스트로 변환
         List<ChatMessageResponseDTO> unreadMessages = unreadStatuses.stream()
             .map(status -> ChatMessageResponseDTO.fromEntity(status.getChat()))
             .collect(Collectors.toList());
         
-        // 4. roomId→roomName 매핑
-        Map<Integer, String> roomIdToName = chatRooms.stream()
-        		.collect(Collectors.toMap(ChatRoomLatestMessageResponseDTO::getRoomId, ChatRoomLatestMessageResponseDTO::getRoomName));
-
-        // 응답용 Map 생성
-        // 5. 응답용 Map
-        Map<String, Object> responseMap = new HashMap<>();
-        responseMap.put("rooms", chatRooms); // 방 요약 정보(마지막 메시지 포함)
-        responseMap.put("messages", unreadMessages); // 미읽은 메시지 목록
-        responseMap.put("roomNames", roomIdToName);  // roomId→roomName 매핑
-
+        for (ChatRoomLatestMessageResponseDTO room : chatRooms) {
+        	List<ChatMessageReadStatus> unreadList = unreadByRoomId.getOrDefault(room.getRoomId(), new ArrayList<>());
+        	int unreadCount = unreadList.size();
+        	Chat lastUnreadChat = unreadList.stream()
+        			.map(ChatMessageReadStatus::getChat)
+        			.max(Comparator.comparing(Chat::getSendAt))
+        			.orElse(null);
+        	
+        	Map<String, Object> roomMap = new HashMap<>();
+        	roomMap.put("roomId", room.getRoomId());
+        	roomMap.put("roomName", room.getRoomName());
+            roomMap.put("lastMessageId", room.getLastMessageId());
+            roomMap.put("lastMessageContent", room.getLastMessageContent());
+            roomMap.put("lastSenderName", room.getLastSenderName());
+            roomMap.put("lastMessageTime", room.getLastMessageTime());
+            roomMap.put("unreadCount", unreadCount);
+            roomMap.put("lastUnreadMessageContent", lastUnreadChat != null ? lastUnreadChat.getMessageContent() : null);
+            roomMap.put("lastUnreadMessageSenderName", 
+                lastUnreadChat != null && lastUnreadChat.getSender() != null ? lastUnreadChat.getSender().getName() : null);
+            roomMap.put("lastUnreadMessageTime", lastUnreadChat != null ? lastUnreadChat.getSendAt() : null);
+            roomsWithUnread.add(roomMap);
+        }
+        
+        responseMap.put("rooms", chatRooms);
+        responseMap.put("roomNames", roomIdToName);
+        responseMap.put("messages", unreadMessages);
+        
         return ResponseEntity.ok(ResponseDTO.success(responseMap, "내 미읽은 채팅 메시지 + 방 이름 목록 조회 성공"));
     }
     

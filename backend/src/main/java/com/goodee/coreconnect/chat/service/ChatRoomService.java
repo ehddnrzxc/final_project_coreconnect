@@ -72,9 +72,11 @@ public interface ChatRoomService {
     
     List<UnreadNotificationListDTO> getUnreadNotificationsExceptLatest(Integer userId, List<NotificationType> allowedTypes);
     
-    ChatResponseDTO saveChatAndReturnDTO(Integer roomId, Integer senderId, String content);
+    ChatResponseDTO saveChatAndReturnDTO(Integer roomId, Integer senderId, String content, int unreadCount);
 
     String getUnreadToadMsgForUser(Integer offlineUserId);
 
+    // 채팅 메시지에 파일이 있는 경우 파일을 조회
+    List<Chat> getChatsWithFilesByRoomId(Integer roomId);
 
 }

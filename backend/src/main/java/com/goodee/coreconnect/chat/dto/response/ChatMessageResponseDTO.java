@@ -33,12 +33,23 @@ public class ChatMessageResponseDTO {
 	 // 추가: Chat 객체를 DTO로 변환하는 메서드
     public static ChatMessageResponseDTO fromEntity(Chat chat) {
         if (chat == null) return null;
+        
+        String fileUrl = null;
+        if (chat.getMessageFiles() != null && !chat.getMessageFiles().isEmpty()) {
+        	// 여러 개일 경우 첫 번째 파일 기준, 필요시 for문/리스트로 확장
+        	fileUrl = chat.getMessageFiles().get(0).getS3ObjectKey();
+        } else {
+        	fileUrl = chat.getFileUrl();
+        }
+        
         return ChatMessageResponseDTO.builder()
                 .id(chat.getId())
                 .messageContent(chat.getMessageContent())
                 .sendAt(chat.getSendAt())
                 .fileYn(chat.getFileYn())
-                .fileUrl(chat.getFileUrl())
+                .fileUrl(chat.getMessageFiles() != null && !chat.getMessageFiles().isEmpty()
+                		? chat.getMessageFiles().get(0).getS3ObjectKey()
+                	    : chat.getFileUrl())
                 .roomId(chat.getChatRoom() != null ? chat.getChatRoom().getId() : null)
                 .roomName(chat.getChatRoom() != null ? chat.getChatRoom().getRoomName() : null)
                 .senderId(chat.getSender() != null ? chat.getSender().getId() : null)
