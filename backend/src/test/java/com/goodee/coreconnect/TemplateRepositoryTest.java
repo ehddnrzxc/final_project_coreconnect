@@ -58,17 +58,17 @@ public class TemplateRepositoryTest {
         // 3. "B-양식" (비활성)
         // -> 조회 결과는 [A-양식, C-양식] 순서여야 함
 
-        templateC_active = Template.createTemplate("C-양식", "내용C", creator);
+        templateC_active = Template.createTemplate("C-양식", "내용C", "C-양식", creator);
         templateRepository.save(templateC_active);
         
         Thread.sleep(10); // 생성 순서 보장
 
-        templateA_active = Template.createTemplate("A-양식", "내용A", creator);
+        templateA_active = Template.createTemplate("A-양식", "내용A", "A-양식", creator);
         templateRepository.save(templateA_active);
 
         Thread.sleep(10);
 
-        templateB_inactive = Template.createTemplate("B-양식", "내용B", creator);
+        templateB_inactive = Template.createTemplate("B-양식", "내용B", "B-양식", creator);
         templateRepository.save(templateB_inactive);
         
         // (가정) Template 엔티티에 activeYn을 false로 바꾸는 메서드가 있다고 가정
