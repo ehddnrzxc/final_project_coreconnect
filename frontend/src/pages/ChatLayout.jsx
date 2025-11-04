@@ -1,20 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { NavLink } from "react-router-dom";
-import {
-  Box,
-  Typography,
-  List,
-  ListItem,
-  ListItemAvatar,
-  Avatar,
-  ListItemText,
-  Badge,
-  Tab,
-  Tabs,
-  IconButton,
-  TextField,
-  Button
-} from "@mui/material";
+import { Box, Snackbar, Slide, Paper, Typography, Badge } from "@mui/material";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import SendIcon from "@mui/icons-material/Send";
 import NotificationsNoneIcon from "@mui/icons-material/NotificationsNone";
@@ -25,11 +11,26 @@ import PhoneIcon from "@mui/icons-material/Phone";
 import VideoCallIcon from "@mui/icons-material/VideoCall";
 import GroupIcon from "@mui/icons-material/Group";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
-import "./ChatLayout.css";
+import Tabs from "@mui/material/Tabs";
+import Tab from "@mui/material/Tab";
+import List from "@mui/material/List";
+import ListItem from "@mui/material/ListItem";
+import ListItemAvatar from "@mui/material/ListItemAvatar";
+import ListItemText from "@mui/material/ListItemText";
+import Avatar from "@mui/material/Avatar";
+import IconButton from "@mui/material/IconButton";
+import TextField from "@mui/material/TextField";
+import Button from "@mui/material/Button";
+
 import {
   fetchChatRoomMessages,
   fetchChatRoomsLatest
 } from "../api/ChatRoomApi";
+
+// MUI Slide Transition (오른쪽 상단 → 왼쪽)
+function TransitionLeft(props) {
+  return <Slide {...props} direction="left" />;
+}
 
 function getUserName() {
   try {
@@ -184,7 +185,7 @@ export default function ChatLayout() {
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
-          setMessages((prev) => [...prev, msg]);
+          // setMessages((prev) => [...prev, msg]);
           handleNewMessage(msg);
         } catch(err) {
           console.warn("메시지 파싱 오류:", err);
@@ -269,6 +270,29 @@ export default function ChatLayout() {
       );
     });
   };
+
+  // 채팅 메시지 토스트 알림
+  const ToastList = ({ rooms }) => (
+    <div className="toast-list">
+      {rooms.filter(room => room.unreadCount > 0).map(room => (
+        <div className = "toast" key={room.roomId}>
+          <div className="toast-main">{room.lastUnreadMessageContent}</div>
+          <div className="toast-meta">
+            <span>{room.lastUnreadMessageSenderName}</span>
+            <span></span>
+
+
+          </div>
+        </div>
+
+      ))
+
+      }
+    </div>
+  )
+
+
+
 
   return (
     <Box className="chat-layout" sx={{ background: "#fafbfc", minHeight: "100vh", display: "flex", flexDirection: "row" }}>
