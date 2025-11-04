@@ -44,8 +44,6 @@ public class BoardFileServiceImpl implements BoardFileService {
 
     /**
      * 다중 파일 업로드
-     * - 게시글 존재 검증
-     * - 작성자/관리자만 업로드 가능
      * - S3 업로드 + DB 저장
      */
     @Override
@@ -62,9 +60,8 @@ public class BoardFileServiceImpl implements BoardFileService {
             throw new AccessDeniedException("인증된 사용자만 파일을 업로드할 수 있습니다.");
         }
 
-        // 본인 글이 아니면 업로드 불가 (단, ADMIN 예외 허용)
-        if (!loginUser.getId().equals(board.getUser().getId())
-                && loginUser.getRole() != Role.ADMIN) {
+        // 본인 글이 아니면 업로드 불가
+        if (!loginUser.getId().equals(board.getUser().getId())) {
             throw new AccessDeniedException("본인 게시글만 파일을 업로드할 수 있습니다.");
         }
 
@@ -107,12 +104,10 @@ public class BoardFileServiceImpl implements BoardFileService {
                                                    .s3ObjectKey(fileUrl)
                                                    .deletedYn(saved.getDeletedYn())
                                                    .build());
-
             } catch (IOException e) {
                 throw new RuntimeException("파일 업로드 중 오류 발생: " + file.getOriginalFilename(), e);
             }
         }
-
         return resultList;
     }
 
@@ -157,7 +152,6 @@ public class BoardFileServiceImpl implements BoardFileService {
                                             .deletedYn(file.getDeletedYn())
                                             .build());
         }
-
         return dtoList;
     }
 

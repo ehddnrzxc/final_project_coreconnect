@@ -86,9 +86,7 @@ public class BoardReplyController {
 
     @Operation(summary = "게시글별 댓글 목록 조회", description = "게시글 ID 기준으로 댓글 및 대댓글을 모두 조회합니다.")
     @GetMapping("/board/{boardId}")
-    public ResponseEntity<ResponseDTO<List<BoardReplyResponseDTO>>> getRepliesByBoard(
-            @PathVariable("boardId") Integer boardId
-    ) {
+    public ResponseEntity<ResponseDTO<List<BoardReplyResponseDTO>>> getRepliesByBoard(@PathVariable("boardId") Integer boardId) {
         List<BoardReplyResponseDTO> replies = replyService.getRepliesByBoard(boardId);
 
         ResponseDTO<List<BoardReplyResponseDTO>> res = ResponseDTO.<List<BoardReplyResponseDTO>>builder()

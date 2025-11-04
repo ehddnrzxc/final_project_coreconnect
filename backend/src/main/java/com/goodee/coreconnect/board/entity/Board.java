@@ -4,13 +4,21 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
 import com.goodee.coreconnect.user.entity.User;
 
-import jakarta.persistence.*;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -18,7 +26,6 @@ import lombok.NoArgsConstructor;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@EntityListeners(AuditingEntityListener.class)
 @Table(name = "board")
 public class Board {
 
@@ -46,7 +53,6 @@ public class Board {
     @Column(name = "board_view_count", nullable = false)
     private Integer viewCount = 0;
 
-    @CreatedDate
     @Column(name = "board_created_at", updatable = false)
     private LocalDateTime createdAt;
 
@@ -74,11 +80,15 @@ public class Board {
     private List<BoardFile> files = new ArrayList<>();
     
     
-    /** Auditing 보완: 생성/수정 시각 수동 초기화 */
+    /** 
+     * 엔티티 최초 저장 시각 초기화
+     * - createdAt: 현재 시각으로 설정
+     * - updatedAt: 등록 시에는 null 유지
+     */
     @PrePersist
     public void onPrePersist() {
         this.createdAt = LocalDateTime.now();
-        this.updatedAt = null; // 등록 시 updatedAt 비움
+        this.updatedAt = null; 
     }
 
     // ─────────────── 생성 메서드 ───────────────
