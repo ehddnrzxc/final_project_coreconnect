@@ -485,6 +485,7 @@ public class ChatMessageController {
         for (ChatRoomLatestMessageResponseDTO room : chatRooms) {
         	List<ChatMessageReadStatus> unreadList = unreadByRoomId.getOrDefault(room.getRoomId(), new ArrayList<>());
         	int unreadCount = unreadList.size();
+        	log.info("unreadCount: {}", unreadCount);
         	Chat lastUnreadChat = unreadList.stream()
         			.map(ChatMessageReadStatus::getChat)
         			.max(Comparator.comparing(Chat::getSendAt))
@@ -505,9 +506,10 @@ public class ChatMessageController {
             roomsWithUnread.add(roomMap);
         }
         
-        responseMap.put("rooms", chatRooms);
+        responseMap.put("chatRooms", chatRooms);
         responseMap.put("roomNames", roomIdToName);
         responseMap.put("messages", unreadMessages);
+        responseMap.put("roomsWithUnread", roomsWithUnread);
         
         return ResponseEntity.ok(ResponseDTO.success(responseMap, "내 미읽은 채팅 메시지 + 방 이름 목록 조회 성공"));
     }

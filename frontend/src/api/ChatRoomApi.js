@@ -13,3 +13,11 @@ export async function fetchChatRoomMessages(roomId) {
   const res = await http.get(`/chat/${roomId}/messages`);
   return res.data;
 }
+
+// 내가 참여중인 채팅방의 안읽은 메시지 개수/목록 조회
+export async function fetchUnreadmessages() {
+  // 실제 요청: GET /api/v1/chat/messages/unread
+  const res = await http.get("/chat/messages/unread");
+  return res.data;
+}
+
