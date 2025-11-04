@@ -595,8 +595,13 @@ public class ApprovalServiceImpl implements ApprovalService {
   }
   
   private Template findTemplateById(Integer templateId) {
-    return templateRepository.findById(templateId)
+    Template template = templateRepository.findById(templateId)
         .orElseThrow(() -> new EntityNotFoundException("템플릿(양식)을 찾을 수 없습니다. ID: " + templateId));
+    if (!template.isActiveYn()) {
+      log.warn("비활성화된 템플릿(ID: {})에 대한 접근 시도가 차단되었습니다.", templateId);
+      throw new EntityNotFoundException("활성화된 템플릿(양식)을 찾을 수 없습니다. ID: " + templateId);
+    }
+    return template;
   }
 
 

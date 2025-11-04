@@ -36,6 +36,9 @@ public class Template {
   @Column(name = "temp_content", columnDefinition = "TEXT")
   private String templateContent;
   
+  @Column(name = "temp_key", nullable = false, length = 50, unique = true)
+  private String templateKey;
+  
   @Column(name = "temp_active_yn", nullable = false)
   private boolean activeYn = true;
   
@@ -56,10 +59,11 @@ public class Template {
    * @param user
    * @return
    */
-  public static Template createTemplate(String templateName, String templateContent, User user) {
+  public static Template createTemplate(String templateName, String templateContent, String templateKey, User user) {
     Template t = new Template();
     t.templateName = templateName;
     t.templateContent = templateContent;
+    t.templateKey = templateKey;
     t.user = user;
     return t;
   }
@@ -69,9 +73,10 @@ public class Template {
    * @param newName
    * @param newContent
    */
-  public void updateTemplate(String newName, String newContent) {
+  public void updateTemplate(String newName, String newContent, String newKey) {
     this.templateName = newName;
     this.templateContent = newContent;
+    this.templateKey = newKey;
   }
   
   /**
