@@ -10,7 +10,7 @@ import { Box, CssBaseline } from "@mui/material";
 const theme = createTheme({
   palette: {
     primary: { main: "#00a0e9" },
-    background: { default: "#f9fafb" },
+    background: { default: "#ffffff" },
   },
   typography: {
     fontFamily:
@@ -69,7 +69,7 @@ function App() {
               flex: 1,
               minHeight: 0,
               overflowY: "auto",
-              p: 2,
+              p: 2
             }}
           >
             <Outlet context={{ setAvatarUrl }} />

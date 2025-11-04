@@ -1,163 +1,320 @@
 import React from "react";
-import { Link } from "react-router-dom";
-import "./admin.css";
+import { Link as RouterLink } from "react-router-dom";
+import {
+  Box,
+  Grid,
+  Typography,
+  Button,
+  Card,
+  CardContent,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  Link,
+  Divider,
+} from "@mui/material";
+import {
+  Shield,
+  PersonAdd,
+  People,
+  AccountTree,
+  Description,
+  Settings,
+  CheckCircle,
+  ErrorOutline,
+  Business,
+  ArrowForward,
+  Lock,
+  AddCircleOutline,
+  Article,
+} from "@mui/icons-material";
 
-function AdminHome() {
+export default function AdminHome() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const displayName = user?.name || "관리자";
 
   return (
-    <section className="ccad">
+    <Box sx={{ p: 4, maxWidth: 1200, mx: "auto", color: "text.primary" }}>
       {/* 헤더 */}
-      <header className="ccad__header">
-        <h1 className="ccad__title">
-          <i className="fa-solid fa-shield-halved" aria-hidden="true"></i>
-          관리자 홈
-        </h1>
-        <p className="ccad__subtitle">
-          안녕하세요 <strong>{displayName}</strong> 님, 시스템 현황과 관리 메뉴로 빠르게 이동하세요.
-        </p>
-        <div className="ccad__quick">
-          <Link to="/admin/users/create" className="ccad-btn ccad-btn--primary">
-            <i className="fa-solid fa-user-plus" aria-hidden="true"></i>
-            <span>사용자 생성</span>
-          </Link>
-          <Link to="/admin/users" className="ccad-btn">
-            <i className="fa-solid fa-users" aria-hidden="true"></i>
-            <span>사용자 목록</span>
-          </Link>
-          <Link to="/admin/depts" className="ccad-btn">
-            <i className="fa-solid fa-diagram-project" aria-hidden="true"></i>
-            <span>부서 관리</span>
-          </Link>
-          <Link to="/admin/settings" className="ccad-btn">
-            <i className="fa-solid fa-gear" aria-hidden="true"></i>
-            <span>시스템 설정</span>
-          </Link>
-        </div>
-      </header>
+      <Box sx={{ mb: 3 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+          <Shield color="primary" />
+          <Typography variant="h4" fontWeight={800}>
+            관리자 홈
+          </Typography>
+        </Box>
+        <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+          안녕하세요 <strong>{displayName}</strong> 님, 시스템 현황과 관리 메뉴로 빠르게
+          이동하세요.
+        </Typography>
+
+        {/* 상단 퀵 버튼들 */}
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5 }}>
+          {/* 사용자 생성 - 기본 강조 버튼 */}
+          <Button
+            component={RouterLink}
+            to="/admin/users/create"
+            variant="outlined"
+            startIcon={<PersonAdd />}
+            sx={{ borderRadius: 2 }}
+          >
+            사용자 생성
+          </Button>
+
+          <Button
+            component={RouterLink}
+            to="/admin/users"
+            variant="outlined"
+            startIcon={<People />}
+            sx={{ borderRadius: 2 }}
+          >
+            사용자 목록
+          </Button>
+
+          <Button
+            component={RouterLink}
+            to="/admin/depts"
+            variant="outlined"
+            startIcon={<AccountTree />}
+            sx={{ borderRadius: 2 }}
+          >
+            부서 관리
+          </Button>
+
+          <Button
+            component={RouterLink}
+            to="/admin/templates"
+            variant="outlined"
+            startIcon={<Description />}
+            sx={{ borderRadius: 2 }}
+          >
+            양식 관리
+          </Button>
+
+          <Button
+            component={RouterLink}
+            to="/admin/settings"
+            variant="outlined"
+            startIcon={<Settings />}
+            sx={{ borderRadius: 2 }}
+          >
+            시스템 설정
+          </Button>
+        </Box>
+      </Box>
 
       {/* 카드 메트릭 */}
-      <div className="ccad-cards">
-        <div className="ccad-card">
-          <div className="ccad-card__icon ccad-card__icon--blue">
-            <i className="fa-solid fa-users" aria-hidden="true"></i>
-          </div>
-          <div>
-            <div className="ccad-card__label">전체 사용자</div>
-            <div className="ccad-card__value">1,248</div>
-          </div>
-        </div>
-
-        <div className="ccad-card">
-          <div className="ccad-card__icon ccad-card__icon--green">
-            <i className="fa-solid fa-user-check" aria-hidden="true"></i>
-          </div>
-          <div>
-            <div className="ccad-card__label">활성 사용자</div>
-            <div className="ccad-card__value">1,103</div>
-          </div>
-        </div>
-
-        <div className="ccad-card">
-          <div className="ccad-card__icon ccad-card__icon--orange">
-            <i className="fa-solid fa-building" aria-hidden="true"></i>
-          </div>
-          <div>
-            <div className="ccad-card__label">부서 수</div>
-            <div className="ccad-card__value">32</div>
-          </div>
-        </div>
-
-        <div className="ccad-card">
-          <div className="ccad-card__icon ccad-card__icon--red">
-            <i className="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
-          </div>
-          <div>
-            <div className="ccad-card__label">승인 대기</div>
-            <div className="ccad-card__value">7</div>
-          </div>
-        </div>
-      </div>
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        {[
+          { icon: <People />, color: "#2e8cf0", label: "전체 사용자", value: "1,248" },
+          { icon: <CheckCircle />, color: "#31b77c", label: "활성 사용자", value: "1,103" },
+          { icon: <Business />, color: "#f59e0b", label: "부서 수", value: "32" },
+          { icon: <ErrorOutline />, color: "#ef4444", label: "승인 대기", value: "7" },
+        ].map((c, i) => (
+          <Grid item xs={12} sm={6} md={3} key={i}>
+            <Card
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 2,
+                p: 2,
+                borderRadius: 2,
+                boxShadow: 1,
+              }}
+            >
+              <Box
+                sx={{
+                  width: 46,
+                  height: 46,
+                  borderRadius: 1.5,
+                  display: "grid",
+                  placeItems: "center",
+                  color: "#fff",
+                  bgcolor: c.color,
+                  flexShrink: 0,
+                }}
+              >
+                {c.icon}
+              </Box>
+              <Box>
+                <Typography variant="body2" color="text.secondary">
+                  {c.label}
+                </Typography>
+                <Typography variant="h6" fontWeight={800}>
+                  {c.value}
+                </Typography>
+              </Box>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
 
       {/* 최근 활동 & 빠른 관리 */}
-      <div className="ccad-grid">
-        <div className="ccad-panel">
-          <div className="ccad-panel__head">
-            <h3>최근 활동</h3>
-            <Link to="/admin/logs" className="ccad-panel__more">
-              전체보기 <i className="fa-solid fa-arrow-right" aria-hidden="true"></i>
-            </Link>
-          </div>
+      <Grid container spacing={2}>
+        {/* 최근 활동 패널 */}
+        <Grid item xs={12} md={8}>
+          <Card sx={{ borderRadius: 2 }}>
+            <CardContent>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  mb: 1.5,
+                }}
+              >
+                <Typography variant="h6">최근 활동</Typography>
+                <Link
+                  component={RouterLink}
+                  to="/admin/logs"
+                  underline="hover"
+                  color="primary"
+                  sx={{
+                    fontWeight: 600,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 0.5,
+                  }}
+                >
+                  전체보기 <ArrowForward fontSize="small" />
+                </Link>
+              </Box>
 
-          <div className="ccad-tablewrap">
-            <table className="ccad-table">
-              <thead>
-                <tr>
-                  <th>시간</th>
-                  <th>작업</th>
-                  <th>대상</th>
-                  <th>담당</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>10:12</td>
-                  <td>사용자 생성</td>
-                  <td>lee@coreconnect.co</td>
-                  <td>관리자</td>
-                </tr>
-                <tr>
-                  <td>09:55</td>
-                  <td>권한 변경</td>
-                  <td>kim@coreconnect.co</td>
-                  <td>관리자</td>
-                </tr>
-                <tr>
-                  <td>09:21</td>
-                  <td>부서 추가</td>
-                  <td>R&amp;D 2팀</td>
-                  <td>관리자</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>시간</TableCell>
+                    <TableCell>작업</TableCell>
+                    <TableCell>대상</TableCell>
+                    <TableCell>담당</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {[
+                    ["10:12", "사용자 생성", "lee@coreconnect.co", "관리자"],
+                    ["09:55", "권한 변경", "kim@coreconnect.co", "관리자"],
+                    ["09:21", "부서 추가", "R&D 2팀", "관리자"],
+                  ].map(([time, action, target, who], idx) => (
+                    <TableRow key={idx} hover>
+                      <TableCell>{time}</TableCell>
+                      <TableCell>{action}</TableCell>
+                      <TableCell>{target}</TableCell>
+                      <TableCell>{who}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </Grid>
 
-        <div className="ccad-panel">
-          <div className="ccad-panel__head">
-            <h3>빠른 관리</h3>
-          </div>
-          <ul className="ccad-quicklist">
-            <li>
-              <Link to="/admin/users/create">
-                <i className="fa-solid fa-user-plus" aria-hidden="true"></i>
-                새 사용자 등록
-              </Link>
-            </li>
-            <li>
-              <Link to="/admin/depts">
-                <i className="fa-solid fa-diagram-project" aria-hidden="true"></i>
-                부서 트리 편집
-              </Link>
-            </li>
-            <li>
-              <Link to="/admin/settings">
-                <i className="fa-solid fa-lock" aria-hidden="true"></i>
-                권한/보안 정책
-              </Link>
-            </li>
-            <li>
-              <Link to="/admin/logs">
-                <i className="fa-solid fa-file-lines" aria-hidden="true"></i>
-                감사 로그
-              </Link>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </section>
+        {/* 빠른 관리 패널 */}
+        <Grid item xs={12} md={4}>
+          <Card sx={{ borderRadius: 2 }}>
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 1.5 }}>
+                빠른 관리
+              </Typography>
+
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                {/* 새 사용자 등록 */}
+                <Button
+                  component={RouterLink}
+                  to="/admin/users/create"
+                  variant="text"
+                  startIcon={<PersonAdd />}
+                  sx={{
+                    justifyContent: "flex-start",
+                    textTransform: "none",
+                    color: "text.primary",
+                    borderRadius: 2,
+                    px: 0.5,
+                    "&:hover": { backgroundColor: "#f3f4f6" },
+                  }}
+                >
+                  새 사용자 등록
+                </Button>
+
+                {/* 부서 트리 편집 */}
+                <Button
+                  component={RouterLink}
+                  to="/admin/depts"
+                  variant="text"
+                  startIcon={<AccountTree />}
+                  sx={{
+                    justifyContent: "flex-start",
+                    textTransform: "none",
+                    color: "text.primary",
+                    borderRadius: 2,
+                    px: 0.5,
+                    "&:hover": { backgroundColor: "#f3f4f6" },
+                  }}
+                >
+                  부서 트리 편집
+                </Button>
+
+                {/* 새 결재 양식 생성 */}
+                <Button
+                  component={RouterLink}
+                  to="/admin/templates/create"
+                  variant="text"
+                  startIcon={<AddCircleOutline />}
+                  sx={{
+                    justifyContent: "flex-start",
+                    textTransform: "none",
+                    color: "text.primary",
+                    borderRadius: 2,
+                    px: 0.5,
+                    "&:hover": { backgroundColor: "#f3f4f6" },
+                  }}
+                >
+                  새 결재 양식 생성
+                </Button>
+
+                {/* 권한/보안 정책 */}
+                <Button
+                  component={RouterLink}
+                  to="/admin/settings"
+                  variant="text"
+                  startIcon={<Lock />}
+                  sx={{
+                    justifyContent: "flex-start",
+                    textTransform: "none",
+                    color: "text.primary",
+                    borderRadius: 2,
+                    px: 0.5,
+                    "&:hover": { backgroundColor: "#f3f4f6" },
+                  }}
+                >
+                  권한/보안 정책
+                </Button>
+
+                <Divider sx={{ my: 0.5 }} />
+
+                {/* 감사 로그 */}
+                <Button
+                  component={RouterLink}
+                  to="/admin/logs"
+                  variant="text"
+                  startIcon={<Article />}
+                  sx={{
+                    justifyContent: "flex-start",
+                    textTransform: "none",
+                    color: "text.primary",
+                    borderRadius: 2,
+                    px: 0.5,
+                    "&:hover": { backgroundColor: "#f3f4f6" },
+                  }}
+                >
+                  감사 로그
+                </Button>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+    </Box>
   );
 }
-
-export default AdminHome;

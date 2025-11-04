@@ -15,37 +15,44 @@ export default function LoginPage() {
   };
 
   return (
-    <Container
-      maxWidth="xs"
-      sx={{
+    <Box sx={{
         minHeight: "100vh",
         display: "flex",
-        flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",
-        bgcolor: "#ffffffff", 
-      }}
-    >
-      {/* 상단 로고 + 제목 */}
-      <Box
+        bgcolor: "#ffffff",   
+    }}>
+      <Container
+        maxWidth="xs"
         sx={{
+          minHeight: "100vh",
           display: "flex",
-          alignItems: "center",
+          flexDirection: "column",
           justifyContent: "center",
-          gap: 1,
-          mb: 4,
+          alignItems: "center"
         }}
       >
-        <Box component="img" src={logo} alt="logo" sx={{ height: 100 }} />
-        <Typography variant="h3" fontWeight={500}>
-          코어커넥트
-        </Typography>
-      </Box>
+        {/* 상단 로고 + 제목 */}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 1,
+            mb: 4,
+          }}
+        >
+          <Box component="img" src={logo} alt="logo" sx={{ height: 100 }} />
+          <Typography variant="h3" fontWeight={500}>
+            코어커넥트
+          </Typography>
+        </Box>
 
-      {/* 로그인 폼 */}
-      <Box sx={{ width: "100%", px: 3 }}>
-        <LoginForm onLoginSuccess={handleLoginSuccess} />
-      </Box>
-    </Container>
+        {/* 로그인 폼 */}
+        <Box sx={{ width: "100%", px: 3 }}>
+          <LoginForm onLoginSuccess={handleLoginSuccess} />
+        </Box>
+      </Container>
+    </Box>
   );
 }

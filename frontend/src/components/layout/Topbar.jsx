@@ -55,6 +55,19 @@ const Topbar = ({ onLogout, avatarUrl }) => {
                 </InputAdornment>
               ),
             }}
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                "& fieldset": {
+                  borderColor: "#e5e7eb",     
+                },
+                "&:hover fieldset": {
+                  borderColor: "#e5e7eb",    
+                },
+                "&.Mui-focused fieldset": {
+                  borderColor: "#00a0e9",    
+                },
+              },
+            }}
           />
         </Box>
 

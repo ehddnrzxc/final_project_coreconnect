@@ -58,10 +58,7 @@ const Sidebar = () => {
           py: 2,
           fontSize: 18,
           fontWeight: 700,
-          borderBottom: "1px solid #e5e7eb",
-          "&:hover": {
-            bgcolor: "#f3f4f6",
-          },
+          borderBottom: "1px solid #e5e7eb"
         }}
       >
         CoreConnect

@@ -50,7 +50,7 @@ export default function LoginForm({ onLoginSuccess }) {
             endAdornment: (
               <InputAdornment position="end">
                 {!!email && (
-                  <IconButton aria-label="아이디 지우기" onClick={() => setEmail("")} edge="end">
+                  <IconButton aria-label="아이디 지우기" onClick={() => setEmail("")} edge="end" tabIndex={-1}>
                     <CloseIcon />
                   </IconButton>
                 )}
