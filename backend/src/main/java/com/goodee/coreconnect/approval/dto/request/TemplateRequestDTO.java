@@ -14,11 +14,13 @@ public class TemplateRequestDTO {
   @NotBlank(message = "양식 이름은 필수입니다.")
   private String templateName;
   
-  @NotBlank(message = "양식 내용은 필수입니다.")
   private String templateContent;
   
-  public Template toEntity(User user) {
-    return Template.createTemplate(this.templateName, this.templateContent, user);
+  @NotBlank(message = "양식 키는 필수입니다. (예: VACATION)")
+  private String templateKey;
+  
+  public Template toEntity(User admin) {
+    return Template.createTemplate(this.templateName, this.templateContent, this.templateKey, admin);
   }
   
 }

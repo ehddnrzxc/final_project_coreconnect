@@ -1,6 +1,7 @@
 package com.goodee.coreconnect.approval.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -13,5 +14,19 @@ public interface TemplateRepository extends JpaRepository<Template, Integer>{
    * @return
    */
   List<Template> findByActiveYnTrueOrderByTemplateNameAsc();
+  
+  /**
+   * Key의 존재 여부 확인
+   * @param templateKey
+   * @return
+   */
+  boolean existsByTemplateKey(String templateKey);
+  
+  /**
+   * Key로 템플릿 조회
+   * @param templateKey
+   * @return
+   */
+  Optional<Template> findByTemplateKey(String templateKey);
 
 }

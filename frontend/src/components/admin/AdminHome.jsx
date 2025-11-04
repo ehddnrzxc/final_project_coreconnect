@@ -15,7 +15,8 @@ function AdminHome() {
           관리자 홈
         </h1>
         <p className="ccad__subtitle">
-          안녕하세요 <strong>{displayName}</strong> 님, 시스템 현황과 관리 메뉴로 빠르게 이동하세요.
+          안녕하세요 <strong>{displayName}</strong> 님, 시스템 현황과 관리
+          메뉴로 빠르게 이동하세요.
         </p>
         <div className="ccad__quick">
           <Link to="/admin/users/create" className="ccad-btn ccad-btn--primary">
@@ -29,6 +30,10 @@ function AdminHome() {
           <Link to="/admin/depts" className="ccad-btn">
             <i className="fa-solid fa-diagram-project" aria-hidden="true"></i>
             <span>부서 관리</span>
+          </Link>
+          <Link to="/admin/templates" className="ccad-btn">
+            <i className="fa-solid fa-file-pen" aria-hidden="true"></i>
+            <span>양식 관리</span>
           </Link>
           <Link to="/admin/settings" className="ccad-btn">
             <i className="fa-solid fa-gear" aria-hidden="true"></i>
@@ -71,7 +76,10 @@ function AdminHome() {
 
         <div className="ccad-card">
           <div className="ccad-card__icon ccad-card__icon--red">
-            <i className="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+            <i
+              className="fa-solid fa-triangle-exclamation"
+              aria-hidden="true"
+            ></i>
           </div>
           <div>
             <div className="ccad-card__label">승인 대기</div>
@@ -86,7 +94,8 @@ function AdminHome() {
           <div className="ccad-panel__head">
             <h3>최근 활동</h3>
             <Link to="/admin/logs" className="ccad-panel__more">
-              전체보기 <i className="fa-solid fa-arrow-right" aria-hidden="true"></i>
+              전체보기{" "}
+              <i className="fa-solid fa-arrow-right" aria-hidden="true"></i>
             </Link>
           </div>
 
@@ -131,14 +140,26 @@ function AdminHome() {
           <ul className="ccad-quicklist">
             <li>
               <Link to="/admin/users/create">
-                <i className="fa-solid fa-user-plus" aria-hidden="true"></i>
-                새 사용자 등록
+                <i className="fa-solid fa-user-plus" aria-hidden="true"></i>새
+                사용자 등록
               </Link>
             </li>
             <li>
               <Link to="/admin/depts">
-                <i className="fa-solid fa-diagram-project" aria-hidden="true"></i>
+                <i
+                  className="fa-solid fa-diagram-project"
+                  aria-hidden="true"
+                ></i>
                 부서 트리 편집
+              </Link>
+            </li>
+            <li>
+              <Link to="/admin/templates/create">
+                <i
+                  className="fa-solid fa-file-circle-plus"
+                  aria-hidden="true"
+                ></i>
+                새 결재 양식 생성
               </Link>
             </li>
             <li>
