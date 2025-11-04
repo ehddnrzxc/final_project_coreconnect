@@ -76,5 +76,7 @@ public interface ChatRoomService {
 
     String getUnreadToadMsgForUser(Integer offlineUserId);
 
+    // 채팅 메시지에 파일이 있는 경우 파일을 조회
+    List<Chat> getChatsWithFilesByRoomId(Integer roomId);
 
 }

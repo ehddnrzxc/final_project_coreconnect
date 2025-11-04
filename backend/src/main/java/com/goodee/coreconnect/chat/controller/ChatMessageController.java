@@ -208,13 +208,13 @@ public class ChatMessageController {
 		// 메시지별 미읽은 인원수 DB 최신화
 		chatRoomService.updateUnreadCountForMessages(roomId);
 		
-		ChatRoom chatRoom = chatRoomService.findById(roomId);
-		List<Chat> messages = chatRoom.getChats();
-		messages.sort(Comparator.comparing(Chat::getSendAt));
+		List<Chat> messages = chatRoomService.getChatsWithFilesByRoomId(roomId);
+		
 		List<ChatMessageResponseDTO> dtoList = messages.stream()
 				.map(ChatMessageResponseDTO::fromEntity)
 				.collect(Collectors.toList());
-		return ResponseEntity.ok(ResponseDTO.success(dtoList, "채팅방 메시지 오름차순 조회 성공"));
+		
+		return ResponseEntity.ok(ResponseDTO.success(dtoList, "채팅방 메시지 오름차순 조회 성공"));		
 	}
 	
 	/**

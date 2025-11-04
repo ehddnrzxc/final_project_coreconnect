@@ -101,7 +101,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	@Override
 	public ChatRoom findById(Integer id) {
 		return chatRoomRepository.findById(id)
-				.orElseThrow(() -> new IllegalArgumentException("채팅방 없음: " + id));
+				.orElseThrow(() -> new IllegalArgumentException("채팅방 없음: "  + id));
 	}
 
 	@Transactional
@@ -558,6 +558,17 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	        return senderName + "님으로부터 " + unreadChatCount + "개의 채팅 메시지가 도착했습니다";
 	    }
 	    return null;
+	}
+
+	@Override
+	public List<Chat> getChatsWithFilesByRoomId(Integer roomId) {
+		List<Chat> chats = chatRepository.findAllChatsWithFilesByRoomId(roomId);
+		if (chats == null || chats.isEmpty()) {
+			throw new IllegalArgumentException("채팅 메시지 없음: " + roomId);
+		} 
+		
+		
+		return chats;
 	}
     
 }
