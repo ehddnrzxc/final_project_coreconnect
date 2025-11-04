@@ -77,9 +77,18 @@ export default function Home() {
       : DEFAULT_AVATAR;
 
   return (
-    <Container maxWidth="lg" sx={{ py: 2, px: 2 }}>
-      {/* Row 1 */}
-      <Grid container spacing={2} sx={{ mb: 2 }}>
+    <Container maxWidth={false} sx={{ py: 2, px: 2 }}>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: {
+            xs: "1fr",                              
+            md: "repeat(3, minmax(0, 1fr))",        
+          },
+          gap: 2,
+          mb: 2,
+        }}
+      >
         {/* 프로필 카드 */}
         <Grid item xs={12} md={4}>
           <Card>
@@ -155,7 +164,7 @@ export default function Home() {
                 variant="h3"
                 sx={{ fontWeight: 800, color: "#00a0e9", lineHeight: 1 }}
               >
-                0
+                1
               </Typography>
               <Typography
                 variant="body2"
@@ -222,7 +231,6 @@ export default function Home() {
             )}
           </Card>
         </Grid>
-
         {/* 메일 리스트 */}
         <Grid item xs={12} md={4}>
           <Card
@@ -276,7 +284,6 @@ export default function Home() {
             </List>
           </Card>
         </Grid>
-
         {/* 근태 */}
         <Grid item xs={12} md={4}>
           <Card
@@ -328,219 +335,196 @@ export default function Home() {
             />
           </Card>
         </Grid>
-      </Grid>
-
-      {/* Row 2 */}
-      <Grid container spacing={2} sx={{ mb: 2 }}>
-        {/* 왼쪽 2칸 */}
-        <Grid item xs={12} md={8}>
-          <Grid container spacing={2}>
-            {/* 작성할 보고 */}
-            <Grid item xs={12} md={4}>
-              <Card
-                title="작성할 보고"
-                right={
-                  <Button
-                    component={Link}
-                    to="#"
-                    size="small"
-                    sx={{ textTransform: "none" }}
-                  >
-                    보고 작성
-                  </Button>
-                }
-              >
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <Box>
-                    <Chip
-                      label="제 2회차"
-                      size="small"
-                      color="success"
-                      sx={{ mb: 0.5 }}
-                    />
-                    <Typography variant="body2" sx={{ mb: 0.25 }}>
-                      10/29 (수)
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      test
-                    </Typography>
-                  </Box>
-                  <Button size="small" sx={{ textTransform: "none" }}>
-                    작성하기
-                  </Button>
-                </Box>
-              </Card>
-            </Grid>
-
-            {/* Quick Menu */}
-            <Grid item xs={12} md={4}>
-              <Card title="Quick Menu">
-                <Grid container spacing={1.5}>
-                  {[
-                    { label: "메일쓰기", emoji: "✉️" },
-                    { label: "연락처 추가", emoji: "👤" },
-                    { label: "일정등록", emoji: "🗓️" },
-                    { label: "게시판 글쓰기", emoji: "📝" },
-                    { label: "설문작성", emoji: "📊" },
-                    { label: "다운로드", emoji: "💾" },
-                  ].map((q) => (
-                    <Grid item xs={4} key={q.label}>
-                      <Button
-                        fullWidth
-                        variant="outlined"
-                        size="small"
-                        sx={{
-                          flexDirection: "column",
-                          py: 1.2,
-                          textTransform: "none",
-                          borderRadius: 2,
-                          bgcolor: "#f3f4f6",
-                          borderColor: "transparent",
-                          "&:hover": {
-                            bgcolor: "#e5e7eb",
-                            borderColor: "transparent",
-                          },
-                        }}
-                      >
-                        <Box sx={{ fontSize: 20, mb: 0.5 }}>{q.emoji}</Box>
-                        <Typography variant="caption">{q.label}</Typography>
-                      </Button>
-                    </Grid>
-                  ))}
-                </Grid>
-              </Card>
-            </Grid>
-
-            {/* 전사게시판 최근글 */}
-            <Grid item xs={12} md={4}>
-              <Card title="전사게시판 최근글">
-                <List dense sx={{ pl: 2, listStyleType: "disc" }}>
-                  <ListItem sx={{ display: "list-item", px: 0 }}>
-                    <ListItemText
-                      primary="공지 테스트[2] — 2025-09-18"
-                      primaryTypographyProps={{ variant: "body2" }}
-                    />
-                  </ListItem>
-                  <ListItem sx={{ display: "list-item", px: 0 }}>
-                    <ListItemText
-                      primary="보안 공지 — 2025-09-05"
-                      primaryTypographyProps={{ variant: "body2" }}
-                    />
-                  </ListItem>
-                </List>
-              </Card>
-            </Grid>
-
-            {/* 메일함 바로가기 */}
-            <Grid item xs={12} md={4}>
-              <Card title="메일함 바로가기">
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <Typography variant="body2" color="text.secondary">
-                    받은메일함 1 • 오늘메일함 0 • 중요메일함 0
-                  </Typography>
-                  <Button variant="contained" size="small">
-                    이동
-                  </Button>
-                </Box>
-              </Card>
-            </Grid>
-          </Grid>
-        </Grid>
-
-        {/* 오른쪽 1칸 */}
+        {/* 작성할 보고 */}
         <Grid item xs={12} md={4}>
-          <Grid container spacing={2}>
-            {/* 캘린더 */}
-            <Grid item xs={12}>
-              <Card title="캘린더" right="2025.10">
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                  <Box
-                    sx={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(7, 1fr)",
-                      textAlign: "center",
-                      color: "text.secondary",
-                      mb: 1,
-                    }}
-                  >
-                    {["일", "월", "화", "수", "목", "금", "토"].map((d) => (
-                      <Typography key={d} variant="caption">
-                        {d}
-                      </Typography>
-                    ))}
-                  </Box>
-                  <Box
-                    sx={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(7, 1fr)",
-                      gap: 0.75,
-                    }}
-                  >
-                    {Array.from({ length: 31 }, (_, i) => i + 1).map((n) => (
-                      <Box
-                        key={n}
-                        sx={{
-                          p: 1,
-                          border: "1px solid #e5e7eb",
-                          borderRadius: 1.5,
-                          textAlign: "right",
-                          fontSize: 13,
-                          ...(n === 24 && {
-                            outline: "2px solid #00a0e9",
-                          }),
-                        }}
-                      >
-                        {n}
-                      </Box>
-                    ))}
-                  </Box>
-                </Box>
-              </Card>
-            </Grid>
-
-            {/* 최근 알림 */}
-            <Grid item xs={12}>
-              <Card title="최근 알림">
-                <List dense sx={{ pl: 1 }}>
-                  <ListItem sx={{ px: 0, py: 0.5 }}>
-                    <ListItemText
-                      primary="근무상태가 출근으로 변경되었습니다. • 1시간 전"
-                      primaryTypographyProps={{ variant: "body2" }}
-                    />
-                  </ListItem>
-                  <ListItem sx={{ px: 0, py: 0.5 }}>
-                    <ListItemText
-                      primary="커뮤니티 폐쇄 알림 • 2시간 전"
-                      primaryTypographyProps={{ variant: "body2" }}
-                    />
-                  </ListItem>
-                  <ListItem sx={{ px: 0, py: 0.5 }}>
-                    <ListItemText
-                      primary="지각 처리되었습니다 • 오늘"
-                      primaryTypographyProps={{ variant: "body2" }}
-                    />
-                  </ListItem>
-                </List>
-              </Card>
-            </Grid>
-          </Grid>
+          <Card
+            title="작성할 보고"
+            right={
+              <Button
+                component={Link}
+                to="#"
+                size="small"
+                sx={{ textTransform: "none" }}
+              >
+                보고 작성
+              </Button>
+            }
+          >
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Box>
+                <Chip
+                  label="제 2회차"
+                  size="small"
+                  color="success"
+                  sx={{ mb: 0.5 }}
+                />
+                <Typography variant="body2" sx={{ mb: 0.25 }}>
+                  10/29 (수)
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  test
+                </Typography>
+              </Box>
+              <Button size="small" sx={{ textTransform: "none" }}>
+                작성하기
+              </Button>
+            </Box>
+          </Card>
         </Grid>
-      </Grid>
-
-      {/* Row 3 */}
-      <Grid container spacing={2}>
+        {/* Quick Menu */}
+        <Grid item xs={12} md={4}>
+          <Card title="Quick Menu">
+            <Grid container spacing={1.5}>
+              {[
+                { label: "메일쓰기", emoji: "✉️" },
+                { label: "연락처 추가", emoji: "👤" },
+                { label: "일정등록", emoji: "🗓️" },
+                { label: "게시판 글쓰기", emoji: "📝" },
+                { label: "설문작성", emoji: "📊" },
+                { label: "다운로드", emoji: "💾" },
+              ].map((q) => (
+                <Grid item xs={4} key={q.label}>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                    sx={{
+                      flexDirection: "column",
+                      py: 1.2,
+                      textTransform: "none",
+                      borderRadius: 2,
+                      bgcolor: "#f3f4f6",
+                      borderColor: "transparent",
+                      "&:hover": {
+                        bgcolor: "#e5e7eb",
+                        borderColor: "transparent",
+                      },
+                    }}
+                  >
+                    <Box sx={{ fontSize: 20, mb: 0.5 }}>{q.emoji}</Box>
+                    <Typography variant="caption">{q.label}</Typography>
+                  </Button>
+                </Grid>
+              ))}
+            </Grid>
+          </Card>
+        </Grid>
+        {/* 전사게시판 최근글 */}
+        <Grid item xs={12} md={4}>
+          <Card title="전사게시판 최근글">
+            <List dense sx={{ pl: 2, listStyleType: "disc" }}>
+              <ListItem sx={{ display: "list-item", px: 0 }}>
+                <ListItemText
+                  primary="공지 테스트[2] — 2025-09-18"
+                  primaryTypographyProps={{ variant: "body2" }}
+                />
+              </ListItem>
+              <ListItem sx={{ display: "list-item", px: 0 }}>
+                <ListItemText
+                  primary="보안 공지 — 2025-09-05"
+                  primaryTypographyProps={{ variant: "body2" }}
+                />
+              </ListItem>
+            </List>
+          </Card>
+        </Grid>
+        {/* 메일함 바로가기 */}
+        <Grid item xs={12} md={4}>
+          <Card title="메일함 바로가기">
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Typography variant="body2" color="text.secondary">
+                받은메일함 1 • 오늘메일함 0 • 중요메일함 0
+              </Typography>
+              <Button variant="contained" size="small">
+                이동
+              </Button>
+            </Box>
+          </Card>
+        </Grid>
+        {/* 캘린더 */}
+        <Grid item xs={12} md={4}>
+          <Card title="캘린더" right="2025.10">
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(7, 1fr)",
+                  textAlign: "center",
+                  color: "text.secondary",
+                  mb: 1,
+                }}
+              >
+                {["일", "월", "화", "수", "목", "금", "토"].map((d) => (
+                  <Typography key={d} variant="caption">
+                    {d}
+                  </Typography>
+                ))}
+              </Box>
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(7, 1fr)",
+                  gap: 0.75,
+                }}
+              >
+                {Array.from({ length: 31 }, (_, i) => i + 1).map((n) => (
+                  <Box
+                    key={n}
+                    sx={{
+                      p: 1,
+                      border: "1px solid #e5e7eb",
+                      borderRadius: 1.5,
+                      textAlign: "right",
+                      fontSize: 13,
+                      ...(n === 24 && {
+                        outline: "2px solid #00a0e9",
+                      }),
+                    }}
+                  >
+                    {n}
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          </Card>
+        </Grid>
+        {/* 최근 알림 */}
+        <Grid item xs={12} md={4}>
+          <Card title="최근 알림">
+            <List dense sx={{ pl: 1 }}>
+              <ListItem sx={{ px: 0, py: 0.5 }}>
+                <ListItemText
+                  primary="근무상태가 출근으로 변경되었습니다. • 1시간 전"
+                  primaryTypographyProps={{ variant: "body2" }}
+                />
+              </ListItem>
+              <ListItem sx={{ px: 0, py: 0.5 }}>
+                <ListItemText
+                  primary="커뮤니티 폐쇄 알림 • 2시간 전"
+                  primaryTypographyProps={{ variant: "body2" }}
+                />
+              </ListItem>
+              <ListItem sx={{ px: 0, py: 0.5 }}>
+                <ListItemText
+                  primary="지각 처리되었습니다 • 오늘"
+                  primaryTypographyProps={{ variant: "body2" }}
+                />
+              </ListItem>
+            </List>
+          </Card>
+        </Grid>
         {/* 내 경비관리 */}
         <Grid item xs={12} md={4}>
           <Card title="내 경비관리" right="2025.10">
@@ -590,9 +574,8 @@ export default function Home() {
             </Grid>
           </Card>
         </Grid>
-
         {/* 차량운행일지 */}
-        <Grid item xs={12} md={6}>
+        <Grid item xs={12} md={4}>
           <Card title="차량운행일지" right="2025.10">
             <Box
               sx={{
@@ -615,7 +598,7 @@ export default function Home() {
             </Box>
           </Card>
         </Grid>
-      </Grid>
+      </Box>
     </Container>
   );
 }
