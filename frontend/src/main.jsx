@@ -83,6 +83,7 @@ const router = createBrowserRouter([
           { path: ":categoryId", element: <BoardListPage /> },
           { path: "detail/:boardId", element: <BoardDetailPage /> },
           { path: "new", element: <BoardWritePage /> },
+          { path: "edit/:boardId", element: <BoardWritePage /> },
         ],
       },
 

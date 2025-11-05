@@ -99,16 +99,16 @@ public class BoardController {
         return ResponseEntity.ok(res);
     }
 
-    @Operation(summary = "전체 게시글 목록 조회", description = "삭제되지 않은 모든 게시글 목록을 페이징 형태로 조회합니다.")
+    @Operation(summary = "전체 게시글 목록 조회 (정렬 포함)", description = "상단고정 → 공지 → 최신순으로 전체 게시글을 조회합니다.")
     @GetMapping
     public ResponseEntity<ResponseDTO<Page<BoardResponseDTO>>> getAllBoards(
-            @PageableDefault(size = 10, sort = "createdAt") Pageable pageable
+            @PageableDefault(size = 10) Pageable pageable
     ) {
-        Page<BoardResponseDTO> page = boardService.getAllBoards(pageable);
+        Page<BoardResponseDTO> page = boardService.getBoardsOrdered(pageable); 
 
         ResponseDTO<Page<BoardResponseDTO>> res = ResponseDTO.<Page<BoardResponseDTO>>builder()
                                                              .status(HttpStatus.OK.value())
-                                                             .message("전체 게시글 목록 조회 성공")
+                                                             .message("전체 게시글 목록 조회 성공 (정렬 포함)")
                                                              .data(page)
                                                              .build();
 

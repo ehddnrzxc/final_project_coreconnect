@@ -118,7 +118,11 @@ public class Board {
         this.title = title;
         this.content = content;
         if (noticeYn != null) this.noticeYn = noticeYn;
-        if (pinned != null) this.pinned = pinned;
+        if (Boolean.TRUE.equals(pinned) && !Boolean.TRUE.equals(this.noticeYn)) {  // 공지글이 아닌데 pinned 요청이 들어오면 무시
+            this.pinned = false;
+        } else if (pinned != null) {
+            this.pinned = pinned;
+        }
         if (privateYn != null) this.privateYn = privateYn;
         
         this.updatedAt = LocalDateTime.now();

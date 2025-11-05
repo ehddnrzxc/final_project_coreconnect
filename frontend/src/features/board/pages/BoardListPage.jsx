@@ -39,21 +39,24 @@ const BoardListPage = () => {
 
       <List>
         {boards.map((b) => (
-          <ListItemButton key={b.id} onClick={() => navigate(`/board/detail/${b.id}`)}>
+          <ListItemButton
+            key={b.id}
+            onClick={() => navigate(`/board/detail/${b.id}`)}
+            sx={{
+              bgcolor: b.noticeYn ? "#f5f5f5" : "inherit", // 공지 회색
+              borderRadius: 1,
+              mb: 1,
+            }}
+          >
             <Box sx={{ display: "flex", flexDirection: "column", width: "100%" }}>
-              {/* ✅ 게시판명 */}
               <Typography variant="body2" color="text.secondary">
                 {b.categoryName || "전체 게시판"}
               </Typography>
-
-              {/* ✅ 제목 */}
-              <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: b.noticeYn ? 700 : 500 }}>
                 {b.title}
               </Typography>
-
-              {/* ✅ 작성자 / 날짜 (월-일 시:분) */}
               <Typography variant="caption" color="text.secondary">
-                {b.writerName || "알 수 없음"} / {formatDate(b.createdAt)}
+                {b.writerName} / {formatDate(b.createdAt)}
               </Typography>
             </Box>
           </ListItemButton>

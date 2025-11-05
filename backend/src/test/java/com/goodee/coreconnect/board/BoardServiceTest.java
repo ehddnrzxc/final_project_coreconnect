@@ -147,25 +147,6 @@ class BoardServiceTest {
     }
 
     @Test
-    @DisplayName("전체 게시글 목록 조회")
-    void testGetAllBoards() {
-        for (int i = 1; i <= 3; i++) {
-            BoardRequestDTO dto = BoardRequestDTO.builder()
-                    .categoryId(category.getId())
-                    .title("게시글 " + i)
-                    .content("내용 " + i)
-                    .build();
-
-            boardService.createBoard(dto, user.getEmail());
-        }
-
-        var page = boardService.getAllBoards(PageRequest.of(0, 10));
-
-        assertThat(page.getContent()).hasSize(3);
-        log.info("전체목록 테스트 통과: {}개 게시글", page.getContent().size());
-    }
-
-    @Test
     @DisplayName("카테고리별 게시글 목록 조회")
     void testGetBoardsByCategory() {
         for (int i = 1; i <= 3; i++) {

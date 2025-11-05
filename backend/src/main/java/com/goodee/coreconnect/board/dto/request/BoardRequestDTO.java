@@ -33,7 +33,7 @@ public class BoardRequestDTO {
                                   this.title,
                                   this.content,
                                   this.noticeYn,
-                                  this.privateYn,
-                                  this.pinned);
+                                  this.pinned,
+                                  this.privateYn);
     }
 }
