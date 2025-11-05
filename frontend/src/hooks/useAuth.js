@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getAccessToken, clearAccessToken } from "../utils/tokenUtils";
+import { getAccessToken, clearAccessToken } from "../features/auth/utils/tokenUtils";
 
 export default function useAuth() {
   const [isLoggedIn, setIsLoggedIn] = useState(!!getAccessToken());

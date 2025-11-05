@@ -112,6 +112,15 @@ public class ChatWebSocketHandler extends TextWebSocketHandler{
 	    String chatContent = node.has("content") ? node.get("content").asText() : null;
 	    if (roomId == null || chatContent == null) return;
 
+	    // 🚨 [roomId의 실제 존재 여부 검증]
+	    // chatRoomService.findRoomById(roomId) 또는 getRoomById 등의 메서드를 사용
+	    // 반환값이 Optional<ChatRoom> 또는 ChatRoom, null 등일 경우
+	    // (아래는 존재 확인 후 예외처리 log 남기고 처리 중단)
+	    if (!chatRoomService.existsRoom(roomId)) { // 이 메서드는 직접구현 필요!
+	        log.error("handleTextMessage: roomId {}는 실제 DB에 존재하지 않습니다. 메시지 푸시 중단!", roomId);
+	        return;
+	    }
+
 	    // 전체 참가자
 	    List<Integer> participantIds = chatRoomService.getParticipantIds(roomId);
 	    log.info("senderId: {}", senderId);

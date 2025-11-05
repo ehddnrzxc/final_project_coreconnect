@@ -574,5 +574,16 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 		
 		return chats;
 	}
+
+	@Override
+	public boolean existsRoom(Integer roomId) {
+		 if (roomId == null) return false;
+	    // JPA repository 활용 예시: chatRoomRepository.existsById(roomId)
+	    // chatRoomRepository는 보통 JpaRepository<ChatRoom, Integer>
+	    return chatRoomRepository.existsById(roomId);
+	}
+	
+	
+
     
 }
