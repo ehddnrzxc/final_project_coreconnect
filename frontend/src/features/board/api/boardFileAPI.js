@@ -1,0 +1,20 @@
+import http from "../../../api/http";
+
+// 파일 업로드
+export const uploadFiles = (boardId, files) => {
+  const formData = new FormData();
+  files.forEach((file) => formData.append("files", file));
+  return http.post(`/board-file/${boardId}/upload`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+};
+
+// 게시글별 파일 목록 조회
+export const getFilesByBoard = (boardId) =>
+  http.get(`/board-file/board/${boardId}`);
+
+// 단일 파일 조회
+export const getFile = (fileId) => http.get(`/board-file/${fileId}`);
+
+// 파일 삭제
+export const deleteFile = (fileId) => http.delete(`/board-file/${fileId}`);

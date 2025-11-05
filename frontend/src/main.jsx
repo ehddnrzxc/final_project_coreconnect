@@ -6,31 +6,26 @@ import {
   Navigate,
 } from "react-router-dom";
 import App from "./App";
-import LoginPage from "./pages/LoginPage";
-import HomePage from "./pages/HomePage";
-import UserCreateForm from "./components/admin/UserCreateForm";
-import AdminRoute from "./components/admin/AdminRoute";
-import useAuth from "./hooks/useAuth";
+import LoginPage from "./features/auth/pages/LoginPage";
+import HomePage from "./features/dashboard/pages/HomePage";
+import UserCreateForm from "./features/admin/components/UserCreateForm";
+import AdminRoute from "./features/admin/components/AdminRoute";
 import "@fortawesome/fontawesome-free/css/all.min.css";
-import ApprovalHomePage from "./pages/ApprovalHomePage";
-import ApprovalWritePage from "./pages/ApprovalWritePage";
-import ApprovalLayout from "./pages/ApprovalLayout";
-import AdminHome from "./components/admin/AdminHome";
-import UserListPage from "./components/admin/UserListPage";
-import ChatHomePage from "./pages/ChatHomePage";
-import ChatLayout from "./pages/ChatLayout";
-import ApprovalDetailPage from "./pages/ApprovalDetailPage";
-import TemplateAdminCreate from "./components/admin/TemplateAdminCreate";
-import BoardLayout from "./pages/board/BoardLayout";
-import BoardListPage from "./pages/board/BoardListPage";
-import BoardDetailPage from "./pages/board/BoardDetailPage";
-import BoardWritePage from "./pages/board/BoardWritePage";
+import ApprovalHomePage from "./features/approval/pages/ApprovalHomePage";
+import ApprovalWritePage from "./features/approval/pages/ApprovalWritePage";
+import ApprovalLayout from "./features/approval/pages/ApprovalLayout";
+import AdminHome from "./features/admin/components/AdminHome";            
+import UserListPage from "./features/admin/components/UserListPage";      
+import ChatHomePage from "./features/chat/pages/ChatHomePage";
+import ChatLayout from "./features/chat/pages/ChatLayout";
+import ApprovalDetailPage from "./features/approval/pages/ApprovalDetailPage"; 
+import TemplateAdminCreate from "./features/admin/components/TemplateAdminCreate"; 
+import BoardLayout from "./features/board/pages/BoardLayout";
+import BoardListPage from "./features/board/pages/BoardListPage";
+import BoardDetailPage from "./features/board/pages/BoardDetailPage";
+import BoardWritePage from "./features/board/pages/BoardWritePage";
+import ProtectedRoute from "./features/auth/ProtectedRoute";
 
-/* 로그인 보호용 라우트 */
-function ProtectedRoute({ children }) {
-  const { isLoggedIn } = useAuth();
-  return isLoggedIn ? children : <Navigate to="/login" replace />;
-}
 
 /* 전체 라우트 구조 */
 
