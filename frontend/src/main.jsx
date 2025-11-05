@@ -25,6 +25,7 @@ import BoardListPage from "./features/board/pages/BoardListPage";
 import BoardDetailPage from "./features/board/pages/BoardDetailPage";
 import BoardWritePage from "./features/board/pages/BoardWritePage";
 import ProtectedRoute from "./features/auth/ProtectedRoute";
+import CalendarPage from "./features/schedule/pages/CalendarPage";
 
 // ✅ 관리자용 카테고리 관리 페이지 import 추가
 import AdminCategoryPage from "./features/board/pages/AdminCategoryPage";
