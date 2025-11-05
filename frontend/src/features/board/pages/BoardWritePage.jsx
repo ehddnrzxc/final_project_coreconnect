@@ -15,7 +15,7 @@ import {
   InputLabel,
   FormControl,
 } from "@mui/material";
-import LockIcon from "@mui/icons-material/Lock"; // ✅ 자물쇠 아이콘 추가
+import LockIcon from "@mui/icons-material/Lock"; // 자물쇠 아이콘 추가
 
 const BoardWritePage = () => {
   const { boardId } = useParams();
@@ -33,7 +33,7 @@ const BoardWritePage = () => {
   const [categories, setCategories] = useState([]);
   const [files, setFiles] = useState([]);
 
-  // ✅ 카테고리 목록 불러오기 (신규 작성 시만)
+  // 카테고리 목록 불러오기 (신규 작성 시만)
   useEffect(() => {
     if (!boardId) {
       (async () => {
@@ -47,7 +47,7 @@ const BoardWritePage = () => {
     }
   }, [boardId]);
 
-  // ✅ 수정 모드일 경우 기존 데이터 불러오기
+  // 수정 모드일 경우 기존 데이터 불러오기
   useEffect(() => {
     if (boardId) {
       (async () => {
@@ -74,7 +74,7 @@ const BoardWritePage = () => {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
 
-    // ✅ 상단고정 시 자동 공지처리
+    // 상단고정 시 자동 공지처리
     if (name === "pinned" && checked) {
       setForm((f) => ({ ...f, pinned: true, noticeYn: true, privateYn: false }));
       return;
@@ -96,13 +96,13 @@ const BoardWritePage = () => {
       if (boardId) {
         await updateBoard(boardId, form);
         alert("게시글이 수정되었습니다!");
-        navigate(`/board/${form.categoryId}`); // ✅ 수정 후 해당 카테고리 목록으로 이동
+        navigate(`/board/${form.categoryId}`); // 수정 후 해당 카테고리 목록으로 이동
       } else {
         const res = await createBoard(form);
         const newId = res.data.data.id;
         if (files.length > 0) await uploadFiles(newId, files);
         alert("게시글 등록 완료!");
-        navigate(`/board/${form.categoryId}`); // ✅ 신규 등록 후 카테고리 목록으로 이동
+        navigate(`/board/${form.categoryId}`); // 신규 등록 후 카테고리 목록으로 이동
       }
     } catch (err) {
       console.error("게시글 등록/수정 실패:", err.response?.data || err.message);
@@ -116,7 +116,7 @@ const BoardWritePage = () => {
         {boardId ? "게시글 수정" : "새 게시글 작성"}
       </Typography>
 
-      {/* ✅ 작성 시: 카테고리 선택 / 수정 시: 표시 */}
+      {/* 작성 시: 카테고리 선택 / 수정 시: 표시 */}
       {!boardId ? (
         <FormControl fullWidth sx={{ mb: 2 }}>
           <InputLabel>카테고리 선택</InputLabel>
@@ -159,7 +159,7 @@ const BoardWritePage = () => {
         onChange={handleChange}
       />
 
-      {/* ✅ 체크박스 영역 */}
+      {/* 체크박스 영역 */}
       <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
         {/* 공지글 */}
         <FormControlLabel
@@ -175,7 +175,7 @@ const BoardWritePage = () => {
                   privateYn: checked ? false : f.privateYn,
                 }));
               }}
-              disabled={form.privateYn} // ✅ 비공개일 땐 비활성화
+              disabled={form.privateYn} // 비공개일 땐 비활성화
               sx={{
                 color: form.noticeYn ? "#9E9E9E" : "inherit",
                 "&.Mui-checked": { color: "#9E9E9E" },
@@ -196,8 +196,8 @@ const BoardWritePage = () => {
                 setForm((f) => ({
                   ...f,
                   privateYn: checked,
-                  noticeYn: checked ? false : f.noticeYn, // ✅ 공지 해제
-                  pinned: checked ? false : f.pinned,     // ✅ 상단고정 해제
+                  noticeYn: checked ? false : f.noticeYn, // 공지 해제
+                  pinned: checked ? false : f.pinned,     // 상단고정 해제
                 }));
               }}
             />
@@ -220,7 +220,7 @@ const BoardWritePage = () => {
                   privateYn: checked ? false : f.privateYn,
                 }));
               }}
-              disabled={form.privateYn} // ✅ 비공개일 땐 비활성화
+              disabled={form.privateYn} // 비공개일 땐 비활성화
               sx={{
                 color: form.pinned ? "#FFA726" : "inherit",
                 "&.Mui-checked": { color: "#FFA726" },
@@ -231,7 +231,7 @@ const BoardWritePage = () => {
         />
       </Box>
 
-      {/* ✅ 비공개 아이콘 표시 */}
+      {/* 비공개 아이콘 표시 */}
       {form.privateYn && (
         <Box sx={{ display: "flex", alignItems: "center", mb: 1, color: "#616161" }}>
           <LockIcon sx={{ mr: 1 }} /> 비공개 게시글 — 작성자와 관리자만 볼 수 있습니다.

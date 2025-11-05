@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Box, Typography, ListItemButton, Pagination } from "@mui/material";
 import { getBoardsByCategory, getBoardsOrdered } from "../api/boardAPI";
 import LockIcon from "@mui/icons-material/Lock"; // 🔒 자물쇠 아이콘 추가
-import coreconnectLogo from "../../../assets/coreconnect-logo.png"; // ✅ 로고 경로 확인
+import coreconnectLogo from "../../../assets/coreconnect-logo.png"; // 로고 경로 확인
 
 const BoardListPage = () => {
   const { categoryId } = useParams();
@@ -60,7 +60,7 @@ const BoardListPage = () => {
               {b.categoryName || "전체 게시판"}
             </Typography>
 
-            {/* ✅ 제목 + 아이콘 표시 영역 */}
+            {/* 제목 + 아이콘 표시 영역 */}
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
               {/* 상단고정 아이콘 */}
               {b.pinned && (
@@ -83,7 +83,7 @@ const BoardListPage = () => {
               </Typography>
             </Box>
 
-            {/* ✅ 작성자, 날짜, 조회수 */}
+            {/* 작성자, 날짜, 조회수 */}
             <Typography variant="caption" color="text.secondary">
               {b.writerName} / {formatDate(b.createdAt)} / 조회수{" "}
               {b.viewCount ?? 0}
@@ -92,7 +92,7 @@ const BoardListPage = () => {
         </ListItemButton>
       ))}
 
-      {/* ✅ 페이지네이션 */}
+      {/* 페이지네이션 */}
       <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
         <Pagination
           count={pageInfo.totalPages}
