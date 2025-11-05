@@ -47,12 +47,15 @@ const BoardListPage = () => {
           onClick={() => navigate(`/board/detail/${b.id}`)}
           sx={{
             bgcolor: b.pinned
-              ? "#009FE3"
+              ? "primary.main"
               : b.noticeYn
               ? "#d9d9d9"
               : "inherit",
             borderRadius: 1,
-            mb: 1,
+            mb: 1.2,
+            py: 0.2,
+            width: "80%",
+            mx: "auto",
           }}
         >
           <Box sx={{ display: "flex", flexDirection: "column", width: "100%" }}>
@@ -67,7 +70,7 @@ const BoardListPage = () => {
                 <img
                   src={coreconnectLogo}
                   alt="pinned"
-                  style={{ width: 18, height: 18 }}
+                  style={{ width: 30, height: 30 }}
                 />
               )}
               {/* 비공개 아이콘 */}
