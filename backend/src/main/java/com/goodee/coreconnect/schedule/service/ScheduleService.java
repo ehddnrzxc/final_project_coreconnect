@@ -15,6 +15,9 @@ public interface ScheduleService {
 
   ResponseScheduleDTO getScheduleById(Integer id);
   
+  /** 로그인한 사용자의 이메일 기준으로 일정 조회 */
+  List<ResponseScheduleDTO> getSchedulesByEmail(String email);
+  
   /** 특정 유저의 일정 목록 조회 (삭제되지 않은 일정만 반환) */
   List<ResponseScheduleDTO> getUserSchedules(Integer userId);
 
