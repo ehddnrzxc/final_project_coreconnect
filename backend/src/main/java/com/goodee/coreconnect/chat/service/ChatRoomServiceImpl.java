@@ -439,7 +439,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     }
 	
 	// 읽음 업데이트
-	// 채팅방에 참여자가 여러명일 떄, 누군가 메시지를 읽거나 메시지를 또 보내면 chat_message_read_status의 이전 메시지들도 읽음 처리와 ㄱ읽은 시간 업데이트가 되어야 함
+	// 채팅방에 참여자가 여러명일 떄, 누군가 메시지를 읽거나 메시지를 또 보내면 chat_message_read_status의 이전 메시지들도 읽음 처리와 읽은 시간 업데이트가 되어야 함
 	@Transactional
 	public void markMessagesAsRead(Integer roomId, Integer userId) {
 	    // 1. 해당 채팅방에서 내가 안읽은 메시지 상태 전부 조회
@@ -448,8 +448,17 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 
 	    // 2. 상태를 모두 읽음 처리 및 시간 업데이트
 	    for (ChatMessageReadStatus status : unreadStatuses) {
-	        status.markRead(); // 내부적으로 readYn=true, readAt=now
-	        chatMessageReadStatusRepository.save(status);
+	    	// 확실히 안읽음 상태일 때만 markRead() 수행
+	    	if (Boolean.FALSE.equals(status.getReadYn()) && status.getReadAt() == null) {
+	    		status.markRead();// 내부적으로 readYn = true, readAt= now로 세팅
+	    		chatMessageReadStatusRepository.save(status);
+	    	}
+	    	
+	    	// 불일치 row 강제 동기화 (optional)
+	        if (status.getReadAt() != null && Boolean.FALSE.equals(status.getReadYn())) {
+	            status.markRead();
+	            chatMessageReadStatusRepository.save(status);
+	        }
 	    }
 	}
 

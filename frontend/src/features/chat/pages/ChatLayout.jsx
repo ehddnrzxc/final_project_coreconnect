@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { NavLink } from "react-router-dom";
-import { Box, Snackbar, Slide, Typography, Badge } from "@mui/material";
+import { Box, Snackbar, Slide, Typography, Badge, Divider } from "@mui/material";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import SendIcon from "@mui/icons-material/Send";
 import NotificationsNoneIcon from "@mui/icons-material/NotificationsNone";
@@ -157,7 +157,6 @@ export default function ChatLayout() {
   useEffect(() => {
     async function loadRooms() {
       const res = await fetchChatRoomsLatest();
-      // 데이터 구조: { status, message, data: [ ... ]}
       if (res && Array.isArray(res.data)) {
         setRoomList(res.data);
         setSelectedRoomId(res.data[0]?.roomId ?? null);
@@ -327,6 +326,13 @@ export default function ChatLayout() {
     }
   }
 
+  // ✅ ====== 여기서부터 안읽은 메시지입니다 ====== 라벨 조건 로직 개선
+  // "readYn=false"가 하나 이상일 때만 표시, 아니면 라벨 표시X
+  const unreadCount = messages.reduce((cnt, msg) => cnt + (msg.readYn === false ? 1 : 0), 0);
+  const firstUnreadIdx = unreadCount > 0
+    ? messages.findIndex(msg => msg.readYn === false)
+    : -1;
+
   return (
     <Box className="chat-layout" sx={{ background: "#fafbfc", minHeight: "100vh", display: "flex", flexDirection: "row" }}>
       <ToastList
@@ -396,7 +402,8 @@ export default function ChatLayout() {
                     borderBottom: "1px solid #e9eaeb",
                     py: 2.4,
                     px: 1.2,
-                    minHeight: "64px"
+                    minHeight: "64px",
+                    cursor: "pointer" // <- 손가락 모양 추가!
                   }}
                 >
                   <ListItemAvatar>
@@ -404,7 +411,6 @@ export default function ChatLayout() {
                       {room.roomName?.[0]?.toUpperCase()}
                     </Avatar>
                   </ListItemAvatar>
-                  {/* ✅ 변경: 마지막 메시지와 시간 key 제대로 매핑! */}
                   <ListItemText
                     primary={
                       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -469,7 +475,6 @@ export default function ChatLayout() {
               ))}
             </List>
           </Box>
-          {/* 이하 채팅 상세 뷰(메시지 영역 등)는 변경 없음 */}
           <Box sx={{
             flex: 1, minWidth: "380px",
             height: "calc(100vh - 56px - 32px)", background: "#f8fbfd",
@@ -518,101 +523,137 @@ export default function ChatLayout() {
                     "&::-webkit-scrollbar-track": { background: "#f8fbfd" }
                   }}
                 >
+                  {/* "여기서부터 안읽은 메시지입니다" 라벨 조건 로직 개선 */}
                   {messages
                     .filter(msg => msg.fileYn || (msg.messageContent && msg.messageContent.trim() !== ""))
-                    .map(msg => {
+                    .map((msg, idx) => {
                       const isMe = msg.senderName === userName;
+                      // 첫번째로 안읽은 메시지 앞에 라벨 표시 (안읽은 메시지가 하나 이상일 때만, 단 한번!)
+                      const isFirstUnread = unreadCount > 0 && idx === firstUnreadIdx;
                       return (
-                        <Box key={msg.id}
-                          sx={{
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: isMe ? "flex-end" : "flex-start",
-                            mb: 1.7, width: "100%",
-                          }}
-                        >
-                          {!isMe && (
-                            <Typography variant="caption" color="#7d87ab"
-                              sx={{ mb: 0.5, fontWeight: 600, fontSize: 14 }}
-                            >
-                              {msg.senderName}
-                            </Typography>
-                          )}
-                          <Box sx={{ display: "flex", alignItems: "center", maxWidth: "330px" }}>
-                            {isMe && msg.unreadCount > 0 && (
-                              <Badge badgeContent={msg.unreadCount} sx={{
-                                mr: 1,
-                                "& .MuiBadge-badge": {
-                                  background: "#f6c745",
-                                  color: "#222",
-                                  fontWeight: 700,
-                                  borderRadius: "8px",
-                                  fontSize: "13px"
-                                }
-                              }}/>
-                            )}
-                            <Box
-                              sx={{
-                                display: "inline-block",
-                                fontSize: 15, px: 2, py: 1, borderRadius: "10px", mb: 0.5,
-                                bgcolor: isMe ? "#ffe585" : "#f7f9fc",
-                                color: isMe ? "#1aaf54" : "#222", boxShadow: "none",
-                                width: "fit-content", maxWidth: "270px",
-                                wordBreak: "break-all",
-                                border: isMe ? "none" : "1px solid #e4eaf3"
+                        <React.Fragment key={msg.id}>
+                          {/* ====== 여기서부터 안읽은 메시지입니다 ====== 라벨 */}
+                          {isFirstUnread && (
+                            <Box sx={{
+                              width: "100%",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              mb: 2.2,
+                              mt: 1.2,
+                              zIndex: 2,
+                            }}>
+                              <Box sx={{
+                                bgcolor: "#e1e3e6",
+                                px: 2.8,
+                                py: 1.1,
+                                borderRadius: 2,
+                                boxShadow: "none",
                               }}>
-                              {msg.fileYn && msg.fileUrl
-                                ? (
-                                  msg.fileUrl.match(/\.(jpg|jpeg|png|gif|bmp|webp)$/i) ?
-                                    <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer">
-                                      <img
-                                        src={msg.fileUrl}
-                                        alt={msg.fileName || "이미지"}
-                                        style={{ maxWidth: "220px", maxHeight: "220px", borderRadius: 8 }}
-                                      />
-                                    </a>
-                                  :
-                                    <a
-                                      href={msg.fileUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      style={{
-                                        color: "#4a90e2",
-                                        textDecoration: "underline",
-                                        fontWeight: 600,
-                                        wordBreak: "break-all"
-                                      }}
-                                    >
-                                      {msg.fileName || "파일"}
-                                    </a>
-                                )
-                                : (msg.messageContent || "")
-                              }
-                            </Box>
-                            {!isMe && msg.unreadCount > 0 && (
-                              <Badge badgeContent={msg.unreadCount} sx={{
-                                ml: 1,
-                                "& .MuiBadge-badge": {
-                                  background: "#f6c745",
-                                  color: "#222",
+                                <Typography sx={{
+                                  color: "#555",
                                   fontWeight: 700,
-                                  borderRadius: "8px",
-                                  fontSize: "13px"
-                                }
-                              }}/>
-                            )}
-                          </Box>
-                          <Typography
+                                  fontSize: 16,
+                                  letterSpacing: "1.5px",
+                                  textAlign: "center"
+                                }}>
+                                  ====== 여기서부터 안읽은 메시지입니다 ======
+                                </Typography>
+                              </Box>
+                            </Box>
+                          )}
+                          {/* 기존 메시지 렌더링 */}
+                          <Box
                             sx={{
-                              fontSize: 12,
-                              color: "#b0b6ce",
-                              alignSelf: isMe ? "flex-end" : "flex-start",
-                              mt: 0.5
+                              display: "flex",
+                              flexDirection: "column",
+                              alignItems: isMe ? "flex-end" : "flex-start",
+                              mb: 1.7, width: "100%",
                             }}
                           >
-                            {formatTime(msg.sendAt)}
-                          </Typography>
-                        </Box>
+                            {!isMe && (
+                              <Typography variant="caption" color="#7d87ab"
+                                sx={{ mb: 0.5, fontWeight: 600, fontSize: 14 }}
+                              >
+                                {msg.senderName}
+                              </Typography>
+                            )}
+                            <Box sx={{ display: "flex", alignItems: "center", maxWidth: "330px" }}>
+                              {isMe && msg.unreadCount > 0 && (
+                                <Badge badgeContent={msg.unreadCount} sx={{
+                                  mr: 1,
+                                  "& .MuiBadge-badge": {
+                                    background: "#f6c745",
+                                    color: "#222",
+                                    fontWeight: 700,
+                                    borderRadius: "8px",
+                                    fontSize: "13px"
+                                  }
+                                }}/>
+                              )}
+                              <Box
+                                sx={{
+                                  display: "inline-block",
+                                  fontSize: 15, px: 2, py: 1, borderRadius: "10px", mb: 0.5,
+                                  bgcolor: isMe ? "#ffe585" : "#f7f9fc",
+                                  color: isMe ? "#1aaf54" : "#222", boxShadow: "none",
+                                  width: "fit-content", maxWidth: "270px",
+                                  wordBreak: "break-all",
+                                  border: isMe ? "none" : "1px solid #e4eaf3"
+                                }}>
+                                {msg.fileYn && msg.fileUrl
+                                  ? (
+                                    msg.fileUrl.match(/\.(jpg|jpeg|png|gif|bmp|webp)$/i) ?
+                                      <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer">
+                                        <img
+                                          src={msg.fileUrl}
+                                          alt={msg.fileName || "이미지"}
+                                          style={{ maxWidth: "220px", maxHeight: "220px", borderRadius: 8 }}
+                                        />
+                                      </a>
+                                    :
+                                      <a
+                                        href={msg.fileUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{
+                                          color: "#4a90e2",
+                                          textDecoration: "underline",
+                                          fontWeight: 600,
+                                          wordBreak: "break-all"
+                                        }}
+                                      >
+                                        {msg.fileName || "파일"}
+                                      </a>
+                                  )
+                                  : (msg.messageContent || "")
+                                }
+                              </Box>
+                              {!isMe && msg.unreadCount > 0 && (
+                                <Badge badgeContent={msg.unreadCount} sx={{
+                                  ml: 1,
+                                  "& .MuiBadge-badge": {
+                                    background: "#f6c745",
+                                    color: "#222",
+                                    fontWeight: 700,
+                                    borderRadius: "8px",
+                                    fontSize: "13px"
+                                  }
+                                }}/>
+                              )}
+                            </Box>
+                            <Typography
+                              sx={{
+                                fontSize: 12,
+                                color: "#b0b6ce",
+                                alignSelf: isMe ? "flex-end" : "flex-start",
+                                mt: 0.5
+                              }}
+                            >
+                              {formatTime(msg.sendAt)}
+                            </Typography>
+                          </Box>
+                        </React.Fragment>
                       );
                     })}
                   <div ref={messagesEndRef} />
