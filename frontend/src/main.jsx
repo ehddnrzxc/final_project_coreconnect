@@ -72,6 +72,15 @@ const router = createBrowserRouter([
       },
 
       {
+        path: "calendar",
+        element: (
+          <ProtectedRoute>
+            <CalendarPage />
+          </ProtectedRoute>
+        ),
+      },
+
+      {
         path: "board",
         element: (
           <ProtectedRoute>
