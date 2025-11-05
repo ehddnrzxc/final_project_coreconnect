@@ -23,6 +23,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 로그인, 로그아웃 로직을 수행하는 컨트롤러
@@ -34,6 +35,7 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 @Tag(name = "Auth API", description = "로그인/토큰재발급/로그아웃 API")
+@Slf4j
 public class AuthController {
   private final JwtProvider jwt;
   private final UserRepository userRepository;  
@@ -62,7 +64,7 @@ public class AuthController {
 
       // 토큰 생성
       String access = jwt.createAccess(email, role, JwtConstants.ACCESS_TOKEN_MINUTES);   
-      String refresh = jwt.createRefresh(email, JwtConstants.REFRESH_TOKEN_DAYS);  
+      String refresh = jwt.createRefresh(email, role, JwtConstants.REFRESH_TOKEN_DAYS);  
 
       // HttpOnly Refresh Token 쿠키 설정
       ResponseCookie cookie = ResponseCookie.from("refresh_token", refresh)
@@ -98,9 +100,10 @@ public class AuthController {
       @CookieValue(name="refresh_token", required=false) String refresh) {
     if (refresh == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
     try {
+      log.info("????? {}",refresh);
       String email = jwt.getSubject(refresh);
       Role role = Role.valueOf(jwt.getRole(refresh));
-      String newAccess = jwt.createAccess(email, role, 10);
+      String newAccess = jwt.createAccess(email, role, JwtConstants.ACCESS_TOKEN_MINUTES);
       return ResponseEntity.ok(Map.of("accessToken", newAccess));
     } catch (Exception e) {
       e.printStackTrace();

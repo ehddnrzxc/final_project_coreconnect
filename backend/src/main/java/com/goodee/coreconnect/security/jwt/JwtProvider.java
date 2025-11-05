@@ -49,14 +49,18 @@ public class JwtProvider {
                 .addClaims(claims) 
                 .setIssuedAt(new Date())
                 .setExpiration(Date.from(Instant.now().plus(Duration.ofMinutes(minutes))))
+                // .setExpiration(Date.from(Instant.now().plus(Duration.ofSeconds(minutes))))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
 
     /** Refresh 토큰 발급 */
-    public String createRefresh(String subject, long days) {
+    public String createRefresh(String subject, Role role, long days) {
+      Map<String, Object> claims = new HashMap<>();
+      claims.put("role", role.name()); 
         return Jwts.builder()
                 .setSubject(subject)
+                .addClaims(claims) 
                 .setIssuedAt(new Date())
                 .setExpiration(Date.from(Instant.now().plus(Duration.ofDays(days))))
                 .signWith(key, SignatureAlgorithm.HS256)

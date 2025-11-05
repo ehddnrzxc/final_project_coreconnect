@@ -61,6 +61,9 @@ http.interceptors.response.use(
           // refresh 엔드포인트는 인증 없이 허용되어 있어야 함 (SecurityConfig 확인)
           const r = await http.post("/auth/refresh", {});
           const newAccess = r.data?.accessToken;
+          console.log(r);
+          console.log(r.data);
+          console.log(r.data?.accessToken);
           if (!newAccess) throw new Error("No accessToken in refresh response");
 
           localStorage.setItem(ACCESS_TOKEN_KEY, newAccess);
