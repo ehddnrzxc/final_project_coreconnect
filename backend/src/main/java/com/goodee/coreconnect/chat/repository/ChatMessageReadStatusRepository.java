@@ -66,6 +66,11 @@ public interface ChatMessageReadStatusRepository extends JpaRepository<ChatMessa
     }
     
     
+    // 내가 참여중인 모든 채팅방에서 방별 unread 메시지 개수 집계
+    // 결과: roomId, unreadCount로 반환 + 방 ID 단위로 내가 안읽은 메시지 개수 그룹핑
+    @Query("SELECT c.chat.chatRoom.id AS roomId, COUNT(c) AS unreadCount FROM ChatMessageReadStatus c WHERE c.user.id = :userId AND c.readYn = false GROUP BY c.chat.chatRoom.id")
+    List<Object[]> countUnreadMessagesByUserId(@Param("userId") Integer userId);
+    
     
     
 }

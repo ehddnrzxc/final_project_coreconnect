@@ -5,6 +5,7 @@ import java.util.List;
 import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.chat.dto.response.ChatResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatRoomLatestMessageResponseDTO;
+import com.goodee.coreconnect.chat.dto.response.ChatRoomListDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatRoomSummaryResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.UnreadNotificationListDTO;
 import com.goodee.coreconnect.chat.entity.Chat;
@@ -80,5 +81,8 @@ public interface ChatRoomService {
     List<Chat> getChatsWithFilesByRoomId(Integer roomId);
     
     boolean existsRoom(Integer roomId);
+    
+    // user 참여 chatRoom 목록 가져오기
+    List<ChatRoomListDTO> getChatRoomListWithUnreadCount(Integer userId);
 
 }

@@ -5,8 +5,10 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 
 import com.goodee.coreconnect.chat.entity.Chat;
+
 
 public interface ChatRepository extends JpaRepository<Chat, Integer> {
 
@@ -70,6 +72,7 @@ public interface ChatRepository extends JpaRepository<Chat, Integer> {
     }
     
     
-    
-    
+    // 10. 채팅방 목록 불러올 때 unreadcount 필드 채워서 DTO로 변환
+    @Query("SELECT c.chat.chatRoom.id AS roomId, COUNT(c) AS unreadCount FROM ChatMessageReadStatus c WHERE c.user.id = :userId AND c.readYn = false GROUP BY c.chat.chatRoom.id")
+    List<Object[]> countUnreadMessagesByUserId(@Param("userId") Integer userId);
 }

@@ -21,3 +21,13 @@ export async function fetchUnreadmessages() {
   return res.data;
 }
 
+// 채팅바에서 모든 메시지를 읽음처리 (PATCH)
+export const markRoomMessagesAsRead = async (roomId, accessToken) => {
+  // PATCH /api/v1/chat/rooms/{roomId}/messages/read
+  const res = await http.patch(
+    `/chat/rooms/${roomId}/messages/read`,
+    null,
+    {headers: {Authorization: `Bearer ${accessToken}`}}
+  );
+  return res.data;
+}
