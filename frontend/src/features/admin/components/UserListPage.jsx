@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { getAdminUsers } from "../../api/userAPI";
-import { jobGradeLabel } from "../../utils/jobGradeUtils";
+import { getAdminUsers } from "../../../features/user/api/userAPI";
+import { jobGradeLabel } from "../../../utils/jobGradeUtils";
 import {
   Box,
   Card,
