@@ -1,6 +1,8 @@
 package com.goodee.coreconnect.user.controller;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.goodee.coreconnect.department.service.DepartmentService;
 import com.goodee.coreconnect.user.dto.request.CreateUserReqDTO;
 import com.goodee.coreconnect.user.dto.response.UserDTO;
 import com.goodee.coreconnect.user.entity.Status;
@@ -28,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 public class AdminUserController {
   
   private final UserService userService;
+  private final DepartmentService departmentService;
   
   /**
    * 신규 사용자 생성
@@ -54,10 +58,22 @@ public class AdminUserController {
     userService.changeStatus(id, status);
   }
   
-  /** 유저 목록 조회 */
+  /** 사용자 목록 조회 */
   @GetMapping
   public List<UserDTO> findAllUsers() {
     return userService.findAllUsers();
   }
+  
+  /** 각종 통계를 제공해주는 메소드 */
+  @GetMapping("/stats")
+  public Map<String, Long> getAllStats() {
+    Map<String, Long> stats = new HashMap<>();
+    stats.put("totalUsers", userService.getAllUserCount());
+    stats.put("activeUsers", userService.getAllActiveUserCount());
+    stats.put("departments", departmentService.getAllDepartmentCount());
+    // 전자결재 관련 메소드 추후에 추가 예정(승인 예정 결재 수 등)
+    return stats;
+  }
+  
   
 }

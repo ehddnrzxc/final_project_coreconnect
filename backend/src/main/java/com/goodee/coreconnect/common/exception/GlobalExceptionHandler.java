@@ -8,6 +8,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.goodee.coreconnect.common.dto.response.ResponseDTO;
 
@@ -96,9 +97,25 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ex.getMessage());
     }
+    
+    
+    /**
+     * 7. ResponseStatusException에 대한 예외 처리
+     * @param ex
+     * @return ResponseStatusException
+     */
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<String> handleException(ResponseStatusException ex) {
+        // ⭐️ 예상치 못한 오류는 심각하므로 Error 레벨로 로그를 남깁니다.
+        log.error("401 UNAUTHORIZED: {}", ex.getMessage(), ex); 
+        
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED) // 401
+                .body("ResponseStatusException 오류가 발생했습니다. 관리자에게 문의하세요.");
+    }
 
     /**
-     * 7. 그 외 모든 예상치 못한 예외 처리 (HTTP 500 Internal Server Error)
+     * 8. 그 외 모든 예상치 못한 예외 처리 (HTTP 500 Internal Server Error)
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<String> handleException(Exception ex) {

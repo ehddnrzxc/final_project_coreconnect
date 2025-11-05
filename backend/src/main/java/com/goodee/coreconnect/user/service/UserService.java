@@ -21,5 +21,7 @@ public interface UserService {
   public void moveUserToDepartment(Integer userId, Integer newDeptId);
   public void moveUserToJobGrade(Integer userId, JobGrade jobGrade);
   public void moveUserToRole(Integer userId, Role newRole);
+  public Long getAllUserCount();
+  public Long getAllActiveUserCount();
 
 }
