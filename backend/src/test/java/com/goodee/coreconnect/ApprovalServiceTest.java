@@ -100,7 +100,7 @@ public class ApprovalServiceTest {
     // 2. 테스트용 양식 생성 (Template.createTemplate 사용)
     // Template.createTemplate(templateName, templateContent, user)
     // (기본 activeYn = true로 생성됨)
-    template = Template.createTemplate("테스트 양식", "<div>양식 내용</div>", drafter);
+    template = Template.createTemplate("테스트 양식", "<div>양식 내용</div>", "테스트 양식", drafter);
     templateRepository.save(template);
 
     // 3. 테스트용 문서 및 결재선 생성 (Document.createDocument, ApprovalLine.createApprovalLine 사용)
@@ -541,7 +541,7 @@ public class ApprovalServiceTest {
   void getActiveTemplates_Success() {
     // Arrange
     // 'template' (active=true)은 @BeforeEach에서 생성됨
-    Template inactiveTemplate = Template.createTemplate("비활성 양식", "내용", drafter);
+    Template inactiveTemplate = Template.createTemplate("비활성 양식", "내용", "비활성 양식", drafter);
     inactiveTemplate.deactivate(); // 엔티티의 deactivate() 사용
     templateRepository.save(inactiveTemplate);
 

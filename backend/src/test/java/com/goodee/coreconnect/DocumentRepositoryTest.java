@@ -63,7 +63,7 @@ public class DocumentRepositoryTest {
         drafter2 = userRepository.save(User.createUser("pw123", "기안자2", Role.USER, "drafter2@example.com", "010-2222-2222", devDept, null));
         approver1 = userRepository.save(User.createUser("pw123", "결재자1", Role.USER, "approver1@example.com", "010-3333-3333", devDept, null));
         
-        template = templateRepository.save(Template.createTemplate("테스트 양식", "내용", drafter1));
+        template = templateRepository.save(Template.createTemplate("테스트 양식", "내용","테스트 양식", drafter1));
 
         // --- 2. 문서 생성 (시나리오) ---
         // 순서: doc1 (가장 오래됨) -> doc2 -> doc4 -> doc3 (가장 최신)

@@ -561,7 +561,7 @@ public class ChatWebSocketHandlerTest {
 	    // 2. 문서/템플릿 저장을 별도 트랜잭션으로 실행
 	    TransactionTemplate txTemplate = new TransactionTemplate(transactionManager);
 	    Document savedDocument = txTemplate.execute(status -> {
-	        Template template = Template.createTemplate("기본 결재 템플릿9", "템플릿 내용9", user);
+	        Template template = Template.createTemplate("기본 결재 템플릿9", "템플릿 내용9", "기본 결재 템플릿9", user);
 	        template = templateRepository.save(template);
 	        templateRepository.flush();
 
