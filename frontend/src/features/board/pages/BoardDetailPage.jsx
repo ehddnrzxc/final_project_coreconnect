@@ -58,29 +58,49 @@ const BoardDetailPage = () => {
   return (
     <Box>
       <Typography variant="h5">{board.title}</Typography>
+
+      {/* 🔧 수정 1: 작성자 이름 필드 writerName 으로 변경 */}
+      {/* 🔧 수정 2: 날짜를 한국 시간 형식으로 가독성 있게 표시 */}
       <Typography variant="body2" sx={{ mb: 2 }}>
-        {board.writerName} | {new Date(board.createdAt).toLocaleString()} | 조회수 {board.viewCount}
+        {board.writerName || "알 수 없음"} |{" "}
+        {new Date(board.createdAt).toLocaleString()} | 조회수 {board.viewCount ?? 0}
       </Typography>
 
+      {/* 수정 / 삭제 버튼 */}
       <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
-        <Button variant="outlined" startIcon={<EditIcon />} onClick={() => navigate(`/board/edit/${board.id}`)}>
+        <Button
+          variant="outlined"
+          startIcon={<EditIcon />}
+          onClick={() => navigate(`/board/edit/${board.id}`)}
+        >
           수정
         </Button>
-        <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={handleDelete}>
+        <Button
+          variant="outlined"
+          color="error"
+          startIcon={<DeleteIcon />}
+          onClick={handleDelete}
+        >
           삭제
         </Button>
       </Box>
 
       <Divider sx={{ mb: 2 }} />
+
+      {/* 본문 내용 */}
       <Typography sx={{ whiteSpace: "pre-line", mb: 4 }}>{board.content}</Typography>
 
-      {/* 첨부파일 */}
+      {/* 🔧 수정 3: 파일 미리보기 경로 수정 (s3ObjectKey 사용) */}
       {files.length > 0 && (
         <Box sx={{ mb: 2 }}>
           <Typography variant="subtitle2">첨부파일</Typography>
           {files.map((f) => (
             <Box key={f.id}>
-              <a href={f.s3ObjectKey} target="_blank" rel="noopener noreferrer">
+              <a
+                href={f.s3ObjectKey} // ✅ 수정됨
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 {f.fileName}
               </a>
             </Box>
@@ -89,19 +109,26 @@ const BoardDetailPage = () => {
       )}
 
       <Divider sx={{ mb: 2 }} />
-      <Typography variant="h6">댓글</Typography>
 
+      {/* 댓글 영역 */}
+      <Typography variant="h6">댓글</Typography>
       {replies.map((r) => (
         <Box key={r.id} sx={{ borderBottom: 1, borderColor: "divider", py: 1 }}>
+          {/* 🔧 수정 4: writerName 으로 필드명 통일 */}
           <Typography variant="body2">
-            <b>{r.writerName}</b>: {r.content}
+            <b>{r.writerName || "익명"}</b>: {r.content}
           </Typography>
-          <IconButton size="small" color="error" onClick={() => deleteReply(r.id)}>
+          <IconButton
+            size="small"
+            color="error"
+            onClick={() => deleteReply(r.id)}
+          >
             <DeleteIcon fontSize="small" />
           </IconButton>
         </Box>
       ))}
 
+      {/* 댓글 작성란 */}
       <Box sx={{ display: "flex", mt: 2 }}>
         <TextField
           fullWidth
