@@ -53,4 +53,23 @@ public interface ChatRepository extends JpaRepository<Chat, Integer> {
     	   "ORDER BY c.sendAt ASC")
     List<Chat> findAllChatsWithFilesByRoomId(@Param("roomId") Integer roomId);
     
+
+    /** 
+     * 특정 채팅방에서 가장 최근(최신) 1개의 메시지를 반환
+     * 최근 메시지가 없다면 null을 리턴합니다.
+     */
+    @Query("SELECT c FROM Chat c WHERE c.chatRoom.id = :roomId ORDER BY c.sendAt DESC")
+    List<Chat> findTopByChatRoomIdOrderBySendAtDesc(@Param("roomId") Integer roomId);
+
+    /**  
+     * 단건 반환을 원할 경우 default 메서드 추가 (최신 메시지 1개)
+     */
+    default Chat findLatestMessageByRoomId(Integer roomId) {
+        List<Chat> result = this.findTopByChatRoomIdOrderBySendAtDesc(roomId);
+        return (result != null && !result.isEmpty()) ? result.get(0) : null;
+    }
+    
+    
+    
+    
 }

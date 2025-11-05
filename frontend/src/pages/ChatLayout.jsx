@@ -21,14 +21,13 @@ import Avatar from "@mui/material/Avatar";
 import IconButton from "@mui/material/IconButton";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
+import ToastList from "../components/chat/ToastList";
 
 import {
   fetchChatRoomMessages,
-  fetchChatRoomsLatest,
-  fetchUnreadmessages 
+  fetchChatRoomsLatest
 } from "../api/ChatRoomApi";
 
-// MUI Slide Transition (오른쪽 상단 → 왼쪽)
 function TransitionLeft(props) {
   return <Slide {...props} direction="left" />;
 }
@@ -63,7 +62,6 @@ function formatTime(sendAt) {
   }
 }
 
-// --- ChatHeader ---
 function ChatHeader() {
   return (
     <Box className="chat-header" sx={{
@@ -88,7 +86,6 @@ function ChatHeader() {
   );
 }
 
-// --- ChatSidebar ---
 function ChatSidebar({ unreadRoomCount }) {
   return (
     <Box component="aside" className="chat-sidebar" sx={{
@@ -127,7 +124,6 @@ const WEBSOCKET_BASE = "ws://localhost:8080/ws/chat";
 
 export default function ChatLayout() {
   const [roomList, setRoomList] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [selectedRoomId, setSelectedRoomId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [tabIdx, setTabIdx] = useState(0);
@@ -136,36 +132,16 @@ export default function ChatLayout() {
   const inputRef = useRef();
   const unreadRoomCount = roomList.filter((room) => room.unreadCount > 0).length;
   const messagesEndRef = useRef(null);
-  const [unreadRooms, setUnreadRooms] = useState([]); 
-
-  useEffect(() => {
-    console.log("unreadRooms 값 확인:", unreadRooms);
-  }, [unreadRooms]);
-
-
-  useEffect(() => {
-    async function loadUnreadRooms() {
-      try {
-        const res = await fetchUnreadmessages();
-        // 백엔드 구조에 따라 roomsWithUnread에서 가져옴!
-        setUnreadRooms(res?.data?.roomsWithUnread || []);
-      } catch (err) {
-        console.error("미읽음 방 조회 실패", err);
-      }
-    }
-  loadUnreadRooms();
-}, []);
+  const [toastRooms, setToastRooms] = useState([]); // Toast 알림용 상태
 
   useEffect(() => {
     async function loadRooms() {
-      setLoading(true);
       const res = await fetchChatRoomsLatest();
       if (res && res.status === 200 && Array.isArray(res.data)) {
         const sortedRooms = [...res.data].sort((a, b) => new Date(b.sendAt) - new Date(a.sendAt));
         setRoomList(sortedRooms);
         setSelectedRoomId(sortedRooms[0]?.roomId ?? null);
       }
-      setLoading(false);
     }
     loadRooms();
   }, []);
@@ -205,7 +181,6 @@ export default function ChatLayout() {
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
-          // setMessages((prev) => [...prev, msg]);
           handleNewMessage(msg);
         } catch(err) {
           console.warn("메시지 파싱 오류:", err);
@@ -231,9 +206,50 @@ export default function ChatLayout() {
 
   const selectedRoom = roomList.find((r) => r.roomId === selectedRoomId);
 
-  if (loading) return <Box p={2}>채팅방 목록 로딩중...</Box>;
+  // [핵심수정!] 알림이 여러개일 때 sendAt 기준 내림차순으로 쌓이게!
+  const handleNewMessage = (msg) => {
+    if (msg.senderName === userName) {
+      if (msg.roomId === selectedRoomId) {
+        setMessages(prev => [...prev, msg]);
+      }
+      return; // 내가 보낸 메시지는 Toast X
+    }
 
-  // 파일 업로드
+    if (msg.roomId === selectedRoomId) {
+      setMessages(prev => [...prev, msg]);
+    } else {
+      setToastRooms(prev => {
+        // 이전 알림에서 동일 roomId는 제거(중복 방지)
+        const filtered = prev.filter(r => r.roomId !== msg.roomId);
+        const newToast = {
+          roomId: msg.roomId,
+          unreadCount: msg.unreadCount || 1,
+          lastUnreadMessageContent: msg.messageContent,
+          lastUnreadMessageSenderName: msg.senderName,
+          lastUnreadMessageTime: msg.sendAt,
+          roomName: (roomList.find(r => r.roomId === msg.roomId)?.roomName) || "새 채팅방"
+        };
+        // 새 알림 추가, sendAt 기준 내림차순 정렬하여 저장
+        return [...filtered, newToast].sort(
+          (a, b) => new Date(b.lastUnreadMessageTime) - new Date(a.lastUnreadMessageTime)
+        );
+      });
+    }
+
+    setRoomList(prevRoomList =>
+      prevRoomList.map(room => room.roomId === msg.roomId ?
+        {
+          ...room,
+          messageContent: msg.messageContent,
+          fileYn: msg.fileYn,
+          sendAt: msg.sendAt,
+          unreadCount: msg.unreadCount,
+        }
+        : room
+      )
+    );
+  };
+
   const handleFileUpload = async (e) => {
     const files = e.target.files;
     if (!files || files.length === 0 || !selectedRoomId) return;
@@ -275,49 +291,16 @@ export default function ChatLayout() {
     }
   };
 
-  const handleNewMessage = msg => {
-    setMessages(prev => [...prev, msg]);
-    setRoomList(prevRoomList => {
-      return prevRoomList.map(room => room.roomId === msg.roomId ?
-        {
-          ...room,
-          messageContent: msg.messageContent,
-          fileYn: msg.fileYn,
-          sendAt: msg.sendAt,
-          unreadCount: msg.unreadCount,
-        }
-        : room
-      );
-    });
-  };
-
-  // 채팅 메시지 토스트 알림
-  const ToastList = ({ rooms }) => (
-    <div className="toast-list">
-      {rooms.filter(room => room.unreadCount > 0).map(room => (
-        <div className = "toast" key={room.roomId}>
-          <div className="toast-main">{room.lastUnreadMessageContent}</div>
-          <div className="toast-meta">
-            <span>{room.lastUnreadMessageSenderName}</span>
-            <span></span>
-
-
-          </div>
-        </div>
-
-      ))
-
-      }
-    </div>
-  )
-
-
-
-
+  // ToastList가 알림 컨테이너의 위치에 따라 아래(밑으로) 쌓이려면 anchorOrigin 설정도 주의,
+  // ToastList의 anchorOrigin을 { vertical: "bottom", horizontal: "right" }로 만들면 아래로 쌓임!
+  // (ToastList에서 anchorOrigin을 props로 넘긴다면 여기서 아래로 넘기세요)
   return (
     <Box className="chat-layout" sx={{ background: "#fafbfc", minHeight: "100vh", display: "flex", flexDirection: "row" }}>
-      {/* 1. 토스트 알림 최상단! */}
-      <ToastList rooms={unreadRooms} formatTime={formatTime} />
+      <ToastList
+        rooms={toastRooms}
+        formatTime={formatTime}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      />
       <ChatSidebar unreadRoomCount={unreadRoomCount} />
       <Box sx={{
         flex: 1, display: "flex", flexDirection: "column",
@@ -328,7 +311,6 @@ export default function ChatLayout() {
           flex: 1, display: "flex", flexDirection: "row",
           px: 5, pt: 2, gap: 2, minHeight: 0,
         }}>
-          {/* 채팅방 목록 */}
           <Box sx={{
             flex: "0 0 420px", minWidth: 350, maxWidth: 470,
             height: "calc(100vh - 56px - 32px)", background: "#fff",
@@ -443,7 +425,6 @@ export default function ChatLayout() {
               ))}
             </List>
           </Box>
-          {/* 채팅 메시지 영역 */}
           <Box sx={{
             flex: 1, minWidth: "380px",
             height: "calc(100vh - 56px - 32px)", background: "#f8fbfd",
@@ -496,7 +477,6 @@ export default function ChatLayout() {
                     .filter(msg => msg.fileYn || (msg.messageContent && msg.messageContent.trim() !== ""))
                     .map(msg => {
                       const isMe = msg.senderName === userName;
-                      // Badge 위치 조건
                       return (
                         <Box key={msg.id}
                           sx={{
@@ -514,7 +494,6 @@ export default function ChatLayout() {
                             </Typography>
                           )}
                           <Box sx={{ display: "flex", alignItems: "center", maxWidth: "330px" }}>
-                            {/* 내 메시지면 왼쪽 뱃지 */}
                             {isMe && msg.unreadCount > 0 && (
                               <Badge badgeContent={msg.unreadCount} sx={{
                                 mr: 1,
@@ -527,8 +506,6 @@ export default function ChatLayout() {
                                 }
                               }}/>
                             )}
-
-                            {/* 메시지 본문 */}
                             <Box
                               sx={{
                                 display: "inline-block",
@@ -567,7 +544,6 @@ export default function ChatLayout() {
                                 : (msg.messageContent || "")
                               }
                             </Box>
-                            {/* 남 메시지면 오른쪽 뱃지 */}
                             {!isMe && msg.unreadCount > 0 && (
                               <Badge badgeContent={msg.unreadCount} sx={{
                                 ml: 1,

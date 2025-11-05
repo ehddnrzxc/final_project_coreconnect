@@ -45,5 +45,27 @@ public interface ChatMessageReadStatusRepository extends JpaRepository<ChatMessa
     	     + "JOIN FETCH r.chat c "
     	     + "JOIN FETCH c.sender "
     	     + "WHERE r.user.id = :userId AND r.readYn = false")
-    	List<ChatMessageReadStatus> fetchUnreadWithSender(@Param("userId") Integer userId);
+    List<ChatMessageReadStatus> fetchUnreadWithSender(@Param("userId") Integer userId);
+    
+ // 내(userId)가 특정 채팅방(roomId)에서 읽지 않은 개수 집계
+    @Query("SELECT COUNT(r) FROM ChatMessageReadStatus r WHERE r.user.id = :userId AND r.chat.chatRoom.id = :roomId AND r.readYn = false")
+    int countByUserIdAndChatRoomIdAndReadYnFalse(@Param("userId") Integer userId, @Param("roomId") Integer roomId);
+
+    // 내(userId) 지정 방(roomId)의 안읽은 메시지 중, 가장 최근 1건
+    @Query(
+        "SELECT r FROM ChatMessageReadStatus r " +
+        "WHERE r.user.id = :userId AND r.chat.chatRoom.id = :roomId AND r.readYn = false " +
+        "ORDER BY r.chat.sendAt DESC"
+    )
+    List<ChatMessageReadStatus> findLastUnreadStatusInRoomForUserList(@Param("userId") Integer userId, @Param("roomId") Integer roomId);
+
+    // default 단건 getter (리스트에서 가장 첫번째가 최신!)
+    default ChatMessageReadStatus findLastUnreadStatusInRoomForUser(Integer userId, Integer roomId) {
+        List<ChatMessageReadStatus> result = findLastUnreadStatusInRoomForUserList(userId, roomId);
+        return (result != null && !result.isEmpty()) ? result.get(0) : null;
+    }
+    
+    
+    
+    
 }
