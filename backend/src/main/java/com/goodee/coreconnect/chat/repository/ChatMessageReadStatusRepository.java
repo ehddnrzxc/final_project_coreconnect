@@ -1,6 +1,7 @@
 package com.goodee.coreconnect.chat.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -71,6 +72,11 @@ public interface ChatMessageReadStatusRepository extends JpaRepository<ChatMessa
     @Query("SELECT c.chat.chatRoom.id AS roomId, COUNT(c) AS unreadCount FROM ChatMessageReadStatus c WHERE c.user.id = :userId AND c.readYn = false GROUP BY c.chat.chatRoom.id")
     List<Object[]> countUnreadMessagesByUserId(@Param("userId") Integer userId);
     
+    // 올바른 JPA 네이밍 방식 적용!
+    Optional<ChatMessageReadStatus> findByChatIdAndUserId(Integer chatId, Integer userId);
     
+    // 또는 직접 JPQL 사용하고 싶을 때
+    @Query("SELECT c FROM ChatMessageReadStatus c WHERE c.chat.id = :chatId AND c.user.id = :userId")
+    Optional<ChatMessageReadStatus> findReadStatusByChatIdAndUserId(@Param("chatId") Integer chatId, @Param("userId") Integer userId);
     
 }

@@ -7,6 +7,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import io.jsonwebtoken.io.IOException;
@@ -193,8 +194,14 @@ public class ChatMessageController {
 
 	    // 4. 채팅 메시지 DTO 변환
 	    List<ChatMessageResponseDTO> chatDtoList = chats.stream()
-	        .map(ChatMessageResponseDTO::fromEntity)
-	        .collect(Collectors.toList());
+	    		.map(chat -> {
+	    			// 현재 로그인 사용자(user)의 각가 메시지(chat)에 대해 읽음상태 혹은 false 기준 조회
+	    			Optional<ChatMessageReadStatus> readStatusOpt = 
+	    					chatMessageReadStatusRepository.findByChatIdAndUserId(chat.getId(), user.getId());
+	    			boolean readYn = readStatusOpt.map(ChatMessageReadStatus::getReadYn).orElse(false);
+	    			return ChatMessageResponseDTO.fromEntity(chat, readYn); // chat + readYn -> DTO 반환
+	    		})
+	    		.collect(Collectors.toList());
 
 	    // 5. 응답 반환
 	    return ResponseEntity.ok(ResponseDTO.success(chatDtoList, "내 채팅방 메시지 조회 성공"));
@@ -207,15 +214,33 @@ public class ChatMessageController {
 	 * */
 	@Operation(summary = "채팅방의 메시지 조회(오름차순)", description = "선택한 채팅방의 메시지를 날짜 기준 오름차순으로 정렬해 조회합니다.")
 	@GetMapping("/{roomId}/messages")
-	public ResponseEntity<ResponseDTO<List<ChatMessageResponseDTO>>> getChatRoomMessagesByChatRoomId(@PathVariable("roomId") Integer roomId) {
+	public ResponseEntity<ResponseDTO<List<ChatMessageResponseDTO>>> getChatRoomMessagesByChatRoomId(@PathVariable("roomId") Integer roomId, @AuthenticationPrincipal String email) {
+		// 사용자 정보 확보
+		User user = userRepository.findByEmail(email).orElseThrow();
+		Integer userId = user.getId();
+		
 		// 메시지별 미읽은 인원수 DB 최신화
 		chatRoomService.updateUnreadCountForMessages(roomId);
-		
 		List<Chat> messages = chatRoomService.getChatsWithFilesByRoomId(roomId);
 		
 		List<ChatMessageResponseDTO> dtoList = messages.stream()
-				.map(ChatMessageResponseDTO::fromEntity)
-				.collect(Collectors.toList());
+			    // messages: 조회된 Chat 엔티티 리스트(채팅방의 전체 메시지)
+			    .map(chat -> {
+			        // 1. 각 메시지(chat)에 대해
+			        // 2. 현재 로그인 사용자(userId) 기준으로 해당 메시지의 ChatMessageReadStatus(읽음상태) 엔티티 조회
+			        Optional<ChatMessageReadStatus> readStatusOpt =
+			            chatMessageReadStatusRepository.findByChatIdAndUserId(chat.getId(), userId);
+			            // - chat.getId(): 메시지의 고유 ID
+			            // - userId: 현재 로그인 사용자 ID
+			            // - 결과: Optional로 반환, 없을 경우 아직 읽지 않은 상태임
+
+			        // 3. 읽음 엔티티가 있다면 readYn 값을 가져오고, 없으면 false(아직 안 읽음)
+			        boolean readYn = readStatusOpt.map(ChatMessageReadStatus::getReadYn).orElse(false);
+
+			        // 4. DTO 변환 시 readYn(내가 읽었는지 여부)를 포함해 ChatMessageResponseDTO 생성
+			        return ChatMessageResponseDTO.fromEntity(chat, readYn);
+			    })
+			    .collect(Collectors.toList()); // 5. 전체 메시지에 대해 DTO 리스트로 변환 완료
 		
 		return ResponseEntity.ok(ResponseDTO.success(dtoList, "채팅방 메시지 오름차순 조회 성공"));		
 	}
@@ -505,8 +530,9 @@ public class ChatMessageController {
             .collect(Collectors.toMap(ChatRoomLatestMessageResponseDTO::getRoomId, ChatRoomLatestMessageResponseDTO::getRoomName));
 
         List<ChatMessageResponseDTO> unreadMessages = unreadStatuses.stream()
-            .map(status -> ChatMessageResponseDTO.fromEntity(status.getChat()))
-            .collect(Collectors.toList());
+        		// 각 ChatMessageReadStatus에 대해 메시지 객체와 내 읽음 여부 getReadYn()를 함께 전달
+        		.map(status -> ChatMessageResponseDTO.fromEntity(status.getChat(), status.getReadYn()))
+        		.collect(Collectors.toList());
 
         // 최종 응답 구성 (프론트에 roomsWithUnread를 활용)
         responseMap.put("chatRooms", chatRooms);

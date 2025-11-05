@@ -73,4 +73,8 @@ public class ChatMessageReadStatus {
         return id;
     }
 	
+    public boolean isConsistentReadStatus() {
+	  return (readAt == null && Boolean.FALSE.equals(readYn)) ||
+	         (readAt != null && Boolean.TRUE.equals(readYn));
+	}
 }

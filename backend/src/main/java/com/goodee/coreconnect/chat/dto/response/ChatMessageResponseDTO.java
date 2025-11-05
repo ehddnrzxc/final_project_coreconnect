@@ -27,16 +27,16 @@ public class ChatMessageResponseDTO {
 	private Integer roomId;
 	private Integer senderId;
 	private String senderName;
-	private Integer unreadCount; // 추가: 미읽은 인원 수
+	private Integer unreadCount;
 	private String roomName;
+	private Boolean readYn;
 	
-	 // 추가: Chat 객체를 DTO로 변환하는 메서드
-    public static ChatMessageResponseDTO fromEntity(Chat chat) {
+	// ✨ 2. readYn 파라미터를 받도록 메서드 시그니처 변경
+    public static ChatMessageResponseDTO fromEntity(Chat chat, Boolean readYn) {
         if (chat == null) return null;
-        
+
         String fileUrl = null;
         if (chat.getMessageFiles() != null && !chat.getMessageFiles().isEmpty()) {
-        	// 여러 개일 경우 첫 번째 파일 기준, 필요시 for문/리스트로 확장
         	fileUrl = chat.getMessageFiles().get(0).getS3ObjectKey();
         } else {
         	fileUrl = chat.getFileUrl();
@@ -47,14 +47,13 @@ public class ChatMessageResponseDTO {
                 .messageContent(chat.getMessageContent())
                 .sendAt(chat.getSendAt())
                 .fileYn(chat.getFileYn())
-                .fileUrl(chat.getMessageFiles() != null && !chat.getMessageFiles().isEmpty()
-                		? chat.getMessageFiles().get(0).getS3ObjectKey()
-                	    : chat.getFileUrl())
+                .fileUrl(fileUrl)
                 .roomId(chat.getChatRoom() != null ? chat.getChatRoom().getId() : null)
                 .roomName(chat.getChatRoom() != null ? chat.getChatRoom().getRoomName() : null)
                 .senderId(chat.getSender() != null ? chat.getSender().getId() : null)
                 .senderName(chat.getSender() != null ? chat.getSender().getName() : null)
-                .unreadCount(chat.getUnreadCount() != null ? chat.getUnreadCount() : 0) // null-safe
+                .unreadCount(chat.getUnreadCount() != null ? chat.getUnreadCount() : 0)
+                .readYn(readYn) // ✨ 3. DTO에 포함!
                 .build();
     }
 }
