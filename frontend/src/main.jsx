@@ -12,13 +12,13 @@ import UserCreateForm from "./features/admin/components/UserCreateForm";
 import AdminRoute from "./features/admin/components/AdminRoute";
 import "@fortawesome/fontawesome-free/css/all.min.css";
 import ApprovalHomePage from "./features/approval/pages/ApprovalHomePage";
-import ApprovalWritePage from "./features/approval/pages/ApprovalWritePage";
+
 import ApprovalLayout from "./features/approval/pages/ApprovalLayout";
 import AdminHome from "./features/admin/components/AdminHome";
 import UserListPage from "./features/admin/components/UserListPage";
 import ChatHomePage from "./features/chat/pages/ChatHomePage";
 import ChatLayout from "./features/chat/pages/ChatLayout";
-import ApprovalDetailPage from "./features/approval/pages/ApprovalDetailPage";
+
 import TemplateAdminCreate from "./features/admin/components/TemplateAdminCreate";
 import BoardLayout from "./features/board/pages/BoardLayout";
 import BoardListPage from "./features/board/pages/BoardListPage";
@@ -64,11 +64,9 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
         children: [
-          { index: true, element: <ApprovalHomePage /> },
-          { path: "new", element: <ApprovalWritePage /> },
-          { path: "forms", element: <div>자주 쓰는 양식 페이지</div> },
-          { path: "pending", element: <div>결재 대기 문서 목록</div> },
-          { path: "doc/:documentId", element: <ApprovalDetailPage /> },
+          { index: true, element: <ApprovalHomePage /> }, // 결재홈
+          { path: "new", element: <div>새 결제 진행</div> }, // 새 결제 진행
+          { path: "doc/:documentId", element: <div>문서 상세 조회</div> },
         ],
       },
 
