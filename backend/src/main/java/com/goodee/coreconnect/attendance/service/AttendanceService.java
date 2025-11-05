@@ -1,5 +1,7 @@
 package com.goodee.coreconnect.attendance.service;
 
+import java.time.LocalDate;
+
 import com.goodee.coreconnect.attendance.dto.response.TodayAttendanceResponseDTO;
 
 public interface AttendanceService {
@@ -13,6 +15,8 @@ public interface AttendanceService {
   /** 오늘 내 근태 조회 */
   public TodayAttendanceResponseDTO getTodayAttendance(String email);
   
+  /** 주간 누적 근무 시간(분) 계산 */
+  public int getWeeklyWorkMinutes(Integer userId, LocalDate anyDateInWeek);
   
 
 }

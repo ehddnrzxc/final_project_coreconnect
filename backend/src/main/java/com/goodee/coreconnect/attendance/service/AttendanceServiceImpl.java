@@ -1,5 +1,6 @@
 package com.goodee.coreconnect.attendance.service;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -90,5 +91,14 @@ public class AttendanceServiceImpl implements AttendanceService {
                    null,
                    AttendanceStatus.ABSENT
                  ));
+  }
+
+  @Override
+  public int getWeeklyWorkMinutes(Integer userId, LocalDate anyDateInWeek) {
+    // 월요일 ~ 일요일 기준
+    LocalDate startOfWeek = anyDateInWeek.with(DayOfWeek.MONDAY);
+    LocalDate endOfWeek = startOfWeek.plusDays(6);
+    
+    return 0;
   }
 }
