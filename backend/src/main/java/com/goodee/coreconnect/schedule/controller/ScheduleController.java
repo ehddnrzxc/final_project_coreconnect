@@ -40,13 +40,6 @@ public class ScheduleController {
     return scheduleService.createSchedule(dto, email);
   }
 
-  /** 일정 단일 조회 */
-  @Operation(summary = "일정 단일 조회", description = "일정 하나를 조회합니다.")
-  @GetMapping(params = "id")
-  public ResponseScheduleDTO getById(@RequestParam("id") Integer id) {
-      return scheduleService.getScheduleById(id);
-  }
-
   /** 일정 수정 */
   @Operation(summary = "일정 수정", description = "기존 일정을 수정합니다.")
   @PutMapping("/{id}")
@@ -60,6 +53,24 @@ public class ScheduleController {
   @DeleteMapping("/{id}")
   public void delete(@PathVariable("id") Integer id) {
     scheduleService.deleteSchedule(id);
+  }
+  
+  /** 일정 단일 조회 */
+  @Operation(summary = "일정 단일 조회", description = "일정 하나를 조회합니다.")
+  @GetMapping(params = "id")
+  public ResponseScheduleDTO getById(@RequestParam("id") Integer id) {
+      return scheduleService.getScheduleById(id);
+  }
+  
+  /**
+   * 로그인한 사용자의 일정 조회 (내 일정 보기)
+   * 프론트에서 userId를 보내지 않아도 JWT 토큰의 이메일을 통해 조회 가능
+   */
+  @Operation(summary = "내 일정 조회", description = "현재 로그인한 사용자의 일정을 조회합니다.")
+  @GetMapping("/me")
+  @SecurityRequirement(name = "bearerAuth")
+  public List<ResponseScheduleDTO> getMySchedules(@AuthenticationPrincipal String email) {
+      return scheduleService.getSchedulesByEmail(email);
   }
 
   /** 특정 유저의 일정 목록 조회 */

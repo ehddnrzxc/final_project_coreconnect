@@ -254,6 +254,20 @@ public class ScheduleServiceImpl implements ScheduleService {
     // Soft Delete (참여자 포함)
     schedule.deleteWithParticipants();
   }
+  
+  /** 로그인한 사용자의 이메일 기준으로 일정 조회 */
+  @Override
+  @Transactional(readOnly = true)
+  public List<ResponseScheduleDTO> getSchedulesByEmail(String email) {
+      User user = userRepository.findByEmail(email)
+              .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다: " + email));
+
+      List<Schedule> schedules = scheduleRepository.findByUserAndDeletedYnFalse(user);
+
+      return schedules.stream()
+              .map(ResponseScheduleDTO::toDTO)
+              .toList();
+  }
 
   /** 유저별 일정 조회 (readOnly) */
   @Override
