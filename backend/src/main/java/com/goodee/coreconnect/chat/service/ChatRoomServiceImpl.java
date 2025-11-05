@@ -19,10 +19,12 @@ import com.goodee.coreconnect.common.dto.request.NotificationRequestDTO;
 import com.goodee.coreconnect.common.entity.Notification;
 import com.goodee.coreconnect.common.notification.dto.NotificationPayload; // DTO import 추가
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
+import com.goodee.coreconnect.account.repository.AccountLogRepository;
 import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.approval.repository.DocumentRepository;
 import com.goodee.coreconnect.chat.dto.response.ChatResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatRoomLatestMessageResponseDTO;
+import com.goodee.coreconnect.chat.dto.response.ChatRoomListDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatRoomSummaryResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.UnreadNotificationListDTO;
 import com.goodee.coreconnect.chat.entity.Chat;
@@ -47,6 +49,8 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 @RequiredArgsConstructor
 public class ChatRoomServiceImpl implements ChatRoomService {
+
+    private final AccountLogRepository accountLogRepository;
 
 	private final ChatRoomUserRepository chatRoomUserRepository;
 	private final ChatRoomRepository chatRoomRepository;
@@ -581,6 +585,46 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	    // JPA repository 활용 예시: chatRoomRepository.existsById(roomId)
 	    // chatRoomRepository는 보통 JpaRepository<ChatRoom, Integer>
 	    return chatRoomRepository.existsById(roomId);
+	}
+
+	@Override
+	public List<ChatRoomListDTO> getChatRoomListWithUnreadCount(Integer userId) {
+	    // 1. 내가 참여하는 채팅방 목록 (ID만 추출)
+	    List<ChatRoomUser> chatRoomUsers = chatRoomUserRepository.findByUserId(userId);
+	    List<ChatRoom> chatRooms = chatRoomUsers.stream()
+	        .map(ChatRoomUser::getChatRoom)
+	        .distinct()
+	        .collect(Collectors.toList());
+	    List<Integer> roomIds = chatRooms.stream()
+	        .map(ChatRoom::getId)
+	        .collect(Collectors.toList());
+
+	    // 2. 각 채팅방별 unread 개수 매핑
+	    List<Object[]> unreadCounts = chatMessageReadStatusRepository.countUnreadMessagesByUserId(userId);
+	    Map<Integer, Long> roomIdToUnreadCount = unreadCounts.stream()
+	        .collect(Collectors.toMap(row -> (Integer)row[0], row -> (Long)row[1]));
+
+	    // 3. 각 채팅방별 마지막 메시지를 쿼리로 batch 조회
+	    List<Chat> lastMessages = chatRepository.findLatestMessageByChatRoomIds(roomIds);
+	    Map<Integer, Chat> roomIdToLastMessage = lastMessages.stream()
+	    		.collect(Collectors.toMap(chat -> chat.getChatRoom().getId(), chat -> chat));
+	    
+	    
+	    // 4. DTO 변환
+	    List<ChatRoomListDTO> dtos = new ArrayList<>();
+	    for (ChatRoom room : chatRooms) {
+	        Chat lastMessage = roomIdToLastMessage.get(room.getId());
+	        long unreadCount = roomIdToUnreadCount.getOrDefault(room.getId(), 0L);
+	        dtos.add(new ChatRoomListDTO(
+	            room.getId(),
+	            room.getRoomName(),
+	            lastMessage != null ? lastMessage.getMessageContent() : null,
+	            lastMessage != null ? lastMessage.getSendAt() : null,
+	            lastMessage != null && lastMessage.getSender() != null ? lastMessage.getSender().getName() : null,
+	            unreadCount
+	        ));
+	    }
+	    return dtos;
 	}
 	
 	

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { NavLink } from "react-router-dom";
-import { Box, Snackbar, Slide, Paper, Typography, Badge } from "@mui/material";
+import { Box, Snackbar, Slide, Typography, Badge } from "@mui/material";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import SendIcon from "@mui/icons-material/Send";
 import NotificationsNoneIcon from "@mui/icons-material/NotificationsNone";
@@ -24,23 +24,12 @@ import Button from "@mui/material/Button";
 import ToastList from "../components/ToastList";
 
 import {
+  markRoomMessagesAsRead,
   fetchChatRoomMessages,
   fetchChatRoomsLatest
 } from "../api/ChatRoomApi";
 
-function TransitionLeft(props) {
-  return <Slide {...props} direction="left" />;
-}
-
-function getUserName() {
-  try {
-    const user = JSON.parse(localStorage.getItem("user"));
-    return user?.name || "";
-  } catch {
-    return "";
-  }
-}
-
+// 유틸: 시간 포맷 함수
 function formatTime(sendAt) {
   if (!sendAt) return "";
   const d = new Date(sendAt);
@@ -59,6 +48,15 @@ function formatTime(sendAt) {
     const min = String(d.getMinutes()).padStart(2, "0");
     const ss = String(d.getSeconds()).padStart(2, "0");
     return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
+  }
+}
+
+function getUserName() {
+  try {
+    const user = JSON.parse(localStorage.getItem("user"));
+    return user?.name || "";
+  } catch {
+    return "";
   }
 }
 
@@ -134,13 +132,35 @@ export default function ChatLayout() {
   const messagesEndRef = useRef(null);
   const [toastRooms, setToastRooms] = useState([]); // Toast 알림용 상태
 
+  // 스크롤로 읽음처리 (기존 로직 보존)
+  useEffect(() => {
+    const chatRoomMsgList = document.querySelector(".chat-room-msg-list");
+    if (!chatRoomMsgList) return;
+
+    const onScroll = () => {
+      if (chatRoomMsgList.scrollHeight - chatRoomMsgList.scrollTop === chatRoomMsgList.clientHeight) {
+        handleScrollRead();
+      }
+    };
+
+    chatRoomMsgList.addEventListener("scroll", onScroll);
+    return () => {
+      chatRoomMsgList.removeEventListener("scroll", onScroll);
+    };
+  }, [selectedRoomId, messages]);
+
+  // 채팅방 목록 불러오기
+  useEffect(() => {
+    loadRooms();
+  }, []);
+
   useEffect(() => {
     async function loadRooms() {
       const res = await fetchChatRoomsLatest();
-      if (res && res.status === 200 && Array.isArray(res.data)) {
-        const sortedRooms = [...res.data].sort((a, b) => new Date(b.sendAt) - new Date(a.sendAt));
-        setRoomList(sortedRooms);
-        setSelectedRoomId(sortedRooms[0]?.roomId ?? null);
+      // 데이터 구조: { status, message, data: [ ... ]}
+      if (res && Array.isArray(res.data)) {
+        setRoomList(res.data);
+        setSelectedRoomId(res.data[0]?.roomId ?? null);
       }
     }
     loadRooms();
@@ -150,9 +170,8 @@ export default function ChatLayout() {
     async function loadMessages() {
       if (selectedRoomId) {
         const res = await fetchChatRoomMessages(selectedRoomId);
-        if (res && res.status === 200 && Array.isArray(res.data)) {
-          const sorted = [...res.data].sort((a, b) => new Date(a.sendAt) - new Date(b.sendAt));
-          setMessages(sorted);
+        if (res && Array.isArray(res.data)) {
+          setMessages(res.data);
         } else {
           setMessages([]);
         }
@@ -206,70 +225,52 @@ export default function ChatLayout() {
 
   const selectedRoom = roomList.find((r) => r.roomId === selectedRoomId);
 
-  // [핵심수정!] 알림이 여러개일 때 sendAt 기준 내림차순으로 쌓이게!
   const handleNewMessage = (msg) => {
-  if (msg.senderName === userName) {
-    if (Number(msg.roomId) === Number(selectedRoomId)) {
-      setMessages(prev => [...prev, msg]);
-    }
-    return; // 내가 보낸 메시지는 Toast X
-  }
-
-  // roomId 타입을 숫자로 통일해서 비교
-  const roomIdNum = Number(msg.roomId);
-  const foundRoom = roomList.find(r => Number(r.roomId) === roomIdNum);
-
-  if (!foundRoom) {
-    console.warn("[알림 제외] roomId "+roomIdNum+"가 roomList에 없습니다, 비동기 레이스 or 동기화 문제?");
-    // 가능하면 fetchChatRoomsLatest(); 등으로 동기화 시도
-    return;
-  }
-
-
-
-  if (roomIdNum === Number(selectedRoomId)) {
-    setMessages(prev => [...prev, msg]);
-  } else {
-    // ✅ roomList에 해당 roomId가 없는 경우 Toast를 추가하지 않음!
-    if (!foundRoom) {
-      // 예를 들어 방 정보 동기화 필요시 fetchChatRoomsLatest() 등 호출 가능
-      // fetchChatRoomsLatest(); // 선택옵션
-      // 또는, 로그만 남기고 알림 자체를 무시
-      console.warn(`[알림제외] roomId(${roomIdNum})에 해당하는 방 정보를 찾을 수 없습니다.`);
+    if (msg.senderName === userName) {
+      if (Number(msg.roomId) === Number(selectedRoomId)) {
+        setMessages(prev => [...prev, msg]);
+      }
       return;
     }
+    const roomIdNum = Number(msg.roomId);
+    const foundRoom = roomList.find(r => Number(r.roomId) === roomIdNum);
 
-    setToastRooms(prev => {
-      // 이전 알림에서 동일 roomId는 제거(중복 방지)
-      const filtered = prev.filter(r => Number(r.roomId) !== roomIdNum);
-      const newToast = {
-        roomId: msg.roomId,
-        unreadCount: msg.unreadCount || 1,
-        lastUnreadMessageContent: msg.messageContent,
-        lastUnreadMessageSenderName: msg.senderName,
-        lastUnreadMessageTime: msg.sendAt,
-        roomName: foundRoom.roomName
-      };
-      // 새 알림 추가, sendAt 기준 내림차순 정렬하여 저장
-      return [...filtered, newToast].sort(
-        (a, b) => new Date(b.lastUnreadMessageTime) - new Date(a.lastUnreadMessageTime)
-      );
-    });
-  }
+    if (!foundRoom) {
+      console.warn("[알림 제외] roomId "+roomIdNum+"가 roomList에 없습니다, 비동기 레이스 or 동기화 문제?");
+      return;
+    }
+    if (roomIdNum === Number(selectedRoomId)) {
+      setMessages(prev => [...prev, msg]);
+    } else {
+      setToastRooms(prev => {
+        const filtered = prev.filter(r => Number(r.roomId) !== roomIdNum);
+        const newToast = {
+          roomId: msg.roomId,
+          unreadCount: msg.unreadCount || 1,
+          lastUnreadMessageContent: msg.messageContent,
+          lastUnreadMessageSenderName: msg.senderName,
+          lastUnreadMessageTime: msg.sendAt,
+          roomName: foundRoom.roomName
+        };
+        return [...filtered, newToast].sort(
+          (a, b) => new Date(b.lastUnreadMessageTime) - new Date(a.lastUnreadMessageTime)
+        );
+      });
+    }
+    setRoomList(prevRoomList =>
+      prevRoomList.map(room => Number(room.roomId) === roomIdNum ?
+        {
+          ...room,
+          messageContent: msg.messageContent,
+          fileYn: msg.fileYn,
+          sendAt: msg.sendAt,
+          unreadCount: msg.unreadCount,
+        }
+        : room
+      )
+    );
+  };
 
-  setRoomList(prevRoomList =>
-    prevRoomList.map(room => Number(room.roomId) === roomIdNum ?
-      {
-        ...room,
-        messageContent: msg.messageContent,
-        fileYn: msg.fileYn,
-        sendAt: msg.sendAt,
-        unreadCount: msg.unreadCount,
-      }
-      : room
-    )
-  );
-};
   const handleFileUpload = async (e) => {
     const files = e.target.files;
     if (!files || files.length === 0 || !selectedRoomId) return;
@@ -311,9 +312,21 @@ export default function ChatLayout() {
     }
   };
 
-  // ToastList가 알림 컨테이너의 위치에 따라 아래(밑으로) 쌓이려면 anchorOrigin 설정도 주의,
-  // ToastList의 anchorOrigin을 { vertical: "bottom", horizontal: "right" }로 만들면 아래로 쌓임!
-  // (ToastList에서 anchorOrigin을 props로 넘긴다면 여기서 아래로 넘기세요)
+  const handleScrollRead = async () => {
+    if (selectedRoomId && messages.length > 0) {
+      await markRoomMessagesAsRead(selectedRoomId, accessToken);
+      loadRooms();
+    }
+  };
+
+  const loadRooms = async () => {
+    const res = await fetchChatRoomsLatest();
+    if (res && Array.isArray(res.data)) {
+      setRoomList(res.data);
+      setSelectedRoomId(res.data[0]?.roomId ?? null);
+    }
+  }
+
   return (
     <Box className="chat-layout" sx={{ background: "#fafbfc", minHeight: "100vh", display: "flex", flexDirection: "row" }}>
       <ToastList
@@ -391,6 +404,7 @@ export default function ChatLayout() {
                       {room.roomName?.[0]?.toUpperCase()}
                     </Avatar>
                   </ListItemAvatar>
+                  {/* ✅ 변경: 마지막 메시지와 시간 key 제대로 매핑! */}
                   <ListItemText
                     primary={
                       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -425,7 +439,7 @@ export default function ChatLayout() {
                             textOverflow: "ellipsis"
                           }}
                         >
-                          {room.fileYn ? "[파일]" : room.messageContent || ""}
+                          {room.lastMessageContent ? room.lastMessageContent : ""}
                         </Typography>
                         <Box sx={{ display: "flex", alignItems: "center", mt: 0.5 }}>
                           <Typography
@@ -435,8 +449,18 @@ export default function ChatLayout() {
                               mr: 2
                             }}
                           >
-                            {formatTime(room.sendAt)}
+                            {room.lasMessageTime ? formatTime(room.lasMessageTime) : ""}
                           </Typography>
+                          {room.lastSenderName && (
+                            <Typography
+                              sx={{
+                                fontSize: 13,
+                                color: "#9495a0"
+                              }}
+                            >
+                              {room.lastSenderName}
+                            </Typography>
+                          )}
                         </Box>
                       </Box>
                     }
@@ -445,6 +469,7 @@ export default function ChatLayout() {
               ))}
             </List>
           </Box>
+          {/* 이하 채팅 상세 뷰(메시지 영역 등)는 변경 없음 */}
           <Box sx={{
             flex: 1, minWidth: "380px",
             height: "calc(100vh - 56px - 32px)", background: "#f8fbfd",

@@ -20,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -37,6 +38,7 @@ import com.goodee.coreconnect.chat.dto.response.ChatMessageResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatMessageSenderTypeResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatRoomLatestMessageResponseDTO;
+import com.goodee.coreconnect.chat.dto.response.ChatRoomListDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatRoomResponseDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatUnreadCountDTO;
 import com.goodee.coreconnect.chat.dto.response.ChatUserResponseDTO;
@@ -382,19 +384,14 @@ public class ChatMessageController {
     }
     
     // 14. 내가 참여중인 채팅방들의 마지막 메시지만 조회
-    @Operation(summary = "내가 참여중인 채팅방들의 마지막 메시지만 조회", description = "내가 참여중인 채팅방들의 마지막 메시지만 조회")
+    @Operation(summary = "내가 참여중인 채팅방들의 목록/마지막 메시지/안읽은 메시지수 조회", description = "내가 참여중인 채팅방들의 목록과 마지막 메시지, 안읽은 메시지수를 함께 반환")
     @GetMapping("/rooms/messages/latest")
-    public ResponseEntity<ResponseDTO<List<ChatMessageResponseDTO>>> getLatestMessages(@AuthenticationPrincipal String email) {
+    public ResponseEntity<ResponseDTO<List<ChatRoomListDTO>>> getLatestMessages(@AuthenticationPrincipal String email) {
     	 User user = userRepository.findByEmail(email).orElseThrow();
-    	 // 1. roomId 리스트 받기
-    	 List<Integer> roomIds = chatRoomService.getLatestMessagesByUserId(user.getId());
-         // 2. 각 roomId별 마지막 메시지 조회 (예시: 쿼리로 한번에 조회)
-         List<Chat> lastMessages = chatRepository.findLatestMessageByChatRoomIds(roomIds);
-
-         // 3. Chat → DTO 변환
-         List<ChatMessageResponseDTO> dtoList = lastMessages.stream()
-            .map(ChatMessageResponseDTO::fromEntity)
-            .collect(Collectors.toList());
+    	 
+    	 // 서비스에서 한번에 방 목록/마지막 메시지/안읽은 메시지 수 채워서 반환
+    	 List<ChatRoomListDTO> dtoList = chatRoomService.getChatRoomListWithUnreadCount(user.getId());
+    	 log.info("dtoList: {}", dtoList);
         
          return ResponseEntity.ok(ResponseDTO.success(dtoList, "내 채팅방별 마지막 메시지 조회 성공"));
     }
@@ -446,7 +443,7 @@ public class ChatMessageController {
         return ResponseEntity.ok(ResponseDTO.success(dtoList, "나에게 온 알림 조회 성공"));
     }
     
-    // 17. 내가 참여중인 채팅방의 안읽은 메시지 개수/목록 조회
+    // 18. 내가 참여중인 채팅방의 안읽은 메시지 개수/목록 조회
     @Operation(summary = "내가 참여중인 채팅방의 안읽은 메시지 개수/목록 조회", description = "내가 참여중인 채팅방의 안읽은 메시지 개수/목록 조회")
     @GetMapping("/messages/unread")
     public ResponseEntity<ResponseDTO<Map<String, Object>>> getUnreadMessages(@AuthenticationPrincipal String email) {
@@ -520,6 +517,7 @@ public class ChatMessageController {
         return ResponseEntity.ok(ResponseDTO.success(responseMap, "내 미읽은 채팅 메시지 + 방 이름 목록 조회 성공"));
     }
     
+    // 19. 나에게 온 안읽은 알림 개수 클릭 시, 가장 최근에 온 알림을 제외한 나머지 안읽은 알림 리스트를 반환
     @Operation(summary = "나에게 온 안읽은 알림 개수 클릭 시, 가장 최근에 온 알림을 제외한 나머지 안읽은 알림 리스트를 반환", description = "나에게 온 안읽은 알림 개수 클릭 시, 가장 최근에 온 알림을 제외한 나머지 안읽은 알림 리스트를 반환")
     @GetMapping("/unread/list")
     public ResponseEntity<List<UnreadNotificationListDTO>> getUnreadNotificationsExceptLatest(
@@ -532,5 +530,17 @@ public class ChatMessageController {
         List<UnreadNotificationListDTO> unreadDtos = chatRoomService.getUnreadNotificationsExceptLatest(user.getId(), allowedTypes);
         return ResponseEntity.ok(unreadDtos);
     }
+
+    // 20. 나에게 온 안읽은 메시지를 채팅방을 접속해서 다 읽으면 채팅방목록에서 안읽은 메시지 개수가 없어지게 만들기
+    @Operation(summary = "나에게 온 안읽은 메시지를 채팅방을 접속해서 다 읽으면 채팅방목록에서 안읽은 메시지 개수가 없어지게 만들기", description = "나에게 온 안읽은 메시지를 채팅방을 접속해서 다 읽으면 채팅방목록에서 안읽은 메시지 개수가 없어지게 만들기")
+    @PatchMapping("/rooms/{roomId}/messages/read")
+    public ResponseEntity<?> markRoomMessagesAsRead(@PathVariable Integer roomId, @AuthenticationPrincipal String email) {
+    	User user = userRepository.findByEmail(email).orElseThrow();
+    	
+    	chatRoomService.markMessagesAsRead(roomId, user.getId());
+    	return ResponseEntity.ok().build();    	
+    }
+    
+    
     
 }

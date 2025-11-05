@@ -31,6 +31,7 @@ function UserListPage() {
         const data = await getAdminUsers();
         setUsers(data);
       } catch (e) {
+        console.error(e);
         setErr("사용자 목록을 불러오지 못했습니다.");
       } finally {
         setLoading(false);
