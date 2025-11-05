@@ -8,7 +8,7 @@ import { Box, CssBaseline } from "@mui/material";
 
 const theme = createTheme({
   palette: {
-    primary: { main: "#00a0e9" },
+    primary: { main: "#08a7bf" },
     background: { default: "#ffffff" },
   },
   typography: {

@@ -52,7 +52,7 @@ const Sidebar = () => {
         to="/home"
         sx={{
           textDecoration: "none",
-          color: "#00a0e9",
+          color: "primary.main",
           cursor: "pointer",
           px: 2,
           py: 2,
@@ -81,10 +81,10 @@ const Sidebar = () => {
                     mb: 0.5,
                     borderRadius: 1.5,
                     "&.Mui-selected": {
-                      bgcolor: "#00a0e9",
+                      bgcolor: "primary.main",
                       color: "#ffffff",
                       "&:hover": {
-                        bgcolor: "#0090d2",
+                        bgcolor: "primary.main",
                       },
                     },
                   }}
