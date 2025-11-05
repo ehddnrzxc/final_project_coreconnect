@@ -111,20 +111,25 @@ public class Board {
 
     // ─────────────── 도메인 행위 ───────────────
     /** 게시글 수정 */
-    public void updateBoard(BoardCategory category, String title, String content, Boolean noticeYn, Boolean pinned, Boolean privateYn) {
-        if (title == null || title.isBlank()) throw new IllegalArgumentException("게시글 제목은 비어 있을 수 없습니다.");
-        
+    public void updateBoard(BoardCategory category, String title, String content,
+                            Boolean noticeYn, Boolean pinned, Boolean privateYn) {
+        if (title == null || title.isBlank())
+            throw new IllegalArgumentException("게시글 제목은 비어 있을 수 없습니다.");
+
         this.category = (category != null) ? category : this.category;
         this.title = title;
         this.content = content;
-        if (noticeYn != null) this.noticeYn = noticeYn;
-        if (Boolean.TRUE.equals(pinned) && !Boolean.TRUE.equals(this.noticeYn)) {  // 공지글이 아닌데 pinned 요청이 들어오면 무시
-            this.pinned = false;
+        if (noticeYn != null)
+            this.noticeYn = noticeYn;
+
+        if (Boolean.TRUE.equals(pinned) && !Boolean.TRUE.equals(this.noticeYn)) {
+            this.pinned = false;  // 공지글이 아닌데 pinned 요청 -> 무시
         } else if (pinned != null) {
             this.pinned = pinned;
         }
-        if (privateYn != null) this.privateYn = privateYn;
-        
+
+        if (privateYn != null)
+            this.privateYn = privateYn;
         this.updatedAt = LocalDateTime.now();
     }
 

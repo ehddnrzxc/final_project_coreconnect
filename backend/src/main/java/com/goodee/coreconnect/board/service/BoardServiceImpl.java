@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -69,11 +70,13 @@ public class BoardServiceImpl implements BoardService {
         
         // 새 글이 상단고정일 경우 기존 고정글 해제
         if (Boolean.TRUE.equals(dto.getPinned())) {
-            List<Board> pinnedBoards = boardRepository.findByPinnedTrueAndDeletedYnFalse();
-            for (Board pinned : pinnedBoards) {
-                pinned.unpin(); // 기존 고정글 해제
-            }
-        }
+          List<Board> pinnedBoards = boardRepository.findByCategoryIdAndDeletedYnFalse(dto.getCategoryId()).stream()
+                                                    .filter(board -> board.getPinned())
+                                                    .toList();
+          for (Board pinned : pinnedBoards) {
+              pinned.unpin();
+          }
+      }
 
         // 게시글 저장
         Board board = dto.toEntity(user, category);
@@ -156,8 +159,8 @@ public class BoardServiceImpl implements BoardService {
                           dto.getTitle(),
                           dto.getContent(),
                           dto.getNoticeYn(),
-                          dto.getPrivateYn(),
-                          dto.getPinned());
+                          dto.getPinned(),
+                          dto.getPrivateYn());
 
         return BoardResponseDTO.toDTO(board);
     }
@@ -198,7 +201,7 @@ public class BoardServiceImpl implements BoardService {
         if (board.getPrivateYn()) {
             if (!loginUser.getId().equals(board.getUser().getId())
                     && loginUser.getRole() != Role.ADMIN) {
-                throw new SecurityException("비공개 게시글은 작성자 또는 관리자만 조회할 수 있습니다.");
+                throw new AccessDeniedException("비공개 게시글은 작성자 또는 관리자만 조회할 수 있습니다.");
             }
         }
         

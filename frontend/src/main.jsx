@@ -26,8 +26,6 @@ import BoardDetailPage from "./features/board/pages/BoardDetailPage";
 import BoardWritePage from "./features/board/pages/BoardWritePage";
 import ProtectedRoute from "./features/auth/ProtectedRoute";
 import CalendarPage from "./features/schedule/pages/CalendarPage";
-
-// ✅ 관리자용 카테고리 관리 페이지 import 추가
 import AdminCategoryPage from "./features/board/pages/AdminCategoryPage";
 
 /* 전체 라우트 구조 */
@@ -106,7 +104,7 @@ const router = createBrowserRouter([
           { path: "users", element: <UserListPage /> },
           { path: "templates/create", element: <TemplateAdminCreate /> },
 
-          // ✅ 추가된 관리자 전용 카테고리 관리 페이지
+          // 추가된 관리자 전용 카테고리 관리 페이지
           {
             path: "board/category",
             element: <AdminCategoryPage />,
