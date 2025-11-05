@@ -96,13 +96,13 @@ const BoardWritePage = () => {
       if (boardId) {
         await updateBoard(boardId, form);
         alert("게시글이 수정되었습니다!");
-        navigate(`/board/${form.categoryId}`); // 수정 후 해당 카테고리 목록으로 이동
+        navigate(`/board/detail/${boardId}`); 
       } else {
         const res = await createBoard(form);
         const newId = res.data.data.id;
         if (files.length > 0) await uploadFiles(newId, files);
         alert("게시글 등록 완료!");
-        navigate(`/board/${form.categoryId}`); // 신규 등록 후 카테고리 목록으로 이동
+        navigate(`/board/${form.categoryId}`); 
       }
     } catch (err) {
       console.error("게시글 등록/수정 실패:", err.response?.data || err.message);
