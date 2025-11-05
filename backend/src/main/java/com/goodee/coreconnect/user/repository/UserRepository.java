@@ -3,6 +3,7 @@ package com.goodee.coreconnect.user.repository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import com.goodee.coreconnect.user.entity.Status;
 import com.goodee.coreconnect.user.entity.User;
 
 import java.util.Optional;
@@ -11,4 +12,6 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, Integer> {
     boolean existsByEmail(String email);
     Optional<User> findByEmail(String email);
+    Long countByStatus(Status status);
 }
+

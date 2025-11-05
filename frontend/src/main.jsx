@@ -14,22 +14,23 @@ import "@fortawesome/fontawesome-free/css/all.min.css";
 import ApprovalHomePage from "./features/approval/pages/ApprovalHomePage";
 import ApprovalWritePage from "./features/approval/pages/ApprovalWritePage";
 import ApprovalLayout from "./features/approval/pages/ApprovalLayout";
-import AdminHome from "./features/admin/components/AdminHome";            
-import UserListPage from "./features/admin/components/UserListPage";      
+import AdminHome from "./features/admin/components/AdminHome";
+import UserListPage from "./features/admin/components/UserListPage";
 import ChatHomePage from "./features/chat/pages/ChatHomePage";
 import ChatLayout from "./features/chat/pages/ChatLayout";
-import ApprovalDetailPage from "./features/approval/pages/ApprovalDetailPage"; 
-import TemplateAdminCreate from "./features/admin/components/TemplateAdminCreate"; 
+import ApprovalDetailPage from "./features/approval/pages/ApprovalDetailPage";
+import TemplateAdminCreate from "./features/admin/components/TemplateAdminCreate";
 import BoardLayout from "./features/board/pages/BoardLayout";
 import BoardListPage from "./features/board/pages/BoardListPage";
 import BoardDetailPage from "./features/board/pages/BoardDetailPage";
 import BoardWritePage from "./features/board/pages/BoardWritePage";
 import ProtectedRoute from "./features/auth/ProtectedRoute";
+import CalendarPage from "./features/schedule/pages/CalendarPage";
 
+// ✅ 관리자용 카테고리 관리 페이지 import 추가
+import AdminCategoryPage from "./features/board/pages/AdminCategoryPage";
 
 /* 전체 라우트 구조 */
-
-// createBrowserRouter 사용: 객체 기반. 라우트 구조를 JSON처럼 데이터로 정의 
 const router = createBrowserRouter([
   {
     path: "/",
@@ -44,51 +45,40 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: "chat", // chat 진입시
+        path: "chat",
         element: (
           <ProtectedRoute>
-            <ChatLayout/>
+            <ChatLayout />
           </ProtectedRoute>
         ),
         children: [
-          {
-            index: true, // chat 경로에 접속 시 기본적으로 이 컴포넌트로 렌더링
-            element: <ChatHomePage/>
-          },
+          { index: true, element: <ChatHomePage /> },
           // 나중에 /chat/:roomId, /chat/new 등 추가 가능
-        ] 
-
-
+        ],
       },
       {
         path: "e-approval",
         element: (
           <ProtectedRoute>
-            <ApprovalLayout /> {/* 2단 레이아웃 껍데기 */}
+            <ApprovalLayout />
           </ProtectedRoute>
         ),
         children: [
-          {
-            index: true, // /e-approval 접속 시 기본으로 보일 페이지
-            element: <ApprovalHomePage />,
-          },
-          {
-            path: "new", // /e-approval/new (새 결재 진행)
-            element: <ApprovalWritePage />,
-          },
-          {
-            path: "forms", // /e-approval/forms (자주 쓰는 양식)
-            element: <div>자주 쓰는 양식 페이지</div>, // 임시
-          },
-          {
-            path: "pending", // /e-approval/pending (결재 대기 문서)
-            element: <div>결재 대기 문서 목록</div>, // 임시
-          },
-          {
-            path: "doc/:documentId", // /e-approval/doc/123 (결재 상세)
-            element: <ApprovalDetailPage />,
-          },
+          { index: true, element: <ApprovalHomePage /> },
+          { path: "new", element: <ApprovalWritePage /> },
+          { path: "forms", element: <div>자주 쓰는 양식 페이지</div> },
+          { path: "pending", element: <div>결재 대기 문서 목록</div> },
+          { path: "doc/:documentId", element: <ApprovalDetailPage /> },
         ],
+      },
+
+      {
+        path: "calendar",
+        element: (
+          <ProtectedRoute>
+            <CalendarPage />
+          </ProtectedRoute>
+        ),
       },
 
       {
@@ -99,22 +89,11 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
         children: [
-          {
-            index: true, // /board 기본 진입 시
-            element: <BoardListPage />, // 전체 게시글 목록
-          },
-          {
-            path: ":categoryId", // /board/1 (카테고리별 목록)
-            element: <BoardListPage />,
-          },
-          {
-            path: "detail/:boardId", // /board/detail/10 (상세)
-            element: <BoardDetailPage />,
-          },
-          {
-            path: "new", // /board/new (글쓰기)
-            element: <BoardWritePage />,
-          },
+          { index: true, element: <BoardListPage /> },
+          { path: ":categoryId", element: <BoardListPage /> },
+          { path: "detail/:boardId", element: <BoardDetailPage /> },
+          { path: "new", element: <BoardWritePage /> },
+          { path: "edit/:boardId", element: <BoardWritePage /> },
         ],
       },
 
@@ -125,9 +104,16 @@ const router = createBrowserRouter([
           { path: "", element: <AdminHome /> },
           { path: "users/create", element: <UserCreateForm /> },
           { path: "users", element: <UserListPage /> },
-          { path: "templates/create", element: <TemplateAdminCreate /> }
+          { path: "templates/create", element: <TemplateAdminCreate /> },
+
+          // ✅ 추가된 관리자 전용 카테고리 관리 페이지
+          {
+            path: "board/category",
+            element: <AdminCategoryPage />,
+          },
         ],
       },
+
       {
         index: true,
         element: <Navigate to="/home" replace />,
