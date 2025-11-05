@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Box, Typography, List, ListItemButton, ListItemText, Pagination } from "@mui/material";
-import { getBoardsByCategory, getBoardsOrdered } from "../api/boardAPI"; // ✅ 정렬 API까지 대응
+import { Box, Typography, ListItemButton, Pagination } from "@mui/material";
+import { getBoardsByCategory, getBoardsOrdered } from "../api/boardAPI";
+import LockIcon from "@mui/icons-material/Lock"; // 🔒 자물쇠 아이콘 추가
+import coreconnectLogo from "../../../assets/coreconnect-logo.png"; // 로고 경로 확인
 
 const BoardListPage = () => {
   const { categoryId } = useParams();
@@ -12,10 +14,9 @@ const BoardListPage = () => {
   useEffect(() => {
     (async () => {
       try {
-        // ✅ 카테고리별 조회 / 전체 조회 구분
         const res = categoryId
           ? await getBoardsByCategory(categoryId, pageInfo.number)
-          : await getBoardsOrdered(pageInfo.number); // 전체 게시판 조회 시 정렬 포함
+          : await getBoardsOrdered(pageInfo.number);
         setBoards(res.data.data.content);
         setPageInfo(res.data.data);
       } catch (err) {
@@ -24,11 +25,14 @@ const BoardListPage = () => {
     })();
   }, [categoryId, pageInfo.number]);
 
-  // ✅ 날짜 변환 함수 (월-일 시:분 포맷)
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
     const d = new Date(dateStr);
-    return `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    return `${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+      d.getDate()
+    ).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(
+      d.getMinutes()
+    ).padStart(2, "0")}`;
   };
 
   return (
@@ -37,31 +41,56 @@ const BoardListPage = () => {
         게시글 목록
       </Typography>
 
-      <List>
-        {boards.map((b) => (
-          <ListItemButton
-            key={b.id}
-            onClick={() => navigate(`/board/detail/${b.id}`)}
-            sx={{
-              bgcolor: b.noticeYn ? "#f5f5f5" : "inherit", // 공지 회색
-              borderRadius: 1,
-              mb: 1,
-            }}
-          >
-            <Box sx={{ display: "flex", flexDirection: "column", width: "100%" }}>
-              <Typography variant="body2" color="text.secondary">
-                {b.categoryName || "전체 게시판"}
-              </Typography>
-              <Typography variant="subtitle1" sx={{ fontWeight: b.noticeYn ? 700 : 500 }}>
+      {boards.map((b) => (
+        <ListItemButton
+          key={b.id}
+          onClick={() => navigate(`/board/detail/${b.id}`)}
+          sx={{
+            bgcolor: b.pinned
+              ? "#009FE3"
+              : b.noticeYn
+              ? "#d9d9d9"
+              : "inherit",
+            borderRadius: 1,
+            mb: 1,
+          }}
+        >
+          <Box sx={{ display: "flex", flexDirection: "column", width: "100%" }}>
+            <Typography variant="body2" color="text.secondary">
+              {b.categoryName || "전체 게시판"}
+            </Typography>
+
+            {/* 제목 + 아이콘 표시 영역 */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              {/* 상단고정 아이콘 */}
+              {b.pinned && (
+                <img
+                  src={coreconnectLogo}
+                  alt="pinned"
+                  style={{ width: 18, height: 18 }}
+                />
+              )}
+              {/* 비공개 아이콘 */}
+              {b.privateYn && (
+                <LockIcon sx={{ fontSize: 18, color: "#616161" }} />
+              )}
+
+              <Typography
+                variant="subtitle1"
+                sx={{ fontWeight: b.noticeYn ? 700 : 500 }}
+              >
                 {b.title}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
-                {b.writerName} / {formatDate(b.createdAt)}
-              </Typography>
             </Box>
-          </ListItemButton>
-        ))}
-      </List>
+
+            {/* 작성자, 날짜, 조회수 */}
+            <Typography variant="caption" color="text.secondary">
+              {b.writerName} / {formatDate(b.createdAt)} / 조회수{" "}
+              {b.viewCount ?? 0}
+            </Typography>
+          </Box>
+        </ListItemButton>
+      ))}
 
       {/* 페이지네이션 */}
       <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>

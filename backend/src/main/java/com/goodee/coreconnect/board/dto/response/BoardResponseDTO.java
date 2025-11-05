@@ -20,7 +20,8 @@ public class BoardResponseDTO {
     private Integer id;                
     private String title;              
     private String content;            
-    private Boolean noticeYn;          
+    private Boolean noticeYn;        
+    private Boolean pinned;
     private Boolean privateYn;         
     private Integer viewCount;         
     private LocalDateTime createdAt;   
@@ -43,6 +44,7 @@ public class BoardResponseDTO {
                                           .title(board.getTitle())
                                           .content(board.getContent())
                                           .noticeYn(board.getNoticeYn())
+                                          .pinned(board.getPinned())
                                           .privateYn(board.getPrivateYn())
                                           .viewCount(board.getViewCount())
                                           .createdAt(board.getCreatedAt())
@@ -50,14 +52,12 @@ public class BoardResponseDTO {
                                           .deletedYn(board.getDeletedYn())
                                           .writerName(board.getUser() != null ? board.getUser().getName() : null)
                                           .categoryName(board.getCategory() != null ? board.getCategory().getName() : null)
-                                          .files(board.getFiles() != null ? board.getFiles().stream()
-                                                                                  .map(file -> BoardFileResponseDTO.toDTO(file))
-                                                                                  .collect(Collectors.toList()) 
-                                                                           : List.of())
-                                          .replies(board.getReplies() != null ? board.getReplies().stream()
-                                                                                      .map(reply -> BoardReplyResponseDTO.toDTO(reply))
-                                                                                      .collect(Collectors.toList()) 
-                                                                               : List.of())
+                                          .files(board.getFiles().stream()
+                                                                 .map(file -> BoardFileResponseDTO.toDTO(file))
+                                                                 .toList())
+                                          .replies(board.getReplies().stream()
+                                                                     .map(reply -> BoardReplyResponseDTO.toDTO(reply))
+                                                                     .toList())
                                           .build();
     }
 }
