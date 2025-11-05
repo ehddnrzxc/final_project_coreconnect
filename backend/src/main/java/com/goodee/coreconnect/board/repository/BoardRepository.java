@@ -16,12 +16,6 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
     Page<Board> findByDeletedYnFalse(Pageable pageable);
 
     /** 
-     * 카테고리별 게시글 조회 (삭제 제외) 
-     * - 사용자 화면용 페이징 조회
-     */
-    Page<Board> findByCategoryIdAndDeletedYnFalse(Integer categoryId, Pageable pageable);
-    
-    /** 
      * 카테고리별 게시글 조회 (삭제 제외)
      * - 내부 로직 처리용 전체 조회 (카테고리 삭제 시 관련 게시글 확인)
      */
@@ -30,8 +24,8 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
     /** 사용자 이메일 기반 게시글 조회 (삭제 제외) */
     Page<Board> findByUserEmailAndDeletedYnFalse(String email, Pageable pageable);
 
-    /** 공지글 조회 (삭제 제외) */
-    List<Board> findByNoticeYnTrueAndDeletedYnFalse();
+    /** 공지글 조회 (삭제 제외, 상단고정 → 최신순 정렬) */
+    List<Board> findByNoticeYnTrueAndDeletedYnFalseOrderByPinnedDescCreatedAtDesc();
     
     /** 상단고정 -> 공지 -> 일반글 순으로 조회 (삭제 제외) */
     @Query("""
@@ -40,6 +34,14 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
         ORDER BY b.pinned DESC, b.noticeYn DESC, b.createdAt DESC
     """)
     Page<Board> findAllOrderByPinnedNoticeAndCreated(Pageable pageable);
+    
+    /** 카테고리별 정렬 조회 (상단고정 -> 공지 -> 최신순) */
+    @Query("""
+        SELECT b FROM Board b
+        WHERE b.deletedYn = false AND b.category.id = :categoryId
+        ORDER BY b.pinned DESC, b.noticeYn DESC, b.createdAt DESC
+    """)
+    Page<Board> findByCategoryIdOrdered(@Param("categoryId") Integer categoryId, Pageable pageable);
     
     /** 현재 상단고정 게시글 조회용 */
     List<Board> findByPinnedTrueAndDeletedYnFalse();

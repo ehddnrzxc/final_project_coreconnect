@@ -1,88 +1,66 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getBoardsByCategory, searchBoards } from "../api/boardAPI";
-import {
-  Box,
-  Typography,
-  List,
-  ListItemButton,
-  ListItemText,
-  Pagination,
-  TextField,
-  Select,
-  MenuItem,
-  Button,
-} from "@mui/material";
+import { Box, Typography, List, ListItemButton, ListItemText, Pagination } from "@mui/material";
+import { getBoardsByCategory, getBoardsOrdered } from "../api/boardAPI"; // ✅ 정렬 API까지 대응
 
 const BoardListPage = () => {
   const { categoryId } = useParams();
   const [boards, setBoards] = useState([]);
   const [pageInfo, setPageInfo] = useState({ number: 0, totalPages: 1 });
-  const [keyword, setKeyword] = useState("");
-  const [type, setType] = useState("title");
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!categoryId) return;
-    loadBoards();
+    (async () => {
+      try {
+        // ✅ 카테고리별 조회 / 전체 조회 구분
+        const res = categoryId
+          ? await getBoardsByCategory(categoryId, pageInfo.number)
+          : await getBoardsOrdered(pageInfo.number); // 전체 게시판 조회 시 정렬 포함
+        setBoards(res.data.data.content);
+        setPageInfo(res.data.data);
+      } catch (err) {
+        console.error("게시글 목록 불러오기 실패:", err);
+      }
+    })();
   }, [categoryId, pageInfo.number]);
 
-  const loadBoards = async () => {
-    try {
-      const res = await getBoardsByCategory(categoryId, pageInfo.number);
-      setBoards(res.data.data.content);
-      setPageInfo(res.data.data);
-    } catch (err) {
-      console.error("게시글 목록 불러오기 실패:", err.response?.data || err.message);
-    }
-  };
-
-  const handleSearch = async () => {
-    try {
-      const res = await searchBoards(type, keyword, pageInfo.number);
-      setBoards(res.data.data.content);
-      setPageInfo(res.data.data);
-    } catch (err) {
-      console.error("검색 실패:", err.response?.data || err.message);
-    }
+  // ✅ 날짜 변환 함수 (월-일 시:분 포맷)
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    return `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   };
 
   return (
     <Box>
-      <Typography variant="h6" sx={{ mb: 2 }}>게시글 목록</Typography>
-
-      <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-        <Select size="small" value={type} onChange={(e) => setType(e.target.value)}>
-          <MenuItem value="title">제목</MenuItem>
-          <MenuItem value="content">내용</MenuItem>
-          <MenuItem value="author">작성자</MenuItem>
-        </Select>
-        <TextField
-          size="small"
-          placeholder="검색어 입력"
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-        />
-        <Button variant="outlined" onClick={handleSearch}>검색</Button>
-      </Box>
+      <Typography variant="h6" sx={{ mb: 2 }}>
+        게시글 목록
+      </Typography>
 
       <List>
         {boards.map((b) => (
           <ListItemButton key={b.id} onClick={() => navigate(`/board/detail/${b.id}`)}>
-            <ListItemText
-              primary={
-                <>
-                  {b.pinned && "📌 "}
-                  {b.noticeYn && "[공지] "}
-                  {b.title}
-                </>
-              }
-              secondary={`${b.writerName} | ${new Date(b.createdAt).toLocaleString()} | 조회수 ${b.viewCount}`}
-            />
+            <Box sx={{ display: "flex", flexDirection: "column", width: "100%" }}>
+              {/* ✅ 게시판명 */}
+              <Typography variant="body2" color="text.secondary">
+                {b.categoryName || "전체 게시판"}
+              </Typography>
+
+              {/* ✅ 제목 */}
+              <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                {b.title}
+              </Typography>
+
+              {/* ✅ 작성자 / 날짜 (월-일 시:분) */}
+              <Typography variant="caption" color="text.secondary">
+                {b.writerName || "알 수 없음"} / {formatDate(b.createdAt)}
+              </Typography>
+            </Box>
           </ListItemButton>
         ))}
       </List>
 
+      {/* 페이지네이션 */}
       <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
         <Pagination
           count={pageInfo.totalPages}
