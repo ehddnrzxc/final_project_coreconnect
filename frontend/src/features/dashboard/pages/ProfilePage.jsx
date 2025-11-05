@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import Card from "../../../components/ui/Card";
 import { Box, List, ListItem, ListItemText, Typography } from "@mui/material";
+import { getMyProfileImage, uploadMyProfileImage } from "../../user/api/userAPI";
 
 const ProfilePage = () => {
 
