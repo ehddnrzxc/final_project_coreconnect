@@ -157,6 +157,7 @@ export default function ChatLayout() {
   useEffect(() => {
     async function loadRooms() {
       const res = await fetchChatRoomsLatest();
+      // 데이터 구조: { status, message, data: [ ... ]}
       if (res && Array.isArray(res.data)) {
         setRoomList(res.data);
         setSelectedRoomId(res.data[0]?.roomId ?? null);
@@ -411,6 +412,7 @@ export default function ChatLayout() {
                       {room.roomName?.[0]?.toUpperCase()}
                     </Avatar>
                   </ListItemAvatar>
+                  {/* ✅ 변경: 마지막 메시지와 시간 key 제대로 매핑! */}
                   <ListItemText
                     primary={
                       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -475,6 +477,7 @@ export default function ChatLayout() {
               ))}
             </List>
           </Box>
+          {/* 이하 채팅 상세 뷰(메시지 영역 등)는 변경 없음 */}
           <Box sx={{
             flex: 1, minWidth: "380px",
             height: "calc(100vh - 56px - 32px)", background: "#f8fbfd",

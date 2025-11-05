@@ -102,29 +102,32 @@ public class Board {
         board.category = category;
         board.title = title;
         board.content = content;
-        if (noticeYn != null) board.noticeYn = noticeYn;
-        if (pinned != null) board.pinned = pinned;
-        if (privateYn != null) board.privateYn = privateYn;
+        board.noticeYn = noticeYn != null ? noticeYn : false;
+        board.pinned = pinned != null ? pinned : false;  
+        board.privateYn = privateYn != null ? privateYn : false;
         return board;
     }
 
 
     // ─────────────── 도메인 행위 ───────────────
     /** 게시글 수정 */
-    public void updateBoard(BoardCategory category, String title, String content, Boolean noticeYn, Boolean pinned, Boolean privateYn) {
-        if (title == null || title.isBlank()) throw new IllegalArgumentException("게시글 제목은 비어 있을 수 없습니다.");
-        
+    public void updateBoard(BoardCategory category, String title, String content,
+                            Boolean noticeYn, Boolean pinned, Boolean privateYn) {
+        if (title == null || title.isBlank())
+            throw new IllegalArgumentException("게시글 제목은 비어 있을 수 없습니다.");
+
         this.category = (category != null) ? category : this.category;
         this.title = title;
         this.content = content;
-        if (noticeYn != null) this.noticeYn = noticeYn;
-        if (Boolean.TRUE.equals(pinned) && !Boolean.TRUE.equals(this.noticeYn)) {  // 공지글이 아닌데 pinned 요청이 들어오면 무시
-            this.pinned = false;
-        } else if (pinned != null) {
-            this.pinned = pinned;
+        if (noticeYn != null)
+            this.noticeYn = noticeYn;
+
+        if (pinned != null) {
+          this.pinned = pinned;  // 공지글이 아니더라도 pinned를 그대로 반영 (프론트에서 noticeYn 자동 설정됨)
         }
-        if (privateYn != null) this.privateYn = privateYn;
-        
+
+        if (privateYn != null)
+            this.privateYn = privateYn;
         this.updatedAt = LocalDateTime.now();
     }
 

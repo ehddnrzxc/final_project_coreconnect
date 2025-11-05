@@ -65,8 +65,8 @@ public class BoardCategoryServiceImpl implements BoardCategoryService {
         BoardCategory category = categoryRepository.findByIdAndDeletedYnFalse(categoryId)
                 .orElseThrow(() -> new EntityNotFoundException("카테고리를 찾을 수 없습니다."));
         
-        boolean isDuplicateOrderNo = categoryRepository.existsByOrderNoAndDeletedYnFalse(dto.getOrderNo());
-        if (isDuplicateOrderNo && !dto.getOrderNo().equals(category.getOrderNo())) {
+        if (!dto.getOrderNo().equals(category.getOrderNo()) &&
+            categoryRepository.existsByOrderNoAndDeletedYnFalse(dto.getOrderNo())) {
             throw new IllegalArgumentException("이미 사용 중인 순서 번호입니다: " + dto.getOrderNo());
         }
 

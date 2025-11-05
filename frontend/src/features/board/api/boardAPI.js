@@ -25,6 +25,6 @@ export const deleteBoard = (boardId) => http.delete(`/board/${boardId}`);
 export const searchBoards = (type, keyword, page = 0, size = 10) =>
   http.get(`/board/search?type=${type}&keyword=${keyword}&page=${page}&size=${size}`);
 
-// 전체 게시판 목록 조회 (상단고정 → 공지 → 최신순)
+// 전체 게시판 목록 조회 (상단고정 -> 공지 -> 최신순)
 export const getBoardsOrdered = (page = 0, size = 10) =>
   http.get(`/board/ordered?page=${page}&size=${size}`);

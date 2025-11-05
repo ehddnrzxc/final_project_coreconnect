@@ -13,6 +13,7 @@ import com.goodee.coreconnect.board.entity.Board;
 import com.goodee.coreconnect.board.entity.BoardReply;
 import com.goodee.coreconnect.board.repository.BoardReplyRepository;
 import com.goodee.coreconnect.board.repository.BoardRepository;
+import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
@@ -39,9 +40,13 @@ public class BoardReplyServiceImpl implements BoardReplyService {
 
         BoardReply parentReply = null;
         if (dto.getParentReplyId() != null) {
-            parentReply = replyRepository.findById(dto.getParentReplyId())
-                    .orElseThrow(() -> new EntityNotFoundException("부모 댓글을 찾을 수 없습니다."));
-        }
+          parentReply = replyRepository.findById(dto.getParentReplyId())
+                  .orElseThrow(() -> new EntityNotFoundException("부모 댓글을 찾을 수 없습니다."));
+
+          if (parentReply.getParentReply() != null) {
+              throw new IllegalArgumentException("2단계 이상 대댓글은 허용되지 않습니다.");
+          }
+      }
 
         BoardReply reply = dto.toEntity(user, board, parentReply);
         BoardReply saved = replyRepository.save(reply);
@@ -49,7 +54,7 @@ public class BoardReplyServiceImpl implements BoardReplyService {
         return BoardReplyResponseDTO.toDTO(saved);
     }
 
-    /** 댓글 수정 (본인만 가능) */
+    /** 댓글 수정 */
     @Override
     public BoardReplyResponseDTO updateReply(Integer replyId, BoardReplyRequestDTO dto, String email) {
         BoardReply reply = replyRepository.findById(replyId)
@@ -58,16 +63,15 @@ public class BoardReplyServiceImpl implements BoardReplyService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new EntityNotFoundException("사용자 정보를 찾을 수 없습니다."));
 
-        // 본인 댓글만 수정 가능
-        if (!reply.getUser().getId().equals(user.getId())) {
-            throw new AccessDeniedException("본인 댓글만 수정할 수 있습니다.");
+        if (!reply.getUser().getId().equals(user.getId()) && user.getRole() != Role.ADMIN) {
+          throw new AccessDeniedException("본인 또는 관리자만 수정할 수 있습니다.");
         }
 
         reply.updateReply(dto.getContent());
         return BoardReplyResponseDTO.toDTO(reply);
     }
 
-    /** 댓글 삭제 (Soft Delete, 본인만 가능) */
+    /** 댓글 삭제 (Soft Delete) */
     @Override
     public void softDeleteReply(Integer replyId, String email) {
         BoardReply reply = replyRepository.findById(replyId)
@@ -76,9 +80,8 @@ public class BoardReplyServiceImpl implements BoardReplyService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new EntityNotFoundException("사용자 정보를 찾을 수 없습니다."));
 
-        // 본인 댓글만 삭제 가능
-        if (!reply.getUser().getId().equals(user.getId())) {
-            throw new AccessDeniedException("본인 댓글만 삭제할 수 있습니다.");
+        if (!reply.getUser().getId().equals(user.getId()) && user.getRole() != Role.ADMIN) {
+          throw new AccessDeniedException("본인 또는 관리자만 삭제할 수 있습니다.");
         }
 
         reply.delete();

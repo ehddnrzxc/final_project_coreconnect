@@ -1,6 +1,7 @@
 package com.goodee.coreconnect.board.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -45,6 +46,9 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
     
     /** 현재 상단고정 게시글 조회용 */
     List<Board> findByPinnedTrueAndDeletedYnFalse();
+    
+    /** 카테고리별 pinned 게시글 1개만 허용하기 위한 조회 메서드 */
+    Optional<Board> findByCategoryIdAndPinnedTrueAndDeletedYnFalse(Integer categoryId);
     
 
     // ─────────────── 선택형 검색 ───────────────

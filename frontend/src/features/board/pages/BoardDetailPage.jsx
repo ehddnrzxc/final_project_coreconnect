@@ -59,8 +59,8 @@ const BoardDetailPage = () => {
     <Box>
       <Typography variant="h5">{board.title}</Typography>
 
-      {/* 🔧 수정 1: 작성자 이름 필드 writerName 으로 변경 */}
-      {/* 🔧 수정 2: 날짜를 한국 시간 형식으로 가독성 있게 표시 */}
+      {/* 작성자 이름 필드 writerName 으로 변경 */}
+      {/* 날짜를 한국 시간 형식으로 가독성 있게 표시 */}
       <Typography variant="body2" sx={{ mb: 2 }}>
         {board.writerName || "알 수 없음"} |{" "}
         {new Date(board.createdAt).toLocaleString()} | 조회수 {board.viewCount ?? 0}
@@ -90,14 +90,14 @@ const BoardDetailPage = () => {
       {/* 본문 내용 */}
       <Typography sx={{ whiteSpace: "pre-line", mb: 4 }}>{board.content}</Typography>
 
-      {/* 🔧 수정 3: 파일 미리보기 경로 수정 (s3ObjectKey 사용) */}
+      {/* 파일 미리보기 경로 수정 (s3ObjectKey 사용) */}
       {files.length > 0 && (
         <Box sx={{ mb: 2 }}>
           <Typography variant="subtitle2">첨부파일</Typography>
           {files.map((f) => (
             <Box key={f.id}>
               <a
-                href={f.s3ObjectKey} // ✅ 수정됨
+                href={f.s3ObjectKey}
                 target="_blank"
                 rel="noopener noreferrer"
               >
