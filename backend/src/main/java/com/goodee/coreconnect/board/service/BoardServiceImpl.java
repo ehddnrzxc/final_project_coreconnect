@@ -212,17 +212,6 @@ public class BoardServiceImpl implements BoardService {
         return BoardResponseDTO.toDTO(board);
     }
 
-    /** 전체 게시글 목록 조회 */
-    @Override
-    @Transactional(readOnly = true)
-    public Page<BoardResponseDTO> getAllBoards(Pageable pageable) {
-        Page<Board> boardPage = boardRepository.findByDeletedYnFalse(pageable);
-        List<BoardResponseDTO> dtoList = boardPage.getContent().stream()
-                                                  .map(board -> BoardResponseDTO.toDTO(board))
-                                                  .toList();
-        return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());
-    }
-
     /** 카테고리별 게시글 목록 조회 */
     @Override
     @Transactional(readOnly = true)
