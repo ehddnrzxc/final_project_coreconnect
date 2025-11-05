@@ -20,7 +20,8 @@ public class BoardResponseDTO {
     private Integer id;                
     private String title;              
     private String content;            
-    private Boolean noticeYn;          
+    private Boolean noticeYn;        
+    private Boolean pinned;
     private Boolean privateYn;         
     private Integer viewCount;         
     private LocalDateTime createdAt;   
@@ -43,6 +44,7 @@ public class BoardResponseDTO {
                                           .title(board.getTitle())
                                           .content(board.getContent())
                                           .noticeYn(board.getNoticeYn())
+                                          .pinned(board.getPinned())
                                           .privateYn(board.getPrivateYn())
                                           .viewCount(board.getViewCount())
                                           .createdAt(board.getCreatedAt())

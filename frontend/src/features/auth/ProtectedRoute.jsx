@@ -1,3 +1,4 @@
+import { Navigate } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
 
 /* 로그인 보호용 라우트 */

@@ -21,11 +21,11 @@ const BoardLayout = () => {
   const [newCategory, setNewCategory] = useState({ name: "", orderNo: "" });
   const navigate = useNavigate();
 
-  // ✅ 현재 로그인 유저 정보
+  // 현재 로그인 유저 정보
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const isAdmin = user?.role === "ADMIN";
 
-  // ✅ 카테고리 목록 로드 (orderNo 순서로 정렬)
+  // 카테고리 목록 로드 (orderNo 순서로 정렬)
   useEffect(() => {
     (async () => {
       try {
@@ -51,7 +51,7 @@ const BoardLayout = () => {
       setOpen(false);
       setNewCategory({ name: "", orderNo: "" });
 
-      // ✅ 등록 후 다시 정렬된 목록으로 갱신
+      // 등록 후 다시 정렬된 목록으로 갱신
       const res = await getAllCategories();
       const sorted = [...(res.data.data || [])].sort((a, b) => (a.orderNo ?? 0) - (b.orderNo ?? 0));
       setCategories(sorted);
@@ -87,7 +87,7 @@ const BoardLayout = () => {
           글쓰기
         </Button>
 
-        {/* ✅ 관리자 전용 버튼들 */}
+        {/* 관리자 전용 버튼들 */}
         {isAdmin && (
           <>
             <Button
@@ -100,7 +100,7 @@ const BoardLayout = () => {
               카테고리 추가
             </Button>
 
-            {/* ✅ 카테고리 관리 페이지로 이동 */}
+            {/* 카테고리 관리 페이지로 이동 */}
             <Button
               variant="outlined"
               color="info"
@@ -114,12 +114,12 @@ const BoardLayout = () => {
         )}
 
         <List>
-          {/* ✅ 전체 게시판 버튼 */}
+          {/* 전체 게시판 버튼 */}
           <ListItemButton onClick={() => navigate("/board")}>
             <ListItemText primary="전체 게시판" />
           </ListItemButton>
 
-          {/* ✅ 카테고리 목록 표시 */}
+          {/* 카테고리 목록 표시 */}
           {categories.map((cat) => (
             <ListItemButton
               key={cat.id}
@@ -144,7 +144,7 @@ const BoardLayout = () => {
         <Outlet />
       </Box>
 
-      {/* ✅ 관리자 전용 카테고리 추가 모달 */}
+      {/* 관리자 전용 카테고리 추가 모달 */}
       <Dialog open={open} onClose={() => setOpen(false)}>
         <DialogTitle>새 카테고리 추가</DialogTitle>
         <DialogContent>

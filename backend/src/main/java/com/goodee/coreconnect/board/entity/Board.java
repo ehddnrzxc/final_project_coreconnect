@@ -102,9 +102,9 @@ public class Board {
         board.category = category;
         board.title = title;
         board.content = content;
-        if (noticeYn != null) board.noticeYn = noticeYn;
-        if (pinned != null) board.pinned = pinned;
-        if (privateYn != null) board.privateYn = privateYn;
+        board.noticeYn = noticeYn != null ? noticeYn : false;
+        board.pinned = pinned != null ? pinned : false;  
+        board.privateYn = privateYn != null ? privateYn : false;
         return board;
     }
 
@@ -122,10 +122,8 @@ public class Board {
         if (noticeYn != null)
             this.noticeYn = noticeYn;
 
-        if (Boolean.TRUE.equals(pinned) && !Boolean.TRUE.equals(this.noticeYn)) {
-            this.pinned = false;  // 공지글이 아닌데 pinned 요청 -> 무시
-        } else if (pinned != null) {
-            this.pinned = pinned;
+        if (pinned != null) {
+          this.pinned = pinned;  // 공지글이 아니더라도 pinned를 그대로 반영 (프론트에서 noticeYn 자동 설정됨)
         }
 
         if (privateYn != null)

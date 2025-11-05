@@ -68,15 +68,11 @@ public class BoardServiceImpl implements BoardService {
         BoardCategory category = categoryRepository.findByIdAndDeletedYnFalse(dto.getCategoryId())
                 .orElseThrow(() -> new EntityNotFoundException("카테고리를 찾을 수 없습니다."));
         
-        // 새 글이 상단고정일 경우 기존 고정글 해제
+        // 같은 카테고리 내 기존 pinned 해제
         if (Boolean.TRUE.equals(dto.getPinned())) {
-          List<Board> pinnedBoards = boardRepository.findByCategoryIdAndDeletedYnFalse(dto.getCategoryId()).stream()
-                                                    .filter(board -> board.getPinned())
-                                                    .toList();
-          for (Board pinned : pinnedBoards) {
-              pinned.unpin();
-          }
-      }
+            boardRepository.findByCategoryIdAndPinnedTrueAndDeletedYnFalse(dto.getCategoryId())
+                    .ifPresent(Board::unpin);
+        }
 
         // 게시글 저장
         Board board = dto.toEntity(user, category);
@@ -148,19 +144,42 @@ public class BoardServiceImpl implements BoardService {
             throw new SecurityException("본인 게시글만 수정할 수 있습니다.");
         }
 
-        // 카테고리 변경 처리
-        BoardCategory category = null;
+        // 카테고리 변경 처리 (null일 경우 기존 카테고리 유지)
+        BoardCategory category;
         if (dto.getCategoryId() != null) {
             category = categoryRepository.findByIdAndDeletedYnFalse(dto.getCategoryId())
                     .orElseThrow(() -> new EntityNotFoundException("카테고리를 찾을 수 없습니다."));
+        } else {
+            category = board.getCategory(); // 기존 카테고리 유지
         }
 
+        // 카테고리별 pinned 중복 방지 (category가 null이어도 안전)
+        if (Boolean.TRUE.equals(dto.getPinned()) && category != null) {
+            boardRepository.findByCategoryIdAndPinnedTrueAndDeletedYnFalse(category.getId())
+                    .ifPresent(existingPinned -> {
+                        if (!existingPinned.getId().equals(board.getId())) {
+                            existingPinned.unpin();
+                        }
+                    });
+        }
+        
         board.updateBoard(category,
                           dto.getTitle(),
                           dto.getContent(),
                           dto.getNoticeYn(),
                           dto.getPinned(),
                           dto.getPrivateYn());
+        
+        // 상단고정 수정 시 — 동일 카테고리 내 기존 고정글 해제
+        if (Boolean.TRUE.equals(dto.getPinned())) {
+            List<Board> pinnedBoards = boardRepository.findByCategoryIdAndDeletedYnFalse(
+                board.getCategory().getId()).stream()
+                                   .filter(b -> !b.getId().equals(board.getId()) && b.getPinned())
+                                   .toList();
+            for (Board pinned : pinnedBoards) {
+              pinned.unpin();
+            }
+        }
 
         return BoardResponseDTO.toDTO(board);
     }

@@ -103,6 +103,7 @@ const AdminCategoryPage = () => {
           label="순서번호"
           size="small"
           type="number"
+          inputProps={{ min: 0 }} 
           value={newCategory.orderNo}
           onChange={(e) =>
             setNewCategory((prev) => ({ ...prev, orderNo: e.target.value }))
@@ -121,17 +122,14 @@ const AdminCategoryPage = () => {
       <Table>
         <TableHead>
           <TableRow>
-            <TableCell>ID</TableCell>
             <TableCell>카테고리명</TableCell>
             <TableCell>순서번호</TableCell>
-            <TableCell>삭제여부</TableCell>
             <TableCell align="center">액션</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
           {categories.map((cat) => (
             <TableRow key={cat.id}>
-              <TableCell>{cat.id}</TableCell>
               <TableCell>
                 {editingId === cat.id ? (
                   <TextField
@@ -153,6 +151,7 @@ const AdminCategoryPage = () => {
                   <TextField
                     size="small"
                     type="number"
+                    inputProps={{ min: 0 }} 
                     value={editedData.orderNo}
                     onChange={(e) =>
                       setEditedData((prev) => ({
@@ -165,7 +164,6 @@ const AdminCategoryPage = () => {
                   cat.orderNo
                 )}
               </TableCell>
-              <TableCell>{cat.deletedYn ? "Y" : "N"}</TableCell>
               <TableCell align="center">
                 {editingId === cat.id ? (
                   <IconButton color="primary" onClick={() => handleSave(cat.id)}>

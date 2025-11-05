@@ -83,7 +83,7 @@ const router = createBrowserRouter([
         path: "board",
         element: (
           <ProtectedRoute>
-            <BoardLayout /> {/* 좌측 카테고리 + Outlet */}
+            <BoardLayout />
           </ProtectedRoute>
         ),
         children: [
@@ -103,12 +103,7 @@ const router = createBrowserRouter([
           { path: "users/create", element: <UserCreateForm /> },
           { path: "users", element: <UserListPage /> },
           { path: "templates/create", element: <TemplateAdminCreate /> },
-
-          // 추가된 관리자 전용 카테고리 관리 페이지
-          {
-            path: "board/category",
-            element: <AdminCategoryPage />,
-          },
+          { path: "board/category", element: <AdminCategoryPage /> },
         ],
       },
 
