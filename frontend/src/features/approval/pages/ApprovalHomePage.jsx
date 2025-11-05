@@ -1,190 +1,219 @@
-import { Link as RouterLink } from "react-router-dom";
-import { useState, useEffect } from "react";
-import http from "../../../api/http.js";
-
-// (MUI 교체) MUI 컴포넌트 대량 import
+import React, { useState, useEffect } from "react";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
 import {
   Box,
-  Button,
   Typography,
-  Table,
-  TableBody,
-  TableCell,
+  Grid,
+  Card,
+  CardContent,
   TableContainer,
+  Table,
   TableHead,
+  TableBody,
   TableRow,
+  TableCell,
   Paper,
-  Chip,
-  Link,
-  CircularProgress, // 로딩
+  CircularProgress,
   Alert,
-  IconButton, // 에러
 } from "@mui/material";
 
-// --- 헬퍼 함수 (동일) ---
+import {
+  getPendingDocuments,
+  getCompletedDocuments,
+  getMyTasks,
+} from "../api/approvalApi";
 
-// 날짜 포맷팅
-const formatDate = (dateTimeString) => {
-  if (!dateTimeString) return "";
-  return dateTimeString.split("T")[0];
-};
+import ApprovalStatusChip from "../components/ApprovalStatusChip";
 
-// Enum 한글 변환
-const mapStatusToKorean = (statusEnum) => {
-  switch (statusEnum) {
-    case "IN_PROGRESS": return "진행중";
-    case "DRAFT": return "임시저장";
-    case "COMPLETED": return "완료";
-    case "REJECTED": return "반려";
-    default: return statusEnum;
-  }
-};
-
-// (MUI 교체) Chip 컴포넌트의 'color' prop에 맞게 Enum 상태를 매핑하는 함수
-const mapStatusToChipColor = (statusEnum) => {
-  switch (statusEnum) {
-    case "IN_PROGRESS": return "primary"; // (파랑)
-    case "DRAFT": return "default"; // (회색)
-    case "COMPLETED": return "success"; // (초록)
-    case "REJECTED": return "error"; // (빨강)
-    default: return "default";
-  }
-};
-
-
-/**
- * ApprovalTable 컴포넌트
- */
-const ApprovalTable = ({ title, docs }) => (
-  <Box component="section" sx={{ mb: 4 }}> 
-    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-      <Typography variant="h6" component="h3">
-        {title}
-      </Typography>
-      <Link component={RouterLink} to="#" underline="hover">
-        더보기 +
-      </Link>
-    </Box>
-
-    <TableContainer component={Paper}>
-      <Table sx={{ minWidth: 650 }} size="small" aria-label="approval table">
-        <TableHead sx={{ backgroundColor: '#f9f9f9' }}>
-          <TableRow>
-            <TableCell align="center" sx={{ fontWeight: 'bold' }}>기안일</TableCell>
-            <TableCell sx={{ fontWeight: 'bold' }}>결재양식</TableCell>
-            <TableCell sx={{ fontWeight: 'bold' }}>제목</TableCell>
-            <TableCell align="center" sx={{ fontWeight: 'bold' }}>결재상태</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {docs.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={4} align="center" sx={{ p: 4, color: 'text.secondary' }}>
-                결재 문서가 없습니다.
-              </TableCell>
-            </TableRow>
-          ) : (
-            docs.map((doc) => (
-              <TableRow
-                key={doc.documentId}
-                sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-              >
-                <TableCell align="center">{formatDate(doc.createdAt)}</TableCell>
-                <TableCell>{doc.templateName}</TableCell>
-                <TableCell>
-                  <Link
-                    component={RouterLink}
-                    to={`/e-approval/doc/${doc.documentId}`}
-                    underline="hover"
-                    sx={{ fontWeight: 500 }}
-                  >
-                    {doc.documentTitle}
-                  </Link>
-                </TableCell>
-                <TableCell align="center">
-                  <Chip
-                    label={mapStatusToKorean(doc.documentStatus)}
-                    color={mapStatusToChipColor(doc.documentStatus)}
-                    size="small"
-                  />
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  </Box>
-);
-
-/**
- * "전자결재 홈" 대시보드 페이지 (MUI 적용)
- */
-const ApprovalHomePage = () => {
+function ApprovalHomePage() {
+  const [myTasks, setMyTasks] = useState([]);
   const [pendingDocs, setPendingDocs] = useState([]);
   const [completedDocs, setCompletedDocs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const navigate = useNavigate();
+
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const fetchDocs = async () => {
       try {
         setLoading(true);
         setError(null);
-        
-        const [pendingResponse, completedResponse] = await Promise.all([
-          http.get("/approvals/my-documents/pending"),
-          http.get("/approvals/my-documents/completed"),
+
+        const [tasksRes, pendingRes, completedRes] = await Promise.all([
+          getMyTasks(),
+          getPendingDocuments(),
+          getCompletedDocuments(),
         ]);
 
-        setPendingDocs(pendingResponse.data);
-        setCompletedDocs(completedResponse.data);
-
+        setMyTasks(tasksRes.data);
+        setPendingDocs(pendingRes.data);
+        setCompletedDocs(completedRes.data);
       } catch (err) {
-        setError("데이터를 불러오는 데 실패했습니다.");
-        console.error(err);
+        console.error("Error fetching approval documents:", err);
+        setError("데이터를 불러오는 중 오류가 발생했습니다.");
       } finally {
         setLoading(false);
       }
     };
-    fetchDashboardData();
+
+    fetchDocs();
   }, []);
 
-  // 로딩 UI
+  const handleRowClick = (documentId) => {
+    navigate(`/e-approval/doc/${documentId}`);
+  };
+
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+      <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
         <CircularProgress />
       </Box>
     );
   }
 
-  // 에러 UI
   if (error) {
-    return (
-      <Alert severity="error" sx={{ mt: 2 }}>
-        {error}
-      </Alert>
-    );
+    return <Alert severity="error">{error}</Alert>;
   }
 
-  // 메인 렌더링
   return (
-    <Box sx={{ py: 3 }}> 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h2" gutterBottom>
-          전자결재 홈
-        </Typography>
-        <IconButton className="btn btn--ghost">
-          <i className="fa-solid fa-ellipsis"></i>
-        </IconButton>
-      </Box>
+    <Box>
+      <Typography variant="h4" gutterBottom sx={{ fontWeight: "bold" }}>
+        결재 홈
+      </Typography>
 
-      <ApprovalTable title="기안 진행 문서" docs={pendingDocs} />
+      {/* --- 1. 내가 결재할 문서 (Cards) --- */}
+      <Typography variant="h5" sx={{ mt: 4, mb: 2 }}>
+        결재 대기 문서
+      </Typography>
+      {myTasks.length === 0 ? (
+        <Typography>결재 대기중인 문서가 없습니다.</Typography>
+      ) : (
+        <Grid container spacing={2}>
+          {myTasks.map((doc) => (
+            <Grid item xs={12} sm={6} md={4} key={doc.documentId}>
+              <Card
+                component={RouterLink}
+                to={`/e-approval/doc/${doc.documentId}`}
+                elevation={2}
+                sx={{ textDecoration: "none", height: "100%",
+                  borderRadius: 2, transition: "all 0.2s",
+                  "&:hover": {
+                    boxShadow: 6,
+                    transform: "translateY(-2px)",
+                  },
+                }}
+                variant="outlined"
+              >
+                <CardContent>
+                  <Typography variant="body2" color="primary">
+                    {doc.templateName}
+                  </Typography>
+                  <Typography
+                    variant="h6"
+                    sx={{ fontWeight: "bold", my: 0.5 }}
+                  >
+                    {doc.documentTitle}
+                  </Typography>
+                  <ApprovalStatusChip status={doc.documentStatus} />
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      )}
 
-      <ApprovalTable title="완료 문서" docs={completedDocs} />
+      {/* --- 2. 진행중인 문서 (Table) --- */}
+      <Typography variant="h5" sx={{ mt: 4, mb: 2 }}>
+        진행중인 문서 (내가 상신한 문서)
+      </Typography>
+      {pendingDocs.length === 0 ? (
+        <Typography>진행중인 문서가 없습니다.</Typography>
+      ) : (
+        <TableContainer component={Paper} variant="outlined">
+          <Table sx={{ minWidth: 650 }} aria-label="진행중인 문서 테이블">
+            <TableHead>
+              <TableRow sx={{ backgroundColor: "#f8f9fa" }}>
+                <TableCell>문서 제목</TableCell>
+                <TableCell>결재 양식</TableCell>
+                <TableCell>기안일</TableCell>
+                <TableCell>상태</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {pendingDocs.map((doc) => (
+                <TableRow
+                  key={doc.documentId}
+                  hover
+                  onClick={() => handleRowClick(doc.documentId)}
+                  sx={{
+                    cursor: "pointer",
+                    "&:last-child td, &:last-child th": { border: 0 },
+                  }}
+                >
+                  <TableCell component="th" scope="row">
+                    {doc.documentTitle}
+                  </TableCell>
+                  <TableCell>{doc.templateName}</TableCell>
+                  <TableCell>
+                    {new Date(doc.createdAt).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell>
+                    <ApprovalStatusChip status={doc.documentStatus} />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+
+      {/* --- 3. 완료된 문서 (Table) --- */}
+      <Typography variant="h5" sx={{ mt: 4, mb: 2 }}>
+        완료된 문서
+      </Typography>
+      {completedDocs.length === 0 ? (
+        <Typography>완료된 문서가 없습니다.</Typography>
+      ) : (
+        <TableContainer component={Paper} variant="outlined">
+          <Table sx={{ minWidth: 650 }} aria-label="완료된 문서 테이블">
+            <TableHead>
+              <TableRow sx={{ backgroundColor: "#f8f9fa" }}>
+                <TableCell>문서 제목</TableCell>
+                <TableCell>결재 양식</TableCell>
+                <TableCell>완료일</TableCell>
+                <TableCell>상태</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {completedDocs.map((doc) => (
+                <TableRow
+                  key={doc.documentId}
+                  hover
+                  onClick={() => handleRowClick(doc.documentId)}
+                  sx={{
+                    cursor: "pointer",
+                    "&:last-child td, &:last-child th": { border: 0 },
+                  }}
+                >
+                  <TableCell component="th" scope="row">
+                    {doc.documentTitle}
+                  </TableCell>
+                  <TableCell>{doc.templateName}</TableCell>
+                  <TableCell>
+                    {new Date(doc.completedAt).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell>
+                    <ApprovalStatusChip status={doc.documentStatus} />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
     </Box>
   );
-};
+}
 
 export default ApprovalHomePage;

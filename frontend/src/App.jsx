@@ -67,8 +67,8 @@ function App() {
             sx={{
               flex: 1,
               minHeight: 0,
-              overflowY: "auto",
-              p: 2
+              display: "flex",
+              flexDirection: "column",
             }}
           >
             <Outlet context={{ setAvatarUrl }} />
