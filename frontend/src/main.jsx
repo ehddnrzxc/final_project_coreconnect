@@ -21,6 +21,10 @@ import ChatHomePage from "./pages/ChatHomePage";
 import ChatLayout from "./pages/ChatLayout";
 import ApprovalDetailPage from "./pages/ApprovalDetailPage";
 import TemplateAdminCreate from "./components/admin/TemplateAdminCreate";
+import BoardLayout from "./pages/board/BoardLayout";
+import BoardListPage from "./pages/board/BoardListPage";
+import BoardDetailPage from "./pages/board/BoardDetailPage";
+import BoardWritePage from "./pages/board/BoardWritePage";
 
 /* 로그인 보호용 라우트 */
 function ProtectedRoute({ children }) {
@@ -91,6 +95,34 @@ const router = createBrowserRouter([
           },
         ],
       },
+
+      {
+        path: "board",
+        element: (
+          <ProtectedRoute>
+            <BoardLayout /> {/* 좌측 카테고리 + Outlet */}
+          </ProtectedRoute>
+        ),
+        children: [
+          {
+            index: true, // /board 기본 진입 시
+            element: <BoardListPage />, // 전체 게시글 목록
+          },
+          {
+            path: ":categoryId", // /board/1 (카테고리별 목록)
+            element: <BoardListPage />,
+          },
+          {
+            path: "detail/:boardId", // /board/detail/10 (상세)
+            element: <BoardDetailPage />,
+          },
+          {
+            path: "new", // /board/new (글쓰기)
+            element: <BoardWritePage />,
+          },
+        ],
+      },
+
       {
         path: "admin",
         element: <AdminRoute />,
