@@ -21,6 +21,10 @@ export const updateBoard = (boardId, data) =>
 // 게시글 삭제
 export const deleteBoard = (boardId) => http.delete(`/board/${boardId}`);
 
-// 🔹 추가: 게시글 검색 (제목 / 내용 / 작성자)
+// 게시글 검색 (제목 / 내용 / 작성자)
 export const searchBoards = (type, keyword, page = 0, size = 10) =>
   http.get(`/board/search?type=${type}&keyword=${keyword}&page=${page}&size=${size}`);
+
+// 전체 게시판 목록 조회 (상단고정 → 공지 → 최신순)
+export const getBoardsOrdered = (page = 0, size = 10) =>
+  http.get(`/board/ordered?page=${page}&size=${size}`);

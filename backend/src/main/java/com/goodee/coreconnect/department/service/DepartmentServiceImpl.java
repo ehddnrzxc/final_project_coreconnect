@@ -155,7 +155,15 @@ public class DepartmentServiceImpl implements DepartmentService {
         p = p.getParent();
     }
     return false;
-}
+  }
+  
+  /** 부서 전체 갯수를 조회하는 메소드 */
+  @Override
+  public Long getAllDepartmentCount() {
+    return departmentRepository.count();
+  }
+  
+  
 
 
 }

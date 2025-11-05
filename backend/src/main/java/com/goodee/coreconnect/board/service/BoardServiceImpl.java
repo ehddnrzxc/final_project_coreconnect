@@ -57,6 +57,11 @@ public class BoardServiceImpl implements BoardService {
             // 공지글은 항상 공개 처리 (비공개 옵션 무시)
             dto.setPrivateYn(false);
         }
+        
+        // 공지글이 아닌데 상단고정 true인 경우 방지
+        if (!Boolean.TRUE.equals(dto.getNoticeYn()) && Boolean.TRUE.equals(dto.getPinned())) {
+            throw new IllegalArgumentException("상단고정은 공지글만 설정할 수 있습니다.");
+        }
 
         // 카테고리 확인
         BoardCategory category = categoryRepository.findByIdAndDeletedYnFalse(dto.getCategoryId())
@@ -207,22 +212,11 @@ public class BoardServiceImpl implements BoardService {
         return BoardResponseDTO.toDTO(board);
     }
 
-    /** 전체 게시글 목록 조회 */
-    @Override
-    @Transactional(readOnly = true)
-    public Page<BoardResponseDTO> getAllBoards(Pageable pageable) {
-        Page<Board> boardPage = boardRepository.findByDeletedYnFalse(pageable);
-        List<BoardResponseDTO> dtoList = boardPage.getContent().stream()
-                                                  .map(board -> BoardResponseDTO.toDTO(board))
-                                                  .toList();
-        return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());
-    }
-
     /** 카테고리별 게시글 목록 조회 */
     @Override
     @Transactional(readOnly = true)
     public Page<BoardResponseDTO> getBoardsByCategory(Integer categoryId, Pageable pageable) {
-        Page<Board> boardPage = boardRepository.findByCategoryIdAndDeletedYnFalse(categoryId, pageable);
+        Page<Board> boardPage = boardRepository.findByCategoryIdOrdered(categoryId, pageable);
         List<BoardResponseDTO> dtoList = boardPage.getContent().stream()
                                                   .map(board -> BoardResponseDTO.toDTO(board))
                                                   .toList();
@@ -244,7 +238,7 @@ public class BoardServiceImpl implements BoardService {
     @Override
     @Transactional(readOnly = true)
     public List<BoardResponseDTO> getNoticeBoards() {
-        List<Board> boardList = boardRepository.findByNoticeYnTrueAndDeletedYnFalse();
+        List<Board> boardList = boardRepository.findByNoticeYnTrueAndDeletedYnFalseOrderByPinnedDescCreatedAtDesc();
         return boardList.stream().map(board -> BoardResponseDTO.toDTO(board))
                                   .toList();
     }

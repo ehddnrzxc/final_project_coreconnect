@@ -22,9 +22,6 @@ public interface BoardService {
     /** 게시글 상세 조회 */
     BoardResponseDTO getBoardById(Integer boardId);
 
-    /** 전체 게시글 목록 조회 */
-    Page<BoardResponseDTO> getAllBoards(Pageable pageable);
-
     /** 카테고리별 게시글 목록 조회 */
     Page<BoardResponseDTO> getBoardsByCategory(Integer categoryId, Pageable pageable);
 
@@ -34,7 +31,7 @@ public interface BoardService {
     /** 공지글 목록 조회 */
     List<BoardResponseDTO> getNoticeBoards();
     
-    /** 게시판용 정렬된 목록 조회 (상단고정 -> 공지 -> 최신순) */
+    /** 정렬된 목록 조회 (상단고정 -> 공지 -> 최신순) */
     Page<BoardResponseDTO> getBoardsOrdered(Pageable pageable);
 
     /** 검색 (제목, 내용, 작성자명 중 선택형) */

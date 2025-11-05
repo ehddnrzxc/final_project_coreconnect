@@ -29,5 +29,8 @@ public interface DepartmentService {
   
   /** 부서 삭제(자식/사원 존재 시 금지) */
   public void delete(Integer id);
+  
+  /** 부서 갯수 조회 */
+  public Long getAllDepartmentCount();
 
 }

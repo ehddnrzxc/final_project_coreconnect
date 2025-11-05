@@ -159,4 +159,21 @@ public class UserServiceImpl implements UserService {
         user.changeRole(newRole);
     }
 
+    /** 모든 사용자 수를 조회하는 메소드 */
+    @Override
+    public Long getAllUserCount() {
+      return userRepository.count();
+    }
+
+    /** 모든 활성화된 사용자 수를 조회하는 메소드 */
+    @Override
+    public Long getAllActiveUserCount() {
+      return userRepository.countByStatus(Status.ACTIVE);
+    }
+    
+    
+    
+    
+    
+
 }
