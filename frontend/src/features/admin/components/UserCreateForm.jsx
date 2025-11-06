@@ -91,7 +91,8 @@ export default function UserCreateForm() {
       tempPassword: form.tempPassword,
       phone: form.phone.trim() || undefined,
       role: form.role,
-      ...(form.deptId ? { deptId: Number(form.deptId) } : {}),
+      jobGrade: form.jobGrade,
+      ...(form.deptId ? { deptId: Number(form.deptId) } : {}), // 부서를 선택한 경우에만 추가 
     };
 
     setLoading(true);

@@ -1,5 +1,5 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { Box, Typography, Container } from "@mui/material";
 import LoginForm from "./LoginForm";
 import useAuth from "../../../hooks/useAuth";
@@ -7,7 +7,12 @@ import logo from "../../../assets/coreconnect-logo.png";
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { setIsLoggedIn } = useAuth();
+  const { isLoggedIn, setIsLoggedIn } = useAuth();
+
+  // 로그인 된 상태로 뒤로가기 눌렀을 때 다시 로그인창으로 이동 방지(대신 /home으로 이동)
+  if(isLoggedIn) {
+    return <Navigate to="/home" replace />;
+  }
 
   const handleLoginSuccess = () => {
     setIsLoggedIn(true);
