@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useEffect, useMemo, useState, useRef } from "react"; // React 훅: 상태관리, 렌더링 최적화, 생명주기 제어
+import { useParams, useNavigate } from "react-router-dom"; // React Router 훅: URL 파라미터와 페이지 이동 관리
 import {
   Box,
   Typography,
@@ -8,37 +8,42 @@ import {
   Button,
   Stack,
   Paper,
-} from "@mui/material";
-import ReplyIcon from "@mui/icons-material/Reply";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
+} from "@mui/material"; // MUI: 레이아웃/텍스트/UI 기본 구성요소
+import ReplyIcon from "@mui/icons-material/Reply"; // MUI: 답글 아이콘
+import EditIcon from "@mui/icons-material/Edit"; // MUI: 수정 아이콘
+import DeleteIcon from "@mui/icons-material/Delete"; // MUI: 삭제 아이콘
 
-import { getBoardDetail, deleteBoard } from "../api/boardAPI";
-import { getFilesByBoard } from "../api/boardFileAPI";
+import { getBoardDetail, deleteBoard } from "../api/boardAPI"; // 게시글 관련 API 함수
+import { getFilesByBoard } from "../api/boardFileAPI"; // 게시글 첨부파일 API
 import {
   getRepliesByBoard,
   createReply,
   updateReply,
   deleteReply,
-} from "../api/boardReplyAPI";
+} from "../api/boardReplyAPI"; // 댓글 관련 API
 
+// 게시글 상세 페이지 컴포넌트
 const BoardDetailPage = () => {
-  const { boardId } = useParams();
-  const navigate = useNavigate();
+  const { boardId } = useParams(); // URL 경로에서 게시글 ID 추출
+  const navigate = useNavigate(); // 페이지 이동용 훅
 
+  // 로그인 사용자 정보 로드
   const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const loginName = user?.name || "익명";
-  const loginRole = user?.role;
+  const loginName = user?.name || "익명"; // 로그인 이름 (없으면 '익명')
+  const loginRole = user?.role; // 사용자 역할
 
-  const [board, setBoard] = useState(null);
-  const [files, setFiles] = useState([]);
-  const [replies, setReplies] = useState([]);
+  // 상태 정의
+  const [board, setBoard] = useState(null); // 게시글 상세 데이터
+  const [files, setFiles] = useState([]); // 첨부파일 목록
+  const [replies, setReplies] = useState([]); // 댓글 목록
 
-  const [replyText, setReplyText] = useState("");
-  const [replyParentId, setReplyParentId] = useState(null);
-  const [editReplyId, setEditReplyId] = useState(null);
-  const [editReplyText, setEditReplyText] = useState("");
+  // 댓글 입력/수정 상태
+  const [replyText, setReplyText] = useState(""); // 새 댓글 내용
+  const [replyParentId, setReplyParentId] = useState(null); // 부모 댓글 ID (대댓글일 경우)
+  const [editReplyId, setEditReplyId] = useState(null); // 수정 중인 댓글 ID
+  const [editReplyText, setEditReplyText] = useState(""); // 수정 중 댓글 내용
 
+  // 날짜 포맷 변환 함수
   const formatDateTime = (str) => {
     if (!str) return "";
     const d = new Date(str);
@@ -48,52 +53,87 @@ const BoardDetailPage = () => {
     )}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
   };
 
+  const alertShownRef = useRef(false); // 알럿 중복 방지용 ref
+
+  // 게시글, 댓글, 파일 데이터 전체 로드
   const loadAll = async () => {
-    const detailRes = await getBoardDetail(boardId);
-    setBoard(detailRes.data.data);
+    try {
+      const detailRes = await getBoardDetail(boardId); // 게시글 상세조회
+      setBoard(detailRes.data.data);
 
-    const replyRes = await getRepliesByBoard(boardId);
-    setReplies(replyRes.data.data || []);
+      const replyRes = await getRepliesByBoard(boardId); // 댓글 목록 조회
+      setReplies(replyRes.data.data || []);
 
-    const fileRes = await getFilesByBoard(boardId);
-    setFiles(fileRes.data.data || []);
+      const fileRes = await getFilesByBoard(boardId); // 첨부파일 목록 조회
+      setFiles(fileRes.data.data || []);
+    } catch (err) {
+      if (alertShownRef.current) return; // 이미 알럿 띄웠으면 더 이상 실행 안 함
+      alertShownRef.current = true;      // 첫 에러 시 한 번만 true로 설정
+
+      // 비공개글 접근 차단 처리
+      if (err.response?.status === 403) {
+        alert("비공개 게시글입니다. 접근할 수 없습니다.");
+        navigate(-1); // 바로 이전 페이지로 돌아감
+        return;
+      }
+      // 존재하지 않거나 삭제된 게시글
+      if (err.response?.status === 404) {
+        alert("존재하지 않거나 삭제된 게시글입니다.");
+        navigate(-1);
+        return;
+      }
+      // 기타 예외
+      alert("게시글을 불러오는 중 오류가 발생했습니다.");
+    }
   };
 
+  // 페이지 로드 시 게시글/댓글 불러오기
   useEffect(() => {
     loadAll();
   }, [boardId]);
 
+  // 작성자 or 관리자만 수정/삭제 가능
   const canEditOrDeletePost = useMemo(() => {
     if (!board) return false;
     return loginRole === "ADMIN" || board.writerName === loginName;
   }, [board, loginName, loginRole]);
 
+  // 부모 댓글과 자식 댓글 분리
   const rootReplies = useMemo(
-    () => (replies || []).filter((r) => !r.parentReplyId),
+    () => (replies || []).filter((r) => !r.parentReplyId), // 부모 댓글
     [replies]
   );
   const childReplies = (parentId) =>
-    (replies || []).filter((r) => r.parentReplyId === parentId);
+    (replies || []).filter((r) => r.parentReplyId === parentId); // 자식 댓글
 
+  // 상세 헤더용 "표시할 댓글 수" (삭제된 댓글 제외)
+  const visibleReplyCount = useMemo(
+    () => (replies || []).filter((r) => !r.deletedYn).length,
+    [replies]
+  );
+
+  // 게시글 삭제
   const handleDeletePost = async () => {
-    if (!window.confirm("정말 삭제하시겠습니까?")) return;
+    if (!window.confirm("정말 삭제하시겠습니까?")) return; // 삭제 확인
     await deleteBoard(boardId);
     alert("게시글이 삭제되었습니다.");
-    navigate("/board?page=0");
+    navigate("/board?page=0"); // 목록 페이지로 이동
   };
 
+  // 댓글 등록
   const handleReplySubmit = async () => {
-    if (!replyText.trim()) return;
+    if (!replyText.trim()) return; // 빈 문자열 방지
     await createReply({
       boardId: Number(boardId),
       content: replyText,
       parentReplyId: replyParentId,
     });
-    setReplyText("");
+    setReplyText(""); // 입력 초기화
     setReplyParentId(null);
-    await loadAll();
+    await loadAll(); // 새로고침
   };
 
+  // 댓글 수정
   const handleReplyUpdate = async (replyId) => {
     if (!editReplyText.trim()) return alert("내용을 입력하세요.");
     await updateReply(replyId, { content: editReplyText });
@@ -102,54 +142,58 @@ const BoardDetailPage = () => {
     await loadAll();
   };
 
+  // 댓글 삭제
   const handleReplyDelete = async (replyId) => {
     if (!window.confirm("삭제하시겠습니까?")) return;
     await deleteReply(replyId);
     await loadAll();
   };
 
+  // 게시글이 없을 때 로딩 표시
   if (!board) return <Typography>로딩중...</Typography>;
 
   return (
-    <Box>
+    <Box> {/* MUI: 전체 레이아웃 컨테이너 */}
       <Typography variant="h5" sx={{ mb: 1 }}>
-        {board.title}
+        {board.title} {/* 게시글 제목 */}
       </Typography>
       <Typography variant="body2" sx={{ mb: 2, color: "text.secondary" }}>
         {board.writerName} | {formatDateTime(board.createdAt)} | 조회수{" "}
         {board.viewCount ?? 0}
       </Typography>
 
+      {/* 게시글 작성자 or 관리자만 수정/삭제 버튼 표시 */}
       {canEditOrDeletePost && (
         <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
           <Button
             variant="outlined"
-            startIcon={<EditIcon />}
-            onClick={() => navigate(`/board/edit/${board.id}`)}
+            startIcon={<EditIcon />} // 수정 아이콘
+            onClick={() => navigate(`/board/edit/${board.id}`)} // 수정 페이지로 이동
           >
             수정
           </Button>
           <Button
             variant="outlined"
             color="error"
-            startIcon={<DeleteIcon />}
-            onClick={handleDeletePost}
+            startIcon={<DeleteIcon />} // 삭제 아이콘
+            onClick={handleDeletePost} // 게시글 삭제 실행
           >
             삭제
           </Button>
         </Stack>
       )}
 
-      {/* [수정] 게시글 내용이 없을 때 "등록된 내용이 없습니다." 표시 */}
+      {/* 게시글 본문 */}
       <Paper
         variant="outlined"
         sx={{
           p: 2,
           mb: 3,
           display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          bgcolor: "#fafafa",
+          alignItems: "flex-start",
+          justifyContent: "flex-start",
+          bgcolor: "#fff",
+          width: "60%",
         }}
       >
         <Typography
@@ -161,26 +205,29 @@ const BoardDetailPage = () => {
         </Typography>
       </Paper>
 
-      <Divider sx={{ mb: 2 }} />
+      <Divider sx={{ mb: 2, width: "60%" }} /> {/* 구분선 */}
 
+      {/* 댓글 섹션 제목 */}
       <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
         <Typography variant="h6">댓글</Typography>
         <Typography variant="h6" color="primary">
-          ({replies.length})
+          ({visibleReplyCount}) {/* 삭제된 댓글 제외 카운트 */}
         </Typography>
       </Stack>
 
+      {/* 댓글이 없을 경우 안내문 */}
       {rootReplies.length === 0 && (
-        <Typography color="text.secondary" sx={{ ml: 0.5, mb: 2 }}>
+        <Typography color="text.secondary" sx={{ ml: 0.5, mb: 2, width: "60%" }}>
           아직 댓글이 없습니다.
         </Typography>
       )}
 
-      {/* [수정] 부모 댓글 삭제 시에도 자식 댓글 유지 */}
+      {/* 댓글 목록 렌더링 */}
+      <Box sx={{ width: "60%" }}> 
       {rootReplies.map((r) => {
-        const children = childReplies(r.id);
+        const children = childReplies(r.id); // 대댓글 목록 필터링
 
-        // ✅ [추가] 대댓글이 없고 삭제된 부모 댓글은 표시하지 않음
+        // 삭제된 부모 + 자식 댓글 없음 → 표시하지 않음
         if (r.deletedYn && children.length === 0) {
           return null;
         }
@@ -192,6 +239,7 @@ const BoardDetailPage = () => {
                 variant="outlined"
                 sx={{ p: 1.5, bgcolor: "#fff", opacity: r.deletedYn ? 0.6 : 1 }}
               >
+                {/* 댓글 상단 영역 (작성자, 작성시간, 수정/삭제 버튼) */}
                 <Stack
                   direction="row"
                   justifyContent="space-between"
@@ -208,6 +256,7 @@ const BoardDetailPage = () => {
                     </Typography>
                   </Typography>
 
+                  {/* 댓글 작성자 or 관리자일 경우 수정/삭제 버튼 노출 */}
                   {!r.deletedYn &&
                     (loginRole === "ADMIN" || r.writerName === loginName) && (
                       <Stack direction="row" spacing={1}>
@@ -257,6 +306,7 @@ const BoardDetailPage = () => {
                     )}
                 </Stack>
 
+                {/* 댓글 내용 영역 */}
                 {r.deletedYn ? (
                   <Typography
                     variant="body2"
@@ -280,6 +330,7 @@ const BoardDetailPage = () => {
                   </Typography>
                 )}
 
+                {/* 답글 버튼 */}
                 {!r.deletedYn && (
                   <Typography
                     variant="caption"
@@ -292,13 +343,14 @@ const BoardDetailPage = () => {
                     }}
                     onClick={() =>
                       setReplyParentId(replyParentId === r.id ? null : r.id)
-                    }
+                    } // 클릭 시 답글 입력창 토글
                   >
                     <ReplyIcon fontSize="small" sx={{ mr: 0.3 }} />
                     답글
                   </Typography>
                 )}
 
+                {/* 답글 입력창 */}
                 {replyParentId === r.id && (
                   <Box
                     sx={{
@@ -335,97 +387,103 @@ const BoardDetailPage = () => {
               </Paper>
             </Box>
 
-            {/* [유지] 자식 댓글 렌더링 */}
-            {children.map((child) => (
-              <Paper
-                key={child.id}
-                variant="outlined"
-                sx={{ ml: 4, mt: 1, p: 1.5, bgcolor: "#fcfcfc" }}
-              >
-                <Stack
-                  direction="row"
-                  justifyContent="space-between"
-                  alignItems="center"
+            {/* 대댓글 렌더링 */}
+            {children
+              .filter((child) => !child.deletedYn) // 삭제된 대댓글 제외
+              .map((child) => (
+                <Paper
+                  key={child.id}
+                  variant="outlined"
+                  sx={{ ml: 4, mt: 1, p: 1.5, bgcolor: "#fcfcfc" }}
                 >
-                  <Typography variant="subtitle2">
-                    ↳ {child.writerName}{" "}
-                    <Typography
-                      component="span"
-                      variant="caption"
-                      sx={{ color: "text.secondary" }}
-                    >
-                      ({formatDateTime(child.createdAt)})
+                  <Stack
+                    direction="row"
+                    justifyContent="space-between"
+                    alignItems="center"
+                  >
+                    <Typography variant="subtitle2">
+                      ↳ {child.writerName}{" "}
+                      <Typography
+                        component="span"
+                        variant="caption"
+                        sx={{ color: "text.secondary" }}
+                      >
+                        ({formatDateTime(child.createdAt)})
+                      </Typography>
                     </Typography>
-                  </Typography>
 
-                  {(loginRole === "ADMIN" || child.writerName === loginName) && (
-                    <Stack direction="row" spacing={1}>
-                      {editReplyId !== child.id ? (
-                        <>
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            sx={{ cursor: "pointer" }}
-                            onClick={() => {
-                              setEditReplyId(child.id);
-                              setEditReplyText(child.content);
-                            }}
-                          >
-                            수정
-                          </Typography>
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            sx={{ cursor: "pointer" }}
-                            onClick={() => handleReplyDelete(child.id)}
-                          >
-                            삭제
-                          </Typography>
-                        </>
-                      ) : (
-                        <>
-                          <Typography
-                            variant="caption"
-                            color="primary"
-                            sx={{ cursor: "pointer" }}
-                            onClick={() => handleReplyUpdate(child.id)}
-                          >
-                            저장
-                          </Typography>
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            sx={{ cursor: "pointer" }}
-                            onClick={() => setEditReplyId(null)}
-                          >
-                            취소
-                          </Typography>
-                        </>
-                      )}
-                    </Stack>
+                    {/* 관리자 또는 본인만 수정/삭제 가능 */}
+                    {(loginRole === "ADMIN" || child.writerName === loginName) && (
+                      <Stack direction="row" spacing={1}>
+                        {editReplyId !== child.id ? (
+                          <>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{ cursor: "pointer" }}
+                              onClick={() => {
+                                setEditReplyId(child.id);
+                                setEditReplyText(child.content);
+                              }}
+                            >
+                              수정
+                            </Typography>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{ cursor: "pointer" }}
+                              onClick={() => handleReplyDelete(child.id)}
+                            >
+                              삭제
+                            </Typography>
+                          </>
+                        ) : (
+                          <>
+                            <Typography
+                              variant="caption"
+                              color="primary"
+                              sx={{ cursor: "pointer" }}
+                              onClick={() => handleReplyUpdate(child.id)}
+                            >
+                              저장
+                            </Typography>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{ cursor: "pointer" }}
+                              onClick={() => setEditReplyId(null)}
+                            >
+                              취소
+                            </Typography>
+                          </>
+                        )}
+                      </Stack>
+                    )}
+                  </Stack>
+
+                  {/* 대댓글 내용 */}
+                  {editReplyId === child.id ? (
+                    <TextField
+                      fullWidth
+                      multiline
+                      minRows={2}
+                      value={editReplyText}
+                      onChange={(e) => setEditReplyText(e.target.value)}
+                      sx={{ mt: 1 }}
+                    />
+                  ) : (
+                    <Typography variant="body2" sx={{ mt: 0.5 }}>
+                      {child.content?.trim() ? child.content : "내용 없음"}
+                    </Typography>
                   )}
-                </Stack>
-
-                {editReplyId === child.id ? (
-                  <TextField
-                    fullWidth
-                    multiline
-                    minRows={2}
-                    value={editReplyText}
-                    onChange={(e) => setEditReplyText(e.target.value)}
-                    sx={{ mt: 1 }}
-                  />
-                ) : (
-                  <Typography variant="body2" sx={{ mt: 0.5 }}>
-                    {child.content?.trim() ? child.content : "내용 없음"}
-                  </Typography>
-                )}
-              </Paper>
-            ))}
+                </Paper>
+              ))}
           </React.Fragment>
         );
       })}
+      </Box>
 
+      {/* 댓글 입력창 (새 댓글 작성용) */}
       <Box
         sx={{
           display: "flex",
@@ -457,13 +515,13 @@ const BoardDetailPage = () => {
           maxRows={6}
           placeholder="댓글을 입력하세요"
           value={replyText}
-          onChange={(e) => setReplyText(e.target.value)}
+          onChange={(e) => setReplyText(e.target.value)} // 입력 시 상태 갱신
           variant="outlined"
         />
         <Button
           sx={{ ml: 1, minWidth: "80px" }}
           variant="contained"
-          onClick={handleReplySubmit}
+          onClick={handleReplySubmit} // 등록 버튼 클릭 시 실행
         >
           등록
         </Button>
