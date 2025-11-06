@@ -6,8 +6,18 @@ import {
   ListItemButton,
   Pagination,
   Stack,
+  TextField,
+  Button,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
 } from "@mui/material"; // MUI: 레이아웃, 텍스트, 버튼형 리스트, 페이지네이션
-import { getBoardsByCategory, getBoardsOrdered } from "../api/boardAPI"; // 게시글 목록 관련 API
+import {
+  getBoardsByCategory,
+  getBoardsOrdered,
+  searchBoards,
+} from "../api/boardAPI"; // 게시글 목록 관련 API
 import LockIcon from "@mui/icons-material/Lock"; // 비공개 아이콘
 import CommentIcon from "@mui/icons-material/Comment"; // 댓글 개수 아이콘
 import coreconnectLogo from "../../../assets/coreconnect-logo.png"; // 고정글 로고 이미지
@@ -22,24 +32,39 @@ const BoardListPage = () => {
   // 현재 페이지 번호 (기본값 0)
   const currentPage = Number(searchParams.get("page")) || 0;
 
+  // URL에서 검색 파라미터 직접 읽기(단일 진실원)
+  const urlType = searchParams.get("type") || "";
+  const urlKeyword = (searchParams.get("keyword") || "").trim();
+  const isSearchPage = urlType && urlKeyword !== "";
+
   // 게시글 목록과 페이징 정보 상태
   const [boards, setBoards] = useState([]);
   const [pageInfo, setPageInfo] = useState({ number: 0, totalPages: 1 });
 
-  // 페이지 진입 시 또는 카테고리/페이지 변경 시 게시글 불러오기
+  // 검색 상태 (입력 컨트롤용 UI 상태만 유지)
+  const [searchType, setSearchType] = useState("title");
+  const [keyword, setKeyword] = useState("");
+
+  // 페이지 진입 시 또는 카테고리/페이지/검색파라미터 변경 시 게시글 불러오기
   useEffect(() => {
     (async () => {
       try {
-        const res = categoryId
-          ? await getBoardsByCategory(categoryId, currentPage) // 카테고리별 게시글 조회
-          : await getBoardsOrdered(currentPage); // 전체 게시글 조회 (공지+최신순)
+        let res;
+        if (isSearchPage) { // URL에 검색파라미터가 있을 때만 검색 API 호출
+          res = await searchBoards(urlType, urlKeyword, currentPage);
+        } else {
+          res = categoryId
+            ? await getBoardsByCategory(categoryId, currentPage)
+            : await getBoardsOrdered(currentPage);
+        }
         setBoards(res.data.data.content); // 게시글 목록 저장
         setPageInfo(res.data.data); // 페이징 정보 저장
       } catch (err) {
         handleApiError(err, "게시글 목록 불러오기 실패"); // 에러 처리
       }
     })();
-  }, [categoryId, currentPage]);
+    // URL 파라미터 변화에 반응하도록 의존성 정리
+  }, [categoryId, currentPage, isSearchPage, urlType, urlKeyword]);
 
   // 날짜 형식 변환 함수
   const formatDate = (dateStr) => {
@@ -55,10 +80,35 @@ const BoardListPage = () => {
   // 페이지 이동 핸들러
   const handlePageChange = (e, v) => {
     const newPage = v - 1; // Pagination은 1부터 시작하므로 -1 보정
+    // 검색 상태면 검색 URL을 유지한 채 page만 바꿔서 이동
+    if (isSearchPage) {
+      navigate(`/board/search?type=${urlType}&keyword=${encodeURIComponent(urlKeyword)}&page=${newPage}`);
+      return;
+    }
     if (categoryId) {
       navigate(`/board/${categoryId}?page=${newPage}`); // 카테고리 게시판 이동
     } else {
       navigate(`/board?page=${newPage}`); // 전체 게시판 이동
+    }
+  };
+
+  // 검색 실행 (버튼/엔터)
+  const handleSearch = () => {
+    const trimmed = keyword.trim();
+    if (!trimmed) {
+      // 빈 검색어면 일반 목록으로 복귀 (알림 X)
+      if (categoryId) navigate(`/board/${categoryId}?page=0`);
+      else navigate(`/board?page=0`);
+      return;
+    }
+    // 항상 검색 전용 URL로 이동 → URL 변화로 useEffect가 재호출되어 재검색됨
+    navigate(`/board/search?type=${searchType}&keyword=${encodeURIComponent(trimmed)}&page=0`);
+  };
+
+  // 엔터키로 검색 실행
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") {
+      handleSearch();
     }
   };
 
@@ -78,8 +128,8 @@ const BoardListPage = () => {
             bgcolor: b.pinned
               ? "primary.main" // 상단 고정글 → 파란색
               : b.noticeYn
-              ? "#d9d9d9" // 공지글 → 회색
-              : "white", // 일반글 → 흰색
+                ? "#d9d9d9" // 공지글 → 회색
+                : "white", // 일반글 → 흰색
             border: "1px solid #e0e0e0",
             borderRadius: 1,
             mb: 1.2,
@@ -94,8 +144,8 @@ const BoardListPage = () => {
               bgcolor: b.pinned
                 ? "primary.light" // 상단고정 hover → 밝은 파랑
                 : b.noticeYn
-                ? "#e0e0e0" // 공지 hover → 연회색
-                : "#fafafa", // 일반 hover → 살짝 회색
+                  ? "#e0e0e0" // 공지 hover → 연회색
+                  : "#fafafa", // 일반 hover → 살짝 회색
             },
           }}
         >
@@ -171,6 +221,44 @@ const BoardListPage = () => {
           onChange={handlePageChange} // 페이지 이동 처리
         />
       </Box>
+
+      {/* 검색 영역 */}
+      <Stack
+        direction="row"
+        spacing={2}
+        justifyContent="center"
+        alignItems="center"
+        sx={{ mt: 3, mb: 2 }}
+      >
+        {/* 검색 구분 */}
+        <FormControl size="small" sx={{ width: 100 }}>
+          <InputLabel>검색구분</InputLabel>
+          <Select
+            value={searchType}
+            label="검색구분"
+            onChange={(e) => setSearchType(e.target.value)}
+          >
+            <MenuItem value="title">제목</MenuItem>
+            <MenuItem value="content">내용</MenuItem>
+            <MenuItem value="author">작성자</MenuItem>
+          </Select>
+        </FormControl>
+
+        {/* 검색어 입력 */}
+        <TextField
+          size="small"
+          placeholder="검색어를 입력하세요"
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          onKeyDown={handleKeyPress}
+          sx={{ width: "300px" }}
+        />
+
+        {/* 검색 버튼 */}
+        <Button variant="contained" color="primary" onClick={handleSearch}>
+          검색
+        </Button>
+      </Stack>
     </Box>
   );
 };
