@@ -14,6 +14,8 @@ import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -23,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Configuration
 @RequiredArgsConstructor
+@Slf4j
 public class AdminSeeder {
 
     private final UserRepository userRepository;
@@ -33,7 +36,7 @@ public class AdminSeeder {
     private static final String ADMIN_NAME  = "시스템관리자";
     private static final String ADMIN_PHONE = "010-0000-0000";
     private static final String ADMIN_RAW_PASSWORD = "1"; 
-    private static final Integer ADMIN_DEPT_ID = 8; 
+    private static final String ADMIN_DEPT_NAME = "코어커넥트 1.0"; 
 
     /** Spring Boot 시작 시 자동 실행되는 CommandLineRunner Bean. */
     @Bean
@@ -49,8 +52,8 @@ public class AdminSeeder {
         }
 
         Department dept = null;
-        if (ADMIN_DEPT_ID != null) {
-            dept = departmentRepository.findById(ADMIN_DEPT_ID)
+        if (ADMIN_DEPT_NAME != null) {
+            dept = departmentRepository.findByDeptName(ADMIN_DEPT_NAME)
                     .orElse(null);
         }
         
