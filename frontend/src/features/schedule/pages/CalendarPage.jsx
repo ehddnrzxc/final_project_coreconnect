@@ -10,6 +10,7 @@ import { Box, Typography, CircularProgress } from "@mui/material";
 import { getMySchedules, createSchedule, updateSchedule, deleteSchedule } from "../api/scheduleAPI";
 import { toISO } from "../../../utils/dateFormat";
 import ScheduleModal from "../components/ScheduleModal";
+import ScheduleDetailModal from "../components/ScheduleDetailModal";
 import useSnackbar from "../../../hooks/useSnackbar";
 
 export default function CalendarPage() {
@@ -18,6 +19,8 @@ export default function CalendarPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailId, setDetailId] = useState(null);
   const { snack, showSnack, closeSnack } = useSnackbar();
 
   /** 내 일정 조회 */
@@ -52,17 +55,10 @@ export default function CalendarPage() {
     setModalOpen(true);
   };
 
-  /** 일정 클릭 → 수정 모달 */
+  /** 수정: 일정 클릭 → 상세보기 모달 열기 */
   const handleEventClick = (info) => {
-    const clicked = events.find((e) => e.id === Number(info.event.id));
-    if (clicked) {
-      setSelectedEvent({
-        ...clicked,
-        startDateTime: toISO(clicked.start),
-        endDateTime: toISO(clicked.end),
-      });
-      setModalOpen(true);
-    }
+    setDetailId(Number(info.event.id));
+    setDetailOpen(true);
   };
 
   /** 일정 등록 or 수정 */
@@ -104,9 +100,7 @@ export default function CalendarPage() {
       }
       setModalOpen(false);
     } catch (err) {
-      const message =
-        err.message || (isEdit ? "일정 수정 실패" : "일정 등록 실패");
-      showSnack(message, "error");
+      showSnack(err.message || "일정 처리 중 오류", "error");
     }
   };
 
@@ -117,9 +111,9 @@ export default function CalendarPage() {
       setEvents((prev) => prev.filter((e) => e.id !== id));
       showSnack("일정이 삭제되었습니다", "info");
       setModalOpen(false);
+      setDetailOpen(false);
     } catch (err) {
-      const message = err.message || "일정 삭제 실패";
-      showSnack(message, "error");
+      showSnack(err.message || "삭제 실패", "error");
     }
   };
 
@@ -173,6 +167,7 @@ export default function CalendarPage() {
         }}
         />
 
+      {/* 일정 등록/수정 모달 */}
       {modalOpen && (
         <ScheduleModal
           open={modalOpen}
@@ -181,6 +176,21 @@ export default function CalendarPage() {
           onSubmit={handleSubmit}
           onDelete={handleDelete}
           initialData={selectedEvent}
+        />
+      )}
+
+      {/* 일정 상세보기 모달 */}
+      {detailOpen && (
+        <ScheduleDetailModal
+          open={detailOpen}
+          scheduleId={detailId}
+          onClose={() => setDetailOpen(false)}
+          onEdit={(data) => {
+            setSelectedEvent(data);
+            setModalOpen(true);
+            setDetailOpen(false);
+          }}
+          onDelete={handleDelete}
         />
       )}
 
