@@ -3,12 +3,31 @@ import { checkIn, checkOut, getTodayAttendance } from "../api/attendanceAPI";
 import { formatKoreanDate, formatKoreanTime, formatTime } from "../../../utils/TimeUtils";
 import { useState, useEffect } from "react";
 import Card from "../../../components/ui/Card";
+import { formatHM } from "../../../utils/TimeUtils";
+import http from "../../../api/http";
 
 function AttendancePage() {
   const [now, setNow] = useState(new Date());
   const [attendance, setAttendance] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const [weeklyMinutes, setWeeklyMinutes] = useState(0);
+  const [loadingWeekly, setLoadingWeekly] = useState(true);
+  const [weeklyError, setWeeklyError] = useState("");
+  
+  const dateString = formatKoreanDate(now);
+  const timeString = formatKoreanTime(now);
+  
+  // 데이터가 없을 때 기본값 처리
+  const checkInTime = formatTime(attendance?.checkIn) || "-";
+  const checkOutTime = formatTime(attendance?.checkOut) || "-";
+  const status = attendance?.status || "ABSENT";
+  const canCheckIn = status === "ABSENT"; // 미출근일 때만 출근 가능
+  const canCheckOut = status === "PRESENT" || status === "LATE"; // 근무중/지각일 때만 퇴근 가능
+
+  const TARGET_WEEKLY_MINUTES = 40 * 60; // 40시간
+  const MAX_WEEKLY_MINUTES = 52 * 60 // 52시간(진행바 최대 기준)
+  
   useEffect(() => {
     const timer = setInterval(() => {
       setNow(new Date());
@@ -28,9 +47,31 @@ function AttendancePage() {
       }
     })();
   }, []);
+  
+  useEffect(() => {
+    loadAttendance();   
+  }, []);
 
-  const dateString = formatKoreanDate(now);
-  const timeString = formatKoreanTime(now);
+  useEffect(() => {
+    (async () => {
+      try {
+        setLoadingWeekly(true);
+        setWeeklyError("");
+
+        const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+        const res = await http.get("/attendance/me/weekly", {
+          params: {date: today},
+        });
+        
+        setWeeklyMinutes(res.data ?? 0);
+      } catch (e) {
+        console.error(e);
+        setWeeklyError("주간 누적 근무시간 불러오기 실패");
+      } finally {
+        setLoadingWeekly(false);
+      }
+    })();
+  }, []);
 
   const loadAttendance = async () => {
     try {
@@ -44,9 +85,6 @@ function AttendancePage() {
     }
   };
 
-  useEffect(() => {
-    loadAttendance();   
-  }, []);
 
   const handleCheckIn = async () => {
     try {
@@ -72,14 +110,6 @@ function AttendancePage() {
 
 
 
-  // 데이터가 없을 때 기본값 처리
-  const checkInTime = formatTime(attendance?.checkIn) || "-";
-  const checkOutTime = formatTime(attendance?.checkOut) || "-";
-  const status = attendance?.status || "ABSENT";
-  const canCheckIn =
-    status === "ABSENT"; // 미출근일 때만 출근 가능
-  const canCheckOut =
-    status === "PRESENT" || status === "LATE"; // 근무중/지각일 때만 퇴근 가능
 
   return (
     <Card
@@ -155,56 +185,100 @@ function AttendancePage() {
 
       {/* 주간 누적 영역 */}
       <Box sx={{ mb: 3 }}>
-        <Typography variant="body2" sx={{ mb: 0.5 }}>
-          주간누적{" "}
-          <Box component="span" sx={{ color: "success.main", fontWeight: 700 }}>
-            44h 31m
-          </Box>
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          이번주 23h 50m 더 필요해요.
-        </Typography>
-
-        {/* 진행 바 + 0h / 40h / 52h */}
-        <Box sx={{ mt: 1.5, position: "relative" }}>
-          <LinearProgress
-            variant="determinate"
-            value={85}
-            sx={{ height: 8, borderRadius: 999 }}
-          />
-
-          {/* 이모지 */}
-          <Box
-            sx={{
-              position: "absolute",
-              right: -10,
-              top: -18,
-              fontSize: 28,
-            }}
-          >
-            🐰
-          </Box>
-
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              mt: 0.75,
-            }}
-          >
-            <Typography variant="caption" color="text.secondary">
-              0h
+        {loadingWeekly ? (
+          // 로딩 중 표시 (간단 버전)
+          <Typography variant="body2" color="text.secondary">
+            주간 누적 근무시간을 불러오는 중...
+          </Typography>
+        ) : weeklyError ? (
+          // 에러 발생 시
+          <Typography variant="body2" color="error">
+            {weeklyError}
+          </Typography>
+        ) : (
+          <>
+            {/* 상단 "주간누적 44h 31m" 부분 */}
+            <Typography variant="body2" sx={{ mb: 0.5 }}>
+              주간누적{" "}
+              <Box
+                component="span"
+                sx={{ color: "success.main", fontWeight: 700 }}
+              >
+                {formatHM(weeklyMinutes)}
+              </Box>
             </Typography>
-            <Typography variant="caption" color="text.secondary">
-              40h
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              52h
-            </Typography>
-          </Box>
-        </Box>
+
+            {/* 40h까지 남은 시간 안내 문구 */}
+            {weeklyMinutes < TARGET_WEEKLY_MINUTES ? (
+              <Typography variant="caption" color="text.secondary">
+                이번주{" "}
+                {formatHM(TARGET_WEEKLY_MINUTES - weeklyMinutes)} 더 필요해요.
+              </Typography>
+            ) : (
+              <Typography variant="caption" color="success.main">
+                이번주 기준 근무시간(40h)을 채웠어요!
+              </Typography>
+            )}
+
+            {/* 진행 바 + 0h / 40h / 52h */}
+            <Box sx={{ mt: 1.5, position: "relative" }}>
+              <LinearProgress
+                variant="determinate"
+                value={Math.min(
+                  (weeklyMinutes / MAX_WEEKLY_MINUTES) * 100,
+                  100
+                )}
+                sx={{ height: 8, borderRadius: 999 }}
+              />
+
+              {/* 이모지 */}
+              <Box
+                sx={{
+                  position: "absolute",
+                  right: -10,
+                  top: -18,
+                  fontSize: 28,
+                }}
+              >
+                🐰
+              </Box>
+
+              <Box sx={{ position: "relative", mt: 1, mb: 5 }}>
+                {/* 눈금 라벨들 */}
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ position: "absolute", left: 0 }}
+                >
+                  0h
+                </Typography>
+
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{
+                    position: "absolute",
+                    left: `${(40 / 52) * 100}%`, // 40h가 전체의 77% 지점에 오도록
+                    transform: "translateX(-50%)",
+                  }}
+                >
+                  40h
+                </Typography>
+
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ position: "absolute", right: 0 }}
+                >
+                  52h
+                </Typography>
+              </Box>
+
+            </Box>
+          </>
+        )}
       </Box>
+
 
       {/* 출근 / 퇴근 버튼 */}
       <Box sx={{ display: "flex", gap: 1, mb: 1.5 }}>

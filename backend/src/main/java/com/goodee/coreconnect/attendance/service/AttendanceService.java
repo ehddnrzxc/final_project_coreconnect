@@ -16,7 +16,7 @@ public interface AttendanceService {
   public TodayAttendanceResponseDTO getTodayAttendance(String email);
   
   /** 주간 누적 근무 시간(분) 계산 */
-  public int getWeeklyWorkMinutes(Integer userId, LocalDate anyDateInWeek);
+  public int getWeeklyWorkMinutes(String email, LocalDate anyDateInWeek);
   
 
 }

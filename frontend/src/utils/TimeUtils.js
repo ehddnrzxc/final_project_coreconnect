@@ -19,11 +19,18 @@ export function formatKoreanTime(date) {
   });
 }
 
-// 출퇴근 시간 표시용 "11:22" 형식의 시간 반환
+/** 출퇴근 시간 표시용 "11:22" 형식의 시간 반환 */
 export function formatTime(timeString) {
   if(!timeString) return "-";
   const date = new Date(timeString);
   const hours = String(date.getHours()).padStart(2, "0");
   const minutes = String(date.getMinutes()).padStart(2, "0");
   return `${hours}:${minutes}`;
+}
+
+/** 분 -> "44h 31m" 형식으로 변환 */
+export function formatHM(totalMinutes) {
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  return `${h}h ${m}m`;
 }

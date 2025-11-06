@@ -24,12 +24,17 @@ export default function UserCreateForm() {
     tempPassword: "",
     phone: "",
     deptId: "",
-    role: "USER",
+    role: "",
+    jobGrade: ""
   });
 
   const [departments, setDepartments] = useState([]);
+  const [roles, setRoles] = useState([]);
+  const [jobGrades, setJobGrades] = useState([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState({ type: "", text: "" });
+  const [roleMsg, setRoleMsg] = useState("");
+  const [jobGradeMsg, setJobGradeMsg] = useState("");
 
   /** ─ 부서 목록 로드 ─ */
   useEffect(() => {
@@ -42,6 +47,26 @@ export default function UserCreateForm() {
           text: "부서 목록을 불러오지 못했습니다. (부서 없이 생성 가능)",
         })
       );
+  }, []);
+
+  /** Role 목록 로드 */
+  useEffect(() => {
+    http
+      .get("/admin/users/roles")
+      .then(({ data }) => setRoles(data))
+      .catch(() => {
+        setRoleMsg("권한 목록을 불러오지 못했습니다.")
+      });
+  }, []);
+
+  /** JobGrade 목록 로드 */
+  useEffect(() => {
+    http
+      .get("/admin/users/job-grades")
+      .then(({ data }) => setJobGrades(data))
+      .catch(() => {
+        setJobGradeMsg("직급 목록을 불러오지 못했습니다.")
+      });
   }, []);
 
   /** ─ 입력 변경 핸들러 ─ */
@@ -81,7 +106,8 @@ export default function UserCreateForm() {
         tempPassword: "",
         phone: "",
         deptId: "",
-        role: "USER",
+        role: "",
+        jobGrade: "",
       });
     } catch (e) {
       const status = e.response?.status;
@@ -211,11 +237,39 @@ export default function UserCreateForm() {
                     value={form.role}
                     onChange={onChange}
                   >
+                  {roles.length === 0 ? (
+                    // roles 불러오기 전/실패 시 fallback
                     <MenuItem value="USER">USER</MenuItem>
-                    <MenuItem value="MANAGER">MANAGER</MenuItem>
-                    <MenuItem value="ADMIN">ADMIN</MenuItem>
+                  ) : (
+                    roles.map((r) => (
+                      <MenuItem key={r} value={r}>
+                        {r}
+                      </MenuItem>
+                    ))
+                  )}
                   </Select>
                 </FormControl>
+                <FormControl fullWidth size="medium" required>
+                  <InputLabel id="jobgrade-select-label">직급(JobGrade)</InputLabel>
+                  <Select
+                    labelId="jobgrade-select-label"
+                    label="직급"
+                    name="jobGrade"
+                    value={form.jobGrade}
+                    onChange={onChange}
+                  >
+                    {jobGrades.length === 0 ? (
+                      <MenuItem value="STAFF">사원</MenuItem>
+                    ) : (
+                      jobGrades.map((g) => (
+                        <MenuItem key={g.value} value={g.value}>
+                          {g.label}
+                        </MenuItem>
+                      ))
+                    )}
+                  </Select>
+                </FormControl>
+
 
                 <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1 }}>
                   <Button

@@ -10,7 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class PasswordEncoderTest {
     public static void main(String[] args) {
-        String raw = "coreconnect@sss";
+        String raw = "1";
         String encoded = new BCryptPasswordEncoder().encode(raw);
         log.info("pw: " + encoded);
     }

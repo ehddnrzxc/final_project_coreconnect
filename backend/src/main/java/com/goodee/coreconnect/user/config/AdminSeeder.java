@@ -7,6 +7,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.goodee.coreconnect.department.entity.Department;
 import com.goodee.coreconnect.department.repository.DepartmentRepository;
+import com.goodee.coreconnect.user.entity.JobGrade;
 import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.Status;
 import com.goodee.coreconnect.user.entity.User;
@@ -28,11 +29,11 @@ public class AdminSeeder {
     private final PasswordEncoder passwordEncoder;
     private final DepartmentRepository departmentRepository; 
 
-    private static final String ADMIN_EMAIL = "admin@example.com";
+    private static final String ADMIN_EMAIL = "admin";
     private static final String ADMIN_NAME  = "시스템관리자";
     private static final String ADMIN_PHONE = "010-0000-0000";
-    private static final String ADMIN_RAW_PASSWORD = "coreconnect@admin"; 
-    private static final Integer ADMIN_DEPT_ID = null; 
+    private static final String ADMIN_RAW_PASSWORD = "1"; 
+    private static final Integer ADMIN_DEPT_ID = 8; 
 
     /** Spring Boot 시작 시 자동 실행되는 CommandLineRunner Bean. */
     @Bean
@@ -63,7 +64,7 @@ public class AdminSeeder {
                 ADMIN_EMAIL,           
                 ADMIN_PHONE,           
                 dept,                   
-                null                   
+                JobGrade.PRESIDENT                   
         );
 
         userRepository.save(admin);
