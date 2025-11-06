@@ -1,100 +1,122 @@
 /**
- * - 백엔드(LocalDateTime) ↔ 프론트(JS Date/ISO) 자동 변환
- * - LocalDateTime: "yyyy-MM-dd HH:mm:ss"
- * - ISO Format:    "yyyy-MM-ddTHH:mm:ss"
+ * ============================================================
+ *    Date Format Utility (LocalDateTime ↔ ISO ↔ JS Date)
+ * ------------------------------------------------------------
+ * - Backend(LocalDateTime): "yyyy-MM-dd HH:mm:ss"
+ * - Frontend(ISO):          "yyyy-MM-ddTHH:mm:ss"
+ * - JS Date:                Date Object
  *
- * 사용 예시:
- *   toBackendFormat("2025-11-05T09:00:00") → "2025-11-05 09:00:00"
- *   toISO("2025-11-05 09:00:00")           → "2025-11-05T09:00:00"
- *   toBackendFormat(new Date())             → "2025-11-05 09:00:00"
+ *     Features
+ *   - 모든 변환 간 일관된 포맷 보장
+ *   - ISO ↔ LocalDateTime 상호 변환 자동
+ *   - 잘못된 입력 방어 및 디버깅 모드 지원
+ * ============================================================
  */
 
 const pad = (n) => String(n).padStart(2, "0");
-
-/** 디버그 모드: 콘솔에 변환 과정을 출력 (기본 false) */
 const DEBUG = false;
 
+/** 내부 디버깅 로거 */
+const log = (fn, input, output) => {
+  if (DEBUG) console.log(`[${fn}] 입력:`, input, "→ 출력:", output);
+};
+
 /**
- * JS → 백엔드(LocalDateTime) 포맷 변환
- * 지원:
- *   - Date 객체
- *   - ISO 문자열 ("2025-11-05T09:00:00")
- *   - LocalDateTime 문자열 ("2025-11-05 09:00:00")
+ * JS Date / ISO / LocalDateTime → 백엔드(LocalDateTime: "yyyy-MM-dd HH:mm:ss")
  */
 export const toBackendFormat = (input) => {
   if (!input) return null;
-
   let result;
 
-  // 1) Date 객체 처리
-  if (input instanceof Date) {
+  // Date 객체
+  if (input instanceof Date && !isNaN(input)) {
+    const pad = (n) => String(n).padStart(2, "0");
     result = `${input.getFullYear()}-${pad(input.getMonth() + 1)}-${pad(
       input.getDate()
     )} ${pad(input.getHours())}:${pad(input.getMinutes())}:${pad(
       input.getSeconds()
     )}`;
   }
-  // 2) 문자열(ISO or LocalDateTime)
+
+  // 문자열 ("T" or " " 모두 지원)
   else if (typeof input === "string") {
-    // ISO 형태("T" 포함) → " "으로 변환
-    if (input.includes("T")) {
-      result = input.replace("T", " ");
-    } else {
-      // 이미 " " 형태면 그대로 반환
-      result = input;
+    let temp = input.includes("T") ? input.replace("T", " ") : input;
+
+    // 초(:ss)가 없는 경우 자동으로 ":00" 추가
+    // 예: "2025-11-07 11:00" → "2025-11-07 11:00:00"
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(temp)) {
+      temp += ":00";
     }
-  } else {
+
+    result = temp.trim();
+  }
+
+  // 기타 타입
+  else {
     result = String(input);
   }
 
-  if (DEBUG)
-    console.log(`[toBackendFormat] 입력: ${input} → 출력: ${result}`);
   return result;
 };
 
 /**
- * 백엔드(LocalDateTime or ISO) → JS ISO 문자열
- * 즉, FullCalendar나 input[type=datetime-local]에 맞는 포맷으로 변환
+ * 백엔드(LocalDateTime or ISO) → ISO 포맷("yyyy-MM-ddTHH:mm:ss")
+ * FullCalendar, input[type=datetime-local] 등에 사용
  */
 export const toISO = (input) => {
   if (!input) return null;
-
   let result;
 
-  // 1) Date 객체
-  if (input instanceof Date) {
-    result = input.toISOString().slice(0, 19); // yyyy-MM-ddTHH:mm:ss
+  // JS Date 객체
+  if (input instanceof Date && !isNaN(input)) {
+    result = input.toISOString().slice(0, 19); // UTC 기준
   }
-  // 2) 문자열
+
+  // 문자열 (" " or "T")
   else if (typeof input === "string") {
-    // 이미 ISO면 그대로 반환
-    if (input.includes("T")) {
-      result = input;
-    } else {
-      // LocalDateTime 문자열 (" ") → ISO ("T")로 변환
-      result = input.replace(" ", "T");
-    }
-  } else {
+    result = input.includes("T")
+      ? input.trim()
+      : input.replace(" ", "T").trim();
+  }
+
+  // 기타
+  else {
     result = String(input);
   }
 
-  if (DEBUG) console.log(`[toISO] 입력: ${input} → 출력: ${result}`);
+  log("toISO", input, result);
   return result;
 };
 
 /**
  * 백엔드(LocalDateTime or ISO) → JS Date 객체 변환
- * 예: DB 데이터로 DatePicker 초기값 지정 시 사용
+ * DatePicker 초기값, 시간 계산 등에서 사용
  */
 export const toDate = (input) => {
   if (!input) return null;
   try {
-    const isoString = toISO(input);
-    const dateObj = new Date(isoString);
-    if (DEBUG) console.log(`[toDate] 입력: ${input} → Date: ${dateObj}`);
-    return dateObj;
-  } catch (e) {
-    console.error("날짜 변환 실패:", input, e);
+    const iso = toISO(input);
+    const date = new Date(iso);
+    if (isNaN(date)) throw new Error("Invalid date");
+    log("toDate", input, date);
+    return date;
+  } catch (err) {
+    console.error(`[toDate] 변환 실패:`, input, err);
     return null;
   }
+};
+
+/**
+ * JS Date → ISO 문자열 ("yyyy-MM-ddTHH:mm:ss")
+ * FullCalendar 수동 생성 시 사용
+ */
+export const toISOFromDate = (date) => {
+  if (!(date instanceof Date) || isNaN(date)) return null;
+  const result = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+    date.getDate()
+  )}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(
+    date.getSeconds()
+  )}`;
+  log("toISOFromDate", date, result);
+  return result;
 };

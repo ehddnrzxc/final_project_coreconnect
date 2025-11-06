@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { toBackendFormat, toISO } from "../../../utils/dateFormat";
 import {
   Modal,
   Box,
@@ -7,16 +8,37 @@ import {
   Button,
   Stack,
 } from "@mui/material";
-import { toBackendFormat } from "../../../utils/dateFormat";
 
-export default function ScheduleModal({ open, onClose, date, onSubmit }) {
+export default function ScheduleModal({
+  open,
+  onClose,
+  date,
+  onSubmit,
+  onDelete,
+  initialData, // 수정 시 기존 일정 데이터
+}) {
+  const isEdit = !!initialData;
+
   const [form, setForm] = useState({
     title: "",
     content: "",
     location: "",
-    startDateTime: `${date} 09:00:00`,
-    endDateTime: `${date} 10:00:00`,
+    startDateTime: date ? `${date} 09:00:00` : "",
+    endDateTime: date ? `${date} 10:00:00` : "",
   });
+
+  // 수정 모드라면 초기값 세팅
+  useEffect(() => {
+    if (isEdit && initialData) {
+      setForm({
+        title: initialData.title || "",
+        content: initialData.content || "",
+        location: initialData.location || "",
+        startDateTime: toISO(initialData.startDateTime),
+        endDateTime: toISO(initialData.endDateTime),
+      });
+    }
+  }, [initialData]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -32,14 +54,14 @@ export default function ScheduleModal({ open, onClose, date, onSubmit }) {
       endDateTime: toBackendFormat(form.endDateTime),
       visibility: "PRIVATE",
     };
-    onSubmit(payload);
+    onSubmit(payload, isEdit);
   };
 
   return (
     <Modal open={open} onClose={onClose}>
       <Box
         sx={{
-          width: 400,
+          width: 420,
           bgcolor: "background.paper",
           p: 3,
           borderRadius: 2,
@@ -49,8 +71,9 @@ export default function ScheduleModal({ open, onClose, date, onSubmit }) {
         }}
       >
         <Typography variant="h6" mb={2}>
-          일정 등록
+          {isEdit ? "일정 수정" : "일정 등록"}
         </Typography>
+
         <Stack spacing={2}>
           <TextField
             label="제목"
@@ -77,7 +100,7 @@ export default function ScheduleModal({ open, onClose, date, onSubmit }) {
             label="시작 시간"
             name="startDateTime"
             type="datetime-local"
-            value={form.startDateTime.replace(" ", "T")}
+            value={form.startDateTime ? form.startDateTime.replace(" ", "T") : ""}
             onChange={handleChange}
             fullWidth
           />
@@ -85,15 +108,23 @@ export default function ScheduleModal({ open, onClose, date, onSubmit }) {
             label="종료 시간"
             name="endDateTime"
             type="datetime-local"
-            value={form.endDateTime.replace(" ", "T")}
+            value={form.endDateTime ? form.endDateTime.replace(" ", "T") : ""}
             onChange={handleChange}
             fullWidth
           />
 
           <Stack direction="row" spacing={1} justifyContent="flex-end">
+            {isEdit && (
+              <Button
+                color="error"
+                onClick={() => onDelete(initialData.id)}
+              >
+                삭제
+              </Button>
+            )}
             <Button onClick={onClose}>취소</Button>
             <Button variant="contained" onClick={handleSubmit}>
-              등록
+              {isEdit ? "수정" : "등록"}
             </Button>
           </Stack>
         </Stack>

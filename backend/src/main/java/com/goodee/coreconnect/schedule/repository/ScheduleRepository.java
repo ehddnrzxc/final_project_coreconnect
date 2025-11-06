@@ -18,17 +18,66 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Integer> {
 
   /** 전체 일정 중 삭제되지 않은 일정 목록 */
   List<Schedule> findByDeletedYnFalse();
-  
-  /** 특정 유저의 일정 목록 (삭제 제외) */
-  List<Schedule> findByUserAndDeletedYnFalse(User user);
 
   /** 특정 회의실의 일정 목록 (삭제 제외) */
   List<Schedule> findByMeetingRoomAndDeletedYnFalse(MeetingRoom meetingRoom);
   
   /** 특정 카테고리에 속한 '삭제되지 않은' 일정 목록 조회 */
   List<Schedule> findByCategoryAndDeletedYnFalse(ScheduleCategory category);
-
+  
   /**
+   * 특정 유저가 OWNER 또는 MEMBER로 포함된 모든 일정 조회
+   * (ScheduleParticipant를 JOIN하여 조회)
+   */
+  @Query("""
+      SELECT DISTINCT s FROM ScheduleParticipant sp
+      JOIN sp.schedule s
+      WHERE sp.user = :user
+        AND s.deletedYn = false
+        AND sp.deletedYn = false
+  """)
+  List<Schedule> findUserSchedules(@Param("user") User user);
+  
+  /** 특정 유저가 해당 시간대에 겹치는 일정이 있는지 검사 (OWNER + MEMBER 모두 포함) */
+  @Query("""
+      SELECT COUNT(s) > 0
+      FROM ScheduleParticipant sp
+      JOIN sp.schedule s
+      WHERE sp.user = :user
+        AND s.deletedYn = false
+        AND sp.deletedYn = false
+        AND (:start < s.endDateTime AND :end > s.startDateTime)
+  """)
+  boolean existsUserOverlappingSchedule(
+      @Param("user") User user,
+      @Param("start") LocalDateTime start,
+      @Param("end") LocalDateTime end
+  );
+  
+  /**
+   *  특정 유저가 참여 중인 일정 중,
+   *  자기 자신(id 제외)과 겹치는 일정이 있는지 검사
+   */
+  @Query("""
+      SELECT COUNT(s) > 0
+      FROM ScheduleParticipant sp
+      JOIN sp.schedule s
+      WHERE sp.user = :user
+        AND s.deletedYn = false
+        AND sp.deletedYn = false
+        AND s.id <> :scheduleId         
+        AND (:start < s.endDateTime AND :end > s.startDateTime)
+  """)
+  boolean existsUserOverlappingScheduleExceptSelf(
+      @Param("user") User user,
+      @Param("scheduleId") Integer scheduleId,
+      @Param("start") LocalDateTime start,
+      @Param("end") LocalDateTime end
+  );
+
+  /** 
+   * 회의실 중복 예약 여부 확인
+   * 
    * @param meetingRoom 확인할 회의실 엔티티
    * @param start 새로 예약하려는 시작 시각
    * @param end 새로 예약하려는 종료 시각
