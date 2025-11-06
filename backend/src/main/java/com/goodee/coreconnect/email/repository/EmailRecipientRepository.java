@@ -1,9 +1,34 @@
 package com.goodee.coreconnect.email.repository;
 
+import java.util.List;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import com.goodee.coreconnect.email.entity.Email;
 import com.goodee.coreconnect.email.entity.EmailRecipient;
 
 public interface EmailRecipientRepository extends JpaRepository<EmailRecipient, Integer> {
+
+	/**
+     * 목적: 특정 사용자(userId)가 TO/CC/BCC로 수신한 이메일 목록을 페이징으로 조회  
+     * - userId: 내부 직원/사용자 식별자(FK)  
+     * - emailRecipientType: 수신자 타입 리스트("TO", "CC", "BCC" 등)  
+     * - pageable: 페이징 정보  
+     * => 실제 쿼리 예시:  
+     *    SELECT * FROM email_recipient WHERE user_id = ? AND email_recipient_type IN (?, ..., ?)  
+     */
+	Page<EmailRecipient> findByUserIdAndEmailRecipientTypeIn(
+        Integer userId, List<String> emailRecipientType, Pageable pageable
+    );
+	
+	/**
+     * 목적: 특정 이메일의 모든 수신자(TO/CC/BCC 등)를 리스트로 반환  
+     * - email: 메일 엔티티(Email)의 FK  
+     * => 실제 쿼리 예시:  
+     *    SELECT * FROM email_recipient WHERE email_id = ?  
+     */
+    List<EmailRecipient> findByEmail(com.goodee.coreconnect.email.entity.Email email);
 
 }
