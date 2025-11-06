@@ -1,8 +1,10 @@
 package com.goodee.coreconnect.user.service;
 
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +25,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
   
   private final UserRepository userRepository;
   private final PasswordResetRequestRepository passwordResetRequestRepository;
+  private final PasswordEncoder passwordEncoder;
 
   /** 비밀번호 변경 요청을 생성하는 메소드 */
   @Override
@@ -39,7 +42,9 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     
   }
 
+  /** 비밀번호 변경 요청 목록을 조회하는 메소드 (관리자용) */
   @Override
+  @Transactional(readOnly = true)
   public List<PasswordResetResponseDTO> getRequests(String status) {
     List<PasswordResetRequest> requests;
     
@@ -53,6 +58,42 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     return requests.stream()
                    .map(PasswordResetResponseDTO::fromEntity)
                    .collect(Collectors.toList());
+  }
+
+  /** 승인 처리 - 랜덤 비밀번호 생성 후 반환 */
+  @Override
+  public String approve(Long requestId, User admin) {
+    PasswordResetRequest req = passwordResetRequestRepository.findById(requestId)
+                                                             .orElseThrow(() -> new IllegalArgumentException("요청을 찾을 수 없습니다."));
+    if(req.getStatus() != ResetStatus.PENDING) {
+      throw new IllegalStateException("이미 처리된 요청입니다.");
+    }
+    User user = req.getUser();
+    
+    // 랜덤 임시 비밀번호 생성
+    String tempPassword = generateTempPassword(5); // 비밀번호 길이: 5자리
+    
+    // 유저 비밀번호 변경
+    user.changePassword(passwordEncoder.encode(tempPassword));
+    
+    // 요청 엔티티 상태 변경
+    req.approve(admin);
+    
+    return tempPassword;
+  }
+  
+  /** 랜덤 비밀번호 생성 유틸 */
+  private String generateTempPassword(int length) {
+      String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+      SecureRandom random = new SecureRandom();
+      StringBuilder sb = new StringBuilder();
+
+      for (int i = 0; i < length; i++) {
+          int idx = random.nextInt(chars.length());
+          sb.append(chars.charAt(idx));
+      }
+
+      return sb.toString();
   }
   
   

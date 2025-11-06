@@ -6,7 +6,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,10 +21,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.goodee.coreconnect.department.service.DepartmentService;
 import com.goodee.coreconnect.user.dto.request.CreateUserReqDTO;
+import com.goodee.coreconnect.user.dto.response.PasswordResetResponseDTO;
+import com.goodee.coreconnect.user.dto.response.TempPasswordResponseDTO;
 import com.goodee.coreconnect.user.dto.response.UserDTO;
 import com.goodee.coreconnect.user.entity.JobGrade;
 import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.Status;
+import com.goodee.coreconnect.user.entity.User;
+import com.goodee.coreconnect.user.service.PasswordResetService;
 import com.goodee.coreconnect.user.service.UserService;
 
 import jakarta.validation.Valid;
@@ -36,6 +42,7 @@ public class AdminUserController {
   
   private final UserService userService;
   private final DepartmentService departmentService;
+  private final PasswordResetService passwordResetService;
   
   /** 신규 사용자 생성 */
   @PostMapping
@@ -83,6 +90,21 @@ public class AdminUserController {
                        "label", grade.label()
                      ))
                  .collect(Collectors.toList());
+  }
+  
+  /** 비밀번호 변경 요청 조회 */
+  @GetMapping("/password-reset/requests")
+  public List<PasswordResetResponseDTO> getRequest(@RequestParam(required = false) String status) {
+    return passwordResetService.getRequests(status);
+  }
+  
+  /** 비밀번호 변경 요청 승인 */
+  @PutMapping("/password-reset/requests/{id}/approve")
+  public ResponseEntity<TempPasswordResponseDTO> approve(@PathVariable long id,
+                                                         @AuthenticationPrincipal String email) {
+    User user = userService.getUserByEmail(email);
+    String tempPassword = passwordResetService.approve(id, user);
+    return ResponseEntity.ok(new TempPasswordResponseDTO(tempPassword));
   }
   
 }

@@ -108,7 +108,7 @@ public class UserServiceImpl implements UserService {
   @Transactional
   public void changeStatus(Integer userId, Status status) {
     User user = userRepository.findById(userId)
-        .orElseThrow(() -> new IllegalArgumentException("유저가 존재하지 않습니다: " + userId));
+        .orElseThrow(() -> new IllegalArgumentException("사용자가 존재하지 않습니다: " + userId));
     if (status == Status.ACTIVE) {
       user.activate();
     } else if (status == Status.INACTIVE) {
@@ -182,6 +182,12 @@ public class UserServiceImpl implements UserService {
         .collect(Collectors.toList());
   }
 
+  /** 이메일로 사용자 조회 */
+  @Override
+  public User getUserByEmail(String email) {
+    return userRepository.findByEmail(email)
+                         .orElseThrow(() -> new IllegalArgumentException("사용자가 존재하지 않습니다."));
+  }
 
 
 
