@@ -20,7 +20,8 @@ public class BoardReplyResponseDTO {
     private LocalDateTime createdAt; 
     private LocalDateTime updatedAt; 
     private Boolean deletedYn;       
-    private String writerName;       
+    private String writerName; 
+    private String writerEmail; 
     private Integer parentReplyId;    // 부모 댓글 ID (대댓글일 경우)
 
     /**
@@ -35,6 +36,7 @@ public class BoardReplyResponseDTO {
                                                .updatedAt(reply.getUpdatedAt())
                                                .deletedYn(reply.getDeletedYn())
                                                .writerName(reply.getUser() != null ? reply.getUser().getName() : null)
+                                               .writerEmail(reply.getUser() != null ? reply.getUser().getEmail() : null)
                                                .parentReplyId(reply.getParentReply() != null ? reply.getParentReply().getId() : null)
                                                .build();
     }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   Box,
   Button,
@@ -7,18 +7,18 @@ import {
   ListItemText,
   Typography,
 } from "@mui/material";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { getAllCategories } from "../api/boardCategoryAPI";
 
 const BoardLayout = () => {
-  const [categories, setCategories] = useState([]);
+  const [categories, setCategories] = React.useState([]);
   const navigate = useNavigate();
+  const location = useLocation();
+  const contentRef = useRef(null); // 스크롤 컨테이너 ref
 
-  // 현재 로그인 유저 정보
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const isAdmin = user?.role === "ADMIN";
 
-  // 카테고리 목록 로드 (orderNo 순서로 정렬)
   useEffect(() => {
     (async () => {
       try {
@@ -36,9 +36,16 @@ const BoardLayout = () => {
 
   const handleCategoryClick = (id) => navigate(`/board/${id}`);
 
+  // 라우트 변경될 때마다 스크롤을 맨 위로 올림
+  useEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [location]);
+
   return (
     <Box sx={{ display: "flex", height: "100%" }}>
-      {/* 좌측: 카테고리 목록 */}
+      {/* 좌측 카테고리 */}
       <Box
         sx={{
           width: 240,
@@ -52,7 +59,6 @@ const BoardLayout = () => {
           게시판
         </Typography>
 
-        {/* 글쓰기 버튼 */}
         <Button
           variant="contained"
           fullWidth
@@ -62,7 +68,6 @@ const BoardLayout = () => {
           글쓰기
         </Button>
 
-        {/* 관리자 전용: 카테고리 관리 */}
         {isAdmin && (
           <Button
             variant="outlined"
@@ -75,16 +80,34 @@ const BoardLayout = () => {
           </Button>
         )}
 
-        {/* 전체 게시판 + 카테고리 목록 */}
         <List>
-          <ListItemButton onClick={() => navigate("/board")}>
-            <ListItemText primary="전체 게시판" />
+          {/* 전체 게시판 — 공지와 동일한 회색 배경 */}
+          <ListItemButton
+            onClick={() => navigate("/board?page=0")}
+            sx={{
+              bgcolor: "#d9d9d9", // ✅ 공지글과 동일한 회색
+              borderBottom: "1px solid #e0e0e0", // ✅ 구분선
+              "&:hover": { bgcolor: "#cfcfcf" }, // ✅ hover 시 약간 진한 회색
+            }}
+          >
+            <ListItemText
+              primary="전체 게시판"
+              primaryTypographyProps={{ fontWeight: 600 }} // ✅ 약간 굵게
+            />
           </ListItemButton>
 
-          {categories.map((cat) => (
+          {/* 나머지 카테고리 목록 */}
+          {categories.map((cat, idx) => (
             <ListItemButton
               key={cat.id}
               onClick={() => handleCategoryClick(cat.id)}
+              sx={{
+                borderBottom:
+                  idx === categories.length - 1
+                    ? "none"
+                    : "1px solid #e0e0e0", // ✅ 구분선
+                "&:hover": { bgcolor: "#f9f9f9" }, // ✅ hover 효과
+              }}
             >
               <ListItemText primary={cat.name} />
             </ListItemButton>
@@ -92,9 +115,10 @@ const BoardLayout = () => {
         </List>
       </Box>
 
-      {/* 우측: 게시판 콘텐츠 */}
+      {/* 우측: 콘텐츠 */}
       <Box
         component="main"
+        ref={contentRef} // 스크롤 제어용 ref
         sx={{
           flex: 1,
           p: 3,

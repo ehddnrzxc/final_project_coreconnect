@@ -151,7 +151,7 @@ class BoardReplyServiceTest {
     @Test
     @DisplayName("게시글별 댓글 목록 조회 성공")
     void testGetRepliesByBoard() {
-        when(replyRepository.findByBoardIdAndDeletedYnFalseOrderByCreatedAtAsc(1))
+        when(replyRepository.findAllByBoardIdIncludeDeleted(1))
                 .thenReturn(List.of(parentReply, childReply));
 
         List<BoardReplyResponseDTO> replies = replyService.getRepliesByBoard(1);

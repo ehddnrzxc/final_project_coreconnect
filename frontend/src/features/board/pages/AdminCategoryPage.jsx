@@ -21,6 +21,7 @@ import {
   updateCategory,
   deleteCategory,
 } from "../api/boardCategoryAPI";
+import { handleApiError } from "../../../utils/handleError"; // ✅ 추가됨
 
 const AdminCategoryPage = () => {
   const [categories, setCategories] = useState([]);
@@ -36,7 +37,7 @@ const AdminCategoryPage = () => {
       );
       setCategories(sorted);
     } catch (err) {
-      console.error("카테고리 조회 실패:", err.response?.data || err.message);
+      handleApiError(err, "카테고리 조회 실패"); // ✅ 수정됨
     }
   };
 
@@ -52,11 +53,11 @@ const AdminCategoryPage = () => {
   const handleSave = async (id) => {
     try {
       await updateCategory(id, editedData);
+      alert("카테고리가 수정되었습니다.");
       setEditingId(null);
       loadCategories();
     } catch (err) {
-      alert("수정 실패");
-      console.error(err);
+      handleApiError(err, "수정 실패"); // ✅ 수정됨
     }
   };
 
@@ -64,10 +65,10 @@ const AdminCategoryPage = () => {
     if (!window.confirm("정말 삭제하시겠습니까?")) return;
     try {
       await deleteCategory(id);
+      alert("삭제 완료");
       loadCategories();
     } catch (err) {
-      alert("삭제 실패");
-      console.error(err);
+      handleApiError(err, "삭제 실패"); // ✅ 수정됨
     }
   };
 
@@ -75,11 +76,11 @@ const AdminCategoryPage = () => {
     if (!newCategory.name.trim()) return alert("카테고리명을 입력하세요.");
     try {
       await createCategory(newCategory);
+      alert("등록 완료");
       setNewCategory({ name: "", orderNo: "" });
       loadCategories();
     } catch (err) {
-      alert("등록 실패");
-      console.error(err);
+      handleApiError(err, "등록 실패"); // ✅ 수정됨
     }
   };
 
@@ -103,7 +104,7 @@ const AdminCategoryPage = () => {
           label="순서번호"
           size="small"
           type="number"
-          inputProps={{ min: 0 }} 
+          inputProps={{ min: 0 }}
           value={newCategory.orderNo}
           onChange={(e) =>
             setNewCategory((prev) => ({ ...prev, orderNo: e.target.value }))
@@ -151,7 +152,7 @@ const AdminCategoryPage = () => {
                   <TextField
                     size="small"
                     type="number"
-                    inputProps={{ min: 0 }} 
+                    inputProps={{ min: 0 }}
                     value={editedData.orderNo}
                     onChange={(e) =>
                       setEditedData((prev) => ({

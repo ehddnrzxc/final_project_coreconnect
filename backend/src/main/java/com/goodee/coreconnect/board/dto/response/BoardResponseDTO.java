@@ -2,10 +2,14 @@ package com.goodee.coreconnect.board.dto.response;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import com.goodee.coreconnect.board.entity.Board;
-import lombok.*;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
 @Setter
@@ -27,11 +31,13 @@ public class BoardResponseDTO {
     private LocalDateTime createdAt;   
     private LocalDateTime updatedAt;   
     private Boolean deletedYn;         
-    private String writerName;         
+    private String writerName;
+    private String writerEmail;
     private String categoryName;       
 
     private List<BoardFileResponseDTO> files;    
     private List<BoardReplyResponseDTO> replies; 
+    private Integer replyCount;
 
 
     /**
@@ -51,6 +57,7 @@ public class BoardResponseDTO {
                                           .updatedAt(board.getUpdatedAt())
                                           .deletedYn(board.getDeletedYn())
                                           .writerName(board.getUser() != null ? board.getUser().getName() : null)
+                                          .writerEmail(board.getUser() != null ? board.getUser().getEmail() : null)
                                           .categoryName(board.getCategory() != null ? board.getCategory().getName() : null)
                                           .files(board.getFiles().stream()
                                                                  .map(file -> BoardFileResponseDTO.toDTO(file))
@@ -58,6 +65,9 @@ public class BoardResponseDTO {
                                           .replies(board.getReplies().stream()
                                                                      .map(reply -> BoardReplyResponseDTO.toDTO(reply))
                                                                      .toList())
+                                          .replyCount((int) board.getReplies().stream() 
+                                                                  .filter(r -> !Boolean.TRUE.equals(r.getDeletedYn()))
+                                                                  .count())
                                           .build();
     }
 }
