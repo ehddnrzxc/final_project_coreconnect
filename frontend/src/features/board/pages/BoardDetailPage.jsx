@@ -150,7 +150,7 @@ const BoardDetailPage = () => {
   };
 
   // 게시글이 없을 때 로딩 표시
-  if (!board) return <Typography>로딩중...</Typography>;
+  if (!board) return <Typography>알 수 없는 페이지</Typography>;
 
   return (
     <Box> {/* MUI: 전체 레이아웃 컨테이너 */}
@@ -167,6 +167,8 @@ const BoardDetailPage = () => {
         <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
           <Button
             variant="outlined"
+            size="small"
+            sx={{ fontSize: "0.8rem", py: 0.5, px: 1.5 }}
             startIcon={<EditIcon />} // 수정 아이콘
             onClick={() => navigate(`/board/edit/${board.id}`)} // 수정 페이지로 이동
           >
@@ -174,7 +176,9 @@ const BoardDetailPage = () => {
           </Button>
           <Button
             variant="outlined"
+            size="small"
             color="error"
+            sx={{ fontSize: "0.8rem", py: 0.5, px: 1.5 }}
             startIcon={<DeleteIcon />} // 삭제 아이콘
             onClick={handleDeletePost} // 게시글 삭제 실행
           >
@@ -193,7 +197,7 @@ const BoardDetailPage = () => {
           alignItems: "flex-start",
           justifyContent: "flex-start",
           bgcolor: "#fff",
-          width: "60%",
+          width: "80%",
         }}
       >
         <Typography
@@ -205,7 +209,7 @@ const BoardDetailPage = () => {
         </Typography>
       </Paper>
 
-      <Divider sx={{ mb: 2, width: "60%" }} /> {/* 구분선 */}
+      <Divider sx={{ mb: 2, width: "80%" }} /> {/* 구분선 */}
 
       {/* 댓글 섹션 제목 */}
       <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
@@ -217,252 +221,105 @@ const BoardDetailPage = () => {
 
       {/* 댓글이 없을 경우 안내문 */}
       {rootReplies.length === 0 && (
-        <Typography color="text.secondary" sx={{ ml: 0.5, mb: 2, width: "60%" }}>
+        <Typography color="text.secondary" sx={{ ml: 0.5, mb: 2, width: "80%" }}>
           아직 댓글이 없습니다.
         </Typography>
       )}
 
       {/* 댓글 목록 렌더링 */}
-      <Box sx={{ width: "60%" }}> 
-      {rootReplies.map((r) => {
-        const children = childReplies(r.id); // 대댓글 목록 필터링
+      <Box sx={{ width: "80%" }}>
+        {rootReplies.map((r) => {
+          const children = childReplies(r.id); // 대댓글 목록 필터링
 
-        // 삭제된 부모 + 자식 댓글 없음 → 표시하지 않음
-        if (r.deletedYn && children.length === 0) {
-          return null;
-        }
+          // 삭제된 부모 + 자식 댓글 없음 → 표시하지 않음
+          if (r.deletedYn && children.length === 0) {
+            return null;
+          }
 
-        return (
-          <React.Fragment key={r.id}>
-            <Box sx={{ mb: 1.5 }}>
-              <Paper
-                variant="outlined"
-                sx={{ p: 1.5, bgcolor: "#fff", opacity: r.deletedYn ? 0.6 : 1 }}
-              >
-                {/* 댓글 상단 영역 (작성자, 작성시간, 수정/삭제 버튼) */}
-                <Stack
-                  direction="row"
-                  justifyContent="space-between"
-                  alignItems="center"
-                >
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                    {r.writerName || "익명"}{" "}
-                    <Typography
-                      component="span"
-                      variant="caption"
-                      sx={{ color: "text.secondary" }}
-                    >
-                      ({formatDateTime(r.createdAt)})
-                    </Typography>
-                  </Typography>
-
-                  {/* 댓글 작성자 or 관리자일 경우 수정/삭제 버튼 노출 */}
-                  {!r.deletedYn &&
-                    (loginRole === "ADMIN" || r.writerName === loginName) && (
-                      <Stack direction="row" spacing={1}>
-                        {editReplyId !== r.id ? (
-                          <>
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                              sx={{ cursor: "pointer" }}
-                              onClick={() => {
-                                setEditReplyId(r.id);
-                                setEditReplyText(r.content);
-                              }}
-                            >
-                              수정
-                            </Typography>
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                              sx={{ cursor: "pointer" }}
-                              onClick={() => handleReplyDelete(r.id)}
-                            >
-                              삭제
-                            </Typography>
-                          </>
-                        ) : (
-                          <>
-                            <Typography
-                              variant="caption"
-                              color="primary"
-                              sx={{ cursor: "pointer" }}
-                              onClick={() => handleReplyUpdate(r.id)}
-                            >
-                              저장
-                            </Typography>
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                              sx={{ cursor: "pointer" }}
-                              onClick={() => setEditReplyId(null)}
-                            >
-                              취소
-                            </Typography>
-                          </>
-                        )}
-                      </Stack>
-                    )}
-                </Stack>
-
-                {/* 댓글 내용 영역 */}
-                {r.deletedYn ? (
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ mt: 0.5, fontStyle: "italic" }}
-                  >
-                    삭제된 댓글입니다.
-                  </Typography>
-                ) : editReplyId === r.id ? (
-                  <TextField
-                    fullWidth
-                    multiline
-                    minRows={2}
-                    value={editReplyText}
-                    onChange={(e) => setEditReplyText(e.target.value)}
-                    sx={{ mt: 1 }}
-                  />
-                ) : (
-                  <Typography variant="body2" sx={{ mt: 0.5 }}>
-                    {r.content?.trim() ? r.content : "내용 없음"}
-                  </Typography>
-                )}
-
-                {/* 답글 버튼 */}
-                {!r.deletedYn && (
-                  <Typography
-                    variant="caption"
-                    color="primary"
-                    sx={{
-                      cursor: "pointer",
-                      mt: 1,
-                      display: "inline-flex",
-                      alignItems: "center",
-                    }}
-                    onClick={() =>
-                      setReplyParentId(replyParentId === r.id ? null : r.id)
-                    } // 클릭 시 답글 입력창 토글
-                  >
-                    <ReplyIcon fontSize="small" sx={{ mr: 0.3 }} />
-                    답글
-                  </Typography>
-                )}
-
-                {/* 답글 입력창 */}
-                {replyParentId === r.id && (
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      mt: 1,
-                      ml: 3,
-                      p: 1,
-                      border: "1px solid #ddd",
-                      borderRadius: 2,
-                      bgcolor: "#fafafa",
-                      width: "80%",
-                    }}
-                  >
-                    <TextField
-                      fullWidth
-                      multiline
-                      minRows={2}
-                      maxRows={5}
-                      placeholder="답글을 입력하세요"
-                      value={replyText}
-                      onChange={(e) => setReplyText(e.target.value)}
-                      variant="outlined"
-                    />
-                    <Button
-                      sx={{ ml: 1, minWidth: "70px" }}
-                      variant="contained"
-                      onClick={handleReplySubmit}
-                    >
-                      등록
-                    </Button>
-                  </Box>
-                )}
-              </Paper>
-            </Box>
-
-            {/* 대댓글 렌더링 */}
-            {children
-              .filter((child) => !child.deletedYn) // 삭제된 대댓글 제외
-              .map((child) => (
+          return (
+            <React.Fragment key={r.id}>
+              <Box sx={{ mb: 1.5 }}>
                 <Paper
-                  key={child.id}
                   variant="outlined"
-                  sx={{ ml: 4, mt: 1, p: 1.5, bgcolor: "#fcfcfc" }}
+                  sx={{ p: 1.5, bgcolor: "#fff", opacity: r.deletedYn ? 0.6 : 1 }}
                 >
+                  {/* 댓글 상단 영역 (작성자, 작성시간, 수정/삭제 버튼) */}
                   <Stack
                     direction="row"
                     justifyContent="space-between"
                     alignItems="center"
                   >
-                    <Typography variant="subtitle2">
-                      ↳ {child.writerName}{" "}
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                      {r.writerName || "익명"}{" "}
                       <Typography
                         component="span"
                         variant="caption"
                         sx={{ color: "text.secondary" }}
                       >
-                        ({formatDateTime(child.createdAt)})
+                        ({formatDateTime(r.createdAt)})
                       </Typography>
                     </Typography>
 
-                    {/* 관리자 또는 본인만 수정/삭제 가능 */}
-                    {(loginRole === "ADMIN" || child.writerName === loginName) && (
-                      <Stack direction="row" spacing={1}>
-                        {editReplyId !== child.id ? (
-                          <>
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                              sx={{ cursor: "pointer" }}
-                              onClick={() => {
-                                setEditReplyId(child.id);
-                                setEditReplyText(child.content);
-                              }}
-                            >
-                              수정
-                            </Typography>
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                              sx={{ cursor: "pointer" }}
-                              onClick={() => handleReplyDelete(child.id)}
-                            >
-                              삭제
-                            </Typography>
-                          </>
-                        ) : (
-                          <>
-                            <Typography
-                              variant="caption"
-                              color="primary"
-                              sx={{ cursor: "pointer" }}
-                              onClick={() => handleReplyUpdate(child.id)}
-                            >
-                              저장
-                            </Typography>
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                              sx={{ cursor: "pointer" }}
-                              onClick={() => setEditReplyId(null)}
-                            >
-                              취소
-                            </Typography>
-                          </>
-                        )}
-                      </Stack>
-                    )}
+                    {/* 댓글 작성자 or 관리자일 경우 수정/삭제 버튼 노출 */}
+                    {!r.deletedYn &&
+                      (loginRole === "ADMIN" || r.writerName === loginName) && (
+                        <Stack direction="row" spacing={1}>
+                          {editReplyId !== r.id ? (
+                            <>
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{ cursor: "pointer" }}
+                                onClick={() => {
+                                  setEditReplyId(r.id);
+                                  setEditReplyText(r.content);
+                                }}
+                              >
+                                수정
+                              </Typography>
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{ cursor: "pointer" }}
+                                onClick={() => handleReplyDelete(r.id)}
+                              >
+                                삭제
+                              </Typography>
+                            </>
+                          ) : (
+                            <>
+                              <Typography
+                                variant="caption"
+                                color="primary"
+                                sx={{ cursor: "pointer" }}
+                                onClick={() => handleReplyUpdate(r.id)}
+                              >
+                                저장
+                              </Typography>
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{ cursor: "pointer" }}
+                                onClick={() => setEditReplyId(null)}
+                              >
+                                취소
+                              </Typography>
+                            </>
+                          )}
+                        </Stack>
+                      )}
                   </Stack>
 
-                  {/* 대댓글 내용 */}
-                  {editReplyId === child.id ? (
+                  {/* 댓글 내용 영역 */}
+                  {r.deletedYn ? (
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mt: 0.5, fontStyle: "italic" }}
+                    >
+                      삭제된 댓글입니다.
+                    </Typography>
+                  ) : editReplyId === r.id ? (
                     <TextField
                       fullWidth
                       multiline
@@ -473,14 +330,161 @@ const BoardDetailPage = () => {
                     />
                   ) : (
                     <Typography variant="body2" sx={{ mt: 0.5 }}>
-                      {child.content?.trim() ? child.content : "내용 없음"}
+                      {r.content?.trim() ? r.content : "내용 없음"}
                     </Typography>
                   )}
+
+                  {/* 답글 버튼 */}
+                  {!r.deletedYn && (
+                    <Typography
+                      variant="caption"
+                      color="primary"
+                      sx={{
+                        cursor: "pointer",
+                        mt: 1,
+                        display: "inline-flex",
+                        alignItems: "center",
+                      }}
+                      onClick={() =>
+                        setReplyParentId(replyParentId === r.id ? null : r.id)
+                      } // 클릭 시 답글 입력창 토글
+                    >
+                      <ReplyIcon fontSize="small" sx={{ mr: 0.3 }} />
+                      답글
+                    </Typography>
+                  )}
+
+                  {/* 답글 입력창 */}
+                  {replyParentId === r.id && (
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        mt: 1,
+                        ml: 3,
+                        p: 1,
+                        border: "1px solid #ddd",
+                        borderRadius: 2,
+                        bgcolor: "#fafafa",
+                        width: "80%",
+                      }}
+                    >
+                      <TextField
+                        fullWidth
+                        multiline
+                        minRows={2}
+                        maxRows={5}
+                        placeholder="답글을 입력하세요"
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        variant="outlined"
+                      />
+                      <Button
+                        sx={{ ml: 1, minWidth: "70px" }}
+                        variant="contained"
+                        onClick={handleReplySubmit}
+                      >
+                        등록
+                      </Button>
+                    </Box>
+                  )}
                 </Paper>
-              ))}
-          </React.Fragment>
-        );
-      })}
+              </Box>
+
+              {/* 대댓글 렌더링 */}
+              {children
+                .filter((child) => !child.deletedYn) // 삭제된 대댓글 제외
+                .map((child) => (
+                  <Paper
+                    key={child.id}
+                    variant="outlined"
+                    sx={{ ml: 4, mt: 1, p: 1.5, bgcolor: "#fcfcfc" }}
+                  >
+                    <Stack
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="center"
+                    >
+                      <Typography variant="subtitle2">
+                        ↳ {child.writerName}{" "}
+                        <Typography
+                          component="span"
+                          variant="caption"
+                          sx={{ color: "text.secondary" }}
+                        >
+                          ({formatDateTime(child.createdAt)})
+                        </Typography>
+                      </Typography>
+
+                      {/* 관리자 또는 본인만 수정/삭제 가능 */}
+                      {(loginRole === "ADMIN" || child.writerName === loginName) && (
+                        <Stack direction="row" spacing={1}>
+                          {editReplyId !== child.id ? (
+                            <>
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{ cursor: "pointer" }}
+                                onClick={() => {
+                                  setEditReplyId(child.id);
+                                  setEditReplyText(child.content);
+                                }}
+                              >
+                                수정
+                              </Typography>
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{ cursor: "pointer" }}
+                                onClick={() => handleReplyDelete(child.id)}
+                              >
+                                삭제
+                              </Typography>
+                            </>
+                          ) : (
+                            <>
+                              <Typography
+                                variant="caption"
+                                color="primary"
+                                sx={{ cursor: "pointer" }}
+                                onClick={() => handleReplyUpdate(child.id)}
+                              >
+                                저장
+                              </Typography>
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{ cursor: "pointer" }}
+                                onClick={() => setEditReplyId(null)}
+                              >
+                                취소
+                              </Typography>
+                            </>
+                          )}
+                        </Stack>
+                      )}
+                    </Stack>
+
+                    {/* 대댓글 내용 */}
+                    {editReplyId === child.id ? (
+                      <TextField
+                        fullWidth
+                        multiline
+                        minRows={2}
+                        value={editReplyText}
+                        onChange={(e) => setEditReplyText(e.target.value)}
+                        sx={{ mt: 1 }}
+                      />
+                    ) : (
+                      <Typography variant="body2" sx={{ mt: 0.5 }}>
+                        {child.content?.trim() ? child.content : "내용 없음"}
+                      </Typography>
+                    )}
+                  </Paper>
+                ))}
+            </React.Fragment>
+          );
+        })}
       </Box>
 
       {/* 댓글 입력창 (새 댓글 작성용) */}
@@ -488,7 +492,7 @@ const BoardDetailPage = () => {
         sx={{
           display: "flex",
           alignItems: "center",
-          width: "60%",
+          width: "80%",
           border: "1px solid #ddd",
           borderRadius: 2,
           p: 1.5,
