@@ -1,10 +1,13 @@
 package com.goodee.coreconnect.attendance.controller;
 
+import java.time.LocalDate;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.goodee.coreconnect.attendance.dto.response.TodayAttendanceResponseDTO;
@@ -38,6 +41,13 @@ public class AttendanceController {
   public ResponseEntity<TodayAttendanceResponseDTO> getToday(@AuthenticationPrincipal String email) {
     TodayAttendanceResponseDTO dto = attendanceService.getTodayAttendance(email);
     return ResponseEntity.ok(dto);
+  }
+  
+  /** 주간 누적 근무시간 구하기 */
+  @GetMapping("/me/weekly")
+  public Integer getMyWeeklyWorkMinutes(@AuthenticationPrincipal String email, 
+                                        @RequestParam("date") LocalDate date) {
+    return attendanceService.getWeeklyWorkMinutes(email, date);
   }
 
 }

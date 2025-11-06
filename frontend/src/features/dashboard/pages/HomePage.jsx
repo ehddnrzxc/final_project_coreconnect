@@ -51,9 +51,9 @@ export default function Home() {
           >
             <List dense>
               {[
-                { from: "권시정", title: "[커뮤니티 폐쇄] '테스트 커뮤니티'" },
-                { from: "postmaster", title: "[NDR] Delivery Failure Notice" },
-                { from: "오늘", title: "[Approval] 결재 문서" },
+                { from: "권시정", title: "테스트 메일1 (구현예정)" },
+                { from: "강회계", title: "테스트 메일2 (구현예정)" },
+                { from: "한판승", title: "테스트 메일3 (구현예정)" },
               ].map((m, i) => (
                 <ListItem
                   key={i}

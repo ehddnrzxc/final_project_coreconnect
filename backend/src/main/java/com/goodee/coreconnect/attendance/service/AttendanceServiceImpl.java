@@ -1,9 +1,11 @@
 package com.goodee.coreconnect.attendance.service;
 
 import java.time.DayOfWeek;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -93,12 +95,52 @@ public class AttendanceServiceImpl implements AttendanceService {
                  ));
   }
 
+  /** 주간 누적 근무 시간 구하기 */
   @Override
-  public int getWeeklyWorkMinutes(Integer userId, LocalDate anyDateInWeek) {
-    // 월요일 ~ 일요일 기준
+  @Transactional(readOnly = true)
+  public int getWeeklyWorkMinutes(String email, LocalDate anyDateInWeek) {
+    
+    // 이메일로 사용자 조회
+    User user = userRepository.findByEmail(email)
+                              .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다: " + email));
+    
+    // 현재 일이 속한 주의 월요일 ~ 일요일 구하기
     LocalDate startOfWeek = anyDateInWeek.with(DayOfWeek.MONDAY);
     LocalDate endOfWeek = startOfWeek.plusDays(6);
     
-    return 0;
+    // 해당 주의 근태 기록 모두 조회
+    List<Attendance> attendanceList = attendanceRepository.findByUser_IdAndWorkDateBetween(user.getId(), startOfWeek, endOfWeek);
+    LocalDate today = LocalDate.now();
+    int totalMinutes = 0;
+    
+    for(Attendance att : attendanceList) {
+      LocalDate workDate = att.getWorkDate();
+      LocalDateTime checkIn = att.getCheckIn();
+      LocalDateTime checkOut = att.getCheckOut();
+      
+      // 출근 기록이 없으면 스킵
+      if(checkIn == null) { continue; }
+      
+      LocalDateTime endDateTime;
+      
+      if(checkOut != null) {
+        // 정상적으로 퇴근한 날
+        endDateTime = checkOut;
+      } else if(workDate.equals(today)) {
+        // 오늘인데 아직 퇴근 안 찍은 경우 -> 지금까지 근무한 시간 포함
+        endDateTime = LocalDateTime.now();
+      } else {
+        // 과거인데 퇴근 시간이 없다면 -> 0분으로 처리
+        continue;
+      }
+      
+      long minutes = Duration.between(checkIn, endDateTime).toMinutes();
+      
+      if(minutes > 0) {
+        totalMinutes += (int) minutes;
+      }
+    }
+   
+    return totalMinutes;
   }
 }

@@ -9,7 +9,6 @@ import http from "../../../api/http";
 // 로그인
 export async function login(email, password) {
   const { data } = await http.post("/auth/login", { email, password });
-  console.log("서버 응답:", data);
   return data; 
 }
 

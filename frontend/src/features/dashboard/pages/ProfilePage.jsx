@@ -1,10 +1,17 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 import Card from "../../../components/ui/Card";
 import { Box, List, ListItem, ListItemText, Typography } from "@mui/material";
 import { getMyProfileImage, uploadMyProfileImage } from "../../user/api/userAPI";
+import { getMySchedules } from "../../schedule/api/scheduleAPI";
 
 const ProfilePage = () => {
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [scheduleError, setScheduleError] = useState(null);
+  const [todayScheduleCount, setTodayScheduleCount] = useState(null);
+  const { setAvatarUrl } = useOutletContext();
 
   const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
   const email = storedUser.email || "";
@@ -13,10 +20,25 @@ const ProfilePage = () => {
   const deptName = storedUser.departmentName;
 
   const DEFAULT_AVATAR = "https://i.pravatar.cc/80?img=12";
-  const { setAvatarUrl } = useOutletContext();
-  
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchTodaySchedules = async () => {
+      try {
+        const list = await getMySchedules(); 
+        const count = list.length;
+        console.log("list:", list);
+        setTodayScheduleCount(count);
+        setScheduleError(null);
+      } catch(err) {
+        console.error("오늘 일정 조회 실패:", err);
+        setTodayScheduleCount(null);
+        setScheduleError("일정 정보 불러오기 실패");
+      }
+    };
+    fetchTodaySchedules();
+    console.log("스케줄: ", todayScheduleCount);
+    console.log("스케줄 에러: ", scheduleError);
+  }, []);
 
   // 파일 선택 -> 즉시 업로드
   const handleFileChange = async (event) => {
@@ -139,11 +161,17 @@ const ProfilePage = () => {
           variant="h3"
           sx={{ fontWeight: 800, color: "primary.main", lineHeight: 1 }}
         >
-          1
+          {todayScheduleCount === null ? "-" : todayScheduleCount}
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
           오늘의 일정
         </Typography>
+
+        {scheduleError && (
+          <Typography variant="caption" color="error" sx={{ mt: 1, display: "block" }}>
+            {scheduleError}
+          </Typography>
+        )}
       </Box>
 
       {/* 하단 리스트 */}

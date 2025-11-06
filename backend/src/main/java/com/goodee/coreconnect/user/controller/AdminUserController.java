@@ -1,8 +1,10 @@
 package com.goodee.coreconnect.user.controller;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -18,6 +20,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.goodee.coreconnect.department.service.DepartmentService;
 import com.goodee.coreconnect.user.dto.request.CreateUserReqDTO;
 import com.goodee.coreconnect.user.dto.response.UserDTO;
+import com.goodee.coreconnect.user.entity.JobGrade;
+import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.Status;
 import com.goodee.coreconnect.user.service.UserService;
 
@@ -33,26 +37,13 @@ public class AdminUserController {
   private final UserService userService;
   private final DepartmentService departmentService;
   
-  /**
-   * 신규 사용자 생성
-   *
-   * @param req 신규 사용자 생성 요청 DTO
-   * @return 생성된 사용자 정보를 담은 UserDTO
-   */
+  /** 신규 사용자 생성 */
   @PostMapping
   public UserDTO create(@Valid @RequestBody CreateUserReqDTO req) {
     return userService.createUser(req);
   }
   
-  /**
-   * 사용자 상태 변경 (활성/비활성)
-   * 
-   * 지정된 사용자 ID의 상태를 ACTIVE 또는 INACTIVE로 변경합니다.
-   * 회원 탈퇴, 계정 비활성화 등 관리용으로 사용됩니다.
-   *
-   * @param id 변경할 사용자 ID (PathVariable)
-   * @param status 변경할 상태 (Query Parameter)
-   */
+  /** 사용자 상태 변경 (활성/비활성) */
   @DeleteMapping("/{id}")
   public void changeStatus(@PathVariable("id") Integer id, @RequestParam("status") Status status) {
     userService.changeStatus(id, status);
@@ -75,5 +66,23 @@ public class AdminUserController {
     return stats;
   }
   
+  /** 사용 가능한 Role 목록 조회(서비스X) */
+  @GetMapping("/roles")
+  public List<String> getRoles() {
+    return Arrays.stream(Role.values())
+                 .map(Enum::name)
+                 .collect(Collectors.toList());
+  }
+  
+  /** 사용 가능한 직급 목록 조회(서비스X) */
+  @GetMapping("/job-grades")
+  public List<Map<String, String>> getJobGrades() {
+    return Arrays.stream(JobGrade.values())
+                 .map(grade -> Map.of(
+                       "value", grade.name(),
+                       "label", grade.label()
+                     ))
+                 .collect(Collectors.toList());
+  }
   
 }
