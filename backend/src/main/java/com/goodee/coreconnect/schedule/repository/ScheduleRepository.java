@@ -38,6 +38,13 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Integer> {
   """)
   List<Schedule> findUserSchedules(@Param("user") User user);
   
+  /** 특정 유저의 '오늘 일정' 조회용 메서드 */
+  List<Schedule> findByUserAndDeletedYnFalseAndStartDateTimeBetween(
+          User user,
+          LocalDateTime startOfDay,
+          LocalDateTime endOfDay
+  );
+  
   /** 특정 유저가 해당 시간대에 겹치는 일정이 있는지 검사 (OWNER + MEMBER 모두 포함) */
   @Query("""
       SELECT COUNT(s) > 0
