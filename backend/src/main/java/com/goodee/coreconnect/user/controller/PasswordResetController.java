@@ -1,16 +1,15 @@
 package com.goodee.coreconnect.user.controller;
 
-import java.util.List;
-
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.goodee.coreconnect.user.dto.request.PasswordResetRequestDTO;
-import com.goodee.coreconnect.user.dto.response.PasswordResetResponseDTO;
 import com.goodee.coreconnect.user.service.PasswordResetService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -20,9 +19,11 @@ public class PasswordResetController {
   
   private final PasswordResetService passwordResetService;
   
-  @GetMapping("/requests")
-  public List<PasswordResetResponseDTO> getRequest(@RequestParam(required = false) String status) {
-    return passwordResetService.getRequests(status);
+  /** 비밀번호 변경 요청 */
+  @PostMapping("/requests")
+  public ResponseEntity<Void> createRequest(@Valid @RequestBody PasswordResetRequestDTO dto) {
+      passwordResetService.createRequest(dto);
+      return ResponseEntity.ok().build();
   }
 
 }

@@ -11,6 +11,7 @@ import com.goodee.coreconnect.user.dto.response.UserDTO;
 import com.goodee.coreconnect.user.entity.JobGrade;
 import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.Status;
+import com.goodee.coreconnect.user.entity.User;
 
 public interface UserService {
   
@@ -25,5 +26,6 @@ public interface UserService {
   public Long getAllUserCount();
   public Long getAllActiveUserCount();
   public List<OrganizationUserResponseDTO> getOrganizationChart();
+  public User getUserByEmail(String email);
 
 }
