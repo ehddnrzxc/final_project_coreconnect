@@ -1,6 +1,7 @@
 package com.goodee.coreconnect.auth;
 
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.http.HttpHeaders;
@@ -78,16 +79,18 @@ public class AuthController {
       res.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 
       // 응답 데이터 (AccessToken + 사용자 정보)
-      Map<String, Object> result = Map.of(
-          "accessToken", access,
-          "user", Map.of(
-              "email", user.getEmail(),
-              "name", user.getName(),
-              "role", user.getRole().name(),
-              "departmentName", user.getDepartment() != null ? user.getDepartment().getDeptName() : null,
-              "jobGrade", user.getJobGrade() != null ? user.getJobGrade().label() : null
-          )
-      );
+      Map<String, Object> userInfo = new HashMap<>();
+      userInfo.put("email", user.getEmail());
+      userInfo.put("name", user.getName());
+      userInfo.put("role", user.getRole().name());
+      userInfo.put("departmentName", 
+                   user.getDepartment() != null ? user.getDepartment().getDeptName() : null);
+      userInfo.put("jobGrade", 
+                   user.getJobGrade() != null ? user.getJobGrade().label() : null);
+
+      Map<String, Object> result = new HashMap<>();
+      result.put("accessToken", access);
+      result.put("user", userInfo);
 
       return ResponseEntity.ok(result);
   }
