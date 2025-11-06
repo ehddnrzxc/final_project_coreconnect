@@ -15,7 +15,8 @@ import {
   InputLabel,
   FormControl,
 } from "@mui/material";
-import LockIcon from "@mui/icons-material/Lock"; // 자물쇠 아이콘 추가
+import LockIcon from "@mui/icons-material/Lock";
+import { handleApiError } from "../../../utils/handleError"; // ✅ 추가됨
 
 const BoardWritePage = () => {
   const { boardId } = useParams();
@@ -33,7 +34,6 @@ const BoardWritePage = () => {
   const [categories, setCategories] = useState([]);
   const [files, setFiles] = useState([]);
 
-  // 카테고리 목록 불러오기 (신규 작성 시만)
   useEffect(() => {
     if (!boardId) {
       (async () => {
@@ -41,13 +41,12 @@ const BoardWritePage = () => {
           const res = await getAllCategories();
           setCategories(res.data.data || []);
         } catch (err) {
-          console.error("카테고리 목록 불러오기 실패:", err);
+          handleApiError(err, "카테고리 불러오기 실패");
         }
       })();
     }
   }, [boardId]);
 
-  // 수정 모드일 경우 기존 데이터 불러오기
   useEffect(() => {
     if (boardId) {
       (async () => {
@@ -65,7 +64,7 @@ const BoardWritePage = () => {
             pinned: data.pinned ?? false,
           });
         } catch (err) {
-          console.error("게시글 불러오기 실패:", err);
+          handleApiError(err, "게시글 불러오기 실패");
         }
       })();
     }
@@ -73,13 +72,10 @@ const BoardWritePage = () => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-
-    // 상단고정 시 자동 공지처리
     if (name === "pinned" && checked) {
       setForm((f) => ({ ...f, pinned: true, noticeYn: true, privateYn: false }));
       return;
     }
-
     setForm((f) => ({
       ...f,
       [name]: type === "checkbox" ? checked : value,
@@ -96,17 +92,16 @@ const BoardWritePage = () => {
       if (boardId) {
         await updateBoard(boardId, form);
         alert("게시글이 수정되었습니다!");
-        navigate(`/board/detail/${boardId}`); 
+        navigate(`/board/detail/${boardId}`);
       } else {
         const res = await createBoard(form);
         const newId = res.data.data.id;
         if (files.length > 0) await uploadFiles(newId, files);
-        alert("게시글 등록 완료!");
-        navigate(`/board/${form.categoryId}`); 
+        alert("게시글 등록 완료");
+        navigate(`/board/${form.categoryId}`);
       }
     } catch (err) {
-      console.error("게시글 등록/수정 실패:", err.response?.data || err.message);
-      alert("게시글 등록/수정 실패");
+      handleApiError(err, "게시글 등록/수정 실패"); // ✅
     }
   };
 
@@ -116,7 +111,6 @@ const BoardWritePage = () => {
         {boardId ? "게시글 수정" : "새 게시글 작성"}
       </Typography>
 
-      {/* 작성 시: 카테고리 선택 / 수정 시: 표시 */}
       {!boardId ? (
         <FormControl fullWidth sx={{ mb: 2 }}>
           <InputLabel>카테고리 선택</InputLabel>
@@ -159,7 +153,6 @@ const BoardWritePage = () => {
         onChange={handleChange}
       />
 
-      {/* 체크박스 영역 */}
       <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
         {/* 공지글 */}
         <FormControlLabel
@@ -172,7 +165,8 @@ const BoardWritePage = () => {
                 setForm((f) => ({
                   ...f,
                   noticeYn: checked,
-                  privateYn: checked ? false : f.privateYn,
+                  privateYn: checked ? false : f.privateYn, // 공지 ON → 비공개 해제
+                  pinned: checked ? f.pinned : false,       // 공지 OFF → 상단고정도 해제
                 }));
               }}
               disabled={form.privateYn} // 비공개일 땐 비활성화
@@ -196,10 +190,11 @@ const BoardWritePage = () => {
                 setForm((f) => ({
                   ...f,
                   privateYn: checked,
-                  noticeYn: checked ? false : f.noticeYn, // 공지 해제
-                  pinned: checked ? false : f.pinned,     // 상단고정 해제
+                  noticeYn: checked ? false : f.noticeYn, // 비공개 ON → 공지 해제
+                  pinned: checked ? false : f.pinned,     // 비공개 ON → 상단고정 해제
                 }));
               }}
+              disabled={form.noticeYn} // ✅ 공지글이면 비공개 비활성화
             />
           }
           label="비공개"
@@ -216,7 +211,7 @@ const BoardWritePage = () => {
                 setForm((f) => ({
                   ...f,
                   pinned: checked,
-                  noticeYn: checked ? true : f.noticeYn,
+                  noticeYn: checked ? true : false,  // ✅ 상단고정 해제 시 공지도 해제
                   privateYn: checked ? false : f.privateYn,
                 }));
               }}
@@ -231,7 +226,6 @@ const BoardWritePage = () => {
         />
       </Box>
 
-      {/* 비공개 아이콘 표시 */}
       {form.privateYn && (
         <Box sx={{ display: "flex", alignItems: "center", mb: 1, color: "#616161" }}>
           <LockIcon sx={{ mr: 1 }} /> 비공개 게시글 — 작성자와 관리자만 볼 수 있습니다.

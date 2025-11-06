@@ -91,7 +91,8 @@ public class BoardReplyServiceImpl implements BoardReplyService {
     @Override
     @Transactional(readOnly = true)
     public List<BoardReplyResponseDTO> getRepliesByBoard(Integer boardId) {
-        List<BoardReply> replies = replyRepository.findByBoardIdAndDeletedYnFalseOrderByCreatedAtAsc(boardId);
+        // 삭제된 부모도 포함해 전체 댓글 조회
+        List<BoardReply> replies = replyRepository.findAllByBoardIdIncludeDeleted(boardId);
         List<BoardReplyResponseDTO> dtoList = new ArrayList<>();
 
         for (BoardReply reply : replies) {
@@ -100,4 +101,5 @@ public class BoardReplyServiceImpl implements BoardReplyService {
 
         return dtoList;
     }
+
 }

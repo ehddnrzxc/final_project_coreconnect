@@ -190,9 +190,20 @@ public class BoardServiceImpl implements BoardService {
         Board board = boardRepository.findById(boardId)
                 .orElseThrow(() -> new EntityNotFoundException("게시글을 찾을 수 없습니다."));
 
-        board.delete();
+        // 로그인 사용자 정보 확인
+        User loginUser = User.getAuthenticatedUser(userRepository);
+        if (loginUser == null) {
+            throw new SecurityException("로그인이 필요합니다.");
+        }
 
-        // 댓글, 파일도 함께 soft delete
+        // 권한 검사: 작성자 본인 또는 관리자만 가능
+        if (!loginUser.getId().equals(board.getUser().getId())
+                && loginUser.getRole() != Role.ADMIN) {
+            throw new SecurityException("본인 게시글만 삭제할 수 있습니다.");
+        }
+
+        // Soft delete
+        board.delete();
         board.getReplies().forEach(reply -> reply.delete());
         board.getFiles().forEach(file -> file.delete());
     }
