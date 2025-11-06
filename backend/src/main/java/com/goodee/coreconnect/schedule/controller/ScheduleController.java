@@ -89,6 +89,13 @@ public class ScheduleController {
   public ResponseEntity<List<ResponseScheduleDTO>> getUserSchedules(@RequestParam("userId") Integer userId) {
     return ResponseEntity.ok(scheduleService.getUserSchedules(userId));
   }
+  
+  /** 로그인한 사용자의 '오늘 일정'만 조회 */
+  @Operation(summary = "오늘 일정 조회", description = "로그인한 사용자의 오늘 일정을 조회합니다.")
+  @GetMapping("/me/today")
+  public List<ResponseScheduleDTO> getMyTodaySchedules(@AuthenticationPrincipal String email) {
+      return scheduleService.getTodaySchedulesByEmail(email);
+  }
 
   /** 특정 회의실의 일정 목록 조회 */
   @Operation(summary = "회의실 일정 조회", description = "특정 회의실의 일정을 조회합니다.")

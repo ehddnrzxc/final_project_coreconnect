@@ -2,7 +2,10 @@ import React, { useEffect, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
+import listPlugin from "@fullcalendar/list";
 import interactionPlugin from "@fullcalendar/interaction";
+import Snackbar from "@mui/material/Snackbar";
+import Alert from "@mui/material/Alert";
 import { Box, Typography, CircularProgress } from "@mui/material";
 import { getMySchedules, createSchedule, updateSchedule, deleteSchedule } from "../api/scheduleAPI";
 import { toISO } from "../../../utils/dateFormat";
@@ -138,23 +141,37 @@ export default function CalendarPage() {
       </Typography>
 
       <FullCalendar
-        plugins={[dayGridPlugin, interactionPlugin]}
-        initialView="dayGridMonth" // 기본은 월간으로 시작
+        plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
+        initialView="dayGridMonth" // 기본은 월간
         headerToolbar={{
-          left: "prev,next today",
+          left: "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
           center: "title",
-          right: "dayGridMonth,timeGridWeek,timeGridDay",
+          right: "prev,next today",
+        }}
+        buttonText={{
+          today: "오늘",
+          month: "월간",
+          week: "주간",
+          day: "일간",
+          list: "목록",
         }}
         height="auto"
         events={events}
         dateClick={handleDateClick}
         eventClick={handleEventClick}
+        slotMinTime="08:00:00"
+        slotMaxTime="21:00:00"
         eventTimeFormat={{
           hour: "2-digit",
           minute: "2-digit",
-          meridiem: false,
+          hour12: false, // 일정(이벤트) 표시 24시간제
         }}
-      />
+        slotLabelFormat={{
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false, // 시간축(8PM → 20:00)
+        }}
+        />
 
       {modalOpen && (
         <ScheduleModal
