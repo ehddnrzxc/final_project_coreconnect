@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { login } from "../../auth/api/authAPI";
 import { setAccessToken } from "../utils/tokenUtils";
 import { getMyProfileImage } from "../../user/api/userAPI";
@@ -12,7 +12,10 @@ export default function LoginForm({ onLoginSuccess }) {
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [showPw, setShowPw] = useState(false);
-  const [remember, setRemember] = useState(true);
+  const [remember, setRemember] = useState(() => {
+    // savedEmail이 있으면 true, 없으면 false
+    return !!localStorage.getItem("savedEmail");
+  });
   const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
@@ -22,6 +25,12 @@ export default function LoginForm({ onLoginSuccess }) {
       const data = await login(email, pw);
       setAccessToken(data.accessToken);
       localStorage.setItem("user", JSON.stringify(data.user));
+
+      if(remember) {
+        localStorage.setItem("savedEmail", email);
+      } else {
+        localStorage.removeItem("savedEmail");
+      }
 
       // 프로필 이미지 동기화(선택)
       const imageUrl = await getMyProfileImage();
@@ -34,6 +43,12 @@ export default function LoginForm({ onLoginSuccess }) {
       setError("아이디 또는 비밀번호가 올바르지 않습니다.");
     }
   };
+
+  // 처음 렌더 시 savedEmail 복원
+  useEffect(() => {
+    const saved = localStorage.getItem("savedEmail");
+    if(saved) setEmail(saved);
+  }, []);
 
   return (
     <Box component="form" onSubmit={handleSubmit}>
