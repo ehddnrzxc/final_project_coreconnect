@@ -25,5 +25,11 @@ public interface DepartmentRepository extends JpaRepository<Department, Integer>
   /** @EntityGraph fetch join 처럼 연관된 엔티티를 한 번에 가져오게 하는 설정 */
   @EntityGraph(attributePaths = {"users"})
   Optional<Department> findWithUsersById(Integer id);
+  
+  /** 부서 이름으로 부서를 찾는 메소드 */
+  Optional<Department> findByDeptName(String deptName);
+
+  
+  
 
 }
