@@ -1,6 +1,7 @@
 package com.goodee.coreconnect.user.controller;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.goodee.coreconnect.user.dto.request.ChangeUserDepartmentDTO;
 import com.goodee.coreconnect.user.dto.request.ChangeUserJobGradeDTO;
+import com.goodee.coreconnect.user.dto.response.OrganizationUserResponseDTO;
 import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.service.UserServiceImpl;
 
@@ -80,4 +82,12 @@ public class UserController {
         userService.moveUserToRole(id, newRole);
         return ResponseEntity.noContent().build();
     }
+    
+    /** 조직도 전체 사용자 목록 조회 */
+    @GetMapping("/organization")
+    public ResponseEntity<List<OrganizationUserResponseDTO>> getOrganizationChart() {
+      List<OrganizationUserResponseDTO> userList = userService.getOrganizationChart();
+      return ResponseEntity.ok(userList);
+    }
+    
 }

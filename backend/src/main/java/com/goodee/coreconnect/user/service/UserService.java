@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.goodee.coreconnect.user.dto.request.CreateUserReqDTO;
+import com.goodee.coreconnect.user.dto.response.OrganizationUserResponseDTO;
 import com.goodee.coreconnect.user.dto.response.UserDTO;
 import com.goodee.coreconnect.user.entity.JobGrade;
 import com.goodee.coreconnect.user.entity.Role;
@@ -23,5 +24,6 @@ public interface UserService {
   public void moveUserToRole(Integer userId, Role newRole);
   public Long getAllUserCount();
   public Long getAllActiveUserCount();
+  public List<OrganizationUserResponseDTO> getOrganizationChart();
 
 }
