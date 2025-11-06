@@ -67,6 +67,14 @@ public class ScheduleServiceImpl implements ScheduleService {
       // 회의실 예약 시 자동 비활성화 (예약 중 상태)
       meetingRoom.changeAvailability(false);
     }
+    
+    // OWNER(본인) 일정 겹침 여부 확인
+    boolean ownerHasConflict = scheduleRepository.existsUserOverlappingSchedule(
+        user, dto.getStartDateTime(), dto.getEndDateTime());
+
+    if (ownerHasConflict) {
+      throw new IllegalArgumentException("본인은 해당 시간대에 이미 다른 일정이 있습니다.");
+    }
 
     // 일정 생성
     Schedule schedule = dto.toEntity(user, meetingRoom, category);
@@ -88,6 +96,16 @@ public class ScheduleServiceImpl implements ScheduleService {
 
         User participantUser = userRepository.findById(participantId)
                 .orElseThrow(() -> new IllegalArgumentException("참여자 유저를 찾을 수 없습니다. ID=" + participantId));
+        
+        // 참여자 일정 중복 체크
+        boolean hasConflict = scheduleRepository.existsUserOverlappingSchedule(
+            participantUser, dto.getStartDateTime(), dto.getEndDateTime());
+
+        if (hasConflict) {
+          throw new IllegalArgumentException(
+              "참여자 '" + participantUser.getName() + "'님은 해당 시간에 이미 다른 일정이 있습니다."
+          );
+        }
 
         ScheduleParticipant member = ScheduleParticipant.createParticipant(savedSchedule, participantUser, ScheduleRole.MEMBER);
         scheduleParticipantRepository.save(member);
@@ -136,9 +154,10 @@ public class ScheduleServiceImpl implements ScheduleService {
     // 기존 회의실 저장 (나중에 복구를 위해)
     MeetingRoom oldMeetingRoom = schedule.getMeetingRoom();
 
-    // 중복 예약 방지 (자기 자신 제외)
+    // 회의실 중복 예약 방지 (자기 자신 제외)
     if (newMeetingRoom != null) {
-      // 겹치는 일정이 있는지 확인
+      
+      // 회의실 겹치는 일정이 있는지 확인
       boolean overlap = scheduleRepository.existsOverlappingSchedule(
               newMeetingRoom,
               dto.getStartDateTime(),
@@ -147,6 +166,7 @@ public class ScheduleServiceImpl implements ScheduleService {
 
       // 단, 자기 자신(same id)은 제외해야 함
       if (overlap) {
+        
         // 기존 일정이 동일 회의실 및 동일 시간대면 예외로 판단하지 않음
         boolean sameRoomSameTime =
                  newMeetingRoom.equals(oldMeetingRoom)
@@ -177,6 +197,25 @@ public class ScheduleServiceImpl implements ScheduleService {
         dto.getVisibility(),
         newMeetingRoom,
         category);
+    
+    // 기존 참여자 전부 불러오기 (OWNER + MEMBER)
+    List<ScheduleParticipant> participants =
+        scheduleParticipantRepository.findByScheduleAndDeletedYnFalse(schedule);
+    
+    // 모든 참여자 일정 중복 검사
+    for (ScheduleParticipant p : participants) {
+      User user = p.getUser();
+
+      boolean hasConflict = scheduleRepository.existsUserOverlappingScheduleExceptSelf(
+          user, schedule.getId(), dto.getStartDateTime(), dto.getEndDateTime()
+      );
+
+      if (hasConflict) {
+        throw new IllegalArgumentException(
+            "참여자 '" + user.getName() + "'님은 해당 시간에 이미 다른 일정이 있습니다."
+        );
+      }
+    }
     
     // 참여자 수정 로직 
     if (dto.getParticipantIds() != null) {
@@ -225,6 +264,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     
     // 모든 참여자에게 수정 알림
     List<ScheduleParticipant> allParticipants = scheduleParticipantRepository.findByScheduleAndDeletedYnFalse(schedule);
+    
     for (ScheduleParticipant p : allParticipants) {
         notificationService.sendNotification(
                 p.getUser().getId(),
@@ -255,31 +295,32 @@ public class ScheduleServiceImpl implements ScheduleService {
     schedule.deleteWithParticipants();
   }
   
-  /** 로그인한 사용자의 이메일 기준으로 일정 조회 */
+  /** 로그인한 사용자의 이메일 기준으로 자신 일정 조회 */
   @Override
   @Transactional(readOnly = true)
   public List<ResponseScheduleDTO> getSchedulesByEmail(String email) {
       User user = userRepository.findByEmail(email)
               .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다: " + email));
 
-      List<Schedule> schedules = scheduleRepository.findByUserAndDeletedYnFalse(user);
+      List<Schedule> schedules = scheduleRepository.findUserSchedules(user);
 
       return schedules.stream()
               .map(ResponseScheduleDTO::toDTO)
               .toList();
   }
 
-  /** 유저별 일정 조회 (readOnly) */
+  /** 유저별 일정 조회 (readOnly),  */
   @Override
   @Transactional(readOnly = true)
   public List<ResponseScheduleDTO> getUserSchedules(Integer userId) {
     User user = userRepository.findById(userId)
         .orElseThrow(() -> new IllegalArgumentException("유저가 존재하지 않습니다."));
+    
+    List<Schedule> schedules = scheduleRepository.findUserSchedules(user);
 
-    return scheduleRepository.findByUserAndDeletedYnFalse(user)
-        .stream()
-        .map(ResponseScheduleDTO::toDTO)
-        .collect(Collectors.toList());
+    return schedules.stream()
+                     .map(ResponseScheduleDTO::toDTO)
+                     .collect(Collectors.toList());
   }
 
   /** 단일 일정 조회 (readOnly) */
