@@ -3,7 +3,7 @@ import { useOutletContext } from "react-router-dom";
 import Card from "../../../components/ui/Card";
 import { Box, List, ListItem, ListItemText, Typography } from "@mui/material";
 import { getMyProfileImage, uploadMyProfileImage } from "../../user/api/userAPI";
-import { getMySchedules } from "../../schedule/api/scheduleAPI";
+import { getMyTodaySchedules } from "../../schedule/api/scheduleAPI";
 
 const ProfilePage = () => {
 
@@ -24,9 +24,8 @@ const ProfilePage = () => {
   useEffect(() => {
     const fetchTodaySchedules = async () => {
       try {
-        const list = await getMySchedules(); 
+        const list = await getMyTodaySchedules(); 
         const count = list.length;
-        console.log("list:", list);
         setTodayScheduleCount(count);
         setScheduleError(null);
       } catch(err) {
@@ -36,8 +35,6 @@ const ProfilePage = () => {
       }
     };
     fetchTodaySchedules();
-    console.log("스케줄: ", todayScheduleCount);
-    console.log("스케줄 에러: ", scheduleError);
   }, []);
 
   // 파일 선택 -> 즉시 업로드

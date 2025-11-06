@@ -56,3 +56,7 @@ export const getScheduleById = (id) =>
 /** 회의실 일정 조회 */
 export const getSchedulesByMeetingRoom = (meetingRoomId) =>
   http.get(`/schedules`, { params: { meetingRoomId } }).then((res) => res.data);
+
+/** 내 일정 조회(일간) */
+export const getMyTodaySchedules = () =>
+  http.get("/schedules/me/today").then((res) => res.data);
