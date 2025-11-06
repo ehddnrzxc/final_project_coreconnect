@@ -221,6 +221,7 @@ public class ChatMessageController {
 		
 		// 메시지별 미읽은 인원수 DB 최신화
 		chatRoomService.updateUnreadCountForMessages(roomId);
+		// 채팅방 메시지 조회
 		List<Chat> messages = chatRoomService.getChatsWithFilesByRoomId(roomId);
 		
 		List<ChatMessageResponseDTO> dtoList = messages.stream()

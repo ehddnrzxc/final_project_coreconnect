@@ -102,7 +102,7 @@ function ChatSidebar({ unreadRoomCount }) {
         bgcolor: "#fff", color: "#10c16d", fontSize: 20
       }}>
         <SortIcon />
-      </IconButton>
+      </IconButton>                                          
       <IconButton component={NavLink} to="/chat/notice" sx={{
         width: 42, height: 42, borderRadius: "50%", bgcolor: "#fff", color: "#2db8ff",
         fontSize: 20, position: "relative"
