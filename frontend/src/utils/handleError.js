@@ -1,14 +1,16 @@
 /**
  * handleError.js
- * 백엔드에서 내려오는 메시지를 프론트에서 그대로 보여주는 공통 함수
- * ResponseDTO(message) 또는 단순 문자열 형태 모두 지원
+ * 공통 API 에러 처리 유틸
+ * - 백엔드에서 내려오는 메시지를 alert으로 사용자에게 직접 표시
+ * - ResponseDTO 형태(message 필드) 또는 단순 문자열 응답 모두 지원
  */
-export const handleApiError = (err, fallbackMessage = "요청 실패") => {
-  const msg =
-    err?.response?.data?.message || // ResponseDTO 구조
-    err?.response?.data ||          // 단순 문자열
-    fallbackMessage;                // fallback 문구
 
-  alert(msg);
-  console.error("[API ERROR]", msg);
+export const handleApiError = (err, fallbackMessage = "요청 실패") => {
+  // 백엔드 응답 메시지 우선순위에 따라 메시지 추출
+  const msg =
+    err?.response?.data?.message || // ResponseDTO 구조: { message, data, status }
+    err?.response?.data ||          // 단순 문자열 응답
+    fallbackMessage;                // 기본 메시지 (fallback)
+
+  alert(msg);                       // 사용자에게 알림창 표시
 };
