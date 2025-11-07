@@ -38,7 +38,8 @@ const BoardDetailPage = () => {
   const [replies, setReplies] = useState([]); // 댓글 목록
 
   // 댓글 입력/수정 상태
-  const [replyText, setReplyText] = useState(""); // 새 댓글 내용
+  const [replyText, setReplyText] = useState(""); // 일반 댓글 내용
+  const [childReplyText, setChildReplyText] = useState(""); // 대댓글(답글) 입력용
   const [replyParentId, setReplyParentId] = useState(null); // 부모 댓글 ID (대댓글일 경우)
   const [editReplyId, setEditReplyId] = useState(null); // 수정 중인 댓글 ID
   const [editReplyText, setEditReplyText] = useState(""); // 수정 중 댓글 내용
@@ -68,7 +69,7 @@ const BoardDetailPage = () => {
       setFiles(fileRes.data.data || []);
     } catch (err) {
       if (alertShownRef.current) return; // 이미 알럿 띄웠으면 더 이상 실행 안 함
-      alertShownRef.current = true;      // 첫 에러 시 한 번만 true로 설정
+      alertShownRef.current = true; // 첫 에러 시 한 번만 true로 설정
 
       // 비공개글 접근 차단 처리
       if (err.response?.status === 403) {
@@ -117,19 +118,30 @@ const BoardDetailPage = () => {
     if (!window.confirm("정말 삭제하시겠습니까?")) return; // 삭제 확인
     await deleteBoard(boardId);
     alert("게시글이 삭제되었습니다.");
-    navigate("/board?page=0"); // 목록 페이지로 이동
+    navigate(-1);
   };
 
-  // 댓글 등록
+  // 댓글 등록 (일반 댓글 전용)
   const handleReplySubmit = async () => {
     if (!replyText.trim()) return; // 빈 문자열 방지
     await createReply({
       boardId: Number(boardId),
       content: replyText,
-      parentReplyId: replyParentId,
     });
     setReplyText(""); // 입력 초기화
-    setReplyParentId(null);
+    await loadAll(); // 새로고침
+  };
+
+  // 대댓글 등록
+  const handleChildReplySubmit = async () => {
+    if (!childReplyText.trim()) return; // 빈 문자열 방지
+    await createReply({
+      boardId: Number(boardId),
+      content: childReplyText,
+      parentReplyId: replyParentId,
+    });
+    setChildReplyText(""); // 대댓글 입력값 초기화
+    setReplyParentId(null); // 입력창 닫기
     await loadAll(); // 새로고침
   };
 
@@ -153,7 +165,7 @@ const BoardDetailPage = () => {
   if (!board) return <Typography>알 수 없는 페이지</Typography>;
 
   return (
-    <Box> {/* MUI: 전체 레이아웃 컨테이너 */}
+    <Box> 
       <Typography variant="h5" sx={{ mb: 1 }}>
         {board.title} {/* 게시글 제목 */}
       </Typography>
@@ -203,13 +215,16 @@ const BoardDetailPage = () => {
         <Typography
           variant="body1"
           color="text.secondary"
-          sx={{ fontStyle: "italic" }}
+          sx={{
+            fontStyle: "italic",
+            minHeight: "330px", // 약 15줄 정도 기본 높이 확보
+            lineHeight: 1.6, // 줄 간격
+            whiteSpace: "pre-wrap", // 줄바꿈(\n) 유지
+          }}
         >
           {board.content?.trim() ? board.content : "등록된 내용이 없습니다."}
         </Typography>
       </Paper>
-
-      <Divider sx={{ mb: 2, width: "80%" }} /> {/* 구분선 */}
 
       {/* 댓글 섹션 제목 */}
       <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
@@ -238,12 +253,12 @@ const BoardDetailPage = () => {
 
           return (
             <React.Fragment key={r.id}>
-              <Box sx={{ mb: 1.5 }}>
+              <Box sx={{ mb: children.length ? 0 : 2 }}>
                 <Paper
                   variant="outlined"
                   sx={{ p: 1.5, bgcolor: "#fff", opacity: r.deletedYn ? 0.6 : 1 }}
                 >
-                  {/* 댓글 상단 영역 (작성자, 작성시간, 수정/삭제 버튼) */}
+                  {/* 댓글 상단 영역 */}
                   <Stack
                     direction="row"
                     justifyContent="space-between"
@@ -260,7 +275,7 @@ const BoardDetailPage = () => {
                       </Typography>
                     </Typography>
 
-                    {/* 댓글 작성자 or 관리자일 경우 수정/삭제 버튼 노출 */}
+                    {/* 댓글 수정/삭제 */}
                     {!r.deletedYn &&
                       (loginRole === "ADMIN" || r.writerName === loginName) && (
                         <Stack direction="row" spacing={1}>
@@ -310,7 +325,7 @@ const BoardDetailPage = () => {
                       )}
                   </Stack>
 
-                  {/* 댓글 내용 영역 */}
+                  {/* 댓글 내용 */}
                   {r.deletedYn ? (
                     <Typography
                       variant="body2"
@@ -347,14 +362,14 @@ const BoardDetailPage = () => {
                       }}
                       onClick={() =>
                         setReplyParentId(replyParentId === r.id ? null : r.id)
-                      } // 클릭 시 답글 입력창 토글
+                      }
                     >
                       <ReplyIcon fontSize="small" sx={{ mr: 0.3 }} />
                       답글
                     </Typography>
                   )}
 
-                  {/* 답글 입력창 */}
+                  {/* 답글 입력창 (childReplyText 사용) */}
                   {replyParentId === r.id && (
                     <Box
                       sx={{
@@ -375,14 +390,14 @@ const BoardDetailPage = () => {
                         minRows={2}
                         maxRows={5}
                         placeholder="답글을 입력하세요"
-                        value={replyText}
-                        onChange={(e) => setReplyText(e.target.value)}
+                        value={childReplyText}
+                        onChange={(e) => setChildReplyText(e.target.value)}
                         variant="outlined"
                       />
                       <Button
                         sx={{ ml: 1, minWidth: "70px" }}
                         variant="contained"
-                        onClick={handleReplySubmit}
+                        onClick={handleChildReplySubmit}
                       >
                         등록
                       </Button>
@@ -393,12 +408,18 @@ const BoardDetailPage = () => {
 
               {/* 대댓글 렌더링 */}
               {children
-                .filter((child) => !child.deletedYn) // 삭제된 대댓글 제외
-                .map((child) => (
+                .filter((child) => !child.deletedYn)
+                .map((child, idx) => (
                   <Paper
                     key={child.id}
                     variant="outlined"
-                    sx={{ ml: 4, mt: 1, p: 1.5, bgcolor: "#fcfcfc" }}
+                    sx={{
+                      ml: 4,
+                      mt: idx === 0 ? "2px" : "4px",  // 첫 대댓글은 완전 붙이기 
+                      mb: idx === children.length - 1 ? "16px" : "2px", // 마지막만 띄움
+                      p: 1.5,
+                      bgcolor: "#fcfcfc"
+                    }}
                   >
                     <Stack
                       direction="row"
@@ -416,53 +437,53 @@ const BoardDetailPage = () => {
                         </Typography>
                       </Typography>
 
-                      {/* 관리자 또는 본인만 수정/삭제 가능 */}
-                      {(loginRole === "ADMIN" || child.writerName === loginName) && (
-                        <Stack direction="row" spacing={1}>
-                          {editReplyId !== child.id ? (
-                            <>
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                                sx={{ cursor: "pointer" }}
-                                onClick={() => {
-                                  setEditReplyId(child.id);
-                                  setEditReplyText(child.content);
-                                }}
-                              >
-                                수정
-                              </Typography>
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                                sx={{ cursor: "pointer" }}
-                                onClick={() => handleReplyDelete(child.id)}
-                              >
-                                삭제
-                              </Typography>
-                            </>
-                          ) : (
-                            <>
-                              <Typography
-                                variant="caption"
-                                color="primary"
-                                sx={{ cursor: "pointer" }}
-                                onClick={() => handleReplyUpdate(child.id)}
-                              >
-                                저장
-                              </Typography>
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                                sx={{ cursor: "pointer" }}
-                                onClick={() => setEditReplyId(null)}
-                              >
-                                취소
-                              </Typography>
-                            </>
-                          )}
-                        </Stack>
-                      )}
+                      {(loginRole === "ADMIN" ||
+                        child.writerName === loginName) && (
+                          <Stack direction="row" spacing={1}>
+                            {editReplyId !== child.id ? (
+                              <>
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                  sx={{ cursor: "pointer" }}
+                                  onClick={() => {
+                                    setEditReplyId(child.id);
+                                    setEditReplyText(child.content);
+                                  }}
+                                >
+                                  수정
+                                </Typography>
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                  sx={{ cursor: "pointer" }}
+                                  onClick={() => handleReplyDelete(child.id)}
+                                >
+                                  삭제
+                                </Typography>
+                              </>
+                            ) : (
+                              <>
+                                <Typography
+                                  variant="caption"
+                                  color="primary"
+                                  sx={{ cursor: "pointer" }}
+                                  onClick={() => handleReplyUpdate(child.id)}
+                                >
+                                  저장
+                                </Typography>
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                  sx={{ cursor: "pointer" }}
+                                  onClick={() => setEditReplyId(null)}
+                                >
+                                  취소
+                                </Typography>
+                              </>
+                            )}
+                          </Stack>
+                        )}
                     </Stack>
 
                     {/* 대댓글 내용 */}
@@ -477,7 +498,9 @@ const BoardDetailPage = () => {
                       />
                     ) : (
                       <Typography variant="body2" sx={{ mt: 0.5 }}>
-                        {child.content?.trim() ? child.content : "내용 없음"}
+                        {child.content?.trim()
+                          ? child.content
+                          : "내용 없음"}
                       </Typography>
                     )}
                   </Paper>

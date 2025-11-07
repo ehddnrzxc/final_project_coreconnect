@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -6,10 +6,12 @@ import listPlugin from "@fullcalendar/list";
 import interactionPlugin from "@fullcalendar/interaction";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
-import { Box, Typography, CircularProgress } from "@mui/material";
+import { Box, Typography, CircularProgress, Stack, Button } from "@mui/material";
 import { getMySchedules, createSchedule, updateSchedule, deleteSchedule } from "../api/scheduleAPI";
+import { getParticipantsBySchedule } from "../api/scheduleParticipantAPI";
 import { toISO } from "../../../utils/dateFormat";
 import ScheduleModal from "../components/ScheduleModal";
+import ScheduleDetailModal from "../components/ScheduleDetailModal";
 import useSnackbar from "../../../hooks/useSnackbar";
 
 export default function CalendarPage() {
@@ -18,22 +20,57 @@ export default function CalendarPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailId, setDetailId] = useState(null);
+  const [participants, setParticipants] = useState([]);
+  const calendarRef = useRef(null);
+  const [currentView, setCurrentView] = useState("dayGridMonth");
+  const [visibleEnd, setVisibleEnd] = useState(null);
   const { snack, showSnack, closeSnack } = useSnackbar();
+
+  const currentUserId = Number(localStorage.getItem("userId"));
 
   /** 내 일정 조회 */
   useEffect(() => {
     const fetchSchedules = async () => {
       try {
+        let token = localStorage.getItem("accessToken");
+        let retryCount = 0;
+
+        // 토큰이 아직 로드되지 않았다면 0.5초 간격으로 재확인 (최대 5초)
+        while (!token && retryCount < 10) {
+          await new Promise((r) => setTimeout(r, 500));
+          token = localStorage.getItem("accessToken");
+          retryCount++;
+        }
+
+        if (!token) {
+          showSnack("로그인 정보가 없습니다. 다시 로그인해주세요.", "warning");
+          setLoading(false);
+          return;
+        }
+
+        // 토큰이 확인되면 정상적으로 일정 요청
         const data = await getMySchedules();
+
         const mapped = data.map((s) => ({
           id: s.id,
-          title: s.title,
+          title: 
+            s.visibility === "PRIVATE"
+              ? `[비공개] ${s.title}`
+              : s.title,
           start: toISO(s.startDateTime),
           end: toISO(s.endDateTime),
           content: s.content,
           location: s.location,
-          backgroundColor: "#00a0e9",
-          borderColor: "#00a0e9",
+          visibility: s.visibility,
+          userId: s.userId,        
+          userName: s.userName,  
+          categoryName: s.categoryName,
+          meetingRoomName: s.meetingRoomName,
+          // PRIVATE은 회색, PUBLIC은 파랑
+          backgroundColor: s.visibility === "PRIVATE" ? "#999999" : "#00a0e9",
+          borderColor: s.visibility === "PRIVATE" ? "#999999" : "#00a0e9",
         }));
         setEvents(mapped);
       } catch {
@@ -52,17 +89,35 @@ export default function CalendarPage() {
     setModalOpen(true);
   };
 
-  /** 일정 클릭 → 수정 모달 */
-  const handleEventClick = (info) => {
+  /** 일정 클릭 → 상세보기 모달 열기 */
+  const handleEventClick = async (info) => {
     const clicked = events.find((e) => e.id === Number(info.event.id));
-    if (clicked) {
-      setSelectedEvent({
-        ...clicked,
-        startDateTime: toISO(clicked.start),
-        endDateTime: toISO(clicked.end),
-      });
-      setModalOpen(true);
+    if (!clicked) return;
+
+    const { visibility, userId } = clicked;
+
+    // 비공개 일정 접근 제한: 작성자(OWNER) 또는 참여자(MEMBER)만 열람
+    if (visibility === "PRIVATE") {
+      const isOwner = userId === currentUserId;
+      let isParticipant = false;
+
+      try {
+        const partData = await getParticipantsBySchedule(clicked.id);
+        setParticipants(partData);
+
+        isParticipant = partData.some((p) => p.userId === currentUserId);
+      } catch (err) {
+        console.warn("참여자 조회 실패", err);
+      }
+
+      if (!isOwner && !isParticipant) {
+        showSnack("비공개 일정은 본인 또는 참석자만 볼 수 있습니다.", "warning");
+        return;
+      }
     }
+
+    setDetailId(Number(info.event.id));
+    setDetailOpen(true);
   };
 
   /** 일정 등록 or 수정 */
@@ -82,6 +137,12 @@ export default function CalendarPage() {
                   end: toISO(updated.endDateTime),
                   content: updated.content,
                   location: updated.location,
+                  visibility: updated.visibility,
+                  userId: updated.userId,
+                  backgroundColor:
+                    updated.visibility === "PRIVATE" ? "#999999" : "#00a0e9",
+                  borderColor:
+                    updated.visibility === "PRIVATE" ? "#999999" : "#00a0e9",
                 }
               : e
           )
@@ -91,22 +152,25 @@ export default function CalendarPage() {
         const created = await createSchedule(formData);
         const newEvent = {
           id: created.id,
-          title: created.title,
+          title: created.visibility === "PRIVATE" ? `[비공개] ${created.title}` : created.title,
           start: toISO(created.startDateTime),
           end: toISO(created.endDateTime),
           content: created.content,
           location: created.location,
-          backgroundColor: "#00a0e9",
-          borderColor: "#00a0e9",
+          visibility: created.visibility,
+          userId: created.userId,
+          userName: created.userName,
+          backgroundColor:
+            created.visibility === "PRIVATE" ? "#999999" : "#00a0e9",
+          borderColor:
+            created.visibility === "PRIVATE" ? "#999999" : "#00a0e9",
         };
         setEvents((prev) => [...prev, newEvent]);
         showSnack("일정이 등록되었습니다", "success");
       }
       setModalOpen(false);
     } catch (err) {
-      const message =
-        err.message || (isEdit ? "일정 수정 실패" : "일정 등록 실패");
-      showSnack(message, "error");
+      showSnack(err.message || "일정 처리 중 오류", "error");
     }
   };
 
@@ -117,10 +181,39 @@ export default function CalendarPage() {
       setEvents((prev) => prev.filter((e) => e.id !== id));
       showSnack("일정이 삭제되었습니다", "info");
       setModalOpen(false);
+      setDetailOpen(false);
     } catch (err) {
-      const message = err.message || "일정 삭제 실패";
-      showSnack(message, "error");
+      showSnack(err.message || "삭제 실패", "error");
     }
+  };
+
+  // FullCalendar가 현재 화면에 어떤 날짜 범위를 표시 중인지 콜백으로 전달
+  // - list15days(목록 15일) 뷰 전환/prev/next/today 때마다 자동 호출
+  const handleDatesSet = (info) => {
+    setCurrentView(info.view.type); // (dayGridMonth | timeGridWeek | timeGridDay | list15days)
+    setVisibleEnd(info.end);        // 표시 끝일(Date)  ※ list 뷰에서는 15일 경계
+  };
+
+  /** PRIVATE 일정 🔒 표시 */
+  const renderEventContent = (arg) => {
+    const event = arg.event.extendedProps;
+    const isPrivate = event.visibility === "PRIVATE";
+    const isOwner = event.userId === currentUserId;
+
+    return (
+      <div style={{ opacity: isPrivate ? 0.7 : 1 }}>
+        {arg.timeText && (
+          <span style={{ color: "#555", marginRight: 4 }}>{arg.timeText}</span>
+        )}
+        {isPrivate && <span>🔒 </span>}
+        <b>{arg.event.title}</b>
+        {isOwner && (
+          <span style={{ fontSize: "0.8em", marginLeft: 4, color: "#333" }}>
+            (내 일정)
+          </span>
+        )}
+      </div>
+    );
   };
 
   /** 로딩 중 */
@@ -141,10 +234,11 @@ export default function CalendarPage() {
       </Typography>
 
       <FullCalendar
+        ref={calendarRef} // 캘린더 API 제어를 위해 ref 바인딩
         plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
         initialView="dayGridMonth" // 기본은 월간
         headerToolbar={{
-          left: "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
+          left: "dayGridMonth,timeGridWeek,timeGridDay,list15days",
           center: "title",
           right: "prev,next today",
         }}
@@ -153,26 +247,32 @@ export default function CalendarPage() {
           month: "월간",
           week: "주간",
           day: "일간",
-          list: "목록",
+          list15days: "목록",
         }}
         height="auto"
         events={events}
+        eventContent={renderEventContent}
         dateClick={handleDateClick}
         eventClick={handleEventClick}
+        datesSet={handleDatesSet} // 표시 범위 변경 시 호출되어 visibleStart/visibleEnd 갱신
         slotMinTime="08:00:00"
         slotMaxTime="21:00:00"
-        eventTimeFormat={{
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false, // 일정(이벤트) 표시 24시간제
-        }}
-        slotLabelFormat={{
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false, // 시간축(8PM → 20:00)
-        }}
-        />
+        eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
+        slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
+        /** 커스텀 뷰 설정 (15일 단위 목록) */
+        views={{ list15days: { type: "list", duration: { days: 15 }, buttonText: "목록" } }}
+      />
 
+      {/* 목록(15일) 뷰 전용 보조 UI: "~까지 표시 중" */}
+      {currentView === "list15days" && visibleEnd && (
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 2 }}>
+          <Typography variant="body2" color="text.secondary">
+            {visibleEnd.toISOString().slice(0, 10)} 까지 표시 중
+          </Typography>
+        </Stack>
+      )}
+
+      {/* 일정 등록/수정 모달 */}
       {modalOpen && (
         <ScheduleModal
           open={modalOpen}
@@ -184,6 +284,22 @@ export default function CalendarPage() {
         />
       )}
 
+      {/* 일정 상세보기 모달 */}
+      {detailOpen && (
+        <ScheduleDetailModal
+          open={detailOpen}
+          scheduleId={detailId}
+          currentUserId={currentUserId}
+          onClose={() => setDetailOpen(false)}
+          onEdit={(data) => {
+            setSelectedEvent(data);
+            setModalOpen(true);
+            setDetailOpen(false);
+          }}
+          onDelete={handleDelete}
+        />
+      )}
+
       {/* 전역 알림 */}
       <Snackbar
         open={snack.open}
@@ -191,12 +307,7 @@ export default function CalendarPage() {
         onClose={closeSnack}
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       >
-        <Alert
-          onClose={closeSnack}
-          severity={snack.severity}
-          variant="filled"
-          sx={{ width: "100%" }}
-        >
+        <Alert onClose={closeSnack} severity={snack.severity} variant="filled" sx={{ width: "100%" }}>
           {snack.message}
         </Alert>
       </Snackbar>

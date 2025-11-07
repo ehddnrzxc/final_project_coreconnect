@@ -87,10 +87,13 @@ public class BoardController {
         return ResponseEntity.status(HttpStatus.NO_CONTENT).body(res);
     }
 
-    @Operation(summary = "게시글 상세 조회", description = "게시글의 상세 내용을 조회합니다. (조회수가 증가합니다.)")
+    @Operation(summary = "게시글 상세 조회", description = "게시글의 상세 내용을 조회합니다. (조회수가 증가하고, 최근 본 게시글로 저장됩니다.)")
     @GetMapping("/{boardId}")
-    public ResponseEntity<ResponseDTO<BoardResponseDTO>> getBoardDetail(@PathVariable("boardId") Integer boardId) {
-        BoardResponseDTO response = boardService.getBoardById(boardId);
+    public ResponseEntity<ResponseDTO<BoardResponseDTO>> getBoardDetail(
+            @AuthenticationPrincipal String email, 
+            @PathVariable("boardId") Integer boardId
+    ) {
+        BoardResponseDTO response = boardService.getBoardById(boardId, email); 
 
         ResponseDTO<BoardResponseDTO> res = ResponseDTO.<BoardResponseDTO>builder()
                                                        .status(HttpStatus.OK.value())
@@ -101,16 +104,22 @@ public class BoardController {
         return ResponseEntity.ok(res);
     }
 
-    @Operation(summary = "전체 게시글 목록 조회 (정렬 포함)", description = "상단고정 → 공지 → 최신순으로 전체 게시글을 조회합니다.")
-    @GetMapping
-    public ResponseEntity<ResponseDTO<Page<BoardResponseDTO>>> getAllBoards(
-            @PageableDefault(size = 10) Pageable pageable
+    /** 전체 게시글 목록 조회 (정렬 통합 버전)
+     * sortType = latest(최신순), views(조회순)
+     * 상단고정 → 공지 → 일반글 순으로 정렬됨
+     */
+    @Operation(summary = "전체 게시글 목록 조회 (정렬 포함)", 
+               description = "sortType = latest(최신순), views(조회순). 상단고정 → 공지 → 일반글 순으로 조회합니다.")
+    @GetMapping("/ordered") // 수정1
+    public ResponseEntity<ResponseDTO<Page<BoardResponseDTO>>> getBoards(
+            @RequestParam(name = "sortType", defaultValue = "latest") String sortType, 
+            @PageableDefault(size = 10) Pageable pageable 
     ) {
-        Page<BoardResponseDTO> page = boardService.getBoardsOrdered(pageable); 
+        Page<BoardResponseDTO> page = boardService.getBoardsSorted(sortType, pageable); 
 
         ResponseDTO<Page<BoardResponseDTO>> res = ResponseDTO.<Page<BoardResponseDTO>>builder()
                                                              .status(HttpStatus.OK.value())
-                                                             .message("전체 게시글 목록 조회 성공 (정렬 포함)")
+                                                             .message("게시글 목록 조회 성공 (" + sortType + ")") 
                                                              .data(page)
                                                              .build();
 
@@ -121,9 +130,10 @@ public class BoardController {
     @GetMapping("/category/{categoryId}")
     public ResponseEntity<ResponseDTO<Page<BoardResponseDTO>>> getBoardsByCategory(
             @PathVariable("categoryId") Integer categoryId,
+            @RequestParam(name = "sortType", defaultValue = "latest") String sortType,
             @PageableDefault(size = 10, sort = "createdAt") Pageable pageable
     ) {
-        Page<BoardResponseDTO> page = boardService.getBoardsByCategory(categoryId, pageable);
+        Page<BoardResponseDTO> page = boardService.getBoardsByCategorySorted(categoryId, sortType, pageable);
 
         ResponseDTO<Page<BoardResponseDTO>> res = ResponseDTO.<Page<BoardResponseDTO>>builder()
                                                              .status(HttpStatus.OK.value())
@@ -166,27 +176,11 @@ public class BoardController {
         return ResponseEntity.ok(res);
     }
     
-    @Operation(summary = "정렬된 게시글 목록 조회", description = "상단고정 -> 공지 -> 최신순으로 게시글 목록을 조회합니다.")
-    @GetMapping("/ordered")
-    public ResponseEntity<ResponseDTO<Page<BoardResponseDTO>>> getBoardsOrdered(
-            @PageableDefault(size = 10) Pageable pageable
-    ) {
-        Page<BoardResponseDTO> page = boardService.getBoardsOrdered(pageable);
-
-        ResponseDTO<Page<BoardResponseDTO>> res = ResponseDTO.<Page<BoardResponseDTO>>builder()
-                                                             .status(HttpStatus.OK.value())
-                                                             .message("정렬된 게시글 목록 조회 성공")
-                                                             .data(page)
-                                                             .build();
-
-        return ResponseEntity.ok(res);
-    }
-
     @Operation(summary = "게시글 검색", description = "제목, 내용 또는 작성자명으로 게시글을 검색합니다.")
     @GetMapping("/search")
     public ResponseEntity<ResponseDTO<Page<BoardResponseDTO>>> searchBoards(
-            @RequestParam("type") String type,
-            @RequestParam("keyword") String keyword,
+            @RequestParam(name = "type") String type,
+            @RequestParam(name = "keyword") String keyword,
             @PageableDefault(size = 10, sort = "createdAt") Pageable pageable
     ) {
         Page<BoardResponseDTO> result = boardService.searchBoards(type, keyword, pageable);
@@ -199,4 +193,21 @@ public class BoardController {
 
         return ResponseEntity.ok(res);
     }
+    
+    @Operation(summary = "최근 본 게시글 10개 조회", description = "로그인한 사용자의 최근 본 게시글을 최대 10개까지 최신순으로 조회합니다.")
+    @GetMapping("/recent")
+    public ResponseEntity<ResponseDTO<List<BoardResponseDTO>>> getRecentViewedBoards(
+            @AuthenticationPrincipal String email
+    ) {
+        List<BoardResponseDTO> list = boardService.getRecentViewedBoards(email);
+
+        ResponseDTO<List<BoardResponseDTO>> res = ResponseDTO.<List<BoardResponseDTO>>builder()
+                                                             .status(HttpStatus.OK.value())
+                                                             .message("최근 본 게시글 목록 조회 성공")
+                                                             .data(list)
+                                                             .build();
+
+        return ResponseEntity.ok(res);
+    }
+
 }

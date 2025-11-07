@@ -94,7 +94,7 @@ const AdminCategoryPage = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: 3, width: "80%", mx: "auto" }}>
       {/* 페이지 제목 */}
       <Typography variant="h5" sx={{ mb: 2 }}>
         카테고리 관리 (관리자 전용)
