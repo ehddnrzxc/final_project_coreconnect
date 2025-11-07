@@ -12,7 +12,7 @@ import lombok.Setter;
 public class EmailSendRequestDTo {
 	private String emailTitle;
 	private String emailContent;
-	private Integer senderid;
+	private Integer senderId;
 	private String senderAddress;          // 발신자 이메일
 	private List<String> recipientAddress; // 발신자 ID
 	private List<String> ccAddresses;      // 참조 CC

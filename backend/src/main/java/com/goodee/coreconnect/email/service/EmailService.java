@@ -1,6 +1,10 @@
 package com.goodee.coreconnect.email.service;
 
+import java.io.IOException;
+import java.util.List;
+
 import org.springframework.data.domain.Page;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.goodee.coreconnect.email.dto.request.EmailSendRequestDTo;
 import com.goodee.coreconnect.email.dto.response.EmailResponseDTO;
@@ -12,7 +16,7 @@ public interface EmailService {
      * @param requestDTO 이메일 전송 요청 DTO (제목/내용/수신자/참조/숨은참조/첨부/답신정보 등)
      * @return EmailResponseDTO 발송된 이메일 상세정보/상태/결과
      */
-	EmailResponseDTO sendEmail(EmailSendRequestDTo requestDTO); 
+	EmailResponseDTO sendEmail(EmailSendRequestDTo requestDTO, List<MultipartFile> attachments) throws IOException; 
 	
 	/**
      * 특정 이메일의 상세 정보를 조회합니다.

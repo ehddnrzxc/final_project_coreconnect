@@ -19,6 +19,8 @@ import UserListPage from "./features/admin/components/UserListPage";
 import ChatHomePage from "./features/chat/pages/ChatHomePage";
 import ChatLayout from "./features/chat/pages/ChatLayout";
 
+import EmailLayout from "./features/email/pages/EmailLayout";
+
 import TemplateAdminCreate from "./features/admin/components/TemplateAdminCreate";
 import BoardLayout from "./features/board/pages/BoardLayout";
 import BoardListPage from "./features/board/pages/BoardListPage";
@@ -27,6 +29,11 @@ import BoardWritePage from "./features/board/pages/BoardWritePage";
 import ProtectedRoute from "./features/auth/ProtectedRoute";
 import CalendarPage from "./features/schedule/pages/CalendarPage";
 import AdminCategoryPage from "./features/board/pages/AdminCategoryPage";
+import MailInboxPage from "./features/email/pages/MailInboxPage";
+import MailWritePage from "./features/email/pages/MailWritePage";
+import MailTrashPage from "./features/email/pages/MailTrashPage";
+
+
 
 /* 전체 라우트 구조 */
 const router = createBrowserRouter([
@@ -54,6 +61,31 @@ const router = createBrowserRouter([
           // 나중에 /chat/:roomId, /chat/new 등 추가 가능
         ],
       },
+      {
+        path: "email",
+        element: (
+          <ProtectedRoute>
+            <EmailLayout/>
+          </ProtectedRoute>
+        ),
+        children: [
+          { index: true, element: <MailInboxPage /> },
+          { path: "write", element: <MailWritePage /> },
+          { path: "trash", element: <MailTrashPage /> },
+        ]
+
+
+
+
+
+
+
+
+      },
+
+
+
+
       {
         path: "e-approval",
         element: (

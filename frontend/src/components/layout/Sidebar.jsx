@@ -19,7 +19,7 @@ import PushPinIcon from "@mui/icons-material/PushPin";
 
 const items = [
   { to: "/home", label: "홈", icon: <HomeIcon fontSize="small" /> },
-  { to: "/mail", label: "메일", icon: <MailOutlineIcon fontSize="small" /> },
+  { to: "/email", label: "메일", icon: <MailOutlineIcon fontSize="small" /> },
   {
     to: "/e-approval",
     label: "전자결재",
