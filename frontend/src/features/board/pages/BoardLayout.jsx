@@ -7,7 +7,7 @@ import {
   ListItemText,
   Typography,
 } from "@mui/material"; // MUI: 레이아웃 및 리스트 구성요소
-import { Outlet, useNavigate, useLocation, useParams } from "react-router-dom"; // useParams 추가
+import { Outlet, useNavigate, useLocation, useParams } from "react-router-dom";
 import { getAllCategories } from "../api/boardCategoryAPI"; // 카테고리 API
 
 // 게시판 전체 레이아웃 컴포넌트
@@ -21,6 +21,12 @@ const BoardLayout = () => {
   // 로컬 스토리지에서 사용자 정보 가져오기
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const isAdmin = user?.role === "ADMIN"; // 관리자 여부 확인
+
+  // ────────────────────────────────
+  // 현재 카테고리 상태 추적용 (수정1)
+  // 리스트 외 페이지에서도 음영 유지용
+  // ────────────────────────────────
+  const [activeCategoryId, setActiveCategoryId] = React.useState(categoryId || ""); // 수정1
 
   // 전체 카테고리 불러오기
   useEffect(() => {
@@ -38,6 +44,40 @@ const BoardLayout = () => {
       }
     })();
   }, []);
+
+  // ────────────────────────────────
+  // 경로 변경 시 카테고리 ID 동기화 (수정1)
+  // /board/:categoryId → categoryId 추출
+  // /board/detail/:id, /board/new → 최근 선택 카테고리 유지
+  // ────────────────────────────────
+  useEffect(() => {
+    const path = location.pathname;
+
+    // 1️⃣ 리스트 화면일 경우: 카테고리ID 직접 반영
+    if (categoryId) {
+      setActiveCategoryId(categoryId);
+      localStorage.setItem("lastCategoryId", categoryId); // 수정1: 최근 카테고리 기억
+    }
+
+    // 2️⃣ 상세 또는 글쓰기일 경우: 최근 선택된 카테고리 복원
+    else if (path.includes("/board/detail") || path.includes("/board/new")) {
+      const savedId = localStorage.getItem("lastCategoryId");
+      if (savedId) setActiveCategoryId(savedId); // 수정1
+    }
+
+    // 3️⃣ 전체 게시판은 초기화
+    else {
+      setActiveCategoryId("");
+    }
+  }, [location, categoryId]); // 수정1
+
+  // ────────────────────────────────
+  // 글쓰기 버튼 클릭 시 현재 카테고리 유지 이동 (수정1)
+  // ────────────────────────────────
+  const handleWriteClick = () => { // 수정1
+    if (categoryId) navigate(`/board/new?categoryId=${categoryId}`); // 수정1
+    else navigate(`/board/new`); // 수정1
+  }; // 수정1
 
   // 카테고리 클릭 시 해당 게시판으로 이동
   const handleCategoryClick = (id) => navigate(`/board/${id}`);
@@ -71,7 +111,7 @@ const BoardLayout = () => {
           variant="contained"
           fullWidth
           sx={{ mb: 1 }}
-          onClick={() => navigate("/board/new")} // 글쓰기 페이지 이동
+          onClick={handleWriteClick} // 글쓰기 페이지 이동
         >
           글쓰기
         </Button>
@@ -121,7 +161,7 @@ const BoardLayout = () => {
 
           {/* 개별 카테고리 목록 */}
           {categories.map((cat, idx) => {
-            const isActive = String(cat.id) === categoryId; // 현재 선택된 카테고리 판별
+            const isActive = String(cat.id) === String(activeCategoryId); // 현재 선택된 카테고리 판별  // 수정1
             return (
               <ListItemButton
                 key={cat.id}
@@ -131,7 +171,7 @@ const BoardLayout = () => {
                     idx === categories.length - 1
                       ? "none"
                       : "1px solid #e0e0e0",
-                  bgcolor: isActive ? "#d9d9d9" : "transparent", // ★ 선택된 카테고리 = 공지글 색상
+                  bgcolor: isActive ? "#d9d9d9" : "transparent", // 선택된 카테고리 = 공지글 색상 // 수정1
                   "&:hover": {
                     bgcolor: "#d9d9d9", // hover 시 동일 색상 유지
                     boxShadow: "0 3px 6px rgba(0,0,0,0.1)", // hover 시 외곽 그림자 효과
@@ -141,7 +181,7 @@ const BoardLayout = () => {
                   color: isActive ? "#000000" : "inherit", // 선택 시 글씨색 유지
                   borderRadius: 1, // 모서리 살짝 둥글게
                   boxShadow: isActive
-                    ? "inset 0 1px 3px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.1)" // ★ 공지글 스타일 입체감
+                    ? "inset 0 1px 3px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.1)" // 공지글 스타일 입체감 // 수정1
                     : "none",
                   transition: "background-color 0.2s ease, box-shadow 0.2s ease", // 부드러운 전환
                 }}

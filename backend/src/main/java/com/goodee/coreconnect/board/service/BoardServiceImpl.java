@@ -277,19 +277,26 @@ public class BoardServiceImpl implements BoardService {
                                   .toList();
     }
     
-    /** 게시판용 정렬된 목록 조회 (상단고정 -> 공지 -> 최신순) */
+    /** 게시판 정렬 조회 (최신순 / 조회순 선택형) */ // 수정1
     @Override
     @Transactional(readOnly = true)
-    public Page<BoardResponseDTO> getBoardsOrdered(Pageable pageable) {
-        Page<Board> boardPage = boardRepository.findAllOrderByPinnedNoticeAndCreated(pageable);
+    public Page<BoardResponseDTO> getBoardsSorted(String sortType, Pageable pageable) { 
+        Page<Board> boardPage;
 
-        List<BoardResponseDTO> dtoList = boardPage.getContent().stream()
-                                                  .map(board -> BoardResponseDTO.toDTO(board))
+        if ("views".equalsIgnoreCase(sortType)) {
+            boardPage = boardRepository.findAllOrderByPinnedNoticeAndViews(pageable);
+        } else { // 기본: 최신순
+            boardPage = boardRepository.findAllOrderByPinnedNoticeAndCreated(pageable);
+        }
+
+        List<BoardResponseDTO> dtoList = boardPage.getContent()
+                                                  .stream()
+                                                  .map(BoardResponseDTO::toDTO)
                                                   .toList();
 
         return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());
     }
-
+    
     /** 게시글 검색 (제목 / 내용 / 작성자명 중 선택형) */
     @Override
     @Transactional(readOnly = true)
@@ -324,6 +331,24 @@ public class BoardServiceImpl implements BoardService {
                          .map(board -> BoardResponseDTO.toDTO(board))
                          .limit(10)
                          .toList();
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public Page<BoardResponseDTO> getBoardsByCategorySorted(Integer categoryId, String sortType, Pageable pageable) {
+        Page<Board> boardPage;
+
+        if ("views".equalsIgnoreCase(sortType)) {
+            boardPage = boardRepository.findByCategoryOrderedByViews(categoryId, pageable); 
+        } else {
+            boardPage = boardRepository.findByCategoryIdOrdered(categoryId, pageable);
+        }
+
+        List<BoardResponseDTO> dtoList = boardPage.getContent()
+                                                  .stream()
+                                                  .map(BoardResponseDTO::toDTO)
+                                                  .toList();
+        return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());
     }
     
     

@@ -4,9 +4,16 @@ import http from "../../../api/http";
 export const getAllBoards = (page = 0, size = 10) =>
   http.get(`/board?page=${page}&size=${size}`);
 
-// 카테고리별 게시글 목록
-export const getBoardsByCategory = (categoryId, page = 0, size = 10) =>
-  http.get(`/board/category/${categoryId}?page=${page}&size=${size}`);
+// ✅ 카테고리별 게시글 목록 (정렬 추가)
+export const getBoardsByCategory = (
+  categoryId,
+  sortType = "latest",
+  page = 0,
+  size = 10
+) =>
+  http.get(
+    `/board/category/${categoryId}?sortType=${sortType}&page=${page}&size=${size}`
+  );
 
 // 게시글 상세
 export const getBoardDetail = (boardId) => http.get(`/board/${boardId}`);
@@ -25,9 +32,9 @@ export const deleteBoard = (boardId) => http.delete(`/board/${boardId}`);
 export const searchBoards = (type, keyword, page = 0, size = 10) =>
   http.get(`/board/search?type=${type}&keyword=${keyword}&page=${page}&size=${size}`);
 
-// 전체 게시판 목록 조회 (상단고정 -> 공지 -> 최신순)
-export const getBoardsOrdered = (page = 0, size = 10) =>
-  http.get(`/board/ordered?page=${page}&size=${size}`);
+// 전체 게시판 목록 조회 (상단고정 -> 공지 -> 일반글 (최신순/조회순))
+export const getBoardsOrdered = (sortType = "latest", page = 0, size = 10) =>
+  http.get(`/board/ordered?sortType=${sortType}&page=${page}&size=${size}`);
 
 // 최근 본 게시글 10개 조회
 export const getRecentViewedBoards = () => http.get(`/board/recent`);

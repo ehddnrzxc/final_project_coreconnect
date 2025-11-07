@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react"; // React 훅: 상태관리, 생명주기 제어
-import { useParams, useNavigate } from "react-router-dom"; // 라우터 훅: 파라미터, 페이지 이동
+import { useParams, useNavigate, useSearchParams } from "react-router-dom"; // 라우터 훅: 파라미터, 페이지 이동
 import { createBoard, getBoardDetail, updateBoard } from "../api/boardAPI"; // 게시글 관련 API
 import { uploadFiles } from "../api/boardFileAPI"; // 첨부파일 업로드 API
 import { getAllCategories } from "../api/boardCategoryAPI"; // 카테고리 조회 API
@@ -21,6 +21,7 @@ import { handleApiError } from "../../../utils/handleError"; // 공통 에러 �
 // 게시글 작성 및 수정 페이지 컴포넌트
 const BoardWritePage = () => {
   const { boardId } = useParams(); // URL 파라미터에서 게시글 ID 추출
+  const [searchParams] = useSearchParams(); // 수정1: 쿼리스트링 접근용
   const navigate = useNavigate(); // 페이지 이동 훅
 
   // 폼 상태 (제목, 내용, 옵션 등)
@@ -43,14 +44,21 @@ const BoardWritePage = () => {
     if (!boardId) {
       (async () => {
         try {
-          const res = await getAllCategories(); // API 요청
-          setCategories(res.data.data || []); // 목록 저장
+          const res = await getAllCategories();
+          const list = res.data.data || [];
+          setCategories(list);
+
+          // 수정1: URL에 categoryId 있으면 기본값으로 세팅
+          const defaultCat = searchParams.get("categoryId"); // 수정1
+          if (defaultCat) { // 수정1
+            setForm((f) => ({ ...f, categoryId: defaultCat })); // 수정1
+          } // 수정1
         } catch (err) {
           handleApiError(err, "카테고리 불러오기 실패");
         }
       })();
     }
-  }, [boardId]);
+  }, [boardId, searchParams]); // 수정1: searchParams 추가
 
   // 수정 모드일 경우: 기존 게시글 불러오기
   useEffect(() => {

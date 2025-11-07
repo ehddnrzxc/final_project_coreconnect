@@ -28,7 +28,7 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
     /** 공지글 조회 (삭제 제외, 상단고정 → 최신순 정렬) */
     List<Board> findByNoticeYnTrueAndDeletedYnFalseOrderByPinnedDescCreatedAtDesc();
     
-    /** 상단고정 -> 공지 -> 일반글 순으로 조회 (삭제 제외) */
+    /** 상단고정 -> 공지 -> 일반글 순으로 조회 (삭제 제외, 최신순) */
     @Query("""
         SELECT b FROM Board b
         WHERE b.deletedYn = false
@@ -36,7 +36,15 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
     """)
     Page<Board> findAllOrderByPinnedNoticeAndCreated(Pageable pageable);
     
-    /** 카테고리별 정렬 조회 (상단고정 -> 공지 -> 최신순) */
+    /** 상단고정 -> 공지 -> 일반글 순으로 조회 (삭제 제외, 조회순) */
+    @Query("""
+        SELECT b FROM Board b
+        WHERE b.deletedYn = false
+        ORDER BY b.pinned DESC, b.noticeYn DESC, b.viewCount DESC, b.createdAt DESC
+    """)
+    Page<Board> findAllOrderByPinnedNoticeAndViews(Pageable pageable);
+    
+    /** 카테고리별 정렬 조회 (삭제 제외, 상단고정 -> 공지 -> 일반글) */
     @Query("""
         SELECT b FROM Board b
         WHERE b.deletedYn = false AND b.category.id = :categoryId
@@ -79,4 +87,11 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
         ORDER BY b.createdAt DESC
     """)
     Page<Board> searchByAuthor(@Param("keyword") String keyword, Pageable pageable);
+    
+    @Query("""
+        SELECT b FROM Board b
+        WHERE b.deletedYn = false AND b.category.id = :categoryId
+        ORDER BY b.pinned DESC, b.noticeYn DESC, b.viewCount DESC, b.createdAt DESC
+    """)
+    Page<Board> findByCategoryOrderedByViews(@Param("categoryId") Integer categoryId, Pageable pageable);
 }
