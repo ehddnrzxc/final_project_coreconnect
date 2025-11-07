@@ -45,8 +45,8 @@ public class Document {
   @Column(name = "doc_title", nullable = false, length = 30)
   private String documentTitle;
 
-  @Column(name = "doc_content", columnDefinition = "TEXT")
-  private String documentContent;
+  @Column(name = "doc_data_json", columnDefinition = "TEXT")
+  private String documentDataJson;
 
   @Enumerated(EnumType.STRING)
   @Column(name = "doc_status", nullable = false, length = 20)
@@ -86,12 +86,12 @@ public class Document {
    * @param documentContent
    * @return
    */
-  public static Document createDocument(Template template, User user, String documentTitle, String documentContent) {
+  public static Document createDocument(Template template, User user, String documentTitle, String documentDataJson) {
     Document d = new Document();
     d.template = template;
     d.user = user;
     d.documentTitle = documentTitle;
-    d.documentContent = documentContent;
+    d.documentDataJson = documentDataJson;
     return d;
   }
 

@@ -37,7 +37,7 @@ public class DocumentCreateRequestDTO {
    * 문서 내용
    */
   @NotBlank(message = "문서 내용은 필수입니다.")
-  private String documentContent;
+  private String documentDataJson;
   
   /**
    * 결재선에 포함될 (사용자 + 역할) 목록 (순서대로)
@@ -52,7 +52,7 @@ public class DocumentCreateRequestDTO {
 //  private List<MultipartFile> files;
   
   public Document toEntity(Template template, User user) {
-    return Document.createDocument(template, user, this.documentTitle, this.documentContent);
+    return Document.createDocument(template, user, this.documentTitle, this.documentDataJson);
   }
   
 }

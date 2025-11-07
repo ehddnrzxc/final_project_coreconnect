@@ -1,8 +1,6 @@
 package com.goodee.coreconnect.auth;
 
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -15,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.goodee.coreconnect.auth.dto.LoginRequestDTO;
+import com.goodee.coreconnect.auth.dto.LoginResponseDTO;
 import com.goodee.coreconnect.security.jwt.JwtProvider;
 import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.User;
@@ -23,13 +23,13 @@ import com.goodee.coreconnect.user.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
  * 로그인, 로그아웃 로직을 수행하는 컨트롤러
  */
-
 
 /** 이메일/비밀번호를 검증하고 Access Token + Refresh Token을 발급 */
 @RestController
@@ -43,19 +43,21 @@ public class AuthController {
   private final PasswordEncoder passwordEncoder;
 
   @Operation(summary = "로그인", 
-             description = "이메일/비밀번호로 로그인하여 Access Token(응답 본문)과 Refresh Token(HttpOnly 쿠키)을 발급합니다.")
+             description = "이메일/비밀번호로 로그인하여 Access Token과 Refresh Token을 HttpOnly 쿠키로 발급합니다.")
   @PostMapping("/login")
-  public ResponseEntity<Map<String, Object>> login(
-      @RequestBody Map<String, String> body,
+  public ResponseEntity<LoginResponseDTO> login(
+      @Valid @RequestBody LoginRequestDTO req,
       HttpServletResponse res) {
 
       // 요청값 받기
-      String email = body.get("email");
-      String password = body.get("password");
+      String email = req.email();
+      String password = req.password();
       
       // 이메일로 사용자 조회
       User user = userRepository.findByEmail(email).orElse(null);
-      if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+      if (user == null) { 
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build(); 
+      }
       // 비밀번호 비교 (BCrypt)
       if (!passwordEncoder.matches(password, user.getPassword()))
           return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -66,9 +68,18 @@ public class AuthController {
       // 토큰 생성
       String access = jwt.createAccess(email, role, JwtConstants.ACCESS_TOKEN_MINUTES);   
       String refresh = jwt.createRefresh(email, role, JwtConstants.REFRESH_TOKEN_DAYS);  
-
-      // HttpOnly Refresh Token 쿠키 설정
-      ResponseCookie cookie = ResponseCookie.from("refresh_token", refresh)
+      
+      // Access Token 쿠키 (HttpOnly)
+      ResponseCookie accessCookie = ResponseCookie.from("access_token", access)
+          .httpOnly(true)
+          .secure(false) // 로컬 개발 시 false, HTTPS 환경에서는 true
+          .sameSite("Lax")
+          .path("/")
+          .maxAge(Duration.ofMinutes(JwtConstants.ACCESS_TOKEN_MINUTES))
+          .build();
+      
+      // Refresh Token 쿠키 (HttpOnly)
+      ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", refresh)
           .httpOnly(true)
           .secure(false)       
           .sameSite("Lax")     
@@ -76,38 +87,48 @@ public class AuthController {
           .maxAge(Duration.ofDays(JwtConstants.REFRESH_TOKEN_DAYS))
           .build();
 
-      res.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+      res.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
+      res.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
-      // 응답 데이터 (AccessToken + 사용자 정보)
-      Map<String, Object> userInfo = new HashMap<>();
-      userInfo.put("email", user.getEmail());
-      userInfo.put("name", user.getName());
-      userInfo.put("role", user.getRole().name());
-      userInfo.put("departmentName", 
-                   user.getDepartment() != null ? user.getDepartment().getDeptName() : null);
-      userInfo.put("jobGrade", 
-                   user.getJobGrade() != null ? user.getJobGrade().label() : null);
-
-      Map<String, Object> result = new HashMap<>();
-      result.put("accessToken", access);
-      result.put("user", userInfo);
-
-      return ResponseEntity.ok(result);
+      // 응답 데이터 (사용자 정보)
+      LoginResponseDTO response = new LoginResponseDTO(
+          user.getEmail(),
+          user.getName(),
+          user.getRole().name(),
+          user.getDepartment() != null ? user.getDepartment().getDeptName() : null,
+          user.getJobGrade() != null ? user.getJobGrade().label() : null
+      );
+      
+      return ResponseEntity.ok(response);
   }
 
   
   /** 쿠키의 Refresh Token을 검증하여 새로운 Access Token을 재발급 */
   @Operation(summary = "Refresh Token", description = "만료된 Access Token을 Refresh Token(쿠키)로 재발급합니다.")
   @PostMapping("/refresh")
-  public ResponseEntity<Map<String,String>> refresh(
-      @CookieValue(name="refresh_token", required=false) String refresh) {
-    if (refresh == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+  public ResponseEntity<Void> refresh(
+      @CookieValue(name = "refresh_token", required = false) String refresh,
+      HttpServletResponse res
+  ) {
+    if (refresh == null) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    }
     try {
-      log.info("????? {}",refresh);
       String email = jwt.getSubject(refresh);
       Role role = Role.valueOf(jwt.getRole(refresh));
       String newAccess = jwt.createAccess(email, role, JwtConstants.ACCESS_TOKEN_MINUTES);
-      return ResponseEntity.ok(Map.of("accessToken", newAccess));
+      
+      // 새 Access Token 쿠키 재발급
+      ResponseCookie newAccessCookie = ResponseCookie.from("access_token", newAccess)
+          .httpOnly(true)
+          .secure(false)
+          .sameSite("Lax")
+          .path("/")
+          .maxAge(Duration.ofMinutes(JwtConstants.ACCESS_TOKEN_MINUTES))
+          .build();
+      res.addHeader(HttpHeaders.SET_COOKIE, newAccessCookie.toString());
+      
+      return ResponseEntity.noContent().build();
     } catch (Exception e) {
       e.printStackTrace();
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
@@ -115,13 +136,29 @@ public class AuthController {
   }
 
   
-  /** Refresh Token 쿠키를 삭제하여 로그아웃 처리 */
-  @Operation(summary = "로그아웃", description = "Refresh Token을 제거하고 로그아웃 기능을 수행합니다.")
+  /** Access Token + Refresh Token 쿠키를 삭제하여 로그아웃 처리 */
+  @Operation(summary = "로그아웃", description = "Access/Refresh Token 쿠키를 제거하고 로그아웃 기능을 수행합니다.")
   @PostMapping("/logout")
   public ResponseEntity<Void> logout(HttpServletResponse res) {
-    ResponseCookie delete = ResponseCookie.from("refresh_token", "")
-        .httpOnly(true).secure(true).sameSite("Lax").path("/").maxAge(0).build();
-    res.addHeader(HttpHeaders.SET_COOKIE, delete.toString());
+    ResponseCookie deleteAccess = ResponseCookie.from("access_token", "")
+        .httpOnly(true)
+        .secure(false)
+        .sameSite("Lax")
+        .path("/")
+        .maxAge(0)
+        .build();
+    
+    ResponseCookie deleteRefresh = ResponseCookie.from("refresh_token", "")
+        .httpOnly(true)
+        .secure(false)
+        .sameSite("Lax")
+        .path("/")
+        .maxAge(0)
+        .build();
+    
+    res.addHeader(HttpHeaders.SET_COOKIE, deleteAccess.toString());
+    res.addHeader(HttpHeaders.SET_COOKIE, deleteRefresh.toString());
+    
     return ResponseEntity.noContent().build();
   }
 }

@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
 import com.goodee.coreconnect.user.dto.request.ChangeUserDepartmentDTO;
 import com.goodee.coreconnect.user.dto.request.ChangeUserJobGradeDTO;
 import com.goodee.coreconnect.user.dto.response.OrganizationUserResponseDTO;
@@ -37,9 +38,10 @@ public class UserController {
     /** 프로필 이미지 업로드 */
     @PostMapping("/profile-image")
     public ResponseEntity<String> uploadProfileImage(
-            @AuthenticationPrincipal String email, 
+            @AuthenticationPrincipal CustomUserDetails user, 
             @RequestParam("file") MultipartFile file) throws IOException {
-    
+        
+        String email = user.getEmail();
         userService.updateProfileImage(email, file);
         return ResponseEntity.ok("프로필 이미지 업로드 성공");
     }
@@ -47,8 +49,9 @@ public class UserController {
     /** 프로필 이미지 조회 */
     @GetMapping("/profile-image")
     public ResponseEntity<Map<String, String>> getProfileImageUrl(
-            @AuthenticationPrincipal String email) {
-
+            @AuthenticationPrincipal CustomUserDetails user) {
+        
+        String email = user.getEmail();
         String imageUrl = userService.getProfileImageUrlByEmail(email);
         return ResponseEntity.ok(Map.of("imageUrl", imageUrl));
     }

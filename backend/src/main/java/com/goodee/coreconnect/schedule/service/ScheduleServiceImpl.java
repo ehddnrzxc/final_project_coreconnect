@@ -329,20 +329,20 @@ public class ScheduleServiceImpl implements ScheduleService {
   @Override
   @Transactional(readOnly = true)
   public List<ResponseScheduleDTO> getTodaySchedulesByEmail(String email) {
-      // 1️⃣ 이메일 기반으로 User 엔티티 조회
+      // 이메일 기반으로 User 엔티티 조회
       User user = userRepository.findByEmail(email)
               .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다: " + email));
 
-      // 2️⃣ 오늘 날짜의 시작/끝 시각 계산
+      // 오늘 날짜의 시작/끝 시각 계산
       LocalDate today = LocalDate.now(); 
       LocalDateTime startOfDay = today.atStartOfDay();       // 00:00:00
       LocalDateTime endOfDay   = today.atTime(23, 59, 59);   // 23:59:59
 
-      // 3️⃣ 오늘 일정 조회
+      // 오늘 일정 조회
       List<Schedule> schedules = scheduleRepository
               .findByUserAndDeletedYnFalseAndStartDateTimeBetween(user, startOfDay, endOfDay);
 
-      // 4️⃣ DTO 변환
+      // DTO 변환
       return schedules.stream()
               .map(ResponseScheduleDTO::toDTO)
               .toList();

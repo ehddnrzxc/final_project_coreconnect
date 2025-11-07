@@ -1,6 +1,7 @@
 package com.goodee.coreconnect.board.service;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -208,17 +209,15 @@ public class BoardServiceImpl implements BoardService {
         board.getFiles().forEach(file -> file.delete());
     }
 
-    /** 게시글 상세 조회 (조회수 중복 방지 포함) */
+    /** 게시글 상세 조회 (조회수 중복 방지 + 최근 본 게시글 기록) */
     @Override
-    @Transactional(readOnly = false)
-    public BoardResponseDTO getBoardById(Integer boardId) {
-      
-        // 로그인 유무 확인
-        User loginUser = User.getAuthenticatedUser(userRepository);
-        if (loginUser == null) {
-            throw new SecurityException("게시글은 로그인 후에만 조회할 수 있습니다."); 
-        }
-      
+    @Transactional
+    public BoardResponseDTO getBoardById(Integer boardId, String email) { 
+
+        // 로그인 유저 찾기 
+        User loginUser = userRepository.findByEmail(email)
+                .orElseThrow(() -> new EntityNotFoundException("로그인 정보를 찾을 수 없습니다.")); 
+
         // 게시글 조회
         Board board = boardRepository.findById(boardId)
                 .orElseThrow(() -> new EntityNotFoundException("게시글을 찾을 수 없습니다."));
@@ -226,7 +225,7 @@ public class BoardServiceImpl implements BoardService {
         if (board.getDeletedYn()) {
             throw new IllegalStateException("삭제된 게시글입니다.");
         }
-        
+
         // 비공개 게시글 접근 권한 검사
         if (board.getPrivateYn()) {
             if (!loginUser.getId().equals(board.getUser().getId())
@@ -234,14 +233,16 @@ public class BoardServiceImpl implements BoardService {
                 throw new AccessDeniedException("비공개 게시글은 작성자 또는 관리자만 조회할 수 있습니다.");
             }
         }
-        
-        // 조회수 중복 방지 로직
-        boolean alreadyViewed = viewHistoryRepository.existsByUserAndBoard(loginUser, board);
-        if (!alreadyViewed) {
-            board.increaseViewCount();
+
+        // 조회수 중복 방지 로직(이미 본 글이면 viewedAt만 갱신, 처음 보는 글이면 새로 기록 + 조회수 증가)
+        Optional<BoardViewHistory> existingHistory = viewHistoryRepository.findByUserAndBoard(loginUser, board);
+        if (existingHistory.isPresent()) {
+            existingHistory.get().updateViewedAt(); 
+        } else {
+            board.increaseViewCount();              
             viewHistoryRepository.save(BoardViewHistory.create(loginUser, board));
         }
-        
+
         return BoardResponseDTO.toDTO(board);
     }
 
@@ -276,19 +277,26 @@ public class BoardServiceImpl implements BoardService {
                                   .toList();
     }
     
-    /** 게시판용 정렬된 목록 조회 (상단고정 -> 공지 -> 최신순) */
+    /** 게시판 정렬 조회 (최신순 / 조회순 선택형) */ // 수정1
     @Override
     @Transactional(readOnly = true)
-    public Page<BoardResponseDTO> getBoardsOrdered(Pageable pageable) {
-        Page<Board> boardPage = boardRepository.findAllOrderByPinnedNoticeAndCreated(pageable);
+    public Page<BoardResponseDTO> getBoardsSorted(String sortType, Pageable pageable) { 
+        Page<Board> boardPage;
 
-        List<BoardResponseDTO> dtoList = boardPage.getContent().stream()
-                                                  .map(board -> BoardResponseDTO.toDTO(board))
+        if ("views".equalsIgnoreCase(sortType)) {
+            boardPage = boardRepository.findAllOrderByPinnedNoticeAndViews(pageable);
+        } else { // 기본: 최신순
+            boardPage = boardRepository.findAllOrderByPinnedNoticeAndCreated(pageable);
+        }
+
+        List<BoardResponseDTO> dtoList = boardPage.getContent()
+                                                  .stream()
+                                                  .map(BoardResponseDTO::toDTO)
                                                   .toList();
 
         return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());
     }
-
+    
     /** 게시글 검색 (제목 / 내용 / 작성자명 중 선택형) */
     @Override
     @Transactional(readOnly = true)
@@ -306,6 +314,41 @@ public class BoardServiceImpl implements BoardService {
                                                .map(board -> BoardResponseDTO.toDTO(board))
                                                .toList();
         return new PageImpl<>(dtoList, pageable, result.getTotalElements());
+    }
+    
+    /** 최근 본 게시글 10개 조회 */
+    @Override
+    @Transactional(readOnly = true)
+    public List<BoardResponseDTO> getRecentViewedBoards(String email) {
+        User user = userRepository.findByEmail(email)
+                                  .orElseThrow(() -> new EntityNotFoundException("사용자를 찾을 수 없습니다."));
+
+        List<BoardViewHistory> histories = viewHistoryRepository.findRecentByUserId(user.getId());
+
+        return histories.stream()
+                         .map(history -> history.getBoard())
+                         .filter(board -> !board.getDeletedYn())
+                         .map(board -> BoardResponseDTO.toDTO(board))
+                         .limit(10)
+                         .toList();
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public Page<BoardResponseDTO> getBoardsByCategorySorted(Integer categoryId, String sortType, Pageable pageable) {
+        Page<Board> boardPage;
+
+        if ("views".equalsIgnoreCase(sortType)) {
+            boardPage = boardRepository.findByCategoryOrderedByViews(categoryId, pageable); 
+        } else {
+            boardPage = boardRepository.findByCategoryIdOrdered(categoryId, pageable);
+        }
+
+        List<BoardResponseDTO> dtoList = boardPage.getContent()
+                                                  .stream()
+                                                  .map(BoardResponseDTO::toDTO)
+                                                  .toList();
+        return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());
     }
     
     

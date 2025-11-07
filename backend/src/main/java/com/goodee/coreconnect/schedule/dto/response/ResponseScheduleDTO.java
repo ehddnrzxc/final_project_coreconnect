@@ -31,6 +31,8 @@ public class ResponseScheduleDTO {
   
   private ScheduleVisibility visibility;
   
+  private Integer userId;
+  
   private String userName;
   
   private String categoryName;
@@ -50,6 +52,7 @@ public class ResponseScheduleDTO {
     dto.startDateTime = entity.getStartDateTime();
     dto.endDateTime = entity.getEndDateTime();
     dto.visibility = entity.getVisibility();
+    dto.userId = entity.getUser().getId();
     dto.createdAt = entity.getCreatedAt();
 
     if (entity.getUser() != null)

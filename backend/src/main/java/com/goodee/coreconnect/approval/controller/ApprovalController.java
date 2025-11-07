@@ -23,6 +23,7 @@ import com.goodee.coreconnect.approval.dto.response.DocumentSimpleResponseDTO;
 import com.goodee.coreconnect.approval.dto.response.TemplateDetailResponseDTO;
 import com.goodee.coreconnect.approval.dto.response.TemplateSimpleResponseDTO;
 import com.goodee.coreconnect.approval.service.ApprovalService;
+import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -49,8 +50,10 @@ public class ApprovalController {
   public ResponseEntity<Integer> createDocument(
       @Valid @RequestPart("dto") DocumentCreateRequestDTO requestDTO, // (1) JSON 데이터
       @RequestPart(value = "files", required = false) List<MultipartFile> files, // (2) 파일 데이터 (없을 수도 있음)
-      @AuthenticationPrincipal String email // (3) 인증된 사용자 이메일
+      @AuthenticationPrincipal CustomUserDetails user // (3) 인증된 사용자
       ) {
+    
+    String email = user.getEmail();
 
     // 서비스 호출 시 email을 그대로 넘겨줍니다.
     Integer documentId = approvalService.createDocument(requestDTO, files, email);
@@ -69,9 +72,10 @@ public class ApprovalController {
   public ResponseEntity<Integer> createDraft(
       @Valid @RequestPart("dto") DocumentDraftRequestDTO requestDTO, // (1) 임시저장용 DTO
       @RequestPart(value = "files", required = false) List<MultipartFile> files, // (2) 파일 데이터 (없을 수도 있음)
-      @AuthenticationPrincipal String email // (3) 인증된 사용자 이메일
+      @AuthenticationPrincipal CustomUserDetails user // (3) 인증된 사용자
       ) {
-
+    
+    String email = user.getEmail();
     Integer documentId = approvalService.createDraft(requestDTO, files, email);
 
     // 생성 성공 시 201 Created 상태와 문서 ID 반환
@@ -85,8 +89,9 @@ public class ApprovalController {
   @Operation(summary = "목록 조회", description = "내가 작성한 문서 목록 조회")
   @GetMapping("/my-documents")
   public ResponseEntity<List<DocumentSimpleResponseDTO>> getMyDrafts(
-      @AuthenticationPrincipal String email
+      @AuthenticationPrincipal CustomUserDetails user
       ) {
+    String email = user.getEmail();
     List<DocumentSimpleResponseDTO> myDrafts = approvalService.getMyDocuments(email);
     return ResponseEntity.ok(myDrafts);
   }
@@ -98,8 +103,9 @@ public class ApprovalController {
   @Operation(summary = "임시저장함 조회", description = "내가 임시저장한(DRAFT 상태) 문서 목록 조회")
   @GetMapping("/drafts")
   public ResponseEntity<List<DocumentSimpleResponseDTO>> getMyDraftBox(
-      @AuthenticationPrincipal String email
+      @AuthenticationPrincipal CustomUserDetails user
       ) {
+    String email = user.getEmail();
     List<DocumentSimpleResponseDTO> myDrafts = approvalService.getMyDraftBox(email);
     return ResponseEntity.ok(myDrafts);
   }
@@ -111,8 +117,9 @@ public class ApprovalController {
   @Operation(summary = "목록 조회", description = "내가 결재할 문서 목록 조회")
   @GetMapping("/my-tasks")
   public ResponseEntity<List<DocumentSimpleResponseDTO>> getMyTasks(
-      @AuthenticationPrincipal String email
+      @AuthenticationPrincipal CustomUserDetails user
       ) {
+    String email = user.getEmail();
     List<DocumentSimpleResponseDTO> myTasks = approvalService.getMyTasks(email);
     return ResponseEntity.ok(myTasks);
   }
@@ -125,8 +132,9 @@ public class ApprovalController {
   @Operation(summary = "홈 - 내 상신함 (진행중)", description = "홈 대시보드용. 내가 작성한 문서 중 진행중(DRAFT, IN_PROGRESS)인 문서 목록 조회")
   @GetMapping("/my-documents/pending")
   public ResponseEntity<List<DocumentSimpleResponseDTO>> getMyPendingDocuments(
-      @AuthenticationPrincipal String email
+      @AuthenticationPrincipal CustomUserDetails user
       ) {
+    String email = user.getEmail();
 
     List<DocumentSimpleResponseDTO> pendingDocs = approvalService.getMyPendingDocuments(email);
     return ResponseEntity.ok(pendingDocs);
@@ -140,8 +148,9 @@ public class ApprovalController {
   @Operation(summary = "홈 - 내 상신함 (완료/반려)", description = "홈 대시보드용. 내가 작성한 문서 중 완료(COMPLETED, REJECTED)된 문서 목록 조회")
   @GetMapping("/my-documents/completed")
   public ResponseEntity<List<DocumentSimpleResponseDTO>> getMyCompletedDocuments(
-      @AuthenticationPrincipal String email
+      @AuthenticationPrincipal CustomUserDetails user
       ) {
+    String email = user.getEmail();
 
     List<DocumentSimpleResponseDTO> completedDocs = approvalService.getMyCompletedDocuments(email);
     return ResponseEntity.ok(completedDocs);
@@ -155,8 +164,9 @@ public class ApprovalController {
   @GetMapping("/{documentId}")
   public ResponseEntity<DocumentDetailResponseDTO> getDocumentDetail(
       @PathVariable("documentId") Integer documentId,
-      @AuthenticationPrincipal String email
+      @AuthenticationPrincipal CustomUserDetails user
       ) {
+    String email = user.getEmail();
     DocumentDetailResponseDTO documentDetail = approvalService.getDocumentDetail(documentId, email);
     return ResponseEntity.ok(documentDetail);
   }
@@ -170,8 +180,9 @@ public class ApprovalController {
   public ResponseEntity<String> approveDocument(
       @PathVariable("documentId") Integer documentId,
       @RequestBody ApprovalApproveRequestDTO requestDTO, // 결재 의견
-      @AuthenticationPrincipal String email
+      @AuthenticationPrincipal CustomUserDetails user
       ) {
+    String email = user.getEmail();
     approvalService.approveDocument(documentId, requestDTO, email);
     return ResponseEntity.ok("결재가 승인되었습니다.");
   }
@@ -185,8 +196,9 @@ public class ApprovalController {
   public ResponseEntity<String> rejectDocument(
       @PathVariable("documentId") Integer documentId,
       @Valid @RequestBody ApprovalRejectRequestDTO requestDTO, // 반려 사유
-      @AuthenticationPrincipal String email
+      @AuthenticationPrincipal CustomUserDetails user
       ) {
+    String email = user.getEmail();
     approvalService.rejectDocument(documentId, requestDTO, email);
     return ResponseEntity.ok("결재가 반려되었습니다.");
   }

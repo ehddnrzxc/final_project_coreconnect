@@ -32,8 +32,8 @@ import AdminCategoryPage from "./features/board/pages/AdminCategoryPage";
 import MailInboxPage from "./features/email/pages/MailInboxPage";
 import MailWritePage from "./features/email/pages/MailWritePage";
 import MailTrashPage from "./features/email/pages/MailTrashPage";
-
-
+import PasswordResetPage from "./features/admin/components/PasswordResetPage";
+import NewDocumentPage from "./features/approval/pages/NewDocumentPage";
 
 /* 전체 라우트 구조 */
 const router = createBrowserRouter([
@@ -95,7 +95,7 @@ const router = createBrowserRouter([
         ),
         children: [
           { index: true, element: <ApprovalHomePage /> }, // 결재홈
-          { path: "new", element: <div>새 결제 진행</div> }, // 새 결제 진행
+          { path: "new/:templateId", element: <NewDocumentPage /> }, // 새 결제 진행
           { path: "doc/:documentId", element: <div>문서 상세 조회</div> },
         ],
       },
@@ -134,6 +134,7 @@ const router = createBrowserRouter([
           { path: "users", element: <UserListPage /> },
           { path: "templates/create", element: <TemplateAdminCreate /> },
           { path: "board/category", element: <AdminCategoryPage /> },
+          { path: "password-reset-requests", element: <PasswordResetPage /> },
         ],
       },
 

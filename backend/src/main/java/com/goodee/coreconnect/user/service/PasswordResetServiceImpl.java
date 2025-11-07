@@ -1,19 +1,32 @@
 package com.goodee.coreconnect.user.service;
 
+import java.security.SecureRandom;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.goodee.coreconnect.user.dto.request.PasswordResetRequestDTO;
+import com.goodee.coreconnect.user.dto.response.PasswordResetResponseDTO;
 import com.goodee.coreconnect.user.entity.PasswordResetRequest;
+import com.goodee.coreconnect.user.entity.ResetStatus;
 import com.goodee.coreconnect.user.entity.User;
+import com.goodee.coreconnect.user.repository.PasswordResetRequestRepository;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class PasswordResetServiceImpl implements PasswordResetService {
   
   private final UserRepository userRepository;
+  private final PasswordResetRequestRepository passwordResetRequestRepository;
+  private final PasswordEncoder passwordEncoder;
+  private final MailService mailService;
 
   /** 비밀번호 변경 요청을 생성하는 메소드 */
   @Override
@@ -26,7 +39,65 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     }
 
     PasswordResetRequest req = dto.toEntity(user);
+    passwordResetRequestRepository.save(req);
     
   }
+
+  /** 비밀번호 변경 요청 목록을 조회하는 메소드 (관리자용) */
+  @Override
+  @Transactional(readOnly = true)
+  public List<PasswordResetResponseDTO> getRequests(String status) {
+    List<PasswordResetRequest> requests;
+    
+    if(status == null || status.isBlank()) {
+      requests = passwordResetRequestRepository.findAll();
+    } else {
+      ResetStatus resetStatus = ResetStatus.valueOf(status.toUpperCase());
+      requests = passwordResetRequestRepository.findByStatus(resetStatus);
+    }
+    
+    return requests.stream()
+                   .map(PasswordResetResponseDTO::fromEntity)
+                   .collect(Collectors.toList());
+  }
+
+  /** 승인 처리 - 랜덤 비밀번호 생성 후 반환 */
+  @Override
+  public void approve(Long requestId, User admin) {
+    PasswordResetRequest req = passwordResetRequestRepository.findById(requestId)
+                                                             .orElseThrow(() -> new IllegalArgumentException("요청을 찾을 수 없습니다."));
+    if(req.getStatus() != ResetStatus.PENDING) {
+      throw new IllegalStateException("이미 처리된 요청입니다.");
+    }
+    User user = req.getUser();
+    
+    // 랜덤 임시 비밀번호 생성
+    String tempPassword = generateTempPassword(5); // 비밀번호 길이: 5자리
+    
+    // 유저 비밀번호 변경
+    user.changePassword(passwordEncoder.encode(tempPassword));
+    
+    // 요청 엔티티 상태 변경
+    req.approve(admin);
+    
+    // 이메일 발송
+    mailService.sendTempPassword(user.getEmail(), tempPassword);
+  }
+  
+  /** 랜덤 비밀번호 생성 유틸 */
+  private String generateTempPassword(int length) {
+      String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+      SecureRandom random = new SecureRandom();
+      StringBuilder sb = new StringBuilder();
+
+      for (int i = 0; i < length; i++) {
+          int idx = random.nextInt(chars.length());
+          sb.append(chars.charAt(idx));
+      }
+
+      return sb.toString();
+  }
+  
+  
 
 }

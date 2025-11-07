@@ -3,7 +3,7 @@ import { toBackendFormat } from "../../../utils/dateFormat";
 
 /** 일정 생성 (POST) */
 export const createSchedule = async (data) => {
-  // 날짜 형식 백엔드에 맞게 변환
+  
   const payload = {
     ...data,
     startDateTime: toBackendFormat(data.startDateTime),
@@ -20,6 +20,7 @@ export const createSchedule = async (data) => {
 
 /** 일정 수정 */
 export const updateSchedule = async (id, data) => {
+
   const payload = {
     ...data,
     startDateTime: toBackendFormat(data.startDateTime),
@@ -49,10 +50,30 @@ export const deleteSchedule = async (id) => {
 export const getMySchedules = () =>
   http.get("/schedules/me").then((res) => res.data);
 
+/** 내 일정 조회(일간) */
+export const getMyTodaySchedules = () =>
+  http.get("/schedules/me/today").then((res) => res.data);
+
 /** 단일 일정 조회 */
 export const getScheduleById = (id) =>
   http.get(`/schedules`, { params: { id } }).then((res) => res.data);
 
-/** 회의실 일정 조회 */
-export const getSchedulesByMeetingRoom = (meetingRoomId) =>
-  http.get(`/schedules`, { params: { meetingRoomId } }).then((res) => res.data);
+/** 카테고리 전체 조회 */
+export const getScheduleCategories = () =>
+  http.get("/scheduleCategories").then((res) => res.data);
+
+/** 사용자 목록 조회 (초대용) */
+export const getUsers = () =>
+  http.get("/users").then((res) => res.data);
+
+/** 회의실 전체 조회 */
+export const getMeetingRooms = () =>
+  http.get("/meetingRooms").then((res) => res.data);
+
+/** 회의실 예약 가능 여부 검사 */
+export const checkRoomAvailable = (id, start, end) =>
+  http
+    .get(`/meetingRooms/availability`, {
+      params: { id, start: toBackendFormat(start), end: toBackendFormat(end) },
+    })
+    .then((res) => res.data);

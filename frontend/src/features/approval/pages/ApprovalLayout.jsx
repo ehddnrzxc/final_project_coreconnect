@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Outlet, Link as RouterLink } from "react-router-dom";
 import {
   Box,
@@ -10,6 +10,7 @@ import {
   Divider,
   ListSubheader,
 } from "@mui/material";
+import TemplateSelectModal from "./TemplateSelectModal";
 
 const navSections = [
   {
@@ -29,6 +30,11 @@ const navSections = [
 ];
 
 function ApprovalLayout() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleOpenModal = () => setIsModalOpen(true);
+  const handleCloseModal = () => setIsModalOpen(false);
+
   return (
     <Box sx={{ display: "flex", height: "100%", overflow: "hidden" }}>
       {/* 1. 왼쪽 서브 네비게이션 (MUI 컴포넌트 활용) */}
@@ -51,8 +57,7 @@ function ApprovalLayout() {
             variant="contained"
             color="primary"
             fullWidth
-            component={RouterLink}
-            to="/e-approval/new"
+            onClick={handleOpenModal}
             size="large"
           >
             새 결재 진행
@@ -64,7 +69,7 @@ function ApprovalLayout() {
         {/* 스크롤이 필요한 네비게이션 영역 */}
         <Box sx={{ overflowY: "auto", flex: 1 }}>
           <List component="nav" dense>
-            {navSections.map(section => (
+            {navSections.map((section) => (
               /*
                  <li> 태그 대신 React Fragment(<></>)를 사용합니다.
                  <li key={section.title}> 
@@ -73,7 +78,7 @@ function ApprovalLayout() {
                 <ListSubheader sx={{ bgcolor: "background.paper", py: 1 }}>
                   {section.title}
                 </ListSubheader>
-                {section.items.map(item => (
+                {section.items.map((item) => (
                   <ListItemButton
                     key={item.text}
                     component={RouterLink}
@@ -105,6 +110,10 @@ function ApprovalLayout() {
         {/* 하위 페이지(ApprovalHomePage 등)가 이곳에 렌더링됩니다. */}
         <Outlet />
       </Box>
+      <TemplateSelectModal
+        open={isModalOpen}
+        handleClose={handleCloseModal}
+      />
     </Box>
   );
 }
