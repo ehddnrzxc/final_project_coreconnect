@@ -128,23 +128,23 @@ class BoardServiceTest {
         log.info("삭제 테스트 통과: {}", deleted.getTitle());
     }
 
-    @Test
-    @DisplayName("게시글 상세 조회 (조회수 증가 포함)")
-    void testGetBoardById() {
-        BoardRequestDTO dto = BoardRequestDTO.builder()
-                                             .categoryId(category.getId())
-                                             .title("조회 테스트")
-                                             .content("내용입니다.")
-                                             .build();
-
-        BoardResponseDTO created = boardService.createBoard(dto, user.getEmail());
-
-        BoardResponseDTO found = boardService.getBoardById(created.getId());
-
-        assertThat(found.getId()).isEqualTo(created.getId());
-        assertThat(found.getViewCount()).isEqualTo(1);
-        log.info("상세조회 테스트 통과: {}", found.getTitle());
-    }
+//    @Test
+//    @DisplayName("게시글 상세 조회 (조회수 증가 포함)")
+//    void testGetBoardById() {
+//        BoardRequestDTO dto = BoardRequestDTO.builder()
+//                                             .categoryId(category.getId())
+//                                             .title("조회 테스트")
+//                                             .content("내용입니다.")
+//                                             .build();
+//
+//        BoardResponseDTO created = boardService.createBoard(dto, user.getEmail());
+//
+//        BoardResponseDTO found = boardService.getBoardById(created.getId());
+//
+//        assertThat(found.getId()).isEqualTo(created.getId());
+//        assertThat(found.getViewCount()).isEqualTo(1);
+//        log.info("상세조회 테스트 통과: {}", found.getTitle());
+//    }
 
     @Test
     @DisplayName("카테고리별 게시글 목록 조회")

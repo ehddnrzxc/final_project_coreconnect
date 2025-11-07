@@ -85,10 +85,13 @@ public class BoardController {
         return ResponseEntity.status(HttpStatus.NO_CONTENT).body(res);
     }
 
-    @Operation(summary = "게시글 상세 조회", description = "게시글의 상세 내용을 조회합니다. (조회수가 증가합니다.)")
+    @Operation(summary = "게시글 상세 조회", description = "게시글의 상세 내용을 조회합니다. (조회수가 증가하고, 최근 본 게시글로 저장됩니다.)")
     @GetMapping("/{boardId}")
-    public ResponseEntity<ResponseDTO<BoardResponseDTO>> getBoardDetail(@PathVariable("boardId") Integer boardId) {
-        BoardResponseDTO response = boardService.getBoardById(boardId);
+    public ResponseEntity<ResponseDTO<BoardResponseDTO>> getBoardDetail(
+            @AuthenticationPrincipal String email, // ✅ 로그인 사용자 이메일 추가
+            @PathVariable("boardId") Integer boardId
+    ) {
+        BoardResponseDTO response = boardService.getBoardById(boardId, email); // ✅ 이메일 전달
 
         ResponseDTO<BoardResponseDTO> res = ResponseDTO.<BoardResponseDTO>builder()
                                                        .status(HttpStatus.OK.value())
@@ -196,4 +199,21 @@ public class BoardController {
 
         return ResponseEntity.ok(res);
     }
+    
+    @Operation(summary = "최근 본 게시글 10개 조회", description = "로그인한 사용자의 최근 본 게시글을 최대 10개까지 최신순으로 조회합니다.")
+    @GetMapping("/recent")
+    public ResponseEntity<ResponseDTO<List<BoardResponseDTO>>> getRecentViewedBoards(
+            @AuthenticationPrincipal String email
+    ) {
+        List<BoardResponseDTO> list = boardService.getRecentViewedBoards(email);
+
+        ResponseDTO<List<BoardResponseDTO>> res = ResponseDTO.<List<BoardResponseDTO>>builder()
+                                                             .status(HttpStatus.OK.value())
+                                                             .message("최근 본 게시글 목록 조회 성공")
+                                                             .data(list)
+                                                             .build();
+
+        return ResponseEntity.ok(res);
+    }
+
 }

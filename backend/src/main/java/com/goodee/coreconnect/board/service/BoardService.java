@@ -20,7 +20,7 @@ public interface BoardService {
     void softDeleteBoard(Integer boardId);
 
     /** 게시글 상세 조회 */
-    BoardResponseDTO getBoardById(Integer boardId);
+    BoardResponseDTO getBoardById(Integer boardId, String email);
 
     /** 카테고리별 게시글 목록 조회 */
     Page<BoardResponseDTO> getBoardsByCategory(Integer categoryId, Pageable pageable);
@@ -36,4 +36,7 @@ public interface BoardService {
 
     /** 검색 (제목, 내용, 작성자명 중 선택형) */
     Page<BoardResponseDTO> searchBoards(String type, String keyword, Pageable pageable);
+    
+    /** 최근 본 게시글 10개 조회 */
+    List<BoardResponseDTO> getRecentViewedBoards(String email);
 }

@@ -1,7 +1,19 @@
 package com.goodee.coreconnect.board.entity;
 
+import java.time.LocalDateTime;
+
 import com.goodee.coreconnect.user.entity.User;
-import jakarta.persistence.*;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -19,6 +31,9 @@ public class BoardViewHistory {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "board_view_history_id")
     private Integer id;
+    
+    @Column(name = "viewed_at", nullable = false, columnDefinition = "DATETIME(6) DEFAULT CURRENT_TIMESTAMP(6)")
+    private LocalDateTime viewedAt;
 
     
     // ─────────────── 연관관계 매핑 ───────────────
@@ -36,6 +51,12 @@ public class BoardViewHistory {
         BoardViewHistory history = new BoardViewHistory();
         history.user = user;
         history.board = board;
+        history.viewedAt = LocalDateTime.now();
         return history;
+    }
+    
+    // 이미 존재하는 조회 기록의 시간만 갱신할 때 사용
+    public void updateViewedAt() {
+        this.viewedAt = LocalDateTime.now();
     }
 }

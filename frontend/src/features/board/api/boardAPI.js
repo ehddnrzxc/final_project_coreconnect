@@ -28,3 +28,6 @@ export const searchBoards = (type, keyword, page = 0, size = 10) =>
 // 전체 게시판 목록 조회 (상단고정 -> 공지 -> 최신순)
 export const getBoardsOrdered = (page = 0, size = 10) =>
   http.get(`/board/ordered?page=${page}&size=${size}`);
+
+// 최근 본 게시글 10개 조회
+export const getRecentViewedBoards = () => http.get(`/board/recent`);
