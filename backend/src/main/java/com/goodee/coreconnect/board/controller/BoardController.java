@@ -102,22 +102,22 @@ public class BoardController {
         return ResponseEntity.ok(res);
     }
 
-    /** ✅ 수정1: 전체 게시글 목록 조회 (정렬 통합 버전)
+    /** 전체 게시글 목록 조회 (정렬 통합 버전)
      * sortType = latest(최신순), views(조회순)
      * 상단고정 → 공지 → 일반글 순으로 정렬됨
      */
     @Operation(summary = "전체 게시글 목록 조회 (정렬 포함)", 
-               description = "sortType = latest(최신순), views(조회순). 상단고정 → 공지 → 일반글 순으로 조회합니다.") // 수정1
+               description = "sortType = latest(최신순), views(조회순). 상단고정 → 공지 → 일반글 순으로 조회합니다.")
     @GetMapping("/ordered") // 수정1
     public ResponseEntity<ResponseDTO<Page<BoardResponseDTO>>> getBoards(
-            @RequestParam(name = "sortType", defaultValue = "latest") String sortType, // 수정1
-            @PageableDefault(size = 10) Pageable pageable // 수정1
+            @RequestParam(name = "sortType", defaultValue = "latest") String sortType, 
+            @PageableDefault(size = 10) Pageable pageable 
     ) {
-        Page<BoardResponseDTO> page = boardService.getBoardsSorted(sortType, pageable); // 수정1
+        Page<BoardResponseDTO> page = boardService.getBoardsSorted(sortType, pageable); 
 
         ResponseDTO<Page<BoardResponseDTO>> res = ResponseDTO.<Page<BoardResponseDTO>>builder()
                                                              .status(HttpStatus.OK.value())
-                                                             .message("게시글 목록 조회 성공 (" + sortType + ")") // 수정1
+                                                             .message("게시글 목록 조회 성공 (" + sortType + ")") 
                                                              .data(page)
                                                              .build();
 

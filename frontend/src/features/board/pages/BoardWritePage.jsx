@@ -49,17 +49,16 @@ const BoardWritePage = () => {
           setCategories(list);
 
           // 수정1: URL에 categoryId 있으면 기본값으로 세팅
-          const defaultCat = searchParams.get("categoryId"); // 수정1
-          if (defaultCat) { // 수정1
-            setForm((f) => ({ ...f, categoryId: defaultCat })); // 수정1
-          } // 수정1
+          const defaultCat = searchParams.get("categoryId"); 
+          if (defaultCat) { 
+            setForm((f) => ({ ...f, categoryId: defaultCat }));
+          } 
         } catch (err) {
           handleApiError(err, "카테고리 불러오기 실패");
         }
       })();
     }
-  }, [boardId, searchParams]); // 수정1: searchParams 추가
-
+  }, [boardId, searchParams]); 
   // 수정 모드일 경우: 기존 게시글 불러오기
   useEffect(() => {
     if (boardId) {

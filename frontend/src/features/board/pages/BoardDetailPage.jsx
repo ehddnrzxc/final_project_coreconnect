@@ -39,7 +39,7 @@ const BoardDetailPage = () => {
 
   // 댓글 입력/수정 상태
   const [replyText, setReplyText] = useState(""); // 일반 댓글 내용
-  const [childReplyText, setChildReplyText] = useState(""); // ✅ 추가됨: 대댓글(답글) 입력용
+  const [childReplyText, setChildReplyText] = useState(""); // 대댓글(답글) 입력용
   const [replyParentId, setReplyParentId] = useState(null); // 부모 댓글 ID (대댓글일 경우)
   const [editReplyId, setEditReplyId] = useState(null); // 수정 중인 댓글 ID
   const [editReplyText, setEditReplyText] = useState(""); // 수정 중 댓글 내용
@@ -121,7 +121,7 @@ const BoardDetailPage = () => {
     navigate(-1);
   };
 
-  // ✅ 댓글 등록 (일반 댓글 전용)
+  // 댓글 등록 (일반 댓글 전용)
   const handleReplySubmit = async () => {
     if (!replyText.trim()) return; // 빈 문자열 방지
     await createReply({
@@ -132,7 +132,7 @@ const BoardDetailPage = () => {
     await loadAll(); // 새로고침
   };
 
-  // ✅ 대댓글 등록 (추가됨)
+  // 대댓글 등록
   const handleChildReplySubmit = async () => {
     if (!childReplyText.trim()) return; // 빈 문자열 방지
     await createReply({
@@ -140,8 +140,8 @@ const BoardDetailPage = () => {
       content: childReplyText,
       parentReplyId: replyParentId,
     });
-    setChildReplyText(""); // ✅ 대댓글 입력값 초기화
-    setReplyParentId(null); // ✅ 입력창 닫기
+    setChildReplyText(""); // 대댓글 입력값 초기화
+    setReplyParentId(null); // 입력창 닫기
     await loadAll(); // 새로고침
   };
 
@@ -165,7 +165,7 @@ const BoardDetailPage = () => {
   if (!board) return <Typography>알 수 없는 페이지</Typography>;
 
   return (
-    <Box> {/* MUI: 전체 레이아웃 컨테이너 */}
+    <Box> 
       <Typography variant="h5" sx={{ mb: 1 }}>
         {board.title} {/* 게시글 제목 */}
       </Typography>

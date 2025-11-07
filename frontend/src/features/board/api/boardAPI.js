@@ -4,7 +4,7 @@ import http from "../../../api/http";
 export const getAllBoards = (page = 0, size = 10) =>
   http.get(`/board?page=${page}&size=${size}`);
 
-// ✅ 카테고리별 게시글 목록 (정렬 추가)
+// 카테고리별 게시글 목록 (정렬 추가)
 export const getBoardsByCategory = (
   categoryId,
   sortType = "latest",

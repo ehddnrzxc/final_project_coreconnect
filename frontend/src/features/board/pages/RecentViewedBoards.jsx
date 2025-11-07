@@ -65,7 +65,7 @@ const RecentViewedBoards = () => {
                     )} · 조회수 ${b.viewCount}`} 
                   />
                 </ListItem>
-                {idx < boards.length - 1 && <Divider />} {/* 구분선 */}
+                {idx < boards.length - 1 && <Divider />}
               </React.Fragment>
             ))}
           </List>

@@ -40,6 +40,6 @@ public interface BoardService {
     /** 최근 본 게시글 10개 조회 */
     List<BoardResponseDTO> getRecentViewedBoards(String email);
     
-    // 수정3: 카테고리별 정렬 조회 추가
+    /** 카테고리별 정렬 조회 */
     Page<BoardResponseDTO> getBoardsByCategorySorted(Integer categoryId, String sortType, Pageable pageable);
 }
