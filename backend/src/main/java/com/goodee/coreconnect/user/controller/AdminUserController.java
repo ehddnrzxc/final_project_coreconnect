@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.goodee.coreconnect.department.service.DepartmentService;
+import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
 import com.goodee.coreconnect.user.dto.request.CreateUserReqDTO;
 import com.goodee.coreconnect.user.dto.response.PasswordResetResponseDTO;
 import com.goodee.coreconnect.user.dto.response.TempPasswordResponseDTO;
@@ -33,11 +34,13 @@ import com.goodee.coreconnect.user.service.UserService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/api/v1/admin/users")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
+@Slf4j
 public class AdminUserController {
   
   private final UserService userService;
@@ -94,17 +97,19 @@ public class AdminUserController {
   
   /** 비밀번호 변경 요청 조회 */
   @GetMapping("/password-reset/requests")
-  public List<PasswordResetResponseDTO> getRequest(@RequestParam(required = false) String status) {
+  public List<PasswordResetResponseDTO> getRequest(@RequestParam(name = "status", required = false) String status) {
+    log.info("password-reset: {}", passwordResetService.getRequests(status));
     return passwordResetService.getRequests(status);
   }
   
   /** 비밀번호 변경 요청 승인 */
   @PutMapping("/password-reset/requests/{id}/approve")
-  public ResponseEntity<TempPasswordResponseDTO> approve(@PathVariable long id,
-                                                         @AuthenticationPrincipal String email) {
+  public ResponseEntity<TempPasswordResponseDTO> approve(@PathVariable(name = "id") long id,
+                                                         @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+    String email = customUserDetails.getEmail();
     User user = userService.getUserByEmail(email);
-    String tempPassword = passwordResetService.approve(id, user);
-    return ResponseEntity.ok(new TempPasswordResponseDTO(tempPassword));
+    passwordResetService.approve(id, user);
+    return ResponseEntity.noContent().build();
   }
   
 }

@@ -11,10 +11,15 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
+import com.goodee.coreconnect.security.userdetails.CustomUserDetailsService;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -24,14 +29,12 @@ import lombok.extern.slf4j.Slf4j;
  * - OncePerRequestFilter를 상속하여 요청당 한 번만 실행되도록 보장한다.
  */
 @Component
+@RequiredArgsConstructor
 @Slf4j
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
-
-    public JwtAuthFilter(JwtProvider jwtProvider) {
-        this.jwtProvider = jwtProvider;
-    }
+    private final CustomUserDetailsService customUserDetailsService;
 
     /**
      * 요청에서 JWT 토큰을 확인하고 검증한 뒤 유효하면 SecurityContext에 인증 정보를 저장하는 메서드
@@ -41,66 +44,73 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         final String uri = req.getRequestURI();
-        final String authHeader = req.getHeader("Authorization");
-
-        log.info("[JWT] 요청 URI: " + uri);
-        log.info("[JWT] Authorization 헤더: " + authHeader);
-
-        // WebSocket 인증 제외
-        // WebSocket 연결에서는 핸드쉐이크 과정이 HTTP와 다르기 때문에 JWT 인증을 따로 적용하거나 핸들러에서 직접 인증을 처리하는 경우가 많음
-        // Swagger, API Docs, WebSocket 인증 제외
+        log.debug("[JWT] 요청 URI: {}", uri);
+        
+        // Swagger, API Docs, WebSocket, refresh 등 예외 경로
         if (
     	    uri.startsWith("/ws/chat") ||
     	    uri.equals("/swagger-ui.html") ||
     	    uri.startsWith("/swagger-ui/") ||
     	    uri.startsWith("/v3/api-docs") ||
     	    uri.startsWith("/swagger-resources") ||
-    	    uri.startsWith("/webjars")
+    	    uri.startsWith("/webjars") ||
+    	    uri.startsWith("/api/v1/auth/refresh")
     	  ) {
     	    chain.doFilter(req, res);
     	    return;
     	  }
-        // Refresh 경로는 JWT 인증 검사 제외
-        if(uri.startsWith("/api/v1/auth/refresh")) {
-          chain.doFilter(req, res);
-          return;
-        }
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            final String token = authHeader.substring(7);
-
+        
+        // 토큰을 쿠키에서 꺼내기
+        String token = resolveTokenFromCookie(req);
+          if(token != null) {
             try {
-                final String username = jwtProvider.getSubject(token);
-                final String role = jwtProvider.getRole(token);
+                final String email = jwtProvider.getSubject(token);
 
-                log.info("[JWT] 토큰 subject(email): " + username);
-                log.info("[JWT] 토큰 role: " + role);
-
-                final List<SimpleGrantedAuthority> authorities =
-                    (role != null)
-                        ? List.of(new SimpleGrantedAuthority("ROLE_" + role))
-                        : List.of();
-
+                log.debug("[JWT] 토큰 subject(email): " + email);
+                
+                // DB에서 사용자 조회 -> CustomUserDetails 생성
+                CustomUserDetails userDetails = (CustomUserDetails) customUserDetailsService.loadUserByUsername(email);                      
+                
                 final UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(username, null, authorities);
+                    new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
 
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(req));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 
-                log.info("[JWT] SecurityContext 인증 등록 완료: " + authentication);
+                log.debug("[JWT] SecurityContext 인증 등록 완료: " + authentication);
 
             } catch (Exception e) {
-              log.info("[JWT] Invalid token: " + e.getMessage());
+              log.error("[JWT] Invalid token: " + e);
             }
+        } else {
+          log.debug("[JWT] 요청에 access_token 쿠키가 없습니다.");
         }
 
         // 인증 정보 로그 (컨트롤러 진입 직전)
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        log.info("[JWT][After Filter] SecurityContext 인증 정보: " + authentication);
+        log.debug("[JWT][After Filter] SecurityContext 인증 정보: " + authentication);
         if (authentication != null) {
-          log.info("[JWT][After Filter] Principal: " + authentication.getPrincipal());
-          log.info("[JWT][After Filter] Authorities: " + authentication.getAuthorities());
+          log.debug("[JWT][After Filter] Principal: " + authentication.getPrincipal());
+          log.debug("[JWT][After Filter] Authorities: " + authentication.getAuthorities());
         }
 
         chain.doFilter(req, res);
+    }
+    
+    /**
+     * HttpOnly 쿠키에서 access_token 값을 추출하는 메서드
+     */
+    private String resolveTokenFromCookie(HttpServletRequest req) {
+        Cookie[] cookies = req.getCookies();
+        if (cookies == null) {
+            return null;
+        }
+
+        for (Cookie cookie : cookies) {
+            if ("access_token".equals(cookie.getName())) {
+                return cookie.getValue();
+            }
+        }
+        return null;
     }
 }

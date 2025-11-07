@@ -12,13 +12,14 @@ export async function login(email, password) {
   return data; 
 }
 
+// 로그아웃
+export async function logout() {
+  await http.post("/auth/logout");
+}
+
 // 액세스 재발급
 export async function refreshAccessToken() {
   const { data } = await http.post("/auth/refresh", {}); 
   return data; 
 }
 
-// 로그아웃
-export async function logout() {
-  await http.post("/auth/logout", {}); 
-}

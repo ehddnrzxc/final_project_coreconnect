@@ -18,6 +18,7 @@ import com.goodee.coreconnect.board.dto.request.BoardCategoryRequestDTO;
 import com.goodee.coreconnect.board.dto.response.BoardCategoryResponseDTO;
 import com.goodee.coreconnect.board.service.BoardCategoryService;
 import com.goodee.coreconnect.common.dto.response.ResponseDTO;
+import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -37,8 +38,9 @@ public class BoardCategoryController {
     @PostMapping
     public ResponseEntity<ResponseDTO<BoardCategoryResponseDTO>> createCategory(
             @RequestBody BoardCategoryRequestDTO dto,
-            @AuthenticationPrincipal String email
+            @AuthenticationPrincipal CustomUserDetails user
     ) {
+        String email = user.getEmail();
         BoardCategoryResponseDTO created = boardCategoryService.createCategory(dto, email);
 
         ResponseDTO<BoardCategoryResponseDTO> res = ResponseDTO.<BoardCategoryResponseDTO>builder()
@@ -55,8 +57,9 @@ public class BoardCategoryController {
     public ResponseEntity<ResponseDTO<BoardCategoryResponseDTO>> updateCategory(
             @PathVariable("categoryId") Integer categoryId,
             @RequestBody BoardCategoryRequestDTO dto,
-            @AuthenticationPrincipal String email
+            @AuthenticationPrincipal CustomUserDetails user
     ) {
+        String email = user.getEmail();
         BoardCategoryResponseDTO updated = boardCategoryService.updateCategory(categoryId, dto, email);
 
         ResponseDTO<BoardCategoryResponseDTO> res = ResponseDTO.<BoardCategoryResponseDTO>builder()
@@ -72,8 +75,9 @@ public class BoardCategoryController {
     @DeleteMapping("/{categoryId}")
     public ResponseEntity<ResponseDTO<Void>> deleteCategory(
             @PathVariable("categoryId") Integer categoryId,
-            @AuthenticationPrincipal String email
+            @AuthenticationPrincipal CustomUserDetails user
     ) {
+        String email = user.getEmail();
         boardCategoryService.deleteCategory(categoryId, email);
 
         ResponseDTO<Void> res = ResponseDTO.<Void>builder()
@@ -86,7 +90,7 @@ public class BoardCategoryController {
 
     @Operation(summary = "전체 카테고리 목록 조회", description = "모든 게시판 카테고리를 조회합니다. (관리자 전용)")
     @GetMapping
-    public ResponseEntity<ResponseDTO<List<BoardCategoryResponseDTO>>> getAllCategories(@AuthenticationPrincipal String email) {
+    public ResponseEntity<ResponseDTO<List<BoardCategoryResponseDTO>>> getAllCategories(@AuthenticationPrincipal CustomUserDetails user) {
         List<BoardCategoryResponseDTO> list = boardCategoryService.getAllCategories();
 
         ResponseDTO<List<BoardCategoryResponseDTO>> res = ResponseDTO.<List<BoardCategoryResponseDTO>>builder()

@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.goodee.coreconnect.schedule.dto.request.RequestScheduleParticipantDTO;
 import com.goodee.coreconnect.schedule.dto.response.ResponseScheduleParticipantDTO;
 import com.goodee.coreconnect.schedule.service.ScheduleParticipantService;
+import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -34,8 +35,8 @@ public class ScheduleParticipantController {
   /** 참여자 추가 */
   @Operation(summary = "참여자 추가", description = "참여자를 추가합니다.")
   @PostMapping
-  public ResponseScheduleParticipantDTO add(@Valid @RequestBody RequestScheduleParticipantDTO dto, @AuthenticationPrincipal String email) {
-    
+  public ResponseScheduleParticipantDTO add(@Valid @RequestBody RequestScheduleParticipantDTO dto, @AuthenticationPrincipal CustomUserDetails user) {
+    String email = user.getEmail();
     return participantService.addParticipant(dto, email);
   }
 

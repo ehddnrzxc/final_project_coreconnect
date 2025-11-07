@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.goodee.coreconnect.schedule.dto.request.RequestScheduleCategoryDTO;
 import com.goodee.coreconnect.schedule.dto.response.ResponseScheduleCategoryDTO;
 import com.goodee.coreconnect.schedule.service.ScheduleCategoryService;
+import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -34,7 +35,8 @@ public class ScheduleCategoryController {
   /** 카테고리 생성 */
   @Operation(summary = "카테고리 생성", description = "새로운 카테고리를 생성합니다.")
   @PostMapping
-  public ResponseScheduleCategoryDTO create(@Valid @RequestBody RequestScheduleCategoryDTO dto, @AuthenticationPrincipal String email) {
+  public ResponseScheduleCategoryDTO create(@Valid @RequestBody RequestScheduleCategoryDTO dto, @AuthenticationPrincipal CustomUserDetails user) {
+    String email = user.getEmail();
     return scheduleCategoryService.createCategory(dto, email);
   }
 
@@ -55,7 +57,8 @@ public class ScheduleCategoryController {
 
   /** 특정 유저의 카테고리 목록 조회 */
   @GetMapping
-  public List<ResponseScheduleCategoryDTO> getUserCategories(@AuthenticationPrincipal String email) {
+  public List<ResponseScheduleCategoryDTO> getUserCategories(@AuthenticationPrincipal CustomUserDetails user) {
+    String email = user.getEmail();
     return scheduleCategoryService.getUserCategories(email);
   }
   

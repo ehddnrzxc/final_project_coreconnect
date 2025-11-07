@@ -22,6 +22,7 @@ import com.goodee.coreconnect.board.dto.request.BoardRequestDTO;
 import com.goodee.coreconnect.board.dto.response.BoardResponseDTO;
 import com.goodee.coreconnect.board.service.BoardService;
 import com.goodee.coreconnect.common.dto.response.ResponseDTO;
+import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -40,9 +41,10 @@ public class BoardController {
     @Operation(summary = "게시글 등록", description = "로그인한 사용자가 새 게시글을 등록합니다.")
     @PostMapping
     public ResponseEntity<ResponseDTO<BoardResponseDTO>> createBoard(
-            @AuthenticationPrincipal String email,
+            @AuthenticationPrincipal CustomUserDetails user,
             @RequestBody BoardRequestDTO dto
     ) {
+        String email = user.getEmail();
         BoardResponseDTO created = boardService.createBoard(dto, email);
 
         ResponseDTO<BoardResponseDTO> res = ResponseDTO.<BoardResponseDTO>builder()
@@ -135,9 +137,10 @@ public class BoardController {
     @Operation(summary = "내 게시글 목록 조회", description = "로그인한 사용자가 작성한 게시글 목록을 조회합니다.")
     @GetMapping("/user")
     public ResponseEntity<ResponseDTO<Page<BoardResponseDTO>>> getBoardsByUser(
-            @AuthenticationPrincipal String email,
+            @AuthenticationPrincipal CustomUserDetails user,
             @PageableDefault(size = 10, sort = "createdAt") Pageable pageable
     ) {
+        String email = user.getEmail();
         Page<BoardResponseDTO> page = boardService.getBoardsByUser(email, pageable);
 
         ResponseDTO<Page<BoardResponseDTO>> res = ResponseDTO.<Page<BoardResponseDTO>>builder()

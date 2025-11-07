@@ -65,6 +65,7 @@ import com.goodee.coreconnect.common.notification.dto.NotificationDTO;
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
 import com.goodee.coreconnect.common.notification.service.NotificationService;
 import com.goodee.coreconnect.common.notification.service.WebSocketDeliveryService;
+import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
@@ -108,7 +109,9 @@ public class ChatMessageController {
 	 */
 	@Operation(summary = "채팅 메시지 전송", description = "채팅 메시지를 전송하고 알림을 생성합니다.")
 	@PostMapping("/messages")
-	public ResponseEntity<ResponseDTO<ChatResponseDTO>> sendMessage(@RequestBody SendMessageRequestDTO req, @AuthenticationPrincipal String email) {
+	public ResponseEntity<ResponseDTO<ChatResponseDTO>> sendMessage(@RequestBody SendMessageRequestDTO req, @AuthenticationPrincipal CustomUserDetails user) {
+	  
+	  String email = user.getEmail();
 	    // 1. 인증 사용자 체크
 	    User authUser = userRepository.findByEmail(email).orElse(null);
 	    if (authUser == null) {
@@ -178,7 +181,8 @@ public class ChatMessageController {
 	 * */
 	@Operation(summary = "내가 참여중인 채팅방 메시지 전체 조회", description = "내가 참여중인 모든 채팅방의 메시지를 조회합니다.")
 	@GetMapping("/messages")
-	public ResponseEntity<ResponseDTO<List<ChatMessageResponseDTO>>> getMyChatMessages(@AuthenticationPrincipal String email) {
+	public ResponseEntity<ResponseDTO<List<ChatMessageResponseDTO>>> getMyChatMessages(@AuthenticationPrincipal CustomUserDetails customUserDetails) {
+	  String email = customUserDetails.getEmail();
 		User user = userRepository.findByEmail(email).orElseThrow();
 
 	    // 1. 내가 참여중인 채팅방 정보 리스트(DTO) 가져오기
@@ -214,7 +218,9 @@ public class ChatMessageController {
 	 * */
 	@Operation(summary = "채팅방의 메시지 조회(오름차순)", description = "선택한 채팅방의 메시지를 날짜 기준 오름차순으로 정렬해 조회합니다.")
 	@GetMapping("/{roomId}/messages")
-	public ResponseEntity<ResponseDTO<List<ChatMessageResponseDTO>>> getChatRoomMessagesByChatRoomId(@PathVariable("roomId") Integer roomId, @AuthenticationPrincipal String email) {
+	public ResponseEntity<ResponseDTO<List<ChatMessageResponseDTO>>> getChatRoomMessagesByChatRoomId(@PathVariable("roomId") Integer roomId, @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+	  
+	  String email = customUserDetails.getEmail();
 		// 사용자 정보 확보
 		User user = userRepository.findByEmail(email).orElseThrow();
 		Integer userId = user.getId();
@@ -253,8 +259,9 @@ public class ChatMessageController {
     @GetMapping("/{roomId}/messages/sender")
     public ResponseEntity<ResponseDTO<List<ChatMessageSenderTypeResponseDTO>>> getChatRoomMessagesWithSenderType(
             @PathVariable("roomId") Integer roomId,
-            @AuthenticationPrincipal String email
+            @AuthenticationPrincipal CustomUserDetails customUserDetails
     ) {
+	      String email = customUserDetails.getEmail();
         User user = userRepository.findByEmail(email).orElseThrow();
         ChatRoom chatRoom = chatRoomService.findById(roomId);
         List<Chat> messages = chatRoom.getChats();
@@ -270,8 +277,9 @@ public class ChatMessageController {
 	 * */
 	@Operation(summary = "메시지 답신 전송", description="특정 메시지에 답신을 전송합니다.")
 	@PostMapping("/{roomId}/messages/reply")
-	public ResponseEntity<ResponseDTO<ChatResponseDTO>> replyToMessage(@PathVariable("roomId") Integer roomId, @AuthenticationPrincipal String email, @RequestBody ReplyMessageRequestDTO req) {
-		User sender = userRepository.findByEmail(email).orElseThrow();
+	public ResponseEntity<ResponseDTO<ChatResponseDTO>> replyToMessage(@PathVariable("roomId") Integer roomId, @AuthenticationPrincipal CustomUserDetails user, @RequestBody ReplyMessageRequestDTO req) {
+		String email = user.getEmail();
+	  User sender = userRepository.findByEmail(email).orElseThrow();
 		Chat replyChat = chatRoomService.sendChatMessage(roomId, sender.getId(), req.getReplyContent());
 		if (replyChat == null) {
 			ChatResponseDTO.fromEntity(replyChat);
@@ -291,8 +299,9 @@ public class ChatMessageController {
 	 * */
 	@Operation(summary = "채팅방 파일/이미지 업로드", description = "채팅방에 파일/이미지를 업로드합니다")
 	@PostMapping("/{roomId}/messages/file")
-	public ResponseEntity<ResponseDTO<ChatResponseDTO>> uploadFileMessage(@PathVariable("roomId") Integer roomId, @AuthenticationPrincipal String email, @RequestParam("file") MultipartFile uploadFile) throws java.io.IOException {
-		User sender = userRepository.findByEmail(email).orElseThrow();
+	public ResponseEntity<ResponseDTO<ChatResponseDTO>> uploadFileMessage(@PathVariable("roomId") Integer roomId, @AuthenticationPrincipal CustomUserDetails user, @RequestParam("file") MultipartFile uploadFile) throws java.io.IOException {
+		String email = user.getEmail();
+	  User sender = userRepository.findByEmail(email).orElseThrow();
 		String s3Key;
 		String fileUrl;
 		
@@ -359,8 +368,7 @@ public class ChatMessageController {
     @Operation(summary = "알림 읽음 처리", description = "알림을 읽음 처리합니다.")
     @PutMapping("/notifications/{notificationId}/read")
     public ResponseEntity<ResponseDTO<NotificationReadResponseDTO>> markNotificationRead(
-            @PathVariable("notificationId") Integer notificationId,
-            @AuthenticationPrincipal String email
+            @PathVariable("notificationId") Integer notificationId
     ) {
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new IllegalArgumentException("알림 없음: " + notificationId));
@@ -374,8 +382,9 @@ public class ChatMessageController {
     @Operation(summary = "미읽은 알림 요약", description = "가장 최근 알림만 띄우고 알림 개수 표시")
     @GetMapping("/notifications/unread")
     public ResponseEntity<ResponseDTO<UnreadNotificationSummaryDTO>> getLatestUnreadNotificationSummary(
-            @AuthenticationPrincipal String email
+            @AuthenticationPrincipal CustomUserDetails customUserDetails
     ) {
+        String email = customUserDetails.getEmail();
         User user = userRepository.findByEmail(email).orElseThrow();
         List<NotificationType> allowedTypes = List.of(NotificationType.EMAIL, NotificationType.NOTICE, NotificationType.APPROVAL, NotificationType.SCHEDULE);
         List<Notification> unreadNotifications = notificationRepository.findUnreadByUserIdAndTypes(user.getId(), allowedTypes);
@@ -394,9 +403,10 @@ public class ChatMessageController {
     @Operation(summary = "실시간 알림 WebSocket 푸시 테스트", description = "WebSocket을 통해 실시간 알림을 테스트합니다.")
     @PostMapping("/notifications/push-test")
     public ResponseEntity<ResponseDTO<String>> pushNotificationTest(
-            @AuthenticationPrincipal String email,
+            @AuthenticationPrincipal CustomUserDetails customUserDetails,
             @RequestBody PushNotificationTestRequestDTO req
     ) {
+        String email = customUserDetails.getEmail();
         User user = userRepository.findByEmail(email).orElseThrow();
         notificationService.sendNotification(
                 user.getId(),
@@ -412,7 +422,8 @@ public class ChatMessageController {
     // 14. 내가 참여중인 채팅방들의 마지막 메시지만 조회
     @Operation(summary = "내가 참여중인 채팅방들의 목록/마지막 메시지/안읽은 메시지수 조회", description = "내가 참여중인 채팅방들의 목록과 마지막 메시지, 안읽은 메시지수를 함께 반환")
     @GetMapping("/rooms/messages/latest")
-    public ResponseEntity<ResponseDTO<List<ChatRoomListDTO>>> getLatestMessages(@AuthenticationPrincipal String email) {
+    public ResponseEntity<ResponseDTO<List<ChatRoomListDTO>>> getLatestMessages(@AuthenticationPrincipal CustomUserDetails customUserDetails) {
+       String email = customUserDetails.getEmail();
     	 User user = userRepository.findByEmail(email).orElseThrow();
     	 
     	 // 서비스에서 한번에 방 목록/마지막 메시지/안읽은 메시지 수 채워서 반환
@@ -438,9 +449,10 @@ public class ChatMessageController {
     @PostMapping("/rooms/{roomId}/messages")
     public ResponseEntity<ResponseDTO<ChatResponseDTO>> sendChatMessageAndNotify(
             @PathVariable("roomId") Integer roomId,
-            @AuthenticationPrincipal String email,
+            @AuthenticationPrincipal CustomUserDetails user,
             @RequestBody SendMessageRequestDTO req
     ) {
+        String email = user.getEmail();
         User sender = userRepository.findByEmail(email).orElseThrow();
         Chat chat = chatRoomService.sendChatMessage(roomId, sender.getId(), req.getContent());
         // 서비스 내에서 알림 발송도 처리
@@ -451,7 +463,8 @@ public class ChatMessageController {
     // 17. 나에게 온 알림만 조회
     @Operation(summary = " 나에게 온 알림만 조회", description = " 나에게 온 알림만 조회")
     @GetMapping("/notifications")
-    public ResponseEntity<ResponseDTO<List<NotificationDTO>>> getMyNotifications(@AuthenticationPrincipal String email) {
+    public ResponseEntity<ResponseDTO<List<NotificationDTO>>> getMyNotifications(@AuthenticationPrincipal CustomUserDetails customUserDetails) {
+      String email = customUserDetails.getEmail();
     	User user = userRepository.findByEmail(email).orElseThrow();
         List<Notification> notifications = chatRoomService.getNotificationsByUserId(user.getId());
         
@@ -472,7 +485,10 @@ public class ChatMessageController {
     // 18. 내가 참여중인 채팅방의 안읽은 메시지 개수/목록 조회
     @Operation(summary = "내가 참여중인 채팅방의 안읽은 메시지 개수/목록 조회", description = "내가 참여중인 채팅방의 안읽은 메시지 개수/목록 조회")
     @GetMapping("/messages/unread")
-    public ResponseEntity<ResponseDTO<Map<String, Object>>> getUnreadMessages(@AuthenticationPrincipal String email) {
+    public ResponseEntity<ResponseDTO<Map<String, Object>>> getUnreadMessages(@AuthenticationPrincipal CustomUserDetails customUserDetails) {
+        
+        String email = customUserDetails.getEmail();
+        
         // 1. 응답용 Map 생성
         Map<String, Object> responseMap = new HashMap<>();
 
@@ -548,9 +564,10 @@ public class ChatMessageController {
     @Operation(summary = "나에게 온 안읽은 알림 개수 클릭 시, 가장 최근에 온 알림을 제외한 나머지 안읽은 알림 리스트를 반환", description = "나에게 온 안읽은 알림 개수 클릭 시, 가장 최근에 온 알림을 제외한 나머지 안읽은 알림 리스트를 반환")
     @GetMapping("/unread/list")
     public ResponseEntity<List<UnreadNotificationListDTO>> getUnreadNotificationsExceptLatest(
-            @AuthenticationPrincipal String email,
+            @AuthenticationPrincipal CustomUserDetails customUserDetails,
             @RequestParam(name = "unreadCount", required = false) Integer unreadCountParam
     ) {
+        String email = customUserDetails.getEmail();
         User user = userRepository.findByEmail(email).orElseThrow();
         List<NotificationType> allowedTypes = List.of(NotificationType.EMAIL, NotificationType.NOTICE, NotificationType.APPROVAL, NotificationType.SCHEDULE);
 
@@ -561,7 +578,8 @@ public class ChatMessageController {
     // 20. 나에게 온 안읽은 메시지를 채팅방을 접속해서 다 읽으면 채팅방목록에서 안읽은 메시지 개수가 없어지게 만들기
     @Operation(summary = "나에게 온 안읽은 메시지를 채팅방을 접속해서 다 읽으면 채팅방목록에서 안읽은 메시지 개수가 없어지게 만들기", description = "나에게 온 안읽은 메시지를 채팅방을 접속해서 다 읽으면 채팅방목록에서 안읽은 메시지 개수가 없어지게 만들기")
     @PatchMapping("/rooms/{roomId}/messages/read")
-    public ResponseEntity<?> markRoomMessagesAsRead(@PathVariable Integer roomId, @AuthenticationPrincipal String email) {
+    public ResponseEntity<?> markRoomMessagesAsRead(@PathVariable Integer roomId, @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+      String email = customUserDetails.getEmail();
     	User user = userRepository.findByEmail(email).orElseThrow();
     	
     	chatRoomService.markMessagesAsRead(roomId, user.getId());

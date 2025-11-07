@@ -4,6 +4,7 @@ import com.goodee.coreconnect.approval.dto.request.TemplateRequestDTO;
 import com.goodee.coreconnect.approval.dto.response.TemplateDetailResponseDTO;
 import com.goodee.coreconnect.approval.dto.response.TemplateSimpleResponseDTO;
 import com.goodee.coreconnect.approval.service.TemplateAdminService; // AdminService 주입
+import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -36,8 +37,9 @@ public class TemplateAdminController {
   @PostMapping
   public ResponseEntity<Integer> createTemplate(
       @Valid @RequestBody TemplateRequestDTO requestDTO,
-      @AuthenticationPrincipal String adminEmail // 현재 로그인한 관리자 이메일
+      @AuthenticationPrincipal CustomUserDetails user // 현재 로그인한 관리자 이메일
       ) {
+    String adminEmail = user.getEmail();
     Integer templateId = templateAdminService.createTemplate(requestDTO, adminEmail);
     return ResponseEntity.status(HttpStatus.CREATED).body(templateId);
   }

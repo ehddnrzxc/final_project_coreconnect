@@ -26,6 +26,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
   private final UserRepository userRepository;
   private final PasswordResetRequestRepository passwordResetRequestRepository;
   private final PasswordEncoder passwordEncoder;
+  private final MailService mailService;
 
   /** 비밀번호 변경 요청을 생성하는 메소드 */
   @Override
@@ -62,7 +63,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
 
   /** 승인 처리 - 랜덤 비밀번호 생성 후 반환 */
   @Override
-  public String approve(Long requestId, User admin) {
+  public void approve(Long requestId, User admin) {
     PasswordResetRequest req = passwordResetRequestRepository.findById(requestId)
                                                              .orElseThrow(() -> new IllegalArgumentException("요청을 찾을 수 없습니다."));
     if(req.getStatus() != ResetStatus.PENDING) {
@@ -79,7 +80,8 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     // 요청 엔티티 상태 변경
     req.approve(admin);
     
-    return tempPassword;
+    // 이메일 발송
+    mailService.sendTempPassword(user.getEmail(), tempPassword);
   }
   
   /** 랜덤 비밀번호 생성 유틸 */

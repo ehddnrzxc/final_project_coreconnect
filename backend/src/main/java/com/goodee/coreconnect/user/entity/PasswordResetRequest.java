@@ -41,7 +41,7 @@ public class PasswordResetRequest {
   
   private String rejectReason; // 거절 사유
   
-  // 정적 팩토리 메소드
+  /** 정적 팩토리 메소드 */
   public static PasswordResetRequest createPasswordResetRequest(
         User user,
         String reason
@@ -55,7 +55,7 @@ public class PasswordResetRequest {
     return req;
   }
   
-  // 승인 처리용 메서드
+  /** 승인 처리용 메서드 */
   public void approve(User admin) {
     this.status = ResetStatus.APPROVED;
     this.processedBy = admin;
@@ -63,7 +63,7 @@ public class PasswordResetRequest {
     this.rejectReason = null;
   }
 
-  // 거절 처리용 메서드
+  /** 거절 처리용 메서드 */
   public void reject(User admin, String rejectReason) {
     this.status = ResetStatus.REJECTED;
     this.processedBy = admin;

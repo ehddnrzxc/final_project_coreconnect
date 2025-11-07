@@ -12,7 +12,7 @@ import jakarta.validation.constraints.NotBlank;
  *  Jackson이 JSON -> 객체로 변환할 때 "모르는 필드"를 무시하도록 하는 설정.
  *  스펙 불일치를 놓칠 수 있으므로 요청 DTO에만 제한적으로 사용하는 것이 좋음.
  */
-@JsonIgnoreProperties(ignoreUnknown = true) 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public record LoginRequestDTO(
     @Email(message = "올바른 이메일 형식이 아닙니다.")
     @NotBlank(message = "이메일은 필수입니다.")
