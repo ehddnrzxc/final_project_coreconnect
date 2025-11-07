@@ -634,9 +634,9 @@ public class ApprovalServiceImpl implements ApprovalService {
           null,     // Chat
           document, // Document
           false,    // readYn
-          false,    // sentYn
+          true,    // sentYn
           false,    // deletedYn
-          null,     // sentAt
+          LocalDateTime.now(),     // sentAt
           null,      // readAt
           senderUser // sender
           );
