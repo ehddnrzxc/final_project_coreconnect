@@ -27,6 +27,7 @@ import BoardWritePage from "./features/board/pages/BoardWritePage";
 import ProtectedRoute from "./features/auth/ProtectedRoute";
 import CalendarPage from "./features/schedule/pages/CalendarPage";
 import AdminCategoryPage from "./features/board/pages/AdminCategoryPage";
+import NewDocumentPage from "./features/approval/pages/NewDocumentPage";
 
 /* 전체 라우트 구조 */
 const router = createBrowserRouter([
@@ -63,7 +64,7 @@ const router = createBrowserRouter([
         ),
         children: [
           { index: true, element: <ApprovalHomePage /> }, // 결재홈
-          { path: "new", element: <div>새 결제 진행</div> }, // 새 결제 진행
+          { path: "new/:templateId", element: <NewDocumentPage /> }, // 새 결제 진행
           { path: "doc/:documentId", element: <div>문서 상세 조회</div> },
         ],
       },

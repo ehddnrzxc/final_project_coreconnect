@@ -32,7 +32,7 @@ public class DocumentDetailResponseDTO {
     return DocumentDetailResponseDTO.builder()
         .documentId(document.getId())
         .documentTitle(document.getDocumentTitle())
-        .documentContent(document.getDocumentContent())
+        .documentContent(document.getDocumentDataJson())
         .documentStatus(document.getDocumentStatus())
         .createdAt(document.getCreatedAt())
         .completedAt(document.getCompletedAt())
