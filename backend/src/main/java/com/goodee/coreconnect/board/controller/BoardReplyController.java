@@ -18,6 +18,7 @@ import com.goodee.coreconnect.board.dto.request.BoardReplyRequestDTO;
 import com.goodee.coreconnect.board.dto.response.BoardReplyResponseDTO;
 import com.goodee.coreconnect.board.service.BoardReplyService;
 import com.goodee.coreconnect.common.dto.response.ResponseDTO;
+import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -37,8 +38,9 @@ public class BoardReplyController {
     @PostMapping
     public ResponseEntity<ResponseDTO<BoardReplyResponseDTO>> createReply(
             @RequestBody BoardReplyRequestDTO dto,
-            @AuthenticationPrincipal String email
+            @AuthenticationPrincipal CustomUserDetails user
     ) {
+        String email = user.getEmail();
         BoardReplyResponseDTO created = replyService.createReply(dto, email);
 
         ResponseDTO<BoardReplyResponseDTO> res = ResponseDTO.<BoardReplyResponseDTO>builder()
@@ -55,8 +57,9 @@ public class BoardReplyController {
     public ResponseEntity<ResponseDTO<BoardReplyResponseDTO>> updateReply(
             @PathVariable("replyId") Integer replyId,
             @RequestBody BoardReplyRequestDTO dto,
-            @AuthenticationPrincipal String email
+            @AuthenticationPrincipal CustomUserDetails user
     ) {
+        String email = user.getEmail();
         BoardReplyResponseDTO updated = replyService.updateReply(replyId, dto, email);
 
         ResponseDTO<BoardReplyResponseDTO> res = ResponseDTO.<BoardReplyResponseDTO>builder()
@@ -72,8 +75,9 @@ public class BoardReplyController {
     @DeleteMapping("/{replyId}")
     public ResponseEntity<ResponseDTO<Void>> deleteReply(
             @PathVariable("replyId") Integer replyId,
-            @AuthenticationPrincipal String email
+            @AuthenticationPrincipal CustomUserDetails user
     ) {
+        String email = user.getEmail();
         replyService.softDeleteReply(replyId, email);
 
         ResponseDTO<Void> res = ResponseDTO.<Void>builder()

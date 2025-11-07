@@ -17,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.goodee.coreconnect.board.dto.response.BoardFileResponseDTO;
 import com.goodee.coreconnect.board.service.BoardFileService;
 import com.goodee.coreconnect.common.dto.response.ResponseDTO;
+import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -78,7 +79,7 @@ public class BoardFileController {
     @DeleteMapping("/{fileId}")
     public ResponseEntity<ResponseDTO<Void>> deleteFile(
             @PathVariable("fileId") Integer fileId,
-            @AuthenticationPrincipal String email
+            @AuthenticationPrincipal CustomUserDetails user
     ) {
         boardFileService.deleteFile(fileId);
 

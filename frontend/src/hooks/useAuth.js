@@ -3,19 +3,32 @@
  */
 
 import { useState, useEffect } from "react";
-import { getAccessToken, clearAccessToken } from "../features/auth/utils/tokenUtils";
+import { logout as logoutApi } from "../features/auth/api/authAPI"
 
 export default function useAuth() {
-  // 토큰이 있으면 isLoggedIn = true, 없으면 false
-  const [isLoggedIn, setIsLoggedIn] = useState(!!getAccessToken());
+  // 처음 로드 시 localStorage에 user가 있으면 로그인 상태로 간주
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    try {
+      const stored = localStorage.getItem("user");
+      return !!stored;
+    } catch {
+      return false;
+    }
+  });
 
   useEffect(() => {
-    const token = getAccessToken();
-    setIsLoggedIn(!!token);
+    const stored = localStorage.getItem("user");
+    setIsLoggedIn(!!stored);
   }, []);
 
-  const logout = () => {
-    clearAccessToken();
+  const logout = async () => {
+    try {
+      // 서버에서 로그아웃 요청해서 access_token / refresh_token 쿠키 제거
+      await logoutApi();
+    } catch (e) {
+      console.error("로그아웃 API 호출 실패:", e);
+    }
+    localStorage.removeItem("user");
     setIsLoggedIn(false);
   };
 

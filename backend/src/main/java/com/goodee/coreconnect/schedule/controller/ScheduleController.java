@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.goodee.coreconnect.schedule.dto.request.RequestScheduleDTO;
 import com.goodee.coreconnect.schedule.dto.response.ResponseScheduleDTO;
 import com.goodee.coreconnect.schedule.service.ScheduleService;
+import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -40,8 +41,9 @@ public class ScheduleController {
   @PostMapping
   public ResponseEntity<ResponseScheduleDTO> create(
       @Valid @RequestBody RequestScheduleDTO dto,
-      @AuthenticationPrincipal String email
+      @AuthenticationPrincipal CustomUserDetails user
   ) {
+    String email = user.getEmail();
     ResponseScheduleDTO response = scheduleService.createSchedule(dto, email);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
@@ -79,7 +81,8 @@ public class ScheduleController {
   @Operation(summary = "내 일정 조회", description = "현재 로그인한 사용자의 일정을 조회합니다. (OWNER + MEMBER 포함)")
   @GetMapping("/me")
   @SecurityRequirement(name = "bearerAuth")
-  public ResponseEntity<List<ResponseScheduleDTO>> getMySchedules(@AuthenticationPrincipal String email) {
+  public ResponseEntity<List<ResponseScheduleDTO>> getMySchedules(@AuthenticationPrincipal CustomUserDetails user) {
+    String email = user.getEmail();
     return ResponseEntity.ok(scheduleService.getSchedulesByEmail(email));
   }
 
@@ -93,7 +96,8 @@ public class ScheduleController {
   /** 로그인한 사용자의 '오늘 일정'만 조회 */
   @Operation(summary = "오늘 일정 조회", description = "로그인한 사용자의 오늘 일정을 조회합니다.")
   @GetMapping("/me/today")
-  public List<ResponseScheduleDTO> getMyTodaySchedules(@AuthenticationPrincipal String email) {
+  public List<ResponseScheduleDTO> getMyTodaySchedules(@AuthenticationPrincipal CustomUserDetails user) {
+      String email = user.getEmail();
       return scheduleService.getTodaySchedulesByEmail(email);
   }
 

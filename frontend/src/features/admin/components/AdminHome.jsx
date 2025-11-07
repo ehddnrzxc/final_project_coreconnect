@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link as RouterLink } from "react-router-dom";
-import { getAdminStats } from "../../../api/adminAPI";
+import { getAdminStats } from "../api/adminAPI";
 import {
   Box,
   Grid,
@@ -30,6 +30,7 @@ import {
   Lock,
   AddCircleOutline,
   Article,
+  LockReset,
 } from "@mui/icons-material";
 
 export default function AdminHome() {
@@ -357,6 +358,25 @@ export default function AdminHome() {
                 >
                   권한/보안 정책
                 </Button>
+
+                <Button
+                  component={RouterLink}
+                  to="/admin/password-reset-requests"
+                  variant="text"
+                  startIcon={<LockReset />}
+                  sx={{
+                    justifyContent: "flex-start",
+                    textTransform: "none",
+                    color: "text.primary",
+                    borderRadius: 2,
+                    px: 0.5,
+                    py: 0.6,
+                    "&:hover": { backgroundColor: "#f3f4f6" },
+                  }}
+                >
+                  비밀번호 초기화 요청
+                </Button>
+
 
                 <Divider sx={{ my: 0.7 }} />
 

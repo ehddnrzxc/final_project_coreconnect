@@ -27,6 +27,7 @@ import BoardWritePage from "./features/board/pages/BoardWritePage";
 import ProtectedRoute from "./features/auth/ProtectedRoute";
 import CalendarPage from "./features/schedule/pages/CalendarPage";
 import AdminCategoryPage from "./features/board/pages/AdminCategoryPage";
+import PasswordResetPage from "./features/admin/components/PasswordResetPage";
 import NewDocumentPage from "./features/approval/pages/NewDocumentPage";
 
 /* 전체 라우트 구조 */
@@ -103,6 +104,7 @@ const router = createBrowserRouter([
           { path: "users", element: <UserListPage /> },
           { path: "templates/create", element: <TemplateAdminCreate /> },
           { path: "board/category", element: <AdminCategoryPage /> },
+          { path: "password-reset-requests", element: <PasswordResetPage /> },
         ],
       },
 

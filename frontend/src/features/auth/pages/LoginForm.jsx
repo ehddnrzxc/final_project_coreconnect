@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { login } from "../../auth/api/authAPI";
-import { setAccessToken } from "../utils/tokenUtils";
 import { getMyProfileImage } from "../../user/api/userAPI";
 import { createPasswordResetRequest } from "../../user/api/passwordResetAPI";
 import {
@@ -33,8 +32,14 @@ export default function LoginForm({ onLoginSuccess }) {
     setError("");
     try {
       const data = await login(email, pw);
-      setAccessToken(data.accessToken);
-      localStorage.setItem("user", JSON.stringify(data.user));
+      const user = {
+        email: data.email,
+        name: data.name,
+        role: data.role,
+        departmentName: data.departmentName,
+        jobGrade: data.jobGrade,
+      }
+      localStorage.setItem("user", JSON.stringify(user));
 
       if(remember) {
         localStorage.setItem("savedEmail", email);
@@ -42,11 +47,17 @@ export default function LoginForm({ onLoginSuccess }) {
         localStorage.removeItem("savedEmail");
       }
 
-      // 프로필 이미지 동기화(선택)
-      const imageUrl = await getMyProfileImage();
-      const nextUser = { ...(JSON.parse(localStorage.getItem("user") || "{}")), imageUrl: imageUrl || "" };
-      localStorage.setItem("user", JSON.stringify(nextUser));
+      // 프로필 이미지 동기화 - 실패해도 로그인은 유지
 
+      try {
+        const imageUrl = await getMyProfileImage();
+        const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+        const nextUser = { ...storedUser, imageUrl: imageUrl || "" };
+        localStorage.setItem("user", JSON.stringify(nextUser));
+      } catch (err) {
+        console.warn("프로필 이미지 불러오기 실패:", err);
+      }
+      
       onLoginSuccess?.();
     } catch (e) {
       console.error("에러:", e);

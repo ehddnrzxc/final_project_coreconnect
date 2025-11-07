@@ -10,6 +10,6 @@ public interface PasswordResetService {
   
   public void createRequest(PasswordResetRequestDTO dto);
   public List<PasswordResetResponseDTO> getRequests(String status);
-  public String approve(Long requestId, User admin);
+  public void approve(Long requestId, User admin);
   
 }
