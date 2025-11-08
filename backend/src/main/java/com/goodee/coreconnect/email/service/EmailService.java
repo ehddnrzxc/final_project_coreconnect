@@ -33,7 +33,7 @@ public interface EmailService {
      * @param size 한 페이지당 아이템 수
      * @return Page<EmailResponseDTO> 페이징된 EmailResponseDTO 리스트
      */
-	Page<EmailResponseDTO> getInbox(Integer userId, int page, int size);
+	Page<EmailResponseDTO> getInbox(String userEmail, int page, int size);
 	
 	/**
      * 발신함(보낸메일함) 리스트를 페이징으로 조회합니다.

@@ -105,12 +105,12 @@ public class EmailServiceImpl implements EmailService {
 	}
 
 	@Override
-	public Page<EmailResponseDTO> getInbox(Integer userId, int page, int size) {
+	public Page<EmailResponseDTO> getInbox(String userEmail, int page, int size) {
 		Pageable pageable = PageRequest.of(page, size);
 		
 		// 내가 TO 또는 CC로 수신한 메일 (EmailRecipient에서 userId기준 TO/CC)
-		Page<EmailRecipient> recipientPage = emailRecipientRepository.findByUserIdAndEmailRecipientTypeIn(
-		    userId,
+		Page<EmailRecipient> recipientPage = emailRecipientRepository.findByEmailRecipientAddressAndEmailRecipientTypeIn(
+		    userEmail,
 		    List.of("TO", "CC"),
 		    pageable
 		);

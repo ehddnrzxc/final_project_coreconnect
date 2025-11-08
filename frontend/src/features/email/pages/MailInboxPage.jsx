@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Box, Typography, Paper, Table, TableHead, TableBody, TableRow, TableCell,
   IconButton, ButtonGroup, Button, InputBase, Divider, Checkbox, Chip, Pagination
 } from '@mui/material';
@@ -15,32 +15,42 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import SyncIcon from '@mui/icons-material/Sync';
 import ViewListIcon from '@mui/icons-material/ViewList';
 
-const mails = [
-  {
-    id: 1,
-    sender: '권시정',
-    title: '[전사 게시글 등록] aaaaa글이 등록되었습니다.',
-    date: '25-11-05 12:20',
-    size: '5.0KB',
-    status: '',
-  },
-];
+import { fetchInbox } from '../api/emailApi';
 
-const oldMails = [
-  {
-    id: 5,
-    sender: '김인재',
-    title: '[결재 취소][견적 포함] 임시직 부장(이)가 작성한 휴가신청(이)가 취소되었습니다.',
-    date: '25-09-08 18:14',
-    size: '5.4KB',
-    status: ''
-  },
-];
+// 로컬스토리지에서 현재 유저의 email을 꺼냅니다.
+function getUserEmailFromStorage() {
+  const userString = localStorage.getItem("user");
+  if (!userString) return null;
+  try {
+    const userObj = JSON.parse(userString);
+    return userObj.email || null;
+  } catch {
+    return null;
+  }
+}
 
 const MailInboxPage = () => {
-  const [search, setSearch] = React.useState('');
-  console.log("### [MailInboxPage] 렌더링됨");
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [size, setSize] = useState(20);
+  const [total, setTotal] = useState(0);
+  const [mails, setMails] = useState([]);
+  const userEmail = getUserEmailFromStorage();
 
+  useEffect(() => {
+    if (!userEmail) return;
+    fetchInbox(userEmail, page - 1, size)
+      .then(res => {
+        const boxData = res?.data?.data;
+        const mailList = Array.isArray(boxData?.content) ? boxData.content : [];
+        setMails(mailList);
+        setTotal(typeof boxData?.totalElements === "number" ? boxData.totalElements : 0);
+      })
+      .catch(() => {
+        setMails([]);
+        setTotal(0);
+      });
+  }, [userEmail, page, size]);
 
   return (
     <Box sx={{ p: 4, minHeight: "100vh", bgcolor: "#fafbfd" }}>
@@ -49,7 +59,7 @@ const MailInboxPage = () => {
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
           <Typography variant="h5" sx={{ fontWeight: 700 }}>받은메일함</Typography>
           <Typography sx={{ ml: 2, color: 'text.secondary', fontSize: 15 }}>
-            전체메일 <b>97</b> / 안읽은 메일 <b>18</b>
+            전체메일 <b>{total}</b>
           </Typography>
           <Box sx={{ flex: 1 }} />
           <Paper
@@ -96,7 +106,7 @@ const MailInboxPage = () => {
           <IconButton><SyncIcon /></IconButton>
           <IconButton><MoreVertIcon /></IconButton>
           <Paper sx={{ ml: 1, display: 'inline-flex', alignItems: 'center', px: 0.5 }}>
-            <Typography sx={{ px: 0.5, fontWeight: 500, fontSize: 15 }}>20</Typography>
+            <Typography sx={{ px: 0.5, fontWeight: 500, fontSize: 15 }}>{size}</Typography>
             <IconButton size="small"><MoreVertIcon fontSize="small" /></IconButton>
           </Paper>
         </Box>
@@ -110,46 +120,51 @@ const MailInboxPage = () => {
               <TableCell sx={{ fontWeight: 700 }}>발신자</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>제목</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>일자</TableCell>
-              <TableCell align="right" sx={{ fontWeight: 700 }}>크기</TableCell>
+              <TableCell align="right" sx={{ fontWeight: 700 }}>상태</TableCell>
               <TableCell sx={{ fontWeight: 700 }}></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {/* 최근 메일들 */}
-            <TableRow>
-              <TableCell colSpan={6} sx={{ bgcolor: '#fafbfd', fontWeight: 700, fontSize: 15 }}>
-                2025-11-05 (수)
-              </TableCell>
-            </TableRow>
-            {mails.map(mail => (
-              <TableRow key={mail.id} hover>
-                <TableCell padding="checkbox"><Checkbox size="small" /></TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>{mail.sender}</TableCell>
-                <TableCell>{mail.title}</TableCell>
-                <TableCell>{mail.date}</TableCell>
-                <TableCell align="right">{mail.size}</TableCell>
-                <TableCell><IconButton size="small"><VisibilityIcon fontSize="small" /></IconButton></TableCell>
+            {Array.isArray(mails) && mails.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} align="center">받은 메일이 없습니다.</TableCell>
               </TableRow>
-            ))}
-            {/* 섹션 구분: 과거/오래된 항목 */}
-            <TableRow>
-              <TableCell colSpan={6} sx={{ bgcolor: '#fafbfd', color: '#9bc1e0', fontWeight: 600 }}>오래된 항목</TableCell>
-            </TableRow>
-            {oldMails.map(mail => (
-              <TableRow key={mail.id} hover>
-                <TableCell padding="checkbox"><Checkbox size="small" /></TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>{mail.sender}</TableCell>
-                <TableCell>{mail.title}</TableCell>
-                <TableCell>{mail.date}</TableCell>
-                <TableCell align="right">{mail.size}</TableCell>
-                <TableCell><IconButton size="small"><VisibilityIcon fontSize="small" /></IconButton></TableCell>
-              </TableRow>
-            ))}
+            ) : (
+              mails.map(mail => (
+                <TableRow key={mail.emailId} hover>
+                  <TableCell padding="checkbox"><Checkbox size="small" /></TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>{mail.senderName || '-'}</TableCell>
+                  <TableCell>{mail.emailTitle}</TableCell>
+                  <TableCell>
+                    {mail.sentTime
+                      ? (typeof mail.sentTime === "string"
+                          ? new Date(mail.sentTime).toLocaleString()
+                          : mail.sentTime)
+                      : "-"}
+                  </TableCell>
+                  <TableCell align="right">
+                    <Chip
+                      label={mail.emailStatus}
+                      color={mail.emailStatus === "SENT" ? "success" : (mail.emailStatus === "FAILED" ? "error" : "default")}
+                      size="small"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <IconButton size="small"><VisibilityIcon fontSize="small" /></IconButton>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
         {/* 테이블 하단 페이지네이션 */}
         <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>
-          <Pagination count={5} page={1} color="primary" />
+          <Pagination
+            count={Math.ceil(total / size)}
+            page={page}
+            onChange={(_, value) => setPage(value)}
+            color="primary"
+          />
         </Box>
       </Paper>
     </Box>

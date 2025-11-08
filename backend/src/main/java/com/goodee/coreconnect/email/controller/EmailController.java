@@ -76,11 +76,11 @@ public class EmailController {
     @Operation(summary = "수신된 이메일 조회", description = "수신된 이메일을 조회합니다.")
     @GetMapping("/inbox")
     public ResponseEntity<ResponseDTO<Page<EmailResponseDTO>>> getInbox(
-    		@RequestParam("userId") Integer userId, /* 이름 명확히 */
+    		@RequestParam("userEmail") String userEmail, /* 이름 명확히 */
     	    @RequestParam(value = "page", defaultValue = "0") int page,
     	    @RequestParam(value = "size", defaultValue = "1") int size
     ) {
-        Page<EmailResponseDTO> result = emailService.getInbox(userId, page, size);
+        Page<EmailResponseDTO> result = emailService.getInbox(userEmail, page, size);
         return ResponseEntity.ok(ResponseDTO.success(result, "받은메일함 조회 성공"));
     }
 

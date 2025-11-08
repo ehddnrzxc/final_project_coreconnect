@@ -28,9 +28,10 @@ function getUserEmailFromStorage() {
   }
 }
 
-// 받은메일함 조회 (userId 그대로)
-export const fetchInbox = (userId, page, size) => 
-  http.get('/email/inbox', { params: {userId, page, size}});
+
+// 받은메일함 조회 (userEmail 기준)
+export const fetchInbox = (userEmail, page, size) =>
+  http.get('/email/inbox', { params: { userEmail, page, size } });
 
 // 보낸메일함 조회 (이메일 자동 사용)
 // fetchSentbox: 컴포넌트에서 page, size만 파라미터로 받아 userEmail은 내부에서 자동 추출
