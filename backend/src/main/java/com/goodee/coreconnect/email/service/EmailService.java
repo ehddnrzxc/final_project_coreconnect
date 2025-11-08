@@ -42,7 +42,7 @@ public interface EmailService {
      * @param size 한 페이지당 아이템 수
      * @return Page<EmailResponseDTO> 페이징된 EmailResponseDTO 리스트
      */
-	Page<EmailResponseDTO> getSentbox(Integer userId, int page, int size);
+	Page<EmailResponseDTO> getSentbox(String userEmail, int page, int size);
 	
 	 /**
      * 반송함(실패/반송된 메일함) 리스트를 페이징으로 조회합니다.

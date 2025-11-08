@@ -1,11 +1,9 @@
-
 import http from '../../../api/http.js';
 
 // 메일 발송
 export const sendMail = (mailData) => {
   const formData = new FormData();
   const { attachments, ...pureData } = mailData;
-  // JSON 데이터는 반드시 data라는 키에 Blob으로 전달해야 Spring @RequestPart("data")에서 매핑됩니다!
   formData.append(
     "data",
     new Blob([JSON.stringify(pureData)], { type: "application/json" })
@@ -15,25 +13,36 @@ export const sendMail = (mailData) => {
       formData.append("attachments", file);
     });
   }
-  // Content-Type 지정 안하는 것!! (브라우저가 자동으로 멀티파트 설정)
   return http.post('/email/send', formData);
 };
 
-// 받은메일함 조회
+// 로컬스토리지에서 현재 로그인한 사용자의 email을 꺼내오는 유틸 함수
+function getUserEmailFromStorage() {
+  const userString = localStorage.getItem("user");
+  if (!userString) return null;
+  try {
+    const userObj = JSON.parse(userString);
+    return userObj.email || null;
+  } catch {
+    return null;
+  }
+}
+
+// 받은메일함 조회 (userId 그대로)
 export const fetchInbox = (userId, page, size) => 
   http.get('/email/inbox', { params: {userId, page, size}});
 
-// 보낸메일함 조회
-export const fetchSentbox = (userId, page, size) => 
-  http.get('/email/sentbox', { params: {userId, page, size}});
+// 보낸메일함 조회 (이메일 자동 사용)
+// fetchSentbox: 컴포넌트에서 page, size만 파라미터로 받아 userEmail은 내부에서 자동 추출
+export const fetchSentbox = (page, size) => {
+  const userEmail = getUserEmailFromStorage();
+  return http.get('/email/sentbox', { params: { userEmail, page, size }});
+}
 
 // 메일 상세 조회
 export const getEmailDetail = (emailId) => 
   http.get(`/email/${emailId}`);
 
-
-
-
-// 팡리 다운로드 (첨부파일)
-export const  downloadAttachment = (fileId) => 
-  http.get(`/email/file/download/${fileId}`, { responseType: 'blob'});
+// 파일 다운로드 (첨부파일)
+export const downloadAttachment = (fileId) => 
+  http.get(`/email/file/download/${fileId}`, { responseType: 'blob' });

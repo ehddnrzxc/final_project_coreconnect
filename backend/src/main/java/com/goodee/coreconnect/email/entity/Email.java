@@ -46,6 +46,9 @@ public class Email {
 	
 	private String emailType;
 	
+	@Column(name = "sender_email", nullable = false, length = 100)
+	private String senderEmail;
+	
 	@Enumerated(EnumType.STRING)
 	private EmailStatusEnum emailStatus; // SENT/BOUNCE/FAILED/DELETED (enum)
 	

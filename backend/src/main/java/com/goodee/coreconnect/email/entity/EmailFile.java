@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.goodee.coreconnect.email.enums.EmailStatusEnum;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -31,6 +32,8 @@ public class EmailFile {
 	
 	private String emailFileName;
 	private Long emailFileSize;
+	
+	@Column(name = "email_files3object_key", columnDefinition = "TEXT")
 	private String emailFileS3ObjectKey;
 	private Boolean emailFielDeletedYn = false;
 	

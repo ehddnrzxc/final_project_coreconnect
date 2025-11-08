@@ -146,12 +146,12 @@ public class EmailServiceImpl implements EmailService {
 	}
 
 	@Override
-	public Page<EmailResponseDTO> getSentbox(Integer userId, int page, int size) {
+	public Page<EmailResponseDTO> getSentbox(String userEmail, int page, int size) {
 		Pageable pageable = PageRequest.of(page, size);
 		
 		// 내가 발신자(sender)로 보낸 이메일만
 		Page<com.goodee.coreconnect.email.entity.Email> emailPage = 
-				emailRepository.findBySenderId(userId, pageable);
+				emailRepository.findBySenderEmail(userEmail, pageable);
 		
 		List<EmailResponseDTO> dtoList = emailPage.stream().map(email -> {
 		    EmailResponseDTO dto = new EmailResponseDTO();
@@ -297,9 +297,10 @@ public class EmailServiceImpl implements EmailService {
 	    com.goodee.coreconnect.email.entity.Email entity = com.goodee.coreconnect.email.entity.Email.builder()
 	        .emailTitle(requestDTO.getEmailTitle())
 	        .emailContent(requestDTO.getEmailContent())
-	        .senderId(requestDTO.getSenderId())
 	        .emailStatus(EmailStatusEnum.SENT)
 	        .emailSentTime(LocalDateTime.now())
+	        .senderId(requestDTO.getSenderId())                         // 발신자 id
+	        .senderEmail(requestDTO.getSenderAddress())                 // 발신자 이메일(★중요) 
 	        .favoriteStatus(false)
 	        .emailDeleteYn(false)
 	        .emailSaveStatusYn(false)
