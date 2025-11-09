@@ -16,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.goodee.coreconnect.common.dto.response.ResponseDTO;
 import com.goodee.coreconnect.email.dto.request.EmailSendRequestDTo;
 import com.goodee.coreconnect.email.dto.response.EmailResponseDTO;
+import com.goodee.coreconnect.email.repository.EmailRecipientRepository;
 import com.goodee.coreconnect.email.service.EmailService;
 import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
 import com.goodee.coreconnect.user.entity.User;
@@ -33,7 +34,8 @@ public class EmailController {
 
     private final EmailService emailService;
     private final UserRepository userRepository;
-
+    private final EmailRecipientRepository emailRecipientRepository;
+    
     // 이메일 발송
     @Operation(summary = "이메일 발송", description = "이메일을 발송합니다.")
     @PostMapping( value = "/send", consumes = "multipart/form-data")
@@ -67,8 +69,8 @@ public class EmailController {
     // 이메일 상세조회
     @Operation(summary = "발송된 이메일 상세조회", description = "발송된 이메일을 상세조회 합니다.")
     @GetMapping("/{emailId}")
-    public ResponseEntity<ResponseDTO<EmailResponseDTO>> getEmailDetail(@PathVariable("emailId") Integer emailId) {
-        EmailResponseDTO result = emailService.getEmailDetail(emailId);
+    public ResponseEntity<ResponseDTO<EmailResponseDTO>> getEmailDetail(@PathVariable("emailId") Integer emailId,  @RequestParam("userEmail") String userEmail ) {
+        EmailResponseDTO result = emailService.getEmailDetail(emailId, userEmail);
         return ResponseEntity.ok(ResponseDTO.success(result, "이메일 상세조회 성공"));
     }
 
@@ -78,9 +80,13 @@ public class EmailController {
     public ResponseEntity<ResponseDTO<Page<EmailResponseDTO>>> getInbox(
     		@RequestParam("userEmail") String userEmail, /* 이름 명확히 */
     	    @RequestParam(value = "page", defaultValue = "0") int page,
-    	    @RequestParam(value = "size", defaultValue = "1") int size
+    	    @RequestParam(value = "size", defaultValue = "1") int size,
+    	    @RequestParam(value = "filter", required = false) String filter
     ) {
-        Page<EmailResponseDTO> result = emailService.getInbox(userEmail, page, size);
+    	// filter: null or "today"/"unread"
+        Page<EmailResponseDTO> result = emailService.getInbox(userEmail, page, size, filter);
+        int unreadCount = emailRecipientRepository.countByEmailRecipientAddressAndEmailReadYn(userEmail, false);
+        // {"data":result, "unreadCount":unreadCount} 형태로 응답  
         return ResponseEntity.ok(ResponseDTO.success(result, "받은메일함 조회 성공"));
     }
 
@@ -107,5 +113,14 @@ public class EmailController {
     ) {
         Page<EmailResponseDTO> result = emailService.getBounceBox(userId, page, size);
         return ResponseEntity.ok(ResponseDTO.success(result, "반송함 조회 성공"));
+    }
+    
+    
+    // 받은메일함 '안읽은 메일' 개수만 반환 (프론트 뱃지 Badge 표시용)
+    @Operation(summary = "받은메일함 안읽은 메일 개수", description = "받은메일함 중 안읽은 메일 개수를 반환합니다.")
+    @GetMapping("/inbox/unread-count")
+    public ResponseEntity<ResponseDTO<Integer>> getUnreadInboxCount(@RequestParam("userEmail") String userEmail) {
+        int unreadCount = emailRecipientRepository.countByEmailRecipientAddressAndEmailReadYn(userEmail, false);
+        return ResponseEntity.ok(ResponseDTO.success(unreadCount, "안읽은 메일 개수 조회 성공"));
     }
 }

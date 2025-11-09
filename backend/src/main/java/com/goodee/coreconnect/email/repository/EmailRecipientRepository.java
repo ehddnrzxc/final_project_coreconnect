@@ -1,5 +1,6 @@
 package com.goodee.coreconnect.email.repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
@@ -31,4 +32,23 @@ public interface EmailRecipientRepository extends JpaRepository<EmailRecipient, 
      */
     List<EmailRecipient> findByEmail(com.goodee.coreconnect.email.entity.Email email);
 
+    // 수신자 이메일 기준, 읽음여부로 개수 카운트
+    int countByEmailRecipientAddressAndEmailReadYn(String emailRecipientAddress, Boolean emailReadYn);
+
+    // 안읽은 메일만 페이징 (filter=unread)
+    Page<EmailRecipient> findByEmailRecipientAddressAndEmailRecipientTypeInAndEmailReadYn(
+        String emailRecipientAddress, List<String> emailRecipientType, Boolean emailReadYn, Pageable pageable
+    );
+
+    // 오늘 온 메일만 페이징 (filter=today)  
+    // ※ emailReceivedTime이 없다면 emailSentTime 등으로 이름 변경!  
+    Page<EmailRecipient> findByEmailRecipientAddressAndEmailRecipientTypeInAndEmail_EmailSentTimeBetween(
+    	    String emailRecipientAddress,
+    	    List<String> emailRecipientType,
+    	    LocalDateTime start,
+    	    LocalDateTime end,
+    	    Pageable pageable
+    	);
+    
+    
 }

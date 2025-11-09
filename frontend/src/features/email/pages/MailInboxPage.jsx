@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Paper, Table, TableHead, TableBody, TableRow, TableCell,
-  IconButton, ButtonGroup, Button, InputBase, Divider, Checkbox, Chip, Pagination
+  IconButton, ButtonGroup, Button, InputBase, Divider, Checkbox, Chip, Pagination, Badge, Tabs, Tab
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ReportIcon from '@mui/icons-material/Report';
@@ -15,33 +15,26 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import SyncIcon from '@mui/icons-material/Sync';
 import ViewListIcon from '@mui/icons-material/ViewList';
 
-import { fetchInbox } from '../api/emailApi';
+import { fetchInbox, fetchUnreadCount, getUserEmailFromStorage } from '../api/emailApi';
 import { useNavigate } from 'react-router-dom';
 
-// 로컬스토리지에서 현재 유저의 email을 꺼냅니다.
-function getUserEmailFromStorage() {
-  const userString = localStorage.getItem("user");
-  if (!userString) return null;
-  try {
-    const userObj = JSON.parse(userString);
-    return userObj.email || null;
-  } catch {
-    return null;
-  }
-}
+// 받은메일함 첫 화면에 "오늘", "안읽음", "전체" 탭/필터, 안읽은메일 개수 Chip 반영 (Badge 제거)
 
 const MailInboxPage = () => {
+  const [tab, setTab] = useState("all"); // all|today|unread
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(20);
   const [total, setTotal] = useState(0);
   const [mails, setMails] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const userEmail = getUserEmailFromStorage();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!userEmail) return;
-    fetchInbox(userEmail, page - 1, size)
+    // 필터: today, unread, all(null/기본)
+    fetchInbox(userEmail, page - 1, size, tab === "all" ? null : tab)
       .then(res => {
         const boxData = res?.data?.data;
         const mailList = Array.isArray(boxData?.content) ? boxData.content : [];
@@ -52,14 +45,29 @@ const MailInboxPage = () => {
         setMails([]);
         setTotal(0);
       });
-  }, [userEmail, page, size]);
+  }, [userEmail, page, size, tab]);
+
+  useEffect(() => {
+    if (!userEmail) return;
+    fetchUnreadCount(userEmail)
+      .then(count => setUnreadCount(count || 0))
+      .catch(() => setUnreadCount(0));
+  }, [userEmail]);
 
   return (
     <Box sx={{ p: 4, minHeight: "100vh", bgcolor: "#fafbfd" }}>
       <Paper elevation={0} sx={{ p: 3, borderRadius: 2 }}>
-        {/* 상단 타이틀 */}
+        {/* 상단 타이틀 및 탭 */}
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>받은메일함</Typography>
+          <Typography variant="h5" sx={{ fontWeight: 700 }}>
+            받은메일함
+          </Typography>
+          <Chip
+            label={`안읽은 메일 : ${unreadCount}개`}
+            color={unreadCount > 0 ? "error" : "default"}
+            size="small"
+            sx={{ ml: 2, fontWeight: 700 }}
+          />
           <Typography sx={{ ml: 2, color: 'text.secondary', fontSize: 15 }}>
             전체메일 <b>{total}</b>
           </Typography>
@@ -90,8 +98,25 @@ const MailInboxPage = () => {
           </Paper>
           <Chip label="메가커피 900원, 선착순 1,000명" sx={{ bgcolor: "#fff0dc", fontWeight: 700 }} />
         </Box>
+
+        {/* 탭 필터: 전체 / 오늘 / 안읽음 */}
+        <Box sx={{ mt: 2, mb: 2 }}>
+          <Tabs value={tab} onChange={(_,v) => setTab(v)}>
+            <Tab value="all" label="전체" />
+            <Tab value="today" label="오늘의 메일" />
+            <Tab
+              value="unread"
+              label={
+                <Badge badgeContent={unreadCount} color="error">
+                  안읽은 메일
+                </Badge>
+              }
+            />
+          </Tabs>
+        </Box>
+
         {/* 상단 툴바 */}
-        <Box sx={{ display: 'flex', alignItems: 'center', mt: 2, mb: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
           <Checkbox sx={{ mr: 1 }} />
           <ButtonGroup variant="text" sx={{ gap: 1 }}>
             <Button startIcon={<ReportIcon />}>스팸신고</Button>
@@ -120,6 +145,7 @@ const MailInboxPage = () => {
               <TableCell sx={{ fontWeight: 700 }}>발신자</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>제목</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>일자</TableCell>
+              <TableCell sx={{ fontWeight: 700 }}>받는사람</TableCell>
               <TableCell align="right" sx={{ fontWeight: 700 }}>상태</TableCell>
               <TableCell sx={{ fontWeight: 700 }}></TableCell>
             </TableRow>
@@ -127,7 +153,7 @@ const MailInboxPage = () => {
           <TableBody>
             {Array.isArray(mails) && mails.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} align="center">받은 메일이 없습니다.</TableCell>
+                <TableCell colSpan={7} align="center">받은 메일이 없습니다.</TableCell>
               </TableRow>
             ) : (
               mails.map(mail => (
@@ -138,7 +164,10 @@ const MailInboxPage = () => {
                   onClick={() => navigate(`/email/${mail.emailId}`)}
                 >
                   <TableCell padding="checkbox"><Checkbox size="small" /></TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>{mail.senderName || '-'}</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>
+                    {mail.senderEmail || mail.senderName || '-'}
+                    {(mail.senderDept && mail.senderDept.trim() !== "") && ` / ${mail.senderDept}`}
+                  </TableCell>
                   <TableCell>{mail.emailTitle}</TableCell>
                   <TableCell>
                     {mail.sentTime
@@ -146,6 +175,12 @@ const MailInboxPage = () => {
                         ? new Date(mail.sentTime).toLocaleString()
                         : mail.sentTime)
                       : "-"}
+                  </TableCell>
+                  <TableCell sx={{ fontSize: 13 }}>
+                    {/* 받는사람: addresses 도 있고, recipient 엔티티 있을 수 있음 */}
+                    {Array.isArray(mail.recipientAddresses)
+                      ? mail.recipientAddresses.join(', ')
+                      : ''}
                   </TableCell>
                   <TableCell align="right">
                     <Chip

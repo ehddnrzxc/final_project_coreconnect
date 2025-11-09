@@ -23,7 +23,7 @@ public interface EmailService {
      * @param emailId 이메일 고유 ID
      * @return EmailResponseDTO 해당 이메일의 상세 정보 (제목/내용/첨부/참조자/답신 등)
      */
-	EmailResponseDTO getEmailDetail(Integer emailId);
+	EmailResponseDTO getEmailDetail(Integer emailId, String viewerEmail);
 	
 	
 	/**
@@ -33,7 +33,7 @@ public interface EmailService {
      * @param size 한 페이지당 아이템 수
      * @return Page<EmailResponseDTO> 페이징된 EmailResponseDTO 리스트
      */
-	Page<EmailResponseDTO> getInbox(String userEmail, int page, int size);
+	Page<EmailResponseDTO> getInbox(String userEmail, int page, int size,  String filter);
 	
 	/**
      * 발신함(보낸메일함) 리스트를 페이징으로 조회합니다.

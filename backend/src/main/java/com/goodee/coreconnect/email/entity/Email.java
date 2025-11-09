@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.hibernate.annotations.Cascade;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.goodee.coreconnect.email.enums.EmailStatusEnum;
 
 import jakarta.persistence.CascadeType;
@@ -70,6 +71,7 @@ public class Email {
 	
 	// 연관관계
 	@OneToMany(mappedBy = "email", cascade = CascadeType.ALL)
+	@JsonManagedReference
 	private List<EmailRecipient> recipients;
 	
 	@OneToMany(mappedBy = "email", cascade = CascadeType.ALL)
