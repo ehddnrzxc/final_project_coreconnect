@@ -8,6 +8,7 @@ import PeopleIcon from '@mui/icons-material/People';
 import ApprovalLineModal from './ApprovalLineModal';
 import ApprovalTypeChip from '../components/ApprovalTypeChip';
 import VacationForm from './VacationForm';
+import DynamicApprovalTable from '../components/DynamicApprovalTable';
 
 // --- 헬퍼 함수들 ---
 const getTodayDate = () => {
@@ -40,45 +41,6 @@ const getCurrentUser = () => {
   }
   return null;
 };
-
-const DynamicApprovalTable = ({ approvers, drafter }) => {
-  const actualApprovers = approvers.filter(line => line.type === '결재' || line.type === 'APPROVE');
-
-  const titleCells = [];
-  const nameCells = [];
-  const signatureCells = [];
-
-  if (actualApprovers.length > 0) {
-    actualApprovers.forEach((approver) => {
-      titleCells.push(<TableCell key={`${approver.userId}-title`} sx={{ width: 70 }}>{approver.positionName}</TableCell>);
-      nameCells.push(<TableCell key={`${approver.userId}-name`}>{approver.name}</TableCell>);
-      signatureCells.push(<TableCell key={`${approver.userId}-sig`}></TableCell>);
-    });
-  } else {
-    // 승인자가 0명일 때 빈 칸 1개를 추가
-    titleCells.push(<TableCell key="blank-title" sx={{ width: 70, color: '#ccc' }}> </TableCell>);
-    nameCells.push(<TableCell key="blank-name"> </TableCell>);
-    signatureCells.push(<TableCell key="blank-sig"></TableCell>);
-  }
-
-  return (
-    <TableContainer component={Paper} variant="outlined" sx={{ width: 'auto', maxWidth: '100%' }}>
-      <Table size="small" sx={{ borderCollapse: 'collapse', '& td, & th': { border: '1px solid #ccc', textAlign: 'center', p: 0, fontSize: '0.8rem' } }}>
-        <TableHead>
-          {/* Row 1: Titles (공백 제거를 위해 한 줄로 작성) */}
-          <TableRow sx={{ backgroundColor: '#f9f9f9', height: '30px' }}><TableCell rowSpan={2} sx={{ width: 20, writingMode: 'vertical-rl', backgroundColor: '#f2f2f2' }}>신청</TableCell><TableCell sx={{ width: 70 }}>{drafter?.positionName || '기안자'}</TableCell><TableCell rowSpan={2} sx={{ width: 20, writingMode: 'vertical-rl', backgroundColor: '#f2f2f2' }}>승인</TableCell>{titleCells}</TableRow>
-          
-          {/* Row 2: Names (공백 제거를 위해 한 줄로 작성) */}
-          <TableRow sx={{ height: '30px' }}><TableCell>{drafter?.name}</TableCell>{nameCells}</TableRow>
-          
-          {/* Row 3: Signature Box (공백 제거를 위해 한 줄로 작성) */}
-          <TableRow sx={{ height: '60px' }}><TableCell sx={{ backgroundColor: '#f2f2f2' }}></TableCell><TableCell></TableCell><TableCell sx={{ backgroundColor: '#f2f2f2' }}></TableCell>{signatureCells}</TableRow>
-        </TableHead>
-      </Table>
-    </TableContainer>
-  );
-};
-
 
 // 템플릿 키에 따라 적절한 폼 컴포넌트를 반환하는 헬퍼 컴포넌트
 const DynamicFormRenderer = ({ templateKey, formData, onFormChange }) => {
@@ -148,7 +110,7 @@ function NewDocumentPage() {
 
   const currentUser = useMemo(() => getCurrentUser(), []);
 
-  // [수정] formData의 초기값을 공통 값으로만 설정
+  // formData의 초기값을 공통 값으로만 설정
   const [formData, setFormData] = useState({
     createDate: getTodayDate(),
   });
@@ -181,7 +143,6 @@ function NewDocumentPage() {
       try {
         setLoading(true);
         setError(null);
-        // API 응답에 temp_key가 포함되어 있다고 가정합니다.
         const detailRes = await getTemplateDetail(templateId); 
         
         setSelectedTemplate(detailRes.data);
