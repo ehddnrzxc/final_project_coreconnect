@@ -13,7 +13,7 @@ import AttachFileIcon from '@mui/icons-material/AttachFile';
 import ReportIcon from '@mui/icons-material/Report';
 import { useParams, useNavigate } from 'react-router-dom';
 
-// 파일 사이즈 변환
+// 파일 사이즈를 보기 좋게 변환해주는 유틸 함수
 function formatBytes(bytes) {
   if (isNaN(bytes) || !bytes) return '-';
   const sizes = ['B', 'KB', 'MB', 'GB'];
@@ -27,6 +27,7 @@ function MailDetailPage() {
   const [mailDetail, setMailDetail] = useState(null);
 
   useEffect(() => {
+    // 메일 ID가 있으면 상세조회 API 호출
     if (!emailId) return;
     const userEmail = getUserEmailFromStorage();
     getEmailDetail(emailId, userEmail).then(res => setMailDetail(res.data.data));
@@ -34,14 +35,15 @@ function MailDetailPage() {
 
   if (!mailDetail) return <div>Loading...</div>;
 
-  // 첨부파일 다운로드 핸들러 (fileId + fileName)
+  // (주석) 첨부파일 단일 다운로드 핸들러
   const handleDownload = (fileId, fileName) => {
+    // 파일ID/이름을 받아 downloadAttachment(API 함수)를 호출
     downloadAttachment(fileId, fileName);
   };
 
   return (
     <Box sx={{ p: 4, minHeight: "100vh", bgcolor: "#f8fafb" }}>
-      {/* 상단 액션 버튼 */}
+      {/* 상단 액션 버튼 영역 */}
       <Box sx={{ mb: 2, display: 'flex', alignItems: "center", justifyContent: 'space-between', gap: 1 }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <Tooltip title="뒤로가기"><IconButton onClick={() => navigate(-1)}><ArrowBackIcon /></IconButton></Tooltip>
@@ -56,6 +58,7 @@ function MailDetailPage() {
         </Box>
       </Box>
       <Paper elevation={0} sx={{ p: 4, borderRadius: 2, maxWidth: 900, mx: "auto", mb: 2, boxShadow: 2 }}>
+        {/* 제목, 상태, 중요표시 */}
         <Box sx={{ pb: 1, mb: 2, borderBottom: "1px solid #ececec", display: 'flex', alignItems: 'center', gap: 1 }}>
           <Typography variant="h5" sx={{ fontWeight: 700, flex: 1 }}>{mailDetail.emailTitle}</Typography>
           {mailDetail.emailStatus && (
@@ -70,7 +73,7 @@ function MailDetailPage() {
             <StarIcon sx={{ color: "#f1ac00", ml: 1 }} fontSize="small" />
           )}
         </Box>
-        {/* 송신/수신 정보 */}
+        {/* 송신자/수신자 블록 */}
         <Box sx={{ display: 'flex', alignItems: "center", gap: 2, mb: 1, flexWrap: "wrap" }}>
           <Typography fontWeight={600} fontSize={15}>보낸사람:</Typography>
           <Chip
@@ -119,11 +122,11 @@ function MailDetailPage() {
             )}
           </Box>
         )}
-        {/* 보낸 날짜 라인 */}
+        {/* 보낸 날짜 */}
         <Box sx={{ mt: 0.5, mb: 2, color: "#777", fontSize: 14 }}>
           보낸날짜: {mailDetail.sentTime ? (typeof mailDetail.sentTime === "string" ? new Date(mailDetail.sentTime).toLocaleString() : mailDetail.sentTime) : "-"}
         </Box>
-        {/* 첨부파일 영역 */}
+        {/* === 첨부파일 영역: 파일명 클릭시 다운로드 === */}
         {(mailDetail.attachments && mailDetail.attachments.length > 0) && (
           <Box sx={{
             width: "100%",
@@ -135,6 +138,7 @@ function MailDetailPage() {
               <Typography fontWeight={600} fontSize={15}>
                 첨부파일 {mailDetail.attachments.length}개
               </Typography>
+              {/* (주석) 필요 시 전체 다운로드 버튼 구현
               <Button
                 size="small"
                 sx={{
@@ -150,6 +154,7 @@ function MailDetailPage() {
               >
                 전체 다운로드
               </Button>
+              */}
             </Box>
             <Box sx={{
               display: "flex",
@@ -158,11 +163,12 @@ function MailDetailPage() {
               width: "100%",
               px: 2
             }}>
+              {/* 첨부파일 각각을 Chip으로 표시 & 클릭시 다운로드 */}
               {mailDetail.attachments.map(file => (
                 <Chip
                   icon={<AttachFileIcon />}
                   label={`${file.fileName} (${formatBytes(file.fileSize)})`}
-                  onClick={() => handleDownload(file.fileId, file.fileName)}
+                  onClick={() => handleDownload(file.fileId, file.fileName)} // (주석) 파일명 클릭시 단일 다운로드
                   clickable
                   key={file.fileId}
                   sx={{

@@ -41,6 +41,11 @@ const MailSidebar = () => {
   const unreadCount = useUnreadCount(userEmail); // 전체 받은메일함에서 안읽은 메일
   const todayUnreadCount = useTodayUnreadCount(userEmail); // 오늘 온 메일 중 안읽은 것
 
+  // 추가: 오늘의 메일을 클릭하면 오늘 탭으로 이동 (기존 기능 보존)
+  const goTodayMailTab = () => {
+    navigate('/email?tab=today');
+  };
+
   return (
     <Box sx={{ width: 260, px: 2, py: 1, bgcolor: "#fff", height: "100vh", borderRight: "1px solid #e5e7eb", display: "flex", flexDirection: "column", gap: 1 }}>
       {/* 상단 타이틀, 옵션 */}
@@ -106,7 +111,8 @@ const MailSidebar = () => {
               </ListItemButton>
             </ListItem>
             <ListItem disableGutters sx={{ py: 0.5, px: 0 }}>
-              <ListItemButton sx={{ borderRadius: 1, px: 1.3, py: 0.5 }}>
+              {/* 오늘의 메일 클릭시 오늘탭 바로 이동 */}
+              <ListItemButton sx={{ borderRadius: 1, px: 1.3, py: 0.5 }} onClick={goTodayMailTab}>
                 <ListItemText
                   primary={
                     <Box sx={{ display: "flex", alignItems: "center" }}>
@@ -124,6 +130,7 @@ const MailSidebar = () => {
           </List>
         </Box>
 
+        {/* ... (이하 기존 메일함, 지운편지함 등 뒷부분은 그대로) ... */}
         {/* 메일함 */}
         <Box sx={{ mb: 2 }}>
           <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>

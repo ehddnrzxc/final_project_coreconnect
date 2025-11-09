@@ -16,7 +16,7 @@ import SyncIcon from '@mui/icons-material/Sync';
 import ViewListIcon from '@mui/icons-material/ViewList';
 
 import { fetchInbox, fetchUnreadCount, getUserEmailFromStorage } from '../api/emailApi';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom'; // <-- useLocation 추가
 
 // 받은메일함 첫 화면에 "오늘", "안읽음", "전체" 탭/필터, 안읽은메일 개수 Chip 반영 (Badge 제거)
 
@@ -30,6 +30,17 @@ const MailInboxPage = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const userEmail = getUserEmailFromStorage();
   const navigate = useNavigate();
+  const location = useLocation(); // <-- 쿼리 문자열 인식용
+
+  // ★ 추가: 쿼리스트링 tab 값이 있으면 탭 상태에 반영
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const tabQuery = searchParams.get('tab');
+    if (tabQuery && ["all", "today", "unread"].includes(tabQuery) && tab !== tabQuery) {
+      setTab(tabQuery);
+    }
+    // eslint-disable-next-line
+  }, [location.search]);
 
   useEffect(() => {
     if (!userEmail) return;

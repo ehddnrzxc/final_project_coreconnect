@@ -1,12 +1,27 @@
 package com.goodee.coreconnect.email.controller;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URLEncoder;
+
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 
+import jakarta.servlet.http.HttpServletResponse;
+
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.http.HttpHeaders;        // 꼭 Spring용!
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.core.io.InputStreamResource;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -16,7 +31,10 @@ import org.springframework.web.multipart.MultipartFile;
 import com.goodee.coreconnect.common.dto.response.ResponseDTO;
 import com.goodee.coreconnect.email.dto.request.EmailSendRequestDTo;
 import com.goodee.coreconnect.email.dto.response.EmailResponseDTO;
+import com.goodee.coreconnect.email.entity.EmailFile;
+import com.goodee.coreconnect.email.repository.EmailFileRepository;
 import com.goodee.coreconnect.email.repository.EmailRecipientRepository;
+import com.goodee.coreconnect.email.service.EmailFileStorageService;
 import com.goodee.coreconnect.email.service.EmailService;
 import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
 import com.goodee.coreconnect.user.entity.User;
@@ -35,6 +53,8 @@ public class EmailController {
     private final EmailService emailService;
     private final UserRepository userRepository;
     private final EmailRecipientRepository emailRecipientRepository;
+    private final EmailFileRepository emailFileRepository;
+    private final EmailFileStorageService emFileStorageService;
     
     // 이메일 발송
     @Operation(summary = "이메일 발송", description = "이메일을 발송합니다.")
@@ -122,5 +142,30 @@ public class EmailController {
     public ResponseEntity<ResponseDTO<Integer>> getUnreadInboxCount(@RequestParam("userEmail") String userEmail) {
         int unreadCount = emailRecipientRepository.countByEmailRecipientAddressAndEmailReadYn(userEmail, false);
         return ResponseEntity.ok(ResponseDTO.success(unreadCount, "안읽은 메일 개수 조회 성공"));
+    }
+    
+    @GetMapping("/file/download/{fileId}")
+    public ResponseEntity<InputStreamResource> downloadAttachment(@PathVariable("fileId") Integer fileId, HttpServletResponse response) {
+        // 1. DB에서 첨부파일 엔티티 조회
+        EmailFile file = emailFileRepository.findById(fileId)
+            .orElseThrow(() -> new RuntimeException("첨부파일 정보를 찾을 수 없습니다."));
+
+        // 2. 실파일(InputStream 등) 읽기 (S3스토리지/로컬 구현에 따라 분기)
+        InputStream inputStream = emFileStorageService.loadFileAsInputStream(file);
+
+        // 3. Content-Disposition 헤더(filename 인코딩 주의)
+        String encodedFilename = URLEncoder.encode(file.getEmailFileName(), StandardCharsets.UTF_8)
+                                           .replaceAll("\\+", "%20");
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFilename);
+
+        // 4. Content-Type (기본 바이너리, 혹은 확장자별 지정)
+        MediaType contentType = MediaType.APPLICATION_OCTET_STREAM;
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .contentLength(file.getEmailFileSize())
+                .contentType(contentType)
+                .body(new InputStreamResource(inputStream));
     }
 }

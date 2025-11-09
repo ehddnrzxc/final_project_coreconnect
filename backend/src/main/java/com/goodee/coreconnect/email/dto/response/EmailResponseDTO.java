@@ -5,7 +5,9 @@ import java.util.List;
 
 import com.goodee.coreconnect.email.entity.EmailRecipient;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
@@ -31,4 +33,12 @@ public class EmailResponseDTO {
     private List<EmailRecipient> ccRecipients;   // [수정] 엔티티 자체 사용
     private List<EmailRecipient> bccRecipients;  // [수정] 본인만 전달, 엔티티
 		
+    private List<AttachmentDTO> attachments;
+    
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor
+    public static class AttachmentDTO {
+        private Integer fileId;
+        private String fileName;
+        private Long fileSize;
+    }
 }

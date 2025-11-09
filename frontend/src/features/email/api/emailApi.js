@@ -63,3 +63,11 @@ export const fetchSentbox = (page, size) => {
   return http.get('/email/sentbox', { params: { userEmail, page, size } });
 };
 
+//  전체 첨부파일 일괄 다운로드 (옵션)
+// 필요하다면, 프론트에서 여러 fileId에 대해 반복 호출해 처리할 수도 있습니다.
+// 파일 서버에서 여러 파일을 압축(zip 등)해 일괄 다운로드 지원시 별도의 API 필요
+export const downloadAllAttachments = (attachments = []) => {
+  attachments.forEach(file => {
+    downloadAttachment(file.fileId, file.fileName);
+  });
+};

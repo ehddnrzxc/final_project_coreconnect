@@ -139,6 +139,19 @@ public class EmailServiceImpl implements EmailService {
 	    response.setCcRecipients(ccRecipients);
 	    response.setBccRecipients(bccRecipients);
 
+	    // 첨부파일 조회 및 세팅
+	    files = emailFileRepository.findByEmail(email);
+	    List<EmailResponseDTO.AttachmentDTO> attachments = files.stream()
+	        .map(f -> new EmailResponseDTO.AttachmentDTO(
+	            f.getEmailFileId(),
+	            f.getEmailFileName(),
+	            f.getEmailFileSize()
+	        ))
+	        .collect(Collectors.toList());
+	    response.setAttachments(attachments);
+	    
+	    
+	    
 	    return response;
 	}
 
