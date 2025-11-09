@@ -15,8 +15,9 @@ import DraftsIcon from '@mui/icons-material/Drafts';
 import SendIcon from '@mui/icons-material/Send';
 
 import { fetchSentbox } from '../api/emailApi';
+import { useNavigate } from 'react-router-dom';
 
-// 1. 로컬스토리지에서 userId 추출
+// 로컬스토리지에서 userEmail 추출
 function getUserEmailFromStorage() {
   const userString = localStorage.getItem("user");
   if (!userString) return null;
@@ -28,14 +29,13 @@ function getUserEmailFromStorage() {
   }
 }
 
-
 const MailSentBoxPage = () => {
- const [search, setSearch] = useState('');
+  const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(9);
   const [total, setTotal] = useState(0);
   const [mails, setMails] = useState([]);
-  const [userEmail, setUserEmail] = useState(getUserEmailFromStorage());
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchSentbox(page - 1, size)
@@ -73,7 +73,7 @@ const MailSentBoxPage = () => {
               border: '1px solid #e2e6ea',
               mr: 2
             }}
-            onSubmit={e => {e.preventDefault();}}
+            onSubmit={e => { e.preventDefault(); }}
           >
             <InputBase
               sx={{ flex: 1 }}
@@ -87,7 +87,6 @@ const MailSentBoxPage = () => {
           </Paper>
           <Chip label="메가커피 900원, 선착순 1,000명" sx={{ bgcolor: "#fff0dc", fontWeight: 700 }} />
         </Box>
-
         {/* 상단 툴바 */}
         <Box sx={{ display: 'flex', alignItems: 'center', mt: 2, mb: 2 }}>
           <ButtonGroup variant="text" sx={{ gap: 1 }}>
@@ -108,8 +107,6 @@ const MailSentBoxPage = () => {
             <IconButton size="small"><MoreVertIcon fontSize="small" /></IconButton>
           </Paper>
         </Box>
-
-        {/* 메일 테이블 */}
         <Divider sx={{ mb: 2 }} />
         <Table sx={{ minWidth: 900 }}>
           <TableHead>
@@ -129,7 +126,12 @@ const MailSentBoxPage = () => {
               </TableRow>
             ) : (
               mails.map((mail) => (
-                <TableRow key={mail.emailId} hover>
+                <TableRow
+                  key={mail.emailId}
+                  hover
+                  sx={{ cursor: "pointer" }}
+                  onClick={() => navigate(`/email/${mail.emailId}`)}
+                >
                   <TableCell padding="checkbox"><Checkbox size="small" /></TableCell>
                   <TableCell>
                     {(mail.recipientAddresses || []).join(", ") || "-"}
@@ -163,15 +165,15 @@ const MailSentBoxPage = () => {
                     />
                   </TableCell>
                   <TableCell>
-                    <IconButton size="small"><VisibilityIcon fontSize="small" /></IconButton>
+                    <IconButton size="small" onClick={e => { e.stopPropagation(); navigate(`/email/${mail.emailId}`); }}>
+                      <VisibilityIcon fontSize="small" />
+                    </IconButton>
                   </TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
-
-        {/* 테이블 하단 페이지네이션 */}
         <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>
           <Pagination
             count={Math.ceil(total / size)}

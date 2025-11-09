@@ -35,6 +35,7 @@ import MailTrashPage from "./features/email/pages/MailTrashPage";
 import PasswordResetPage from "./features/admin/components/PasswordResetPage";
 import NewDocumentPage from "./features/approval/pages/NewDocumentPage";
 import MailSentBoxPage from "./features/email/pages/MailSentBoxPage";
+import MailDetailPage from "./features/email/pages/MailDetailPage";
 
 /* 전체 라우트 구조 */
 const router = createBrowserRouter([
@@ -74,6 +75,7 @@ const router = createBrowserRouter([
           { path: "write", element: <MailWritePage /> },
           { path: "trash", element: <MailTrashPage /> },
           { path: "sent", element: <MailSentBoxPage/>},
+          { path: ":emailId", element: <MailDetailPage /> },
         ]
 
 

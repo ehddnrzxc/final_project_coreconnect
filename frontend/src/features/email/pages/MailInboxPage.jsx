@@ -16,6 +16,7 @@ import SyncIcon from '@mui/icons-material/Sync';
 import ViewListIcon from '@mui/icons-material/ViewList';
 
 import { fetchInbox } from '../api/emailApi';
+import { useNavigate } from 'react-router-dom';
 
 // 로컬스토리지에서 현재 유저의 email을 꺼냅니다.
 function getUserEmailFromStorage() {
@@ -36,6 +37,7 @@ const MailInboxPage = () => {
   const [total, setTotal] = useState(0);
   const [mails, setMails] = useState([]);
   const userEmail = getUserEmailFromStorage();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!userEmail) return;
@@ -74,6 +76,7 @@ const MailInboxPage = () => {
               border: '1px solid #e2e6ea',
               mr: 2
             }}
+            onSubmit={e => { e.preventDefault(); }}
           >
             <InputBase
               sx={{ flex: 1 }}
@@ -87,7 +90,6 @@ const MailInboxPage = () => {
           </Paper>
           <Chip label="메가커피 900원, 선착순 1,000명" sx={{ bgcolor: "#fff0dc", fontWeight: 700 }} />
         </Box>
-
         {/* 상단 툴바 */}
         <Box sx={{ display: 'flex', alignItems: 'center', mt: 2, mb: 2 }}>
           <Checkbox sx={{ mr: 1 }} />
@@ -110,8 +112,6 @@ const MailInboxPage = () => {
             <IconButton size="small"><MoreVertIcon fontSize="small" /></IconButton>
           </Paper>
         </Box>
-
-        {/* 메일 테이블 섹션 */}
         <Divider sx={{ mb: 2 }} />
         <Table sx={{ minWidth: 900 }}>
           <TableHead>
@@ -131,15 +131,20 @@ const MailInboxPage = () => {
               </TableRow>
             ) : (
               mails.map(mail => (
-                <TableRow key={mail.emailId} hover>
+                <TableRow
+                  key={mail.emailId}
+                  hover
+                  sx={{ cursor: "pointer" }}
+                  onClick={() => navigate(`/email/${mail.emailId}`)}
+                >
                   <TableCell padding="checkbox"><Checkbox size="small" /></TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>{mail.senderName || '-'}</TableCell>
                   <TableCell>{mail.emailTitle}</TableCell>
                   <TableCell>
                     {mail.sentTime
                       ? (typeof mail.sentTime === "string"
-                          ? new Date(mail.sentTime).toLocaleString()
-                          : mail.sentTime)
+                        ? new Date(mail.sentTime).toLocaleString()
+                        : mail.sentTime)
                       : "-"}
                   </TableCell>
                   <TableCell align="right">
@@ -150,14 +155,15 @@ const MailInboxPage = () => {
                     />
                   </TableCell>
                   <TableCell>
-                    <IconButton size="small"><VisibilityIcon fontSize="small" /></IconButton>
+                    <IconButton size="small" onClick={e => { e.stopPropagation(); navigate(`/email/${mail.emailId}`); }}>
+                      <VisibilityIcon fontSize="small" />
+                    </IconButton>
                   </TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
-        {/* 테이블 하단 페이지네이션 */}
         <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>
           <Pagination
             count={Math.ceil(total / size)}
