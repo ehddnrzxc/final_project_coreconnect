@@ -12,15 +12,12 @@ import UserCreateForm from "./features/admin/components/UserCreateForm";
 import AdminRoute from "./features/admin/components/AdminRoute";
 import "@fortawesome/fontawesome-free/css/all.min.css";
 import ApprovalHomePage from "./features/approval/pages/ApprovalHomePage";
-
 import ApprovalLayout from "./features/approval/pages/ApprovalLayout";
 import AdminHome from "./features/admin/components/AdminHome";
 import UserListPage from "./features/admin/components/UserListPage";
 import ChatHomePage from "./features/chat/pages/ChatHomePage";
 import ChatLayout from "./features/chat/pages/ChatLayout";
-
 import EmailLayout from "./features/email/pages/EmailLayout";
-
 import TemplateAdminCreate from "./features/admin/components/TemplateAdminCreate";
 import BoardLayout from "./features/board/pages/BoardLayout";
 import BoardListPage from "./features/board/pages/BoardListPage";
@@ -34,7 +31,10 @@ import MailWritePage from "./features/email/pages/MailWritePage";
 import MailTrashPage from "./features/email/pages/MailTrashPage";
 import PasswordResetPage from "./features/admin/components/PasswordResetPage";
 import NewDocumentPage from "./features/approval/pages/NewDocumentPage";
+import MailSentBoxPage from "./features/email/pages/MailSentBoxPage";
+import MailDetailPage from "./features/email/pages/MailDetailPage";
 import DocumentDetailPage from "./features/approval/pages/DocumentDetailPage";
+
 
 /* 전체 라우트 구조 */
 const router = createBrowserRouter([
@@ -73,6 +73,8 @@ const router = createBrowserRouter([
           { index: true, element: <MailInboxPage /> },
           { path: "write", element: <MailWritePage /> },
           { path: "trash", element: <MailTrashPage /> },
+          { path: "sent", element: <MailSentBoxPage/>},
+          { path: ":emailId", element: <MailDetailPage /> },
         ]
 
 

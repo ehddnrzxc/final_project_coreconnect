@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Box, Typography, Paper, Table, TableHead, TableBody, TableRow, TableCell,
-  IconButton, ButtonGroup, Button, InputBase, Divider, Checkbox, Chip, Pagination
+  IconButton, ButtonGroup, Button, InputBase, Divider, Checkbox, Chip, Pagination, Badge, Tabs, Tab
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ReportIcon from '@mui/icons-material/Report';
@@ -15,41 +15,72 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import SyncIcon from '@mui/icons-material/Sync';
 import ViewListIcon from '@mui/icons-material/ViewList';
 
-const mails = [
-  {
-    id: 1,
-    sender: '권시정',
-    title: '[전사 게시글 등록] aaaaa글이 등록되었습니다.',
-    date: '25-11-05 12:20',
-    size: '5.0KB',
-    status: '',
-  },
-];
+import { fetchInbox, fetchUnreadCount, getUserEmailFromStorage } from '../api/emailApi';
+import { useNavigate, useLocation } from 'react-router-dom'; // <-- useLocation 추가
 
-const oldMails = [
-  {
-    id: 5,
-    sender: '김인재',
-    title: '[결재 취소][견적 포함] 임시직 부장(이)가 작성한 휴가신청(이)가 취소되었습니다.',
-    date: '25-09-08 18:14',
-    size: '5.4KB',
-    status: ''
-  },
-];
+// 받은메일함 첫 화면에 "오늘", "안읽음", "전체" 탭/필터, 안읽은메일 개수 Chip 반영 (Badge 제거)
 
 const MailInboxPage = () => {
-  const [search, setSearch] = React.useState('');
-  console.log("### [MailInboxPage] 렌더링됨");
+  const [tab, setTab] = useState("all"); // all|today|unread
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [size, setSize] = useState(20);
+  const [total, setTotal] = useState(0);
+  const [mails, setMails] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const userEmail = getUserEmailFromStorage();
+  const navigate = useNavigate();
+  const location = useLocation(); // <-- 쿼리 문자열 인식용
 
+  // ★ 추가: 쿼리스트링 tab 값이 있으면 탭 상태에 반영
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const tabQuery = searchParams.get('tab');
+    if (tabQuery && ["all", "today", "unread"].includes(tabQuery) && tab !== tabQuery) {
+      setTab(tabQuery);
+    }
+    // eslint-disable-next-line
+  }, [location.search]);
+
+  useEffect(() => {
+    if (!userEmail) return;
+    // 필터: today, unread, all(null/기본)
+    fetchInbox(userEmail, page - 1, size, tab === "all" ? null : tab)
+      .then(res => {
+        const boxData = res?.data?.data;
+        const mailList = Array.isArray(boxData?.content) ? boxData.content : [];
+        setMails(mailList);
+        setTotal(typeof boxData?.totalElements === "number" ? boxData.totalElements : 0);
+      })
+      .catch(() => {
+        setMails([]);
+        setTotal(0);
+      });
+  }, [userEmail, page, size, tab]);
+
+  useEffect(() => {
+    if (!userEmail) return;
+    fetchUnreadCount(userEmail)
+      .then(count => setUnreadCount(count || 0))
+      .catch(() => setUnreadCount(0));
+  }, [userEmail]);
 
   return (
     <Box sx={{ p: 4, minHeight: "100vh", bgcolor: "#fafbfd" }}>
       <Paper elevation={0} sx={{ p: 3, borderRadius: 2 }}>
-        {/* 상단 타이틀 */}
+        {/* 상단 타이틀 및 탭 */}
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>받은메일함</Typography>
+          <Typography variant="h5" sx={{ fontWeight: 700 }}>
+            받은메일함
+          </Typography>
+          <Chip
+            label={`안읽은 메일 : ${unreadCount}개`}
+            color={unreadCount > 0 ? "error" : "default"}
+            size="small"
+            sx={{ ml: 2, fontWeight: 700 }}
+          />
           <Typography sx={{ ml: 2, color: 'text.secondary', fontSize: 15 }}>
-            전체메일 <b>97</b> / 안읽은 메일 <b>18</b>
+            전체메일 <b>{total}</b>
           </Typography>
           <Box sx={{ flex: 1 }} />
           <Paper
@@ -64,6 +95,7 @@ const MailInboxPage = () => {
               border: '1px solid #e2e6ea',
               mr: 2
             }}
+            onSubmit={e => { e.preventDefault(); }}
           >
             <InputBase
               sx={{ flex: 1 }}
@@ -78,8 +110,24 @@ const MailInboxPage = () => {
           <Chip label="메가커피 900원, 선착순 1,000명" sx={{ bgcolor: "#fff0dc", fontWeight: 700 }} />
         </Box>
 
+        {/* 탭 필터: 전체 / 오늘 / 안읽음 */}
+        <Box sx={{ mt: 2, mb: 2 }}>
+          <Tabs value={tab} onChange={(_,v) => setTab(v)}>
+            <Tab value="all" label="전체" />
+            <Tab value="today" label="오늘의 메일" />
+            <Tab
+              value="unread"
+              label={
+                <Badge badgeContent={unreadCount} color="error">
+                  안읽은 메일
+                </Badge>
+              }
+            />
+          </Tabs>
+        </Box>
+
         {/* 상단 툴바 */}
-        <Box sx={{ display: 'flex', alignItems: 'center', mt: 2, mb: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
           <Checkbox sx={{ mr: 1 }} />
           <ButtonGroup variant="text" sx={{ gap: 1 }}>
             <Button startIcon={<ReportIcon />}>스팸신고</Button>
@@ -96,12 +144,10 @@ const MailInboxPage = () => {
           <IconButton><SyncIcon /></IconButton>
           <IconButton><MoreVertIcon /></IconButton>
           <Paper sx={{ ml: 1, display: 'inline-flex', alignItems: 'center', px: 0.5 }}>
-            <Typography sx={{ px: 0.5, fontWeight: 500, fontSize: 15 }}>20</Typography>
+            <Typography sx={{ px: 0.5, fontWeight: 500, fontSize: 15 }}>{size}</Typography>
             <IconButton size="small"><MoreVertIcon fontSize="small" /></IconButton>
           </Paper>
         </Box>
-
-        {/* 메일 테이블 섹션 */}
         <Divider sx={{ mb: 2 }} />
         <Table sx={{ minWidth: 900 }}>
           <TableHead>
@@ -110,46 +156,67 @@ const MailInboxPage = () => {
               <TableCell sx={{ fontWeight: 700 }}>발신자</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>제목</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>일자</TableCell>
-              <TableCell align="right" sx={{ fontWeight: 700 }}>크기</TableCell>
+              <TableCell sx={{ fontWeight: 700 }}>받는사람</TableCell>
+              <TableCell align="right" sx={{ fontWeight: 700 }}>상태</TableCell>
               <TableCell sx={{ fontWeight: 700 }}></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {/* 최근 메일들 */}
-            <TableRow>
-              <TableCell colSpan={6} sx={{ bgcolor: '#fafbfd', fontWeight: 700, fontSize: 15 }}>
-                2025-11-05 (수)
-              </TableCell>
-            </TableRow>
-            {mails.map(mail => (
-              <TableRow key={mail.id} hover>
-                <TableCell padding="checkbox"><Checkbox size="small" /></TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>{mail.sender}</TableCell>
-                <TableCell>{mail.title}</TableCell>
-                <TableCell>{mail.date}</TableCell>
-                <TableCell align="right">{mail.size}</TableCell>
-                <TableCell><IconButton size="small"><VisibilityIcon fontSize="small" /></IconButton></TableCell>
+            {Array.isArray(mails) && mails.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} align="center">받은 메일이 없습니다.</TableCell>
               </TableRow>
-            ))}
-            {/* 섹션 구분: 과거/오래된 항목 */}
-            <TableRow>
-              <TableCell colSpan={6} sx={{ bgcolor: '#fafbfd', color: '#9bc1e0', fontWeight: 600 }}>오래된 항목</TableCell>
-            </TableRow>
-            {oldMails.map(mail => (
-              <TableRow key={mail.id} hover>
-                <TableCell padding="checkbox"><Checkbox size="small" /></TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>{mail.sender}</TableCell>
-                <TableCell>{mail.title}</TableCell>
-                <TableCell>{mail.date}</TableCell>
-                <TableCell align="right">{mail.size}</TableCell>
-                <TableCell><IconButton size="small"><VisibilityIcon fontSize="small" /></IconButton></TableCell>
-              </TableRow>
-            ))}
+            ) : (
+              mails.map(mail => (
+                <TableRow
+                  key={mail.emailId}
+                  hover
+                  sx={{ cursor: "pointer" }}
+                  onClick={() => navigate(`/email/${mail.emailId}`)}
+                >
+                  <TableCell padding="checkbox"><Checkbox size="small" /></TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>
+                    {mail.senderEmail || mail.senderName || '-'}
+                    {(mail.senderDept && mail.senderDept.trim() !== "") && ` / ${mail.senderDept}`}
+                  </TableCell>
+                  <TableCell>{mail.emailTitle}</TableCell>
+                  <TableCell>
+                    {mail.sentTime
+                      ? (typeof mail.sentTime === "string"
+                        ? new Date(mail.sentTime).toLocaleString()
+                        : mail.sentTime)
+                      : "-"}
+                  </TableCell>
+                  <TableCell sx={{ fontSize: 13 }}>
+                    {/* 받는사람: addresses 도 있고, recipient 엔티티 있을 수 있음 */}
+                    {Array.isArray(mail.recipientAddresses)
+                      ? mail.recipientAddresses.join(', ')
+                      : ''}
+                  </TableCell>
+                  <TableCell align="right">
+                    <Chip
+                      label={mail.emailStatus}
+                      color={mail.emailStatus === "SENT" ? "success" : (mail.emailStatus === "FAILED" ? "error" : "default")}
+                      size="small"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <IconButton size="small" onClick={e => { e.stopPropagation(); navigate(`/email/${mail.emailId}`); }}>
+                      <VisibilityIcon fontSize="small" />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
-        {/* 테이블 하단 페이지네이션 */}
         <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>
-          <Pagination count={5} page={1} color="primary" />
+          <Pagination
+            count={Math.ceil(total / size)}
+            page={page}
+            onChange={(_, value) => setPage(value)}
+            color="primary"
+          />
         </Box>
       </Paper>
     </Box>

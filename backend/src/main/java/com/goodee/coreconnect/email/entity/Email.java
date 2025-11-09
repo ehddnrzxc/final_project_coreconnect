@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.hibernate.annotations.Cascade;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.goodee.coreconnect.email.enums.EmailStatusEnum;
 
 import jakarta.persistence.CascadeType;
@@ -46,6 +47,9 @@ public class Email {
 	
 	private String emailType;
 	
+	@Column(name = "sender_email", nullable = false, length = 100)
+	private String senderEmail;
+	
 	@Enumerated(EnumType.STRING)
 	private EmailStatusEnum emailStatus; // SENT/BOUNCE/FAILED/DELETED (enum)
 	
@@ -67,6 +71,7 @@ public class Email {
 	
 	// 연관관계
 	@OneToMany(mappedBy = "email", cascade = CascadeType.ALL)
+	@JsonManagedReference
 	private List<EmailRecipient> recipients;
 	
 	@OneToMany(mappedBy = "email", cascade = CascadeType.ALL)
