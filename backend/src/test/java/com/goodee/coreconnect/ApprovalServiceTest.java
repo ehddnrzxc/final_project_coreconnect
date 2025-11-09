@@ -133,7 +133,7 @@ public class ApprovalServiceTest {
     DocumentCreateRequestDTO requestDTO = new DocumentCreateRequestDTO();
     requestDTO.setTemplateId(template.getId());
     requestDTO.setDocumentTitle("새로운 상신 문서");
-    requestDTO.setDocumentContent("내용입니다.");
+    requestDTO.setDocumentDataJson("내용입니다.");
     // 1. 결재선에 담을 DTO 객체들을 생성합니다.
     ApprovalLineRequestDTO line1 = new ApprovalLineRequestDTO();
     line1.setUserId(approver1.getId());
@@ -198,7 +198,7 @@ public class ApprovalServiceTest {
 
     requestDTO.setTemplateId(template.getId());
     requestDTO.setDocumentTitle("파일 없는 상신 문서");
-    requestDTO.setDocumentContent("내용입니다.");
+    requestDTO.setDocumentDataJson("내용입니다.");
     requestDTO.setApprovalLines(List.of(line1));
 
     List<MultipartFile> files = null; // 파일 없음
@@ -354,7 +354,7 @@ public class ApprovalServiceTest {
     // Assert
     assertThat(detail).isNotNull();
     assertThat(detail.getDocumentId()).isEqualTo(docId);
-    assertThat(detail.getWriter().getUserName()).isEqualTo(drafter.getName()); // 엔티티 필드명 'name'
+    assertThat(detail.getDrafter().getUserName()).isEqualTo(drafter.getName()); // 엔티티 필드명 'name'
     assertThat(detail.getApprovalLines()).hasSize(2);
   }
 
@@ -569,7 +569,7 @@ public class ApprovalServiceTest {
     // Assert
     assertThat(detail).isNotNull();
     assertThat(detail.getTemplateId()).isEqualTo(templateId);
-    assertThat(detail.getTemplateContent()).isEqualTo("<div>양식 내용</div>");
+    assertThat(detail.getTemplateHtmlContent()).isEqualTo("<div>양식 내용</div>");
   }
 
   @Test

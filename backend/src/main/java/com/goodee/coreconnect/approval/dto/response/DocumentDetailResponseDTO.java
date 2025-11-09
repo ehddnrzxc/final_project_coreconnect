@@ -23,8 +23,9 @@ public class DocumentDetailResponseDTO {
   private DocumentStatus documentStatus;
   private LocalDateTime createdAt;
   private LocalDateTime completedAt;
-  private UserInfoResponseDTO writer;
+  private UserInfoResponseDTO drafter;
   private String templateName;
+  private String tempHtmlContent;
   private List<ApprovalLineResponseDTO> approvalLines;
   private List<FileResponseDTO> files;
   
@@ -36,8 +37,9 @@ public class DocumentDetailResponseDTO {
         .documentStatus(document.getDocumentStatus())
         .createdAt(document.getCreatedAt())
         .completedAt(document.getCompletedAt())
-        .writer(UserInfoResponseDTO.toDTO(document.getUser()))
+        .drafter(UserInfoResponseDTO.toDTO(document.getUser()))
         .templateName(document.getTemplate().getTemplateName())
+        .tempHtmlContent(document.getTemplate().getTemplateHtmlContent())
         .approvalLines(
             document.getApprovalLines().stream()
               .map(ApprovalLineResponseDTO::toDTO)
