@@ -12,15 +12,12 @@ import UserCreateForm from "./features/admin/components/UserCreateForm";
 import AdminRoute from "./features/admin/components/AdminRoute";
 import "@fortawesome/fontawesome-free/css/all.min.css";
 import ApprovalHomePage from "./features/approval/pages/ApprovalHomePage";
-
 import ApprovalLayout from "./features/approval/pages/ApprovalLayout";
 import AdminHome from "./features/admin/components/AdminHome";
 import UserListPage from "./features/admin/components/UserListPage";
 import ChatHomePage from "./features/chat/pages/ChatHomePage";
 import ChatLayout from "./features/chat/pages/ChatLayout";
-
 import EmailLayout from "./features/email/pages/EmailLayout";
-
 import TemplateAdminCreate from "./features/admin/components/TemplateAdminCreate";
 import BoardLayout from "./features/board/pages/BoardLayout";
 import BoardListPage from "./features/board/pages/BoardListPage";
@@ -36,6 +33,8 @@ import PasswordResetPage from "./features/admin/components/PasswordResetPage";
 import NewDocumentPage from "./features/approval/pages/NewDocumentPage";
 import MailSentBoxPage from "./features/email/pages/MailSentBoxPage";
 import MailDetailPage from "./features/email/pages/MailDetailPage";
+import DocumentDetailPage from "./features/approval/pages/DocumentDetailPage";
+
 
 /* 전체 라우트 구조 */
 const router = createBrowserRouter([
@@ -100,7 +99,7 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <ApprovalHomePage /> }, // 결재홈
           { path: "new/:templateId", element: <NewDocumentPage /> }, // 새 결제 진행
-          { path: "doc/:documentId", element: <div>문서 상세 조회</div> },
+          { path: "doc/:documentId", element: <DocumentDetailPage /> },
         ],
       },
 
