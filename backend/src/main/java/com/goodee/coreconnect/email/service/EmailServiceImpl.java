@@ -11,17 +11,20 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.goodee.coreconnect.common.S3Service;
 import com.goodee.coreconnect.email.dto.request.EmailAttachmentRequestDTO;
-import com.goodee.coreconnect.email.dto.request.EmailSendRequestDTo;
+import com.goodee.coreconnect.email.dto.request.EmailSendRequestDTO;
 import com.goodee.coreconnect.email.dto.response.EmailResponseDTO;
 import com.goodee.coreconnect.email.entity.EmailFile;
 import com.goodee.coreconnect.email.entity.EmailRecipient;
@@ -56,6 +59,9 @@ public class EmailServiceImpl implements EmailService {
 	private final EmailRecipientRepository emailRecipientRepository;
 	private final UserRepository userRepository;
 	private final S3Service s3Service;
+	
+	 @Autowired(required = false)
+	 private RedisTemplate<String, Object> redisTemplate; // 레디스 빈 주입, 구성 필요
 	
 	@Value("${sendgrid.api.key}")
 	private String senGridApiKey; 
@@ -335,7 +341,7 @@ public class EmailServiceImpl implements EmailService {
 	 * @throws IOException 
      */
 	@Override
-	public EmailResponseDTO sendEmail(EmailSendRequestDTo requestDTO, List<MultipartFile> attachments) throws IOException {
+	public EmailResponseDTO sendEmail(EmailSendRequestDTO requestDTO, List<MultipartFile> attachments) throws IOException {
 		 log.info("[DEBUG] sendEmail: senderId={}, senderAddress={}",
 	             requestDTO.getSenderId(), requestDTO.getSenderAddress());
 
@@ -509,5 +515,173 @@ public class EmailServiceImpl implements EmailService {
 
 	    return resultDTO;
 	}
+	
+	@Override
+    @Transactional
+    public boolean markMailAsRead(Integer emailId, String userEmail) {
+        // 특정 이메일의 수신자(본인)에 대해 읽음처리 (이미 읽었으면 false)
+        com.goodee.coreconnect.email.entity.Email email = emailRepository.findById(emailId)
+                .orElseThrow(() -> new IllegalArgumentException("메일이 존재하지 않습니다." + emailId));
 
+        List<EmailRecipient> recipients = emailRecipientRepository.findByEmail(email);
+
+        Optional<EmailRecipient> myRecipientOpt = recipients.stream()
+            .filter(r -> userEmail.equals(r.getEmailRecipientAddress()))
+            .findFirst();
+
+        if (myRecipientOpt.isPresent() && Boolean.FALSE.equals(myRecipientOpt.get().getEmailReadYn())) {
+            EmailRecipient old = myRecipientOpt.get();
+            EmailRecipient updated = EmailRecipient.builder()
+                    .emailRecipientId(old.getEmailRecipientId())
+                    .emailRecipientType(old.getEmailRecipientType())
+                    .emailRecipientAddress(old.getEmailRecipientAddress())
+                    .userId(old.getUserId())
+                    .emailReadYn(true)
+                    .emailReadAt(LocalDateTime.now())
+                    .emailIsAlarmSent(old.getEmailIsAlarmSent())
+                    .email(old.getEmail())
+                    .extendedEmail(old.getExtendedEmail())
+                    .build();
+            emailRecipientRepository.save(updated);
+            return true;
+        }
+        // 이미 읽은 경우나 못찾은 경우
+        return false;
+    }
+
+	@Override
+	public EmailResponseDTO saveDraft(EmailSendRequestDTO requestDTO, List<MultipartFile> attachments)
+			throws IOException {
+		 // 메일 본문/제목 등 정보 필요 최소한으로 저장
+        com.goodee.coreconnect.email.entity.Email entity = com.goodee.coreconnect.email.entity.Email.builder()
+                .emailTitle(requestDTO.getEmailTitle())
+                .emailContent(requestDTO.getEmailContent())
+                .emailStatus(EmailStatusEnum.DRAFT)
+                .emailSentTime(LocalDateTime.now())
+                .senderId(requestDTO.getSenderId())
+                .senderEmail(requestDTO.getSenderAddress())
+                .favoriteStatus(false)
+                .emailDeleteYn(false)
+                .emailSaveStatusYn(true) // 임시저장
+                .emailType(requestDTO.getEmailType())
+                .emailFolder("DRAFT")
+                .replyToEmailId(requestDTO.getReplyToEmailId())
+                .build();
+
+        com.goodee.coreconnect.email.entity.Email savedDraftEmail = emailRepository.save(entity);
+
+        // 수신자 정보 저장 (null/빈배열 허용)
+        if (requestDTO.getRecipientAddress() != null) {
+            for (String to : requestDTO.getRecipientAddress()) {
+                Optional<User> userOptional = userRepository.findByEmail(to);
+                Integer userId = userOptional.isPresent() ? userOptional.get().getId() : null;
+                EmailRecipient recipient = EmailRecipient.builder()
+                        .emailRecipientType("TO")
+                        .emailRecipientAddress(to)
+                        .userId(userId)
+                        .emailReadYn(false)
+                        .emailIsAlarmSent(false)
+                        .email(savedDraftEmail)
+                        .build();
+                emailRecipientRepository.save(recipient);
+            }
+        }
+        if (requestDTO.getCcAddresses() != null) {
+            for (String cc : requestDTO.getCcAddresses()) {
+                Optional<User> userOptional = userRepository.findByEmail(cc);
+                Integer userId = userOptional.isPresent() ? userOptional.get().getId() : null;
+                EmailRecipient ccRecipient = EmailRecipient.builder()
+                        .emailRecipientType("CC")
+                        .emailRecipientAddress(cc)
+                        .userId(userId)
+                        .emailReadYn(false)
+                        .emailIsAlarmSent(false)
+                        .email(savedDraftEmail)
+                        .build();
+                emailRecipientRepository.save(ccRecipient);
+            }
+        }
+        if (requestDTO.getBccAddresses() != null) {
+            for (String bcc : requestDTO.getBccAddresses()) {
+                Optional<User> userOptional = userRepository.findByEmail(bcc);
+                Integer userId = userOptional.isPresent() ? userOptional.get().getId() : null;
+                EmailRecipient bccRecipient = EmailRecipient.builder()
+                        .emailRecipientType("BCC")
+                        .emailRecipientAddress(bcc)
+                        .userId(userId)
+                        .emailReadYn(false)
+                        .emailIsAlarmSent(false)
+                        .email(savedDraftEmail)
+                        .build();
+                emailRecipientRepository.save(bccRecipient);
+            }
+        }
+
+        // 첨부파일임시저장 (s3 업로드, EmailFile 테이블 저장)
+        if (attachments != null && !attachments.isEmpty()) {
+            for (MultipartFile file : attachments) {
+                String fileName = file.getOriginalFilename();
+                long fileSize = file.getSize();
+                String mimeType = file.getContentType();
+                String s3key = s3Service.uploadApprovalFile(file);
+                EmailFile emailFile = EmailFile.builder()
+                        .emailFileName(fileName)
+                        .emailFileSize(fileSize)
+                        .emailFileS3ObjectKey(s3key)
+                        .emailFielDeletedYn(false)
+                        .email(savedDraftEmail)
+                        .build();
+                emailFileRepository.save(emailFile);
+            }
+        }
+
+        // Redis 카운트(개수) 무효화 처리(삭제)
+        removeDraftCountCache(savedDraftEmail.getSenderEmail());
+
+        // 결과 DTO 반환
+        EmailResponseDTO resultDTO = new EmailResponseDTO();
+        resultDTO.setEmailId(savedDraftEmail.getEmailId());
+        resultDTO.setEmailStatus("DRAFT");
+        resultDTO.setEmailTitle(savedDraftEmail.getEmailTitle());
+        resultDTO.setEmailContent(savedDraftEmail.getEmailContent());
+        return resultDTO;
+	}
+
+	@Override
+	public Page<EmailResponseDTO> getDraftbox(String userEmail, int page, int size) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public long getDraftCount(String userEmail) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public EmailResponseDTO getDraftDetail(Integer draftId, String userEmail) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public boolean deleteDraft(Integer draftId) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	// 레디스 캐시 삭제 함수 (DRY)
+    private void removeDraftCountCache(String userEmail) {
+        if (redisTemplate != null) {
+            try {
+                redisTemplate.delete("draft_count:" + userEmail);
+            } catch (Exception e) {
+                log.warn("[Redis] draft_count:{} 삭제 실패: {}", userEmail, e.getMessage());
+            }
+        }
+    }
+	
+	
+	
 }

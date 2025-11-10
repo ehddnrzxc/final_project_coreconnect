@@ -1,5 +1,18 @@
 import React, { useState } from "react";
-import { Box, Paper, Typography, TextField, Button, IconButton, Input, Chip, Autocomplete, Divider, Stack, Tooltip } from "@mui/material";
+import {
+  Box,
+  Paper,
+  Typography,
+  TextField,
+  Button,
+  IconButton,
+  Input,
+  Chip,
+  Autocomplete,
+  Divider,
+  Stack,
+  Tooltip
+} from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
@@ -8,7 +21,7 @@ import DraftsOutlinedIcon from "@mui/icons-material/DraftsOutlined";
 import ContactsIcon from "@mui/icons-material/Contacts";
 import StarOutlineIcon from "@mui/icons-material/StarOutline";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import { sendMail } from "../api/emailApi"; // 반드시 본인 api 경로로!
+import { sendMail, saveDraftMail } from "../api/emailApi";
 
 // 예시: 추천 이메일 리스트 (서버/DB 등에서 불러올 수 있음)
 const emailSuggestions = [
@@ -30,6 +43,7 @@ function MailWritePage() {
     attachments: []
   });
   const [sending, setSending] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
 
   const handleFileChange = (e) => {
     setForm((f) => ({
@@ -41,29 +55,43 @@ function MailWritePage() {
   // 파일 없이 JSON만 보낼 경우
   const plainSendMail = async (data) => {
     return await sendMail(data);
-  }
+  };
 
-  // 파일 첨부(FormData) 지원 백엔드라면 아래처럼 구성 (백엔드에 맞춰서)
-  /*
-  const formDataSendMail = async (data) => {
-    const formData = new FormData();
-    Object.entries(data).forEach(([k, v]) => {
-      if (Array.isArray(v) && k === "attachments") {
-        v.forEach(file => formData.append("attachments", file));
-      } else if (Array.isArray(v)) {
-        v.forEach(item => formData.append(`${k}[]`, item));
-      } else {
-        formData.append(k, v ?? "");
+  // 임시저장 API 호출
+  const handleSaveDraft = async () => {
+    setSavingDraft(true);
+    try {
+      // 임시저장에서는 제목만 있어도 저장 가능하게(혹은 필요 최소항목만)
+      if (!form.emailTitle) {
+        alert("임시저장하려면 제목은 입력해야 합니다.");
+        setSavingDraft(false);
+        return;
       }
-    });
-    return await sendMail(formData);
-  }
-  */
+      const draftData = { ...form, emailFolder: "DRAFT" };
+      await saveDraftMail(draftData);
+
+      alert("임시저장되었습니다!");
+      setForm({
+        recipientAddress: [],
+        ccAddresses: [],
+        bccAddresses: [],
+        emailTitle: "",
+        emailContent: "",
+        attachments: []
+      });
+    } catch (e) {
+      alert(
+        "임시저장 실패: " +
+        (e?.response?.data?.message || e.message || "알 수 없는 오류")
+      );
+    } finally {
+      setSavingDraft(false);
+    }
+  };
 
   const handleSend = async () => {
     setSending(true);
     try {
-      // 👇 수신자 주소 등 필수값 체크 예시
       if (!form.recipientAddress?.length) {
         alert("받는사람(수신자)을 입력해주세요.");
         setSending(false);
@@ -75,11 +103,9 @@ function MailWritePage() {
         return;
       }
 
-      // 실제 메일 전송 (파일 첨부가 필요하다면 FormDataSendMail을 적용)
       await plainSendMail(form);
 
       alert("메일이 정상적으로 발송되었습니다!");
-      // 필요시 입력 리셋 또는 목록 이동
       setForm({
         recipientAddress: [],
         ccAddresses: [],
@@ -91,7 +117,7 @@ function MailWritePage() {
     } catch (e) {
       alert(
         "메일 전송 실패: " +
-          (e?.response?.data?.message || e.message || "알 수 없는 오류")
+        (e?.response?.data?.message || e.message || "알 수 없는 오류")
       );
     } finally {
       setSending(false);
@@ -106,7 +132,11 @@ function MailWritePage() {
         </Typography>
         <KeyboardArrowDownIcon />
         <Box sx={{ flex: 1 }} />
-        <Tooltip title="임시저장"><IconButton><SaveOutlinedIcon /></IconButton></Tooltip>
+        <Tooltip title="임시저장">
+          <IconButton onClick={handleSaveDraft} disabled={savingDraft}>
+            <SaveOutlinedIcon />
+          </IconButton>
+        </Tooltip>
         <Tooltip title="더보기"><IconButton><MoreVertIcon /></IconButton></Tooltip>
       </Box>
       <Paper
@@ -123,7 +153,11 @@ function MailWritePage() {
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
           <Tooltip title="주소록"><IconButton><ContactsIcon /></IconButton></Tooltip>
           <Tooltip title="중요"><IconButton><StarOutlineIcon /></IconButton></Tooltip>
-          <Tooltip title="임시저장"><IconButton><DraftsOutlinedIcon /></IconButton></Tooltip>
+          <Tooltip title="임시저장">
+            <IconButton onClick={handleSaveDraft} disabled={savingDraft}>
+              <DraftsOutlinedIcon />
+            </IconButton>
+          </Tooltip>
           <Box sx={{ flex: 1 }} />
           <Button variant="outlined" size="small" sx={{ px: 2, fontWeight: 600 }}>받는사람</Button>
           <Button variant="text" size="small" sx={{ px: 2 }}>참조</Button>
@@ -254,7 +288,7 @@ function MailWritePage() {
           />
           {/* 실제 서비스에서는 HTML 편집기(smarteditor2, quill 등) 삽입 가능 */}
         </Box>
-        {/* 메일 전송 버튼 */}
+        {/* 메일 전송/임시저장 버튼 */}
         <Box sx={{ display: "flex", alignItems: "center", mt: 3 }}>
           <Button
             variant="contained"
@@ -272,9 +306,10 @@ function MailWritePage() {
             size="large"
             startIcon={<SaveOutlinedIcon />}
             sx={{ minWidth: 120, fontWeight: 700 }}
-            disabled={sending}
+            disabled={sending || savingDraft}
+            onClick={handleSaveDraft}
           >
-            임시 저장
+            {savingDraft ? "임시 저장 중..." : "임시 저장"}
           </Button>
         </Box>
       </Paper>

@@ -9,7 +9,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class EmailSendRequestDTo {
+public class EmailSendRequestDTO {
 	private String emailTitle;
 	private String emailContent;
 	private Integer senderId;

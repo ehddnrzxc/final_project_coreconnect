@@ -29,7 +29,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.goodee.coreconnect.common.dto.response.ResponseDTO;
-import com.goodee.coreconnect.email.dto.request.EmailSendRequestDTo;
+import com.goodee.coreconnect.email.dto.request.EmailSendRequestDTO;
+import com.goodee.coreconnect.email.dto.request.MarkMailReadRequestDTO;
 import com.goodee.coreconnect.email.dto.response.EmailResponseDTO;
 import com.goodee.coreconnect.email.entity.EmailFile;
 import com.goodee.coreconnect.email.repository.EmailFileRepository;
@@ -59,7 +60,7 @@ public class EmailController {
     // 이메일 발송
     @Operation(summary = "이메일 발송", description = "이메일을 발송합니다.")
     @PostMapping( value = "/send", consumes = "multipart/form-data")
-    public ResponseEntity<ResponseDTO<EmailResponseDTO>> send( @RequestPart("data") EmailSendRequestDTo requestDTO,
+    public ResponseEntity<ResponseDTO<EmailResponseDTO>> send( @RequestPart("data") EmailSendRequestDTO requestDTO,
     		@RequestPart(value = "attachments", required = false) List<MultipartFile> attachments, // 다중 파일
     		@AuthenticationPrincipal CustomUserDetails user
     		) {
@@ -135,7 +136,6 @@ public class EmailController {
         return ResponseEntity.ok(ResponseDTO.success(result, "반송함 조회 성공"));
     }
     
-    
     // 받은메일함 '안읽은 메일' 개수만 반환 (프론트 뱃지 Badge 표시용)
     @Operation(summary = "받은메일함 안읽은 메일 개수", description = "받은메일함 중 안읽은 메일 개수를 반환합니다.")
     @GetMapping("/inbox/unread-count")
@@ -143,6 +143,29 @@ public class EmailController {
         int unreadCount = emailRecipientRepository.countByEmailRecipientAddressAndEmailReadYn(userEmail, false);
         return ResponseEntity.ok(ResponseDTO.success(unreadCount, "안읽은 메일 개수 조회 성공"));
     }
+
+    // [NEW] 개별 메일 "읽음" 처리 API (프론트 상세 진입 후 읽음뷰 반영 위한 별도 PATCH)
+    @Operation(summary = "메일 읽음처리", description = "개별 메일을 읽음 처리합니다.")
+    @PatchMapping("/{emailId}/read")
+    public ResponseEntity<ResponseDTO<Boolean>> markMailAsRead(
+            @PathVariable("emailId") Integer emailId,
+            @RequestBody(required = true) MarkMailReadRequestDTO request
+    ) {
+        boolean updated = emailService.markMailAsRead(emailId, request.getUserEmail());
+        return ResponseEntity.ok(ResponseDTO.success(updated, updated ? "메일 읽음 처리 성공" : "이미 읽은 메일"));
+    }
+    
+    
+    
+    
+    
+    // 받은메일함 '안읽은 메일' 개수만 반환 (프론트 뱃지 Badge 표시용)
+//    @Operation(summary = "받은메일함 안읽은 메일 개수", description = "받은메일함 중 안읽은 메일 개수를 반환합니다.")
+//    @GetMapping("/inbox/unread-count")
+//    public ResponseEntity<ResponseDTO<Integer>> getUnreadInboxCount(@RequestParam("userEmail") String userEmail) {
+//        int unreadCount = emailRecipientRepository.countByEmailRecipientAddressAndEmailReadYn(userEmail, false);
+//        return ResponseEntity.ok(ResponseDTO.success(unreadCount, "안읽은 메일 개수 조회 성공"));
+//    }
     
     @GetMapping("/file/download/{fileId}")
     public ResponseEntity<InputStreamResource> downloadAttachment(@PathVariable("fileId") Integer fileId, HttpServletResponse response) {
@@ -168,4 +191,58 @@ public class EmailController {
                 .contentType(contentType)
                 .body(new InputStreamResource(inputStream));
     }
+    
+    
+    // 임시메일(저장) 등록
+    @PostMapping(value = "/draft", consumes = "multipart/form-data")
+    public ResponseEntity<ResponseDTO<EmailResponseDTO>> saveDraft(
+        @RequestPart("data") EmailSendRequestDTO requestDTO,
+        @RequestPart(value = "attachments", required = false) List<MultipartFile> attachments,
+        @AuthenticationPrincipal CustomUserDetails user
+    ) {
+        String email = user.getEmail();
+        Optional<User> userOptional = userRepository.findByEmail(email);
+        Integer senderId = userOptional.map(User::getId)
+            .orElseThrow(() -> new RuntimeException("사용자 정보를 찾을 수 없습니다."));
+        requestDTO.setSenderAddress(email);     // ★ 반드시 senderEmail 세팅
+        requestDTO.setSenderId(senderId);       // ★ 반드시 senderId 세팅
+
+        EmailResponseDTO result = null;
+		try {
+			result = emailService.saveDraft(requestDTO, attachments);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+        return ResponseEntity.ok(ResponseDTO.success(result, "임시메일 저장 성공"));
+    }
+    
+    
+ // 임시보관함 목록
+    @GetMapping("/draftbox")
+    public ResponseEntity<ResponseDTO<Page<EmailResponseDTO>>> getDraftbox(
+        @RequestParam("userEmail") String userEmail,
+        @RequestParam(value="page", defaultValue="0") int page,
+        @RequestParam(value="size", defaultValue="10") int size
+    ) {
+        Page<EmailResponseDTO> result = emailService.getDraftbox(userEmail, page, size);
+        return ResponseEntity.ok(ResponseDTO.success(result, "임시보관함 조회 성공"));
+    }
+
+    // 임시보관함 개수 (Redis 활용)
+    @GetMapping("/draftbox/count")
+    public ResponseEntity<ResponseDTO<Long>> getDraftCount(@RequestParam String userEmail) {
+        long count = emailService.getDraftCount(userEmail); // 내부에 Redis/caching 사용
+        return ResponseEntity.ok(ResponseDTO.success(count, "임시보관함 개수 조회 성공"));
+    }
+
+    // 임시메일 삭제
+    @DeleteMapping("/draft/{draftId}")
+    public ResponseEntity<ResponseDTO<Boolean>> deleteDraft(@PathVariable("draftId") Integer draftId) {
+        boolean deleted = emailService.deleteDraft(draftId);
+        return ResponseEntity.ok(ResponseDTO.success(deleted, deleted ? "삭제 성공" : "삭제 실패"));
+    }
+    
+    
+    
 }
