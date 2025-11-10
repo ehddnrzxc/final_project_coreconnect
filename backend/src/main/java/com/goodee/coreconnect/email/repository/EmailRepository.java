@@ -1,5 +1,7 @@
 package com.goodee.coreconnect.email.repository;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -25,4 +27,8 @@ public interface EmailRepository extends JpaRepository<Email, Integer> {
 
     Optional<Email> findByEmailIdAndSenderEmailAndEmailStatus(
     	    Integer emailId, String senderEmail, EmailStatusEnum emailStatus);
+
+    // 예약상태 & 예약시각이 도달(이전/같음)한 이메일 전체 조회
+    List<Email> findAllByEmailStatusAndReservedAtLessThanEqual(EmailStatusEnum emailStatus, LocalDateTime reservedAt);
+
 }

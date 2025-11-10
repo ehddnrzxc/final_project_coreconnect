@@ -350,234 +350,154 @@ public class EmailServiceImpl implements EmailService {
 	 * 신규 메일은 insert, 첨부/수신자 포함 저장. (SendGrid 등 외부 발송은 아님)
 	 * @throws IOException
 	 */
-	@Override
-	public EmailResponseDTO sendEmail(EmailSendRequestDTO requestDTO, List<MultipartFile> attachments) throws IOException {
-	    log.info("[DEBUG] sendEmail: senderId={}, senderAddress={}, requestDTO.getEmailId={}, reservedAt={}",
-	            requestDTO.getSenderId(), requestDTO.getSenderAddress(), requestDTO.getEmailId(), requestDTO.getReservedAt());
 
-	    com.goodee.coreconnect.email.entity.Email savedEmail;
+    /**
+     * 이메일을 DB에 저장(즉시메일/예약메일)합니다.
+     */
+    @Override
+    public EmailResponseDTO sendEmail(EmailSendRequestDTO requestDTO, List<MultipartFile> attachments) throws IOException {
+        log.info("[DEBUG] sendEmail: senderId={}, senderAddress={}, requestDTO.getEmailId={}, reservedAt={}",
+                requestDTO.getSenderId(), requestDTO.getSenderAddress(), requestDTO.getEmailId(), requestDTO.getReservedAt());
 
-	    // 1. 임시저장 메일 발송 분기
-	    if (requestDTO.getEmailId() != null) {
-	        // 기존 임시저장(DRAFT) 메일 UPDATE
-	        com.goodee.coreconnect.email.entity.Email draft = emailRepository
-	                .findByEmailIdAndSenderEmailAndEmailStatus(
-	                        requestDTO.getEmailId(),
-	                        requestDTO.getSenderAddress(),
-	                        EmailStatusEnum.DRAFT)
-	                .orElseThrow(() -> new IllegalArgumentException("임시보관 메일을 찾을 수 없습니다."));
-	        log.info("임시보관 메일 원본: {}", draft);
+        com.goodee.coreconnect.email.entity.Email savedEmail;
 
-	        draft.setEmailTitle(requestDTO.getEmailTitle());
-	        draft.setEmailContent(requestDTO.getEmailContent());
-	        draft.setReservedAt(requestDTO.getReservedAt());
-	        if (requestDTO.getReservedAt() != null && requestDTO.getReservedAt().isAfter(LocalDateTime.now())) {
-	            draft.setEmailStatus(EmailStatusEnum.RESERVED);
-	            draft.setEmailSentTime(null);
-	            draft.setEmailFolder("RESERVED");
-	        } else {
-	            draft.setEmailStatus(EmailStatusEnum.SENT);
-	            draft.setEmailSentTime(LocalDateTime.now());
-	            draft.setEmailFolder("SENT");
-	        }
-	        savedEmail = emailRepository.save(draft);
-	    } else {
-	        // 신규 메일: insert
-	        com.goodee.coreconnect.email.entity.Email entity = com.goodee.coreconnect.email.entity.Email.builder()
-	            .emailTitle(requestDTO.getEmailTitle())
-	            .emailContent(requestDTO.getEmailContent())
-	            .emailStatus(
-	                requestDTO.getReservedAt() != null && requestDTO.getReservedAt().isAfter(LocalDateTime.now())
-	                    ? EmailStatusEnum.RESERVED : EmailStatusEnum.SENT)
-	            .emailSentTime(
-	                requestDTO.getReservedAt() == null || !requestDTO.getReservedAt().isAfter(LocalDateTime.now())
-	                    ? LocalDateTime.now() : null)
-	            .senderId(requestDTO.getSenderId())
-	            .senderEmail(requestDTO.getSenderAddress())
-	            .favoriteStatus(false)
-	            .emailDeleteYn(false)
-	            .emailSaveStatusYn(false)
-	            .emailType(requestDTO.getEmailType())
-	            .reservedAt(requestDTO.getReservedAt())
-	            .emailFolder(
-	                requestDTO.getReservedAt() != null && requestDTO.getReservedAt().isAfter(LocalDateTime.now())
-	                    ? "RESERVED" : "SENT")
-	            .replyToEmailId(requestDTO.getReplyToEmailId())
-	            .build();
-	        savedEmail = emailRepository.save(entity);
-	    }
+        // 임시저장 메일 발송 분기 (DRAFT → SENT or RESERVED)
+        if (requestDTO.getEmailId() != null) {
+            com.goodee.coreconnect.email.entity.Email draft = emailRepository
+                    .findByEmailIdAndSenderEmailAndEmailStatus(
+                            requestDTO.getEmailId(),
+                            requestDTO.getSenderAddress(),
+                            EmailStatusEnum.DRAFT)
+                    .orElseThrow(() -> new IllegalArgumentException("임시보관 메일을 찾을 수 없습니다."));
 
-	    // 첨부파일 저장
-	    if (attachments != null && !attachments.isEmpty()) {
-	        for (MultipartFile file : attachments) {
-	            String fileName = file.getOriginalFilename();
-	            long fileSize = file.getSize();
-	            String mimeType = file.getContentType();
-	            String s3key = s3Service.uploadApprovalFile(file);
-	            EmailFile emailFile = EmailFile.builder()
-	                .emailFileName(fileName)
-	                .emailFileSize(fileSize)
-	                .emailFileS3ObjectKey(s3key)
-	                .emailFielDeletedYn(false)
-	                .email(savedEmail)
-	                .build();
-	            emailFileRepository.save(emailFile);
-	        }
-	    }
+            draft.setEmailTitle(requestDTO.getEmailTitle());
+            draft.setEmailContent(requestDTO.getEmailContent());
+            draft.setReservedAt(requestDTO.getReservedAt());
+            if (requestDTO.getReservedAt() != null && requestDTO.getReservedAt().isAfter(LocalDateTime.now())) {
+                draft.setEmailStatus(EmailStatusEnum.RESERVED);
+                draft.setEmailSentTime(null);
+                draft.setEmailFolder("RESERVED");
+            } else {
+                draft.setEmailStatus(EmailStatusEnum.SENT);
+                draft.setEmailSentTime(LocalDateTime.now());
+                draft.setEmailFolder("SENT");
+            }
+            savedEmail = emailRepository.save(draft);
+        } else {
+            // 신규 메일
+            com.goodee.coreconnect.email.entity.Email entity = com.goodee.coreconnect.email.entity.Email.builder()
+                    .emailTitle(requestDTO.getEmailTitle())
+                    .emailContent(requestDTO.getEmailContent())
+                    .emailStatus(requestDTO.getReservedAt() != null && requestDTO.getReservedAt().isAfter(LocalDateTime.now())
+                        ? EmailStatusEnum.RESERVED : EmailStatusEnum.SENT)
+                    .emailSentTime(requestDTO.getReservedAt() == null || !requestDTO.getReservedAt().isAfter(LocalDateTime.now())
+                        ? LocalDateTime.now() : null)
+                    .senderId(requestDTO.getSenderId())
+                    .senderEmail(requestDTO.getSenderAddress())
+                    .favoriteStatus(false)
+                    .emailDeleteYn(false)
+                    .emailSaveStatusYn(false)
+                    .emailType(requestDTO.getEmailType())
+                    .reservedAt(requestDTO.getReservedAt())
+                    .emailFolder(requestDTO.getReservedAt() != null && requestDTO.getReservedAt().isAfter(LocalDateTime.now())
+                        ? "RESERVED" : "SENT")
+                    .replyToEmailId(requestDTO.getReplyToEmailId())
+                    .build();
+            savedEmail = emailRepository.save(entity);
+        }
 
-	    // 수신자 정보 DB 저장 (TO)
-	    for (String to : requestDTO.getRecipientAddress()) {
-	        Optional<User> userOptional = userRepository.findByEmail(to);
-	        Integer userId = userOptional.map(User::getId).orElse(null);
-	        EmailRecipient recipient = EmailRecipient.builder()
-	            .emailRecipientType("TO")
-	            .emailRecipientAddress(to)
-	            .userId(userId)
-	            .emailReadYn(false)
-	            .emailIsAlarmSent(false)
-	            .email(savedEmail)
-	            .build();
-	        emailRecipientRepository.save(recipient);
-	    }
-	    // 참조 (CC)
-	    if (requestDTO.getCcAddresses() != null) {
-	        for (String cc : requestDTO.getCcAddresses()) {
-	            Optional<User> userOptional = userRepository.findByEmail(cc);
-	            Integer userId = userOptional.map(User::getId).orElse(null);
-	            EmailRecipient ccRecipient = EmailRecipient.builder()
-	                .emailRecipientType("CC")
-	                .emailRecipientAddress(cc)
-	                .userId(userId)
-	                .emailReadYn(false)
-	                .emailIsAlarmSent(false)
-	                .email(savedEmail)
-	                .build();
-	            emailRecipientRepository.save(ccRecipient);
-	        }
-	    }
-	    // 숨은참조 (BCC)
-	    if (requestDTO.getBccAddresses() != null) {
-	        for (String bcc : requestDTO.getBccAddresses()) {
-	            Optional<User> userOptional = userRepository.findByEmail(bcc);
-	            Integer userId = userOptional.map(User::getId).orElse(null);
-	            EmailRecipient bccRecipient = EmailRecipient.builder()
-	                .emailRecipientType("BCC")
-	                .emailRecipientAddress(bcc)
-	                .userId(userId)
-	                .emailReadYn(false)
-	                .emailIsAlarmSent(false)
-	                .email(savedEmail)
-	                .build();
-	            emailRecipientRepository.save(bccRecipient);
-	        }
-	    }
+        // 첨부파일 저장 (첨부가 있을 경우만)
+        if (attachments != null && !attachments.isEmpty()) {
+            for (MultipartFile file : attachments) {
+                String fileName = file.getOriginalFilename();
+                long fileSize = file.getSize();
+                String mimeType = file.getContentType();
+                String s3key = s3Service.uploadApprovalFile(file);
+                EmailFile emailFile = EmailFile.builder()
+                        .emailFileName(fileName)
+                        .emailFileSize(fileSize)
+                        .emailFileS3ObjectKey(s3key)
+                        .emailFielDeletedYn(false)
+                        .email(savedEmail)
+                        .build();
+                emailFileRepository.save(emailFile);
+            }
+        }
 
-	    // 결과 DTO 세팅
-	    EmailResponseDTO resultDTO = new EmailResponseDTO();
-	    resultDTO.setEmailId(savedEmail.getEmailId());
-	    resultDTO.setEmailStatus(savedEmail.getEmailStatus().name());
-	    resultDTO.setEmailTitle(savedEmail.getEmailTitle());
-	    resultDTO.setEmailContent(savedEmail.getEmailContent());
-	    // 필요시 첨부/수신자 필드도 추가
-	    return resultDTO;
-	}
+        // 수신자 정보 저장 (TO)
+        for (String to : requestDTO.getRecipientAddress()) {
+            Optional<User> userOptional = userRepository.findByEmail(to);
+            Integer userId = userOptional.map(User::getId).orElse(null);
+            EmailRecipient recipient = EmailRecipient.builder()
+                    .emailRecipientType("TO")
+                    .emailRecipientAddress(to)
+                    .userId(userId)
+                    .emailReadYn(false)
+                    .emailIsAlarmSent(false)
+                    .email(savedEmail)
+                    .build();
+            emailRecipientRepository.save(recipient);
+        }
+        // 참조 (CC)
+        if (requestDTO.getCcAddresses() != null) {
+            for (String cc : requestDTO.getCcAddresses()) {
+                Optional<User> userOptional = userRepository.findByEmail(cc);
+                Integer userId = userOptional.map(User::getId).orElse(null);
+                EmailRecipient ccRecipient = EmailRecipient.builder()
+                        .emailRecipientType("CC")
+                        .emailRecipientAddress(cc)
+                        .userId(userId)
+                        .emailReadYn(false)
+                        .emailIsAlarmSent(false)
+                        .email(savedEmail)
+                        .build();
+                emailRecipientRepository.save(ccRecipient);
+            }
+        }
+        // 숨은참조 (BCC)
+        if (requestDTO.getBccAddresses() != null) {
+            for (String bcc : requestDTO.getBccAddresses()) {
+                Optional<User> userOptional = userRepository.findByEmail(bcc);
+                Integer userId = userOptional.map(User::getId).orElse(null);
+                EmailRecipient bccRecipient = EmailRecipient.builder()
+                        .emailRecipientType("BCC")
+                        .emailRecipientAddress(bcc)
+                        .userId(userId)
+                        .emailReadYn(false)
+                        .emailIsAlarmSent(false)
+                        .email(savedEmail)
+                        .build();
+                emailRecipientRepository.save(bccRecipient);
+            }
+        }
 
-	/**
-	 * 예약 시간이 미래이면 아직 DB 저장하지 않고 리턴.
-	 * 즉시메일/예약시간이 도래된 예약메일일 때만 DB에 저장 (스케줄러에서 호출 시 사용).
-	 */
-	public void sendActualMail(EmailSendRequestDTO requestDTO, List<MultipartFile> attachments) throws IOException {
-	    // 예약메일: 예약 시간이 아직 안 됨 → 저장하지 않음
-	    if (requestDTO.getReservedAt() != null && requestDTO.getReservedAt().isAfter(LocalDateTime.now())) {
-	        log.info("예약메일: reservedAt={} - 아직 DB 저장하지 않음(예약 시간에 저장 예정)", requestDTO.getReservedAt());
-	        return;
-	    }
+        // 결과 DTO 세팅
+        EmailResponseDTO resultDTO = new EmailResponseDTO();
+        resultDTO.setEmailId(savedEmail.getEmailId());
+        resultDTO.setEmailStatus(savedEmail.getEmailStatus().name());
+        resultDTO.setEmailTitle(savedEmail.getEmailTitle());
+        resultDTO.setEmailContent(savedEmail.getEmailContent());
+        return resultDTO;
+    }
 
-	    // 즉시메일 또는 예약시간이 도래한 예약메일 → DB에 저장
-	    com.goodee.coreconnect.email.entity.Email entity = com.goodee.coreconnect.email.entity.Email.builder()
-	        .emailTitle(requestDTO.getEmailTitle())
-	        .emailContent(requestDTO.getEmailContent())
-	        .emailStatus(EmailStatusEnum.SENT)
-	        .emailSentTime(LocalDateTime.now())
-	        .senderId(requestDTO.getSenderId())
-	        .senderEmail(requestDTO.getSenderAddress())
-	        .favoriteStatus(false)
-	        .emailDeleteYn(false)
-	        .emailSaveStatusYn(false)
-	        .emailType(requestDTO.getEmailType())
-	        .reservedAt(requestDTO.getReservedAt())
-	        .replyToEmailId(requestDTO.getReplyToEmailId())
-	        .emailFolder("SENT")
-	        .build();
-	    com.goodee.coreconnect.email.entity.Email savedEmail = emailRepository.save(entity);
-
-	    // 첨부파일 저장
-	    if (attachments != null && !attachments.isEmpty()) {
-	        for (MultipartFile file : attachments) {
-	            String fileName = file.getOriginalFilename();
-	            long fileSize = file.getSize();
-	            String mimeType = file.getContentType();
-	            String s3key = s3Service.uploadApprovalFile(file);
-	            EmailFile emailFile = EmailFile.builder()
-	                .emailFileName(fileName)
-	                .emailFileSize(fileSize)
-	                .emailFileS3ObjectKey(s3key)
-	                .emailFielDeletedYn(false)
-	                .email(savedEmail)
-	                .build();
-	            emailFileRepository.save(emailFile);
-	        }
-	    }
-
-	    // 수신자 정보 DB 저장 (TO/CC/BCC)
-	    for (String to : requestDTO.getRecipientAddress()) {
-	        Optional<User> userOptional = userRepository.findByEmail(to);
-	        Integer userId = userOptional.map(User::getId).orElse(null);
-	        EmailRecipient recipient = EmailRecipient.builder()
-	            .emailRecipientType("TO")
-	            .emailRecipientAddress(to)
-	            .userId(userId)
-	            .emailReadYn(false)
-	            .emailIsAlarmSent(false)
-	            .email(savedEmail)
-	            .build();
-	        emailRecipientRepository.save(recipient);
-	    }
-	    if (requestDTO.getCcAddresses() != null) {
-	        for (String cc : requestDTO.getCcAddresses()) {
-	            Optional<User> userOptional = userRepository.findByEmail(cc);
-	            Integer userId = userOptional.map(User::getId).orElse(null);
-	            EmailRecipient ccRecipient = EmailRecipient.builder()
-	                .emailRecipientType("CC")
-	                .emailRecipientAddress(cc)
-	                .userId(userId)
-	                .emailReadYn(false)
-	                .emailIsAlarmSent(false)
-	                .email(savedEmail)
-	                .build();
-	            emailRecipientRepository.save(ccRecipient);
-	        }
-	    }
-	    if (requestDTO.getBccAddresses() != null) {
-	        for (String bcc : requestDTO.getBccAddresses()) {
-	            Optional<User> userOptional = userRepository.findByEmail(bcc);
-	            Integer userId = userOptional.map(User::getId).orElse(null);
-	            EmailRecipient bccRecipient = EmailRecipient.builder()
-	                .emailRecipientType("BCC")
-	                .emailRecipientAddress(bcc)
-	                .userId(userId)
-	                .emailReadYn(false)
-	                .emailIsAlarmSent(false)
-	                .email(savedEmail)
-	                .build();
-	            emailRecipientRepository.save(bccRecipient);
-	        }
-	    }
-
-	    log.info("메일이 DB에 저장되었습니다. (id={})", savedEmail.getEmailId());
-	}
-
-	
+    /**
+     * 예약 시간이 도래한 예약 메일 row를 SENT 상태로 변경하고 발송시각을 업데이트합니다.
+     * (새로운 row를 생성하지 않고 예약 메일 row 상태/시각만 update)
+     */
+    @Override
+    public void sendActualMail(com.goodee.coreconnect.email.entity.Email reservedEmail, List<MultipartFile> attachments) {
+        // RESERVED 상태일 때만 SENT로 변경
+        if (reservedEmail.getEmailStatus() == EmailStatusEnum.RESERVED) {
+            reservedEmail.setEmailStatus(EmailStatusEnum.SENT); // 상태 변경
+            reservedEmail.setEmailSentTime(LocalDateTime.now()); // 발송 시각 기록
+            reservedEmail.setEmailFolder("SENT");
+            emailRepository.save(reservedEmail);
+            log.info("예약메일(row:{})이 SENT로 처리되고 email_sent_time이 업데이트 됨", reservedEmail.getEmailId());
+        } else {
+            log.warn("sendActualMail 호출시 이메일이 RESERVED 상태가 아님! (id={}, 현재상태={})", reservedEmail.getEmailId(), reservedEmail.getEmailStatus());
+        }
+        // 첨부/수신자 정보는 이미 저장되어 있으므로 추가 작업 없음
+    }
 	
 	
 	
