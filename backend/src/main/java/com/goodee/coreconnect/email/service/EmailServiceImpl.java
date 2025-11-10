@@ -796,6 +796,25 @@ public class EmailServiceImpl implements EmailService {
         return dto;
     }
 
+    /**
+     * 임시저장(DRAFT) 상태의 메일만 삭제
+     */
+    @Override
+    @Transactional
+    public void deleteDraftMail(Integer draftId) {
+    	com.goodee.coreconnect.email.entity.Email draft = emailRepository.findById(draftId)
+    	        .orElseThrow(() -> new IllegalArgumentException("임시저장 메일을 찾을 수 없습니다."));
+    	    if (draft.getEmailStatus() != EmailStatusEnum.DRAFT) {
+    	        throw new IllegalStateException("임시저장 상태(DRAFT) 메일만 삭제할 수 있습니다.");
+    	    }
+    	    // 실제 삭제(X), 상태값만 변경
+    	    draft.setEmailStatus(EmailStatusEnum.DELETED);
+    	    // 필요시 삭제 시각 등 기록
+    	    draft.setEmailDeletedTime(LocalDateTime.now());
+    	    log.info("삭제 draft: {}", draft);
+    	    emailRepository.save(draft);
+    }
+
 	
 	
 	

@@ -45,11 +45,17 @@ const DraftBoxPage = () => {
   }, [page, userEmail]);
 
   // [핵심] 임시메일 삭제 - 클릭시 확인 후 삭제 API 호출&목록 새로고침
-  const handleDelete = async (draftId) => {
-    if (!window.confirm("정말로 이 임시저장 메일을 삭제하시겠습니까?")) return;
-    await deleteDraftMail(draftId);
+const handleDelete = async (draftId) => {
+  if (!window.confirm("정말로 이 임시저장 메일을 삭제하시겠습니까?")) return;
+  try {
+    const res = await deleteDraftMail(draftId);
+    console.log("삭제 응답:", res);
     reload();
-  };
+  } catch (e) {
+    console.error("삭제 에러:", e);
+    alert("삭제 요청 실패: " + (e?.message || e));
+  }
+};
 
   // 메일 클릭 시: 쓰기페이지 이동 (draftId 전달)
   const handleRowClick = (draft) => {

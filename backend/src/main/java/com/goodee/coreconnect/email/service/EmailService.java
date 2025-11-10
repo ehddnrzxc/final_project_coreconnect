@@ -106,5 +106,8 @@ public interface EmailService {
 	     */
 	    EmailResponseDTO getDraftMailDetail(Integer draftId, String userEmail);
 		
-		
+	    /**
+	     * 임시저장 메일 삭제 
+	     * */
+	    void deleteDraftMail(Integer draftId);
 }
