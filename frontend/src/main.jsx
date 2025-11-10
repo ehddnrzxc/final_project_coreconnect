@@ -34,6 +34,7 @@ import NewDocumentPage from "./features/approval/pages/NewDocumentPage";
 import MailSentBoxPage from "./features/email/pages/MailSentBoxPage";
 import MailDetailPage from "./features/email/pages/MailDetailPage";
 import DocumentDetailPage from "./features/approval/pages/DocumentDetailPage";
+import LeavePage from "./features/leave/LeavePage";
 
 
 /* 전체 라우트 구조 */
@@ -76,19 +77,7 @@ const router = createBrowserRouter([
           { path: "sent", element: <MailSentBoxPage/>},
           { path: ":emailId", element: <MailDetailPage /> },
         ]
-
-
-
-
-
-
-
-
       },
-
-
-
-
       {
         path: "e-approval",
         element: (
@@ -102,7 +91,6 @@ const router = createBrowserRouter([
           { path: "doc/:documentId", element: <DocumentDetailPage /> },
         ],
       },
-
       {
         path: "calendar",
         element: (
@@ -111,7 +99,14 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
-
+      {
+        path: "leave",
+        element: (
+          <ProtectedRoute>
+            <LeavePage />
+          </ProtectedRoute>
+        ),
+      },
       {
         path: "board",
         element: (
@@ -127,7 +122,6 @@ const router = createBrowserRouter([
           { path: "edit/:boardId", element: <BoardWritePage /> },
         ],
       },
-
       {
         path: "admin",
         element: <AdminRoute />,
@@ -140,7 +134,6 @@ const router = createBrowserRouter([
           { path: "password-reset-requests", element: <PasswordResetPage /> },
         ],
       },
-
       {
         index: true,
         element: <Navigate to="/home" replace />,
