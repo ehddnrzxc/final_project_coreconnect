@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -725,6 +726,74 @@ public class EmailServiceImpl implements EmailService {
             }
         }
     }
+
+    /**
+     * 임시저장 메일 상세조회 구현
+     * @param draftId 임시메일 ID
+     * @param userEmail 메일 소유자(로그인 사용자)
+     * @return 상세 DTO (제목/본문/수신참조/bcc/첨부 등 모두 포함)
+     */
+    @Override
+    public EmailResponseDTO getDraftMailDetail(Integer draftId, String userEmail) {
+        // 1. 임시메일 엔티티({draftId, userEmail, 상태: DRAFT}) 조건으로 조회
+    	com.goodee.coreconnect.email.entity.Email draftOpt = emailRepository
+    	        .findByEmailIdAndSenderEmailAndEmailStatus(
+    	            draftId, userEmail, EmailStatusEnum.DRAFT
+    	        )
+    	        .orElseThrow(() -> new IllegalArgumentException("임시보관 메일을 찾을 수 없습니다."));
+
+    	com.goodee.coreconnect.email.entity.Email draft = emailRepository
+    	        .findByEmailIdAndSenderEmailAndEmailStatus(
+    	            draftId, userEmail, EmailStatusEnum.DRAFT
+    	        )
+    	        .orElseThrow(() -> new IllegalArgumentException("임시보관 메일을 찾을 수 없습니다."));
+    	
+    	// 2. 기본 메일 정보 셋팅
+        EmailResponseDTO dto = new EmailResponseDTO();
+        dto.setEmailId(draft.getEmailId());
+        dto.setEmailTitle(draft.getEmailTitle());
+        dto.setEmailContent(draft.getEmailContent());
+        dto.setSenderId(draft.getSenderId());
+        dto.setSenderEmail(draft.getSenderEmail());
+        dto.setSentTime(draft.getEmailSentTime());
+        dto.setEmailStatus(draft.getEmailStatus().name());
+       
+        // 3. 수신/참조/숨은참조 정보
+        List<EmailRecipient> recipients = emailRecipientRepository.findByEmail(draft);
+        List<String> toAddresses = recipients.stream()
+                .filter(r -> "TO".equalsIgnoreCase(r.getEmailRecipientType()))
+                .map(EmailRecipient::getEmailRecipientAddress)
+                .collect(Collectors.toList());
+        List<String> ccAddresses = recipients.stream()
+                .filter(r -> "CC".equalsIgnoreCase(r.getEmailRecipientType()))
+                .map(EmailRecipient::getEmailRecipientAddress)
+                .collect(Collectors.toList());
+        List<String> bccAddresses = recipients.stream()
+                .filter(r -> "BCC".equalsIgnoreCase(r.getEmailRecipientType()))
+                .map(EmailRecipient::getEmailRecipientAddress)
+                .collect(Collectors.toList());
+
+        dto.setRecipientAddresses(toAddresses);
+        dto.setCcAddresses(ccAddresses);
+        dto.setBccAddresses(bccAddresses);
+
+        // 4. 첨부파일 정보
+        List<EmailFile> files = emailFileRepository.findByEmail(draft);
+        List<EmailResponseDTO.AttachmentDTO> attachments = files.stream()
+                .map(f -> new EmailResponseDTO.AttachmentDTO(
+                        f.getEmailFileId(),
+                        f.getEmailFileName(),
+                        f.getEmailFileSize()
+                )).collect(Collectors.toList());
+        dto.setAttachments(attachments);
+        dto.setFileIds(files.stream().map(EmailFile::getEmailFileId).collect(Collectors.toList()));
+        
+        // 5. 기타 필드 세팅
+        dto.setReplyToEmailId(draft.getReplyToEmailId());
+        
+        return dto;
+    }
+
 	
 	
 	

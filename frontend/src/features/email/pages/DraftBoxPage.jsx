@@ -79,7 +79,13 @@ const DraftBoxPage = () => {
               </TableRow>
             ) : (
               drafts.map(draft => (
-                <TableRow key={draft.emailId}>
+                <TableRow
+                  key={draft.emailId}
+                  hover
+                  style={{ cursor: "pointer" }}
+                  // [수정1] 행 전체 클릭 시 메일쓰기 페이지로 이동하고, draftId를 querystring으로 전달합니다 (메일작성시 바인딩)
+                  onClick={() => navigate(`/email/write?draftId=${draft.emailId}`)}
+                >
                   <TableCell>{draft.emailTitle}</TableCell>
                   <TableCell>
                     {draft.sentTime
@@ -99,8 +105,9 @@ const DraftBoxPage = () => {
                       : (Array.isArray(draft.fileIds) ? draft.fileIds.length : 0)
                     }
                   </TableCell>
-                  <TableCell align="center">
-                    <IconButton onClick={() => handleDelete(draft.emailId)} color="error">
+                  {/* [수정2] 삭제 버튼만 클릭 시 onClick이 행으로 버블되지 않도록 이벤트 전파 차단 */}
+                  <TableCell align="center" onClick={e => { e.stopPropagation(); handleDelete(draft.emailId); }}>
+                    <IconButton color="error">
                       <DeleteIcon />
                     </IconButton>
                   </TableCell>

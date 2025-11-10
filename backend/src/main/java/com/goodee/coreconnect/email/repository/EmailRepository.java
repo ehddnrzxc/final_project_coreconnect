@@ -1,5 +1,7 @@
 package com.goodee.coreconnect.email.repository;
 
+import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -20,4 +22,7 @@ public interface EmailRepository extends JpaRepository<Email, Integer> {
 
     // [추가] 임시보관함 카운트용
     long countBySenderEmailAndEmailStatus(String senderEmail, EmailStatusEnum emailStatus);
+
+    Optional<Email> findByEmailIdAndSenderEmailAndEmailStatus(
+    	    Integer emailId, String senderEmail, EmailStatusEnum emailStatus);
 }

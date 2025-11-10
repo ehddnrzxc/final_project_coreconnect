@@ -245,5 +245,19 @@ public class EmailController {
     }
     
     
+    /**
+     * 임시저장 메일 상세조회
+     * [프론트 메일쓰기 페이지 바인딩용]
+     * */
+    @GetMapping("/draft/{draftId}")
+    public ResponseEntity<ResponseDTO<EmailResponseDTO>> getDraftDetail(
+            @PathVariable("draftId") Integer draftId,
+            @RequestParam("userEmail") String userEmail
+    ) {
+        // 서비스에서 상세 데이터 조회 (소유자 검증 포함)
+        EmailResponseDTO dto = emailService.getDraftMailDetail(draftId, userEmail);
+        // 프론트에서 바로 사용 가능하도록 응답
+        return ResponseEntity.ok(ResponseDTO.success(dto, "임시저장 메일 상세조회 성공"));
+    }
     
 }

@@ -97,7 +97,14 @@ public interface EmailService {
 	     */
 	    boolean deleteDraft(Integer draftId);	
 		
-		
+
+	    /**
+	     * 임시저장 메일 상세 조회 (for MailWritePage)
+	     * @param draftId 임시메일 id
+	     * @param userEmail 소유자 이메일
+	     * @return EmailResponseDTO
+	     */
+	    EmailResponseDTO getDraftMailDetail(Integer draftId, String userEmail);
 		
 		
 }

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Paper,
@@ -21,7 +21,8 @@ import DraftsOutlinedIcon from "@mui/icons-material/DraftsOutlined";
 import ContactsIcon from "@mui/icons-material/Contacts";
 import StarOutlineIcon from "@mui/icons-material/StarOutline";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import { sendMail, saveDraftMail } from "../api/emailApi";
+import { sendMail, saveDraftMail, getDraftDetail, getUserEmailFromStorage } from "../api/emailApi"; // (수정) getDraftDetail, getUserEmailFromStorage 추가 import 
+import { useLocation } from "react-router-dom"; // (수정) useLocation import
 
 // 예시: 추천 이메일 리스트 (서버/DB 등에서 불러올 수 있음)
 const emailSuggestions = [
@@ -44,6 +45,30 @@ function MailWritePage() {
   });
   const [sending, setSending] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
+
+  const location = useLocation(); // (수정) useLocation 사용
+  const draftId = new URLSearchParams(location.search).get("draftId"); // (수정) 쿼리에서 draftId 추출
+  const userEmail = getUserEmailFromStorage(); // (수정) 유저 이메일 추출
+
+  // (수정) draftId가 있으면 임시메일 상세 API 호출후 form 바인딩
+  useEffect(() => {
+    if (draftId && userEmail) {
+      getDraftDetail(draftId, userEmail).then(res => {
+        const data = res.data.data;
+        setForm({
+          recipientAddress: data.recipientAddresses || [],
+          ccAddresses: data.ccAddresses || [],
+          bccAddresses: data.bccAddresses || [],
+          emailTitle: data.emailTitle || "",
+          emailContent: data.emailContent || "",
+          attachments: (data.attachments || []).map(f => ({
+            name: f.fileName,
+            fileId: f.fileId
+          }))
+        });
+      });
+    }
+  }, [draftId, userEmail]); // (수정) 의존성 배열에 draftId, userEmail 추가
 
   const handleFileChange = (e) => {
     setForm((f) => ({
@@ -164,6 +189,7 @@ function MailWritePage() {
           <Button variant="text" size="small" sx={{ px: 2 }}>숨은참조</Button>
         </Stack>
 
+        {/* 아래부터 모든 필드는 form state와 1:1 매핑 */}
         <Box sx={{ display: "flex", alignItems: "center", mb: 0.7 }}>
           <Typography sx={{ width: 85, fontWeight: 700 }}>받는사람</Typography>
           <Autocomplete
