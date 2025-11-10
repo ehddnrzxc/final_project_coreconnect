@@ -15,4 +15,9 @@ public interface EmailRepository extends JpaRepository<Email, Integer> {
 	// 내가 보낸 이메일 중 특정 상태(Bounce 등)만 페이징
 	Page<com.goodee.coreconnect.email.entity.Email> findBySenderIdAndEmailStatus(Integer userId, EmailStatusEnum bounce, Pageable pageable);
 
+	// [추가] 내가 보낸 이메일 중 특정 상태(DRAFT 등) + senderEmail 기준 페이징 조회
+    Page<Email> findBySenderEmailAndEmailStatus(String senderEmail, EmailStatusEnum emailStatus, Pageable pageable);
+
+    // [추가] 임시보관함 카운트용
+    long countBySenderEmailAndEmailStatus(String senderEmail, EmailStatusEnum emailStatus);
 }

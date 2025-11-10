@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext } from "react";
 import {
   Box, Button, List, ListItem, ListItemButton, ListItemText, Typography,
   IconButton, Chip, Badge
@@ -7,15 +7,14 @@ import EditIcon from "@mui/icons-material/Edit";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { useNavigate } from "react-router-dom";
-import {
-  getUserEmailFromStorage, fetchInbox, fetchDraftCount
-} from "../api/emailApi";
+import { MailCountContext } from "../../../App";
 
-// 오늘의 안읽은 메일 수
+// 오늘의 안읽은 메일 수 (props나 context에서 내려받는 게 더 실전적이나 참고용 남김)
 const useTodayUnreadCount = (userEmail) => {
   const [count, setCount] = React.useState(0);
   React.useEffect(() => {
     if (!userEmail) return;
+    // fetchInbox 등 구체 함수는 api/emailApi에서 import 필요
     fetchInbox(userEmail, 0, 100, "today").then(res => {
       const todayMails = res?.data?.data?.content || [];
       const unreadToday = todayMails.filter(m => !m.readYn).length;
@@ -25,24 +24,14 @@ const useTodayUnreadCount = (userEmail) => {
   return count;
 };
 
-// 임시저장함(임시보관함) 메일 수
-const useDraftCount = (userEmail) => {
-  const [count, setCount] = React.useState(0);
-  React.useEffect(() => {
-    if (!userEmail) return;
-    fetchDraftCount(userEmail)
-      .then(setCount)
-      .catch(() => setCount(0));
-  }, [userEmail]);
-  return count;
-};
-
 const MailSidebar = ({ unreadCount, refreshUnreadCount }) => {
   const navigate = useNavigate();
-  const userEmail = getUserEmailFromStorage();
-  const todayUnreadCount = useTodayUnreadCount(userEmail);
-  const draftCount = useDraftCount(userEmail); // 추가: 임시저장 갯수
+  const { draftCount } = useContext(MailCountContext); // context로 임시보관 개수를 받음
+  // 아래 두 줄이 사이드바에 필요하다면 사용(실전에서는 props/context로 내리는 게 더 나음)
+  // const userEmail = getUserEmailFromStorage();
+  // const todayUnreadCount = useTodayUnreadCount(userEmail);
 
+  // 아래 함수를 메일탭별 라우트에 연결
   const goTodayMailTab = () => navigate("/email?tab=today");
   const goUnreadMailTab = () => navigate("/email?tab=unread");
   const goAllMailTab = () => navigate("/email?tab=all");
@@ -122,11 +111,12 @@ const MailSidebar = ({ unreadCount, refreshUnreadCount }) => {
                   primary={
                     <Box sx={{ display: "flex", alignItems: "center" }}>
                       <Typography variant="body2">오늘의 메일</Typography>
-                      <Badge
+                      {/* todayUnreadCount가 필요하다면 아래처럼 받으세요 */}
+                      {/* <Badge
                         color="primary"
                         badgeContent={todayUnreadCount}
                         sx={{ "& .MuiBadge-badge": { fontSize: 12, height: 18, minWidth: 20, borderRadius: 9, ml: 1 } }}
-                      />
+                      /> */}
                     </Box>
                   }
                 />
@@ -174,14 +164,14 @@ const MailSidebar = ({ unreadCount, refreshUnreadCount }) => {
             <ListItem disableGutters sx={{ py: 0.5, px: 0 }}>
               <ListItemButton
                 sx={{ borderRadius: 1, px: 1.3, py: 0.5 }}
-                onClick={() => navigate("/email/trash")}
+                onClick={() => navigate("/email/draftbox")}
               >
                 <ListItemText primary={
                   <Box sx={{ display: "flex", alignItems: "center" }}>
                     <Typography variant="body2">임시보관함</Typography>
                     <Chip
                       size="small"
-                      label={draftCount} // 실제 개수
+                      label={draftCount} // draftBoxTotalCount 대신 context값 사용!
                       sx={{
                         ml: 1,
                         bgcolor: "#f2f4f8",

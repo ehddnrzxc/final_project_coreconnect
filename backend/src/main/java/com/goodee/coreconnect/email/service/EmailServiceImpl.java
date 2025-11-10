@@ -649,8 +649,52 @@ public class EmailServiceImpl implements EmailService {
 
 	@Override
 	public Page<EmailResponseDTO> getDraftbox(String userEmail, int page, int size) {
-		// TODO Auto-generated method stub
-		return null;
+		Pageable pageable = PageRequest.of(page, size);
+	    // 1. 임시저장(DRAFT) 메일만, 본인이 '발신자'인 경우만!
+	    Page<com.goodee.coreconnect.email.entity.Email> draftPage = emailRepository.findBySenderEmailAndEmailStatus(
+	            userEmail, EmailStatusEnum.DRAFT, pageable);
+
+	    List<EmailResponseDTO> dtoList = draftPage.stream().map(email -> {
+	        EmailResponseDTO dto = new EmailResponseDTO();
+	        dto.setEmailId(email.getEmailId());
+	        dto.setEmailTitle(email.getEmailTitle());
+	        dto.setEmailContent(email.getEmailContent());
+	        dto.setSenderId(email.getSenderId());
+	        dto.setSenderEmail(email.getSenderEmail());
+	        dto.setSentTime(email.getEmailSentTime());
+	        dto.setEmailStatus(email.getEmailStatus().name()); // DRAFT
+	        dto.setReplyToEmailId(email.getReplyToEmailId());
+
+	        // 받는 사람 (TO/CC/BCC)
+	        List<EmailRecipient> recipients = emailRecipientRepository.findByEmail(email);
+	        List<String> toAddresses = recipients.stream()
+	            .filter(r -> "TO".equalsIgnoreCase(r.getEmailRecipientType()))
+	            .map(EmailRecipient::getEmailRecipientAddress)
+	            .collect(Collectors.toList());
+	        List<String> ccAddresses = recipients.stream()
+	            .filter(r -> "CC".equalsIgnoreCase(r.getEmailRecipientType()))
+	            .map(EmailRecipient::getEmailRecipientAddress)
+	            .collect(Collectors.toList());
+	        List<String> bccAddresses = recipients.stream()
+	            .filter(r -> "BCC".equalsIgnoreCase(r.getEmailRecipientType()))
+	            .map(EmailRecipient::getEmailRecipientAddress)
+	            .collect(Collectors.toList());
+	        dto.setRecipientAddresses(toAddresses);
+	        dto.setCcAddresses(ccAddresses);
+	        dto.setBccAddresses(bccAddresses);
+
+	        // 첨부파일 정보
+	        List<EmailFile> files = emailFileRepository.findByEmail(email);
+	        List<Integer> fileIds = files.stream()
+	                .map(EmailFile::getEmailFileId)
+	                .collect(Collectors.toList());
+	        dto.setFileIds(fileIds);
+
+	        return dto;
+	    }).collect(Collectors.toList());
+
+	    // 반환
+	    return new PageImpl<>(dtoList, pageable, draftPage.getTotalElements());
 	}
 
 	@Override
