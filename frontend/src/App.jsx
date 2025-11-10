@@ -5,8 +5,7 @@ import Sidebar from "./components/layout/Sidebar";
 import { getMyProfileImage } from "./features/user/api/userAPI";
 import {
   fetchUnreadCount,
-  fetchDraftCount,
-  fetchDraftbox,              // ← 이줄 추가!
+  fetchDraftbox,
   getUserEmailFromStorage
 } from "./features/email/api/emailApi";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
@@ -15,7 +14,6 @@ import useAuth from "./hooks/useAuth";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
-// Context for mail counts and refresh functions
 export const MailCountContext = createContext();
 
 const theme = createTheme({
@@ -98,57 +96,39 @@ function App() {
   };
 
   return (
-  <ThemeProvider theme={theme}>
-    <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <CssBaseline />
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          minHeight: "100vh",
-          bgcolor: "background.default",
-        }}
-      >
-        <Topbar onLogout={handleLogout} avatarUrl={avatarUrl} />
-
-
-        <MailCountContext.Provider value={mailCountContextValue}>
-          <Box sx={{ display: "flex", flex: 1, minHeight: 0 }}>
-            <Sidebar />
-            <Box
-              component="main"
-              sx={{
-                flex: 1,
-                minHeight: 0,
-                display: "flex",
-                flexDirection: "column",
-              }}
-            >
-              <Outlet context={mailCountContextValue} />
+    <ThemeProvider theme={theme}>
+      <LocalizationProvider dateAdapter={AdapterDayjs}>
+        <CssBaseline />
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            minHeight: "100vh",
+            bgcolor: "background.default",
+          }}
+        >
+          <Topbar onLogout={handleLogout} avatarUrl={avatarUrl} />
+          <MailCountContext.Provider value={mailCountContextValue}>
+            <Box sx={{ display: "flex", flex: 1, minHeight: 0 }}>
+              {/* Sidebar는 Provider 내부에서 context 사용, undefined 안전 처리됨 */}
+              <Sidebar />
+              <Box
+                component="main"
+                sx={{
+                  flex: 1,
+                  minHeight: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
+                <Outlet context={{ setAvatarUrl, refreshUnreadCount }} />
+              </Box>
             </Box>
-
-      <Topbar onLogout={handleLogout} avatarUrl={avatarUrl} />
-
-        <Box sx={{ display: "flex", flex: 1, }}>
-          {/* 사이드바에 unreadCount와 refreshUnreadCount 전달 */}
-          <Sidebar unreadCount={unreadCount} refreshUnreadCount={refreshUnreadCount} />
-          <Box
-            component="main"
-            sx={{
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-            }}
-          >
-            {/* Outlet 하위 페이지에서 context로 refreshUnreadCount 사용 */}
-            <Outlet context={{ setAvatarUrl, refreshUnreadCount }} />
-
-          </Box>
-        </MailCountContext.Provider>
-      </Box>
-    </LocalizationProvider>
-  </ThemeProvider>
-);
+          </MailCountContext.Provider>
+        </Box>
+      </LocalizationProvider>
+    </ThemeProvider>
+  );
 }
 
 export default App;

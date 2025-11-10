@@ -9,29 +9,17 @@ import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { useNavigate } from "react-router-dom";
 import { MailCountContext } from "../../../App";
 
-// 오늘의 안읽은 메일 수 (props나 context에서 내려받는 게 더 실전적이나 참고용 남김)
-const useTodayUnreadCount = (userEmail) => {
-  const [count, setCount] = React.useState(0);
-  React.useEffect(() => {
-    if (!userEmail) return;
-    // fetchInbox 등 구체 함수는 api/emailApi에서 import 필요
-    fetchInbox(userEmail, 0, 100, "today").then(res => {
-      const todayMails = res?.data?.data?.content || [];
-      const unreadToday = todayMails.filter(m => !m.readYn).length;
-      setCount(unreadToday);
-    });
-  }, [userEmail]);
-  return count;
-};
-
-const MailSidebar = ({ unreadCount, refreshUnreadCount }) => {
+const MailSidebar = () => {
   const navigate = useNavigate();
-  const { draftCount } = useContext(MailCountContext); // context로 임시보관 개수를 받음
-  // 아래 두 줄이 사이드바에 필요하다면 사용(실전에서는 props/context로 내리는 게 더 나음)
-  // const userEmail = getUserEmailFromStorage();
-  // const todayUnreadCount = useTodayUnreadCount(userEmail);
+  // fallback: undefined context일 때 에러 방지
+  const {
+    draftCount = 0,
+    unreadCount = 0,
+    refreshDraftCount = () => {},
+    refreshUnreadCount = () => {},
+  } = useContext(MailCountContext) || {};
 
-  // 아래 함수를 메일탭별 라우트에 연결
+  // 라우트 변경 함수
   const goTodayMailTab = () => navigate("/email?tab=today");
   const goUnreadMailTab = () => navigate("/email?tab=unread");
   const goAllMailTab = () => navigate("/email?tab=all");
@@ -43,7 +31,6 @@ const MailSidebar = ({ unreadCount, refreshUnreadCount }) => {
         borderRight: "1px solid #e5e7eb", display: "flex", flexDirection: "column", gap: 1
       }}
     >
-      {/* 상단 타이틀, 옵션 */}
       <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
         <Typography variant="h6" fontWeight={700} sx={{ flex: 1, fontSize: "1rem" }}>
           메일
@@ -52,7 +39,6 @@ const MailSidebar = ({ unreadCount, refreshUnreadCount }) => {
           <MoreVertIcon fontSize="small" />
         </IconButton>
       </Box>
-      {/* 메일쓰기 버튼 */}
       <Box sx={{ mb: 1 }}>
         <Button
           variant="outlined"
@@ -70,7 +56,6 @@ const MailSidebar = ({ unreadCount, refreshUnreadCount }) => {
           메일쓰기
         </Button>
       </Box>
-      {/* 즐겨찾기/메일함/지운편지함 섹션 */}
       <Box sx={{ flex: 1, overflowY: "auto" }}>
         {/* 즐겨찾기 */}
         <Box sx={{ mb: 2 }}>
@@ -111,12 +96,7 @@ const MailSidebar = ({ unreadCount, refreshUnreadCount }) => {
                   primary={
                     <Box sx={{ display: "flex", alignItems: "center" }}>
                       <Typography variant="body2">오늘의 메일</Typography>
-                      {/* todayUnreadCount가 필요하다면 아래처럼 받으세요 */}
-                      {/* <Badge
-                        color="primary"
-                        badgeContent={todayUnreadCount}
-                        sx={{ "& .MuiBadge-badge": { fontSize: 12, height: 18, minWidth: 20, borderRadius: 9, ml: 1 } }}
-                      /> */}
+                      {/* todayUnreadCount 필요시 구현 */}
                     </Box>
                   }
                 />
@@ -171,7 +151,7 @@ const MailSidebar = ({ unreadCount, refreshUnreadCount }) => {
                     <Typography variant="body2">임시보관함</Typography>
                     <Chip
                       size="small"
-                      label={draftCount} // draftBoxTotalCount 대신 context값 사용!
+                      label={draftCount}
                       sx={{
                         ml: 1,
                         bgcolor: "#f2f4f8",
