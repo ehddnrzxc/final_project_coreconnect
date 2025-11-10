@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import { getAdminStats } from "../api/adminAPI";
+import BeachAccessIcon from "@mui/icons-material/BeachAccess";
 import {
   Box,
   Grid,
@@ -377,6 +378,23 @@ export default function AdminHome() {
                   비밀번호 초기화 요청
                 </Button>
 
+                <Button
+                  component={RouterLink}
+                  to="/admin/leave-requests"
+                  variant="text"
+                  startIcon={<BeachAccessIcon />}
+                  sx={{
+                    justifyContent: "flex-start",
+                    textTransform: "none",
+                    color: "text.primary",
+                    borderRadius: 2,
+                    px: 0.5,
+                    py: 0.6,
+                    "&:hover": { backgroundColor: "#f3f4f6" },
+                  }}
+                >
+                  휴가 요청 관리
+                </Button>
 
                 <Divider sx={{ my: 0.7 }} />
 

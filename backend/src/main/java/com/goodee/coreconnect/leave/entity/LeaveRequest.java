@@ -3,6 +3,7 @@ package com.goodee.coreconnect.leave.entity;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import com.goodee.coreconnect.leave.dto.response.LeaveRequestResponseDTO;
 import com.goodee.coreconnect.user.entity.User;
 
 import jakarta.persistence.*;

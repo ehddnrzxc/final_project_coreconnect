@@ -68,21 +68,20 @@ function App() {
         sx={{
           display: "flex",
           flexDirection: "column",
-          height: "100vh",
+          minHeight: "100vh",
           bgcolor: "background.default",
         }}
       >
 
       <Topbar onLogout={handleLogout} avatarUrl={avatarUrl} />
 
-        <Box sx={{ display: "flex", flex: 1, minHeight: 0 }}>
+        <Box sx={{ display: "flex", flex: 1, }}>
           {/* 사이드바에 unreadCount와 refreshUnreadCount 전달 */}
           <Sidebar unreadCount={unreadCount} refreshUnreadCount={refreshUnreadCount} />
           <Box
             component="main"
             sx={{
               flex: 1,
-              minHeight: 0,
               display: "flex",
               flexDirection: "column",
             }}
