@@ -22,13 +22,15 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "email")
 @Getter
+@Setter
 @NoArgsConstructor(access = lombok.AccessLevel.PROTECTED) // 기본 생성자 protected
 @AllArgsConstructor
-@Builder
+@Builder(toBuilder = true)
 public class Email {
 	
 	@Id

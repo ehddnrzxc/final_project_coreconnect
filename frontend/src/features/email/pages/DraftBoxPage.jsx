@@ -1,3 +1,4 @@
+// DraftBoxPage.jsx - 임시보관함 목록 및 삭제 기능 페이지
 import React, { useEffect, useState } from "react";
 import {
   Box, Typography, Paper, Table, TableHead, TableBody, TableRow, TableCell,
@@ -7,7 +8,6 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { fetchDraftbox, deleteDraftMail, getUserEmailFromStorage } from "../api/emailApi";
 import { useNavigate } from "react-router-dom";
 
-// 임시보관함(임시저장 메일) 목록/개수/삭제 페이지
 const DraftBoxPage = () => {
   const [drafts, setDrafts] = useState([]);
   const [total, setTotal] = useState(0);
@@ -18,7 +18,7 @@ const DraftBoxPage = () => {
   const userEmail = getUserEmailFromStorage();
   const navigate = useNavigate();
 
-  // 목록/개수 동시 조회
+  // 임시보관함 목록 조회 및 상태값 세팅
   const reload = () => {
     if (!userEmail) return;
     setLoading(true);
@@ -44,11 +44,16 @@ const DraftBoxPage = () => {
     // eslint-disable-next-line
   }, [page, userEmail]);
 
-  // 삭제
+  // [핵심] 임시메일 삭제 - 클릭시 확인 후 삭제 API 호출&목록 새로고침
   const handleDelete = async (draftId) => {
     if (!window.confirm("정말로 이 임시저장 메일을 삭제하시겠습니까?")) return;
     await deleteDraftMail(draftId);
     reload();
+  };
+
+  // 메일 클릭 시: 쓰기페이지 이동 (draftId 전달)
+  const handleRowClick = (draft) => {
+    navigate(`/email/write?draftId=${draft.emailId}`);
   };
 
   return (
@@ -83,8 +88,8 @@ const DraftBoxPage = () => {
                   key={draft.emailId}
                   hover
                   style={{ cursor: "pointer" }}
-                  // [수정1] 행 전체 클릭 시 메일쓰기 페이지로 이동하고, draftId를 querystring으로 전달합니다 (메일작성시 바인딩)
-                  onClick={() => navigate(`/email/write?draftId=${draft.emailId}`)}
+                  // 행 클릭: 메일 쓰기 이동
+                  onClick={() => handleRowClick(draft)}
                 >
                   <TableCell>{draft.emailTitle}</TableCell>
                   <TableCell>
@@ -105,7 +110,7 @@ const DraftBoxPage = () => {
                       : (Array.isArray(draft.fileIds) ? draft.fileIds.length : 0)
                     }
                   </TableCell>
-                  {/* [수정2] 삭제 버튼만 클릭 시 onClick이 행으로 버블되지 않도록 이벤트 전파 차단 */}
+                  {/* 삭제 버튼만 누를 때 행 클릭 이벤트 버블 차단 */}
                   <TableCell align="center" onClick={e => { e.stopPropagation(); handleDelete(draft.emailId); }}>
                     <IconButton color="error">
                       <DeleteIcon />

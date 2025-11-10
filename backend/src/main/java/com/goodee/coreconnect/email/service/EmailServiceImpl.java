@@ -36,6 +36,8 @@ import com.goodee.coreconnect.email.repository.EmailRepository;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
+
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -339,182 +341,182 @@ public class EmailServiceImpl implements EmailService {
 
 	/**
      * 이메일을 SendGrid로 발송하고 DB에 저장합니다.
+     * 임시저장 메일 발송 시, 임시메일의 상태만 SENT로 변경하고, 내용을 최신화하며, 신규 발송 메일은 새로 생성
 	 * @throws IOException 
      */
 	@Override
 	public EmailResponseDTO sendEmail(EmailSendRequestDTO requestDTO, List<MultipartFile> attachments) throws IOException {
-		 log.info("[DEBUG] sendEmail: senderId={}, senderAddress={}",
-	             requestDTO.getSenderId(), requestDTO.getSenderAddress());
+		  log.info("[DEBUG] sendEmail: senderId={}, senderAddress={}, requestDTO.getEmailId = {}",
+		            requestDTO.getSenderId(), requestDTO.getSenderAddress(), requestDTO.getEmailId());
 
+		    com.goodee.coreconnect.email.entity.Email savedEmail = null; // 반환할 엔티티 공통 참조
+
+		    // 1. 임시저장 메일 발송 분기 (emailId 있으면 기존 row UPDATE, 아니면 신규 insert)
+		    if (requestDTO.getEmailId() != null) {
+		        // 1-1. 기존 임시저장(DRAFT) 메일을 PK, OWNER, 상태(DRAFT) 조건으로 조회
+		        com.goodee.coreconnect.email.entity.Email draft = emailRepository
+		            .findByEmailIdAndSenderEmailAndEmailStatus(
+		                requestDTO.getEmailId(),
+		                requestDTO.getSenderAddress(),
+		                EmailStatusEnum.DRAFT
+		            )
+		            .orElseThrow(() -> new IllegalArgumentException("임시보관 메일을 찾을 수 없습니다."));
+		        log.info("임시보관 메일 원본: {}", draft);
+		        
+
+		        // 1-2. 상태, 제목, 본문 등 필드를 직접 "set"으로 수정 (PK=바뀌지 않음, UPDATE!)
+		        draft.setEmailTitle(requestDTO.getEmailTitle());
+		        draft.setEmailContent(requestDTO.getEmailContent());
+		        draft.setEmailStatus(EmailStatusEnum.SENT);       // DRAFT → SENT
+		        draft.setEmailSentTime(LocalDateTime.now());       // 발송 시각 갱신
+		        draft.setEmailFolder("SENT");                     // 폴더 전환
+
+		        // (필요하다면 첨부, 수신자 등도 여기에서 최신화 가능)
+
+		        // 1-3. save 호출 시 기존 PK 유지 → UPDATE만 발생, 새 row 절대 생기지 않음
+		        savedEmail = emailRepository.save(draft);
+
+		    } else {
+		    	 log.info("임시보관 메일 원본2:");
+		        // 2. 신규 메일 발송: 새 엔티티 build 후 insert
+		        com.goodee.coreconnect.email.entity.Email entity = com.goodee.coreconnect.email.entity.Email.builder()
+		            .emailTitle(requestDTO.getEmailTitle())
+		            .emailContent(requestDTO.getEmailContent())
+		            .emailStatus(EmailStatusEnum.SENT)
+		            .emailSentTime(LocalDateTime.now())
+		            .senderId(requestDTO.getSenderId())
+		            .senderEmail(requestDTO.getSenderAddress())
+		            .favoriteStatus(false)
+		            .emailDeleteYn(false)
+		            .emailSaveStatusYn(false)
+		            .emailType(requestDTO.getEmailType())
+		            .emailFolder("SENT")
+		            .replyToEmailId(requestDTO.getReplyToEmailId())
+		            .build();
+
+		        savedEmail = emailRepository.save(entity); // 새 row insert (신규)
+		    }
+
+
+		    // == 메일 발송 관련 로직 (SendGrid 등) ==
+		    Email from = new Email(requestDTO.getSenderAddress());
+		    String subject = requestDTO.getEmailTitle();
+
+		    List<Personalization> personalizations = new ArrayList<>();
+		    Personalization personalization = new Personalization();
+		    for (String to : requestDTO.getRecipientAddress()) {
+		        personalization.addTo(new Email(to));
+		    }
+		    if (requestDTO.getCcAddresses() != null) {
+		        for (String cc : requestDTO.getCcAddresses()) {
+		            personalization.addCc(new Email(cc));
+		        }
+		    }
+		    if (requestDTO.getBccAddresses() != null) {
+		        for (String bcc : requestDTO.getBccAddresses()) {
+		            personalization.addBcc(new Email(bcc));
+		        }
+		    }
+		    personalizations.add(personalization);
+
+		    Content content = new Content("text/plain", requestDTO.getEmailContent());
+		    Mail mail = new Mail();
+		    mail.setFrom(from);
+		    mail.setSubject(subject);
+		    mail.addContent(content);
+		    for (Personalization p : personalizations) {
+		        mail.addPersonalization(p);
+		    }
+
+		    // 첨부파일 처리 & 저장 (필요시)
+		    if (attachments != null && !attachments.isEmpty()) {
+		        for (MultipartFile file : attachments) {
+		            // 1. 파일 정보 추출
+		            String fileName = file.getOriginalFilename();
+		            long fileSize = file.getSize();
+		            String mimeType = file.getContentType();
+
+		            // 2. S3 업로드(예시. 실전에서는 서비스 단 분리 추천)
+		            String s3key = s3Service.uploadApprovalFile(file);
+
+		            // 3. Base64 변환(예: SendGrid 첨부용), 필요없으면 생략 가능
+		            byte[] fileBytes = file.getBytes();
+		            String base64Content = Base64.getEncoder().encodeToString(fileBytes);
+
+		            // 4. SendGrid 첨부 세팅(필요시)
+		            Attachments sendGridAttacment = new Attachments();
+		            sendGridAttacment.setFilename(fileName);
+		            sendGridAttacment.setType(mimeType);
+		            sendGridAttacment.setContent(base64Content);
+		            mail.addAttachments(sendGridAttacment);
+
+		            // 5. DB 첨부엔티티 저장 (savedEmail에 연결)
+		            EmailFile emailFile = EmailFile.builder()
+		                .emailFileName(fileName)
+		                .emailFileSize(fileSize)
+		                .emailFileS3ObjectKey(s3key)
+		                .emailFielDeletedYn(false)
+		                .email(savedEmail)
+		                .build();
+		            emailFileRepository.save(emailFile);
+		        }
+		    }
+
+		    // 수신자 정보 DB 저장 (TO/CC/BCC 구분)
+		    for (String to : requestDTO.getRecipientAddress()) {
+		        Optional<User> userOptional = userRepository.findByEmail(to);
+		        Integer userId = userOptional.isPresent() ? userOptional.get().getId() : null;
+		        EmailRecipient recipient = EmailRecipient.builder()
+		            .emailRecipientType("TO")
+		            .emailRecipientAddress(to)
+		            .userId(userId)
+		            .emailReadYn(false)
+		            .emailIsAlarmSent(false)
+		            .email(savedEmail)
+		            .build();
+		        emailRecipientRepository.save(recipient);
+		    }
+		    if (requestDTO.getCcAddresses() != null) {
+		        for (String cc : requestDTO.getCcAddresses()) {
+		            Optional<User> userOptional = userRepository.findByEmail(cc);
+		            Integer userId = userOptional.isPresent() ? userOptional.get().getId() : null;
+		            EmailRecipient ccRecipient = EmailRecipient.builder()
+		                .emailRecipientType("CC")
+		                .emailRecipientAddress(cc)
+		                .userId(userId)
+		                .emailReadYn(false)
+		                .emailIsAlarmSent(false)
+		                .email(savedEmail)
+		                .build();
+		            emailRecipientRepository.save(ccRecipient);
+		        }
+		    }
+		    if (requestDTO.getBccAddresses() != null) {
+		        for (String bcc : requestDTO.getBccAddresses()) {
+		            Optional<User> userOptional = userRepository.findByEmail(bcc);
+		            Integer userId = userOptional.isPresent() ? userOptional.get().getId() : null;
+		            EmailRecipient bccRecipient = EmailRecipient.builder()
+		                .emailRecipientType("BCC")
+		                .emailRecipientAddress(bcc)
+		                .userId(userId)
+		                .emailReadYn(false)
+		                .emailIsAlarmSent(false)
+		                .email(savedEmail)
+		                .build();
+		            emailRecipientRepository.save(bccRecipient);
+		        }
+		    }
+
+		    // 결과 DTO 세팅
+		    EmailResponseDTO resultDTO = new EmailResponseDTO();
+		    resultDTO.setEmailId(savedEmail.getEmailId());
+		    resultDTO.setEmailStatus(savedEmail.getEmailStatus().name());
+		    resultDTO.setEmailTitle(savedEmail.getEmailTitle());
+		    resultDTO.setEmailContent(savedEmail.getEmailContent());
+		    // ... 필요시 나머지 필드도 세팅!
+
+		    return resultDTO;
 		
-		
-		// 1. SendGrid 메일 정보 준비
-	    Email from = new Email(requestDTO.getSenderAddress());
-	    String subject = requestDTO.getEmailTitle();
-
-	    List<Personalization> personalizations = new ArrayList<>();
-	    Personalization personalization = new Personalization();
-	    for (String to : requestDTO.getRecipientAddress()) {
-	        personalization.addTo(new Email(to));
-	    }
-	    if (requestDTO.getCcAddresses() != null) {
-	        for (String cc : requestDTO.getCcAddresses()) {
-	            personalization.addCc(new Email(cc));
-	        }
-	    }
-	    if (requestDTO.getBccAddresses() != null) {
-	        for (String bcc : requestDTO.getBccAddresses()) {
-	            personalization.addBcc(new Email(bcc));
-	        }
-	    }
-	    personalizations.add(personalization);
-
-	    Content content = new Content("text/plain", requestDTO.getEmailContent());
-	    Mail mail = new Mail();
-	    mail.setFrom(from);
-	    mail.setSubject(subject);
-	    mail.addContent(content);
-	    for (Personalization p : personalizations) {
-	        mail.addPersonalization(p);
-	    }
-
-	    // 첨부파일 처리 & 저장
-//	    if (requestDTO.getAttachments() != null) {
-//	        for (EmailAttachmentRequestDTO attachDTO : requestDTO.getAttachments()) {
-//	            Attachments attachments2 = new Attachments();
-//	            String base64Content = attachDTO.getBaSE64cONTENT();
-//	            if (base64Content == null || base64Content.isEmpty()) {
-//	                throw new RuntimeException("첨부파일의 Base64 Content가 비어있습니다. API 호출 전에 인코딩해주세요.");
-//	            }
-//	            attachments2.setContent(base64Content);
-//	            attachments2.setType(attachDTO.getMimeType());
-//	            attachments2.setFilename(attachDTO.getFileName());
-//	            mail.addAttachments(attachments2);
-//
-//	            EmailFile emailFile = EmailFile.builder()
-//	                .emailFileName(attachDTO.getFileName())
-//	                .emailFileSize(attachDTO.getFileSize())
-//	                .emailFileS3ObjectKey("s3_object_key")
-//	                .emailFielDeletedYn(false)
-//	                .build();
-//	            emailFileRepository.save(emailFile);
-//	        }
-//	    }
-
-	    // 2. DB에 저장할 Email 엔티티 생성 및 저장
-	    com.goodee.coreconnect.email.entity.Email entity = com.goodee.coreconnect.email.entity.Email.builder()
-	        .emailTitle(requestDTO.getEmailTitle())
-	        .emailContent(requestDTO.getEmailContent())
-	        .emailStatus(EmailStatusEnum.SENT)
-	        .emailSentTime(LocalDateTime.now())
-	        .senderId(requestDTO.getSenderId())                         // 발신자 id
-	        .senderEmail(requestDTO.getSenderAddress())                 // 발신자 이메일(★중요) 
-	        .favoriteStatus(false)
-	        .emailDeleteYn(false)
-	        .emailSaveStatusYn(false)
-	        .emailType(requestDTO.getEmailType())
-	        .emailFolder("SENT")
-	        .replyToEmailId(requestDTO.getReplyToEmailId())
-	        .build();
-
-	    com.goodee.coreconnect.email.entity.Email savedEmail = emailRepository.save(entity);
-
-	    // 3. 수신자 정보 DB 저장 (user_id 채움)
-	    // TO
-	    
-	    for (String to : requestDTO.getRecipientAddress()) {
-	        Optional<User> userOptional = userRepository.findByEmail(to); // 반환타입 직접 명시
-	        Integer userId = userOptional.isPresent() ? userOptional.get().getId() : null;
-	        EmailRecipient recipient = EmailRecipient.builder()
-	            .emailRecipientType("TO")
-	            .emailRecipientAddress(to)
-	            .userId(userId)
-	            .emailReadYn(false)
-	            .emailIsAlarmSent(false)
-	            .email(savedEmail)
-	            .build();
-	        emailRecipientRepository.save(recipient);
-	    }
-
-	    if (requestDTO.getCcAddresses() != null) {
-	        for (String cc : requestDTO.getCcAddresses()) {
-	            Optional<User> userOptional = userRepository.findByEmail(cc);
-	            Integer userId = userOptional.isPresent() ? userOptional.get().getId() : null;
-	            EmailRecipient ccRecipient = EmailRecipient.builder()
-	                .emailRecipientType("CC")
-	                .emailRecipientAddress(cc)
-	                .userId(userId)
-	                .emailReadYn(false)
-	                .emailIsAlarmSent(false)
-	                .email(savedEmail)
-	                .build();
-	            emailRecipientRepository.save(ccRecipient);
-	        }
-	    }
-
-	    if (requestDTO.getBccAddresses() != null) {
-	        for (String bcc : requestDTO.getBccAddresses()) {
-	            Optional<User> userOptional = userRepository.findByEmail(bcc);
-	            Integer userId = userOptional.isPresent() ? userOptional.get().getId() : null;
-	            EmailRecipient bccRecipient = EmailRecipient.builder()
-	                .emailRecipientType("BCC")
-	                .emailRecipientAddress(bcc)
-	                .userId(userId)
-	                .emailReadYn(false)
-	                .emailIsAlarmSent(false)
-	                .email(savedEmail)
-	                .build();
-	            emailRecipientRepository.save(bccRecipient);
-	        }
-	    }
-
-	    // 결과 DTO
-	    EmailResponseDTO resultDTO = new EmailResponseDTO();
-	    resultDTO.setEmailId(savedEmail.getEmailId());
-	    resultDTO.setEmailStatus("SENT");
-	    resultDTO.setEmailTitle(savedEmail.getEmailTitle());
-	    resultDTO.setEmailContent(savedEmail.getEmailContent());
-	    
-	    log.info("여기찍힘");
-	    if (attachments != null && !attachments.isEmpty()) {
-	    	 log.info("여기찍힘2");
-	    	for (MultipartFile file : attachments) {
-	    		log.info("여기찍힘3");
-	    		// 1. 파일 정보 추출
-	    		String fileName = file.getOriginalFilename();
-	    		long fileSize = file.getSize();
-	    		String mimeType = file.getContentType();
-	    		
-	    		// s3 파일 업로드
-	    		String s3key = s3Service.uploadApprovalFile(file);
-	    		log.info("s3Key: {}", s3key);
-	    		
-	    		// 2. 파일을 바로 저장하거나 Bas364 인코딩 등 필요에 따라 처리
-	    		byte[] fileBytes = file.getBytes();
-	    		String base64Content = Base64.getEncoder().encodeToString(fileBytes);
-	    		
-	    		// 3. SendGrid 첨부 생성
-	    		Attachments sendGridAttacment = new Attachments();
-	    		sendGridAttacment.setFilename(fileName);
-	    		sendGridAttacment.setType(mimeType);
-	    		sendGridAttacment.setContent(base64Content);
-	    		
-
-	            mail.addAttachments(sendGridAttacment);
-	            
-	            // 4. DB 등에 저장할 파일정보 객체 예시
-	            EmailFile emailFile = EmailFile.builder()
-	                    .emailFileName(fileName)
-	                    .emailFileSize(fileSize)
-	                    .emailFileS3ObjectKey(s3key)
-	                    .emailFielDeletedYn(false)
-	                    .email(savedEmail) 
-	                    .build();
-	            emailFileRepository.save(emailFile);
-	    	}
-	    }
-
-	    return resultDTO;
 	}
 	
 	@Override
