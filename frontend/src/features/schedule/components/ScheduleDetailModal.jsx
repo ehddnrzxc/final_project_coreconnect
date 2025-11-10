@@ -11,7 +11,7 @@ export default function ScheduleDetailModal({
   scheduleId,
   onEdit,
   onDelete,
-  currentUserId,
+  currentUserEmail,
 }) {
   const [schedule, setSchedule] = useState(null);
   const [participants, setParticipants] = useState([]);
@@ -28,8 +28,9 @@ export default function ScheduleDetailModal({
           getScheduleById(scheduleId),
           getParticipantsBySchedule(scheduleId),
         ]);
+        const normalized = Array.isArray(p) ? p : [p];
         setSchedule(s);
-        setParticipants(p);
+        setParticipants(normalized);
       } catch (err) {
         console.error("상세 일정 조회 실패:", err);
       } finally {
@@ -41,7 +42,13 @@ export default function ScheduleDetailModal({
 
   if (!open) return null;
 
-  const isOwner = schedule?.userId === currentUserId;
+  const isOwner = schedule?.userEmail === currentUserEmail;
+
+  const isParticipant =
+    Array.isArray(participants) &&
+    participants.some((p) => p.userEmail === currentUserEmail);
+
+  const canEdit = isOwner || isParticipant;
 
   return (
     <Modal open={open} onClose={onClose}>
@@ -126,10 +133,12 @@ export default function ScheduleDetailModal({
             {/* 하단 버튼: OWNER 전용 수정/삭제 */}
             <Stack direction="row" spacing={1} justifyContent="flex-end" mt={2}>
               <Button variant="outlined" onClick={onClose}>닫기</Button>
-              {isOwner && (
+              {canEdit  && (
                 <>
                   <Button variant="contained" onClick={() => onEdit(schedule)}>수정</Button>
+                  {isOwner && (
                   <Button variant="contained" color="error" onClick={() => onDelete(schedule.id)}>삭제</Button>
+                  )}
                 </>
               )}
             </Stack>

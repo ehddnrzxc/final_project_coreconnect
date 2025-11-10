@@ -53,9 +53,11 @@ public class ScheduleController {
   @PutMapping("/{id}")
   public ResponseEntity<ResponseScheduleDTO> update(
       @PathVariable("id") Integer id,
-      @Valid @RequestBody RequestScheduleDTO dto
+      @Valid @RequestBody RequestScheduleDTO dto,
+      @AuthenticationPrincipal CustomUserDetails user
   ) {
-    ResponseScheduleDTO response = scheduleService.updateSchedule(id, dto);
+    String email = user.getEmail();
+    ResponseScheduleDTO response = scheduleService.updateSchedule(id, dto, email);
     return ResponseEntity.ok(response);
   }
 

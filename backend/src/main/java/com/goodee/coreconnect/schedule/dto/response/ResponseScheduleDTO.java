@@ -33,6 +33,8 @@ public class ResponseScheduleDTO {
   
   private Integer userId;
   
+  private String userEmail;
+  
   private String userName;
   
   private String categoryName;
@@ -53,6 +55,7 @@ public class ResponseScheduleDTO {
     dto.endDateTime = entity.getEndDateTime();
     dto.visibility = entity.getVisibility();
     dto.userId = entity.getUser().getId();
+    dto.userEmail = entity.getUser().getEmail();
     dto.createdAt = entity.getCreatedAt();
 
     if (entity.getUser() != null)

@@ -23,6 +23,8 @@ public class ResponseScheduleParticipantDTO {
   
   private Integer userId;
   
+  private String userEmail;
+  
   private String userName;
   
   private String deptName;
@@ -44,6 +46,7 @@ public class ResponseScheduleParticipantDTO {
     }
     if (entity.getUser() != null) {
       dto.userId = entity.getUser().getId();
+      dto.userEmail = entity.getUser().getEmail();
       dto.userName = entity.getUser().getName();
       
       if (entity.getUser().getDepartment() != null) {
