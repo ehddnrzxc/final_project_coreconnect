@@ -5,6 +5,7 @@ import Sidebar from "./components/layout/Sidebar";
 import { getMyProfileImage } from "./features/user/api/userAPI";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import { Box, CssBaseline } from "@mui/material";
+import useAuth from "./hooks/useAuth";
 
 const theme = createTheme({
   palette: {
@@ -24,9 +25,10 @@ function App() {
   const [avatarUrl, setAvatarUrl] = useState(storedUser.imageUrl || DEFAULT_AVATAR);
   const navigate = useNavigate();
 
-  const onLogout = () => {
-    localStorage.removeItem("user");
-    localStorage.removeItem("accessToken");
+  const { logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
     navigate("/login"); 
   };
 
@@ -58,7 +60,7 @@ function App() {
           bgcolor: "background.default",
         }}
       >
-        <Topbar onLogout={onLogout} avatarUrl={avatarUrl} />
+        <Topbar onLogout={handleLogout} avatarUrl={avatarUrl} />
 
         <Box sx={{ display: "flex", flex: 1, minHeight: 0 }}>
           <Sidebar />

@@ -67,7 +67,7 @@ public class AuthController {
 
       // 토큰 생성
       String access = jwt.createAccess(email, role, JwtConstants.ACCESS_TOKEN_MINUTES);   
-      String refresh = jwt.createRefresh(email, role, JwtConstants.REFRESH_TOKEN_DAYS);  
+      String refresh = jwt.createRefresh(email, role, JwtConstants.REFRESH_TOKEN_DAYS);        
       
       // Access Token 쿠키 (HttpOnly)
       ResponseCookie accessCookie = ResponseCookie.from("access_token", access)
