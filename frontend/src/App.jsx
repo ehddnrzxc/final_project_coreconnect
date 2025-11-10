@@ -12,6 +12,8 @@ import {
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import { Box, CssBaseline } from "@mui/material";
 import useAuth from "./hooks/useAuth";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
 // Context for mail counts and refresh functions
 export const MailCountContext = createContext();
@@ -96,7 +98,8 @@ function App() {
   };
 
   return (
-    <ThemeProvider theme={theme}>
+  <ThemeProvider theme={theme}>
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
       <CssBaseline />
       <Box
         sx={{
@@ -106,8 +109,7 @@ function App() {
           bgcolor: "background.default",
         }}
       >
-
-      <Topbar onLogout={handleLogout} avatarUrl={avatarUrl} />
+        <Topbar onLogout={handleLogout} avatarUrl={avatarUrl} />
 
         <MailCountContext.Provider value={mailCountContextValue}>
           <Box sx={{ display: "flex", flex: 1, minHeight: 0 }}>
@@ -121,14 +123,14 @@ function App() {
                 flexDirection: "column",
               }}
             >
-              {/* Outlet 하위 페이지에서 context로 setAvatarUrl, refreshCount 들 사용 */}
               <Outlet context={mailCountContextValue} />
             </Box>
           </Box>
         </MailCountContext.Provider>
       </Box>
-    </ThemeProvider>
-  );
+    </LocalizationProvider>
+  </ThemeProvider>
+);
 }
 
 export default App;

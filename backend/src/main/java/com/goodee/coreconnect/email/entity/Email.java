@@ -64,6 +64,8 @@ public class Email {
 	private LocalDateTime emailSentTime;
 	private LocalDateTime emailDeletedTime;
 	private LocalDateTime emailReadAt;
+	@Column(name = "reserved_at")
+	private LocalDateTime reservedAt;
 	
 	private String emailFolder; // INBOX, SENT, TRASH
 	

@@ -21,6 +21,8 @@ import DraftsOutlinedIcon from "@mui/icons-material/DraftsOutlined";
 import ContactsIcon from "@mui/icons-material/Contacts";
 import StarOutlineIcon from "@mui/icons-material/StarOutline";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
+import dayjs from "dayjs";
 import { sendMail, saveDraftMail, getDraftDetail, getUserEmailFromStorage } from "../api/emailApi";
 import { useLocation } from "react-router-dom";
 
@@ -43,6 +45,7 @@ function MailWritePage() {
     emailContent: "",
     attachments: []
   });
+  const [reservedAt, setReservedAt] = useState(null); // 예약발송 시각
   const [sending, setSending] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
 
@@ -66,6 +69,10 @@ function MailWritePage() {
             fileId: f.fileId
           }))
         });
+        // 예약 메일이면 예약시간 값도 추출 (백엔드 연동 시 reservedAt 필드를 사용)
+        if (data.reservedAt) {
+          setReservedAt(dayjs(data.reservedAt));
+        }
       });
     }
   }, [draftId, userEmail]);
@@ -119,6 +126,7 @@ function MailWritePage() {
         emailContent: "",
         attachments: []
       });
+      setReservedAt(null);
     } catch (e) {
       alert(
         "임시저장 실패: " +
@@ -143,10 +151,17 @@ function MailWritePage() {
         return;
       }
 
-      // form에 emailId포함 → 임시메일 전송시 update
-      await sendMail(form);
+      const mailData = { ...form };
+      // 예약 발송 선택 시 reservedAt 필드 추가
+      if (reservedAt) mailData.reservedAt = reservedAt.format("YYYY-MM-DDTHH:mm:ss");
 
-      alert("메일이 정상적으로 발송되었습니다!");
+      await sendMail(mailData);
+
+      alert(
+        reservedAt
+          ? "예약메일이 정상적으로 등록되었습니다!"
+          : "메일이 정상적으로 발송되었습니다!"
+      );
       setForm({
         emailId: null,
         recipientAddress: [],
@@ -156,10 +171,11 @@ function MailWritePage() {
         emailContent: "",
         attachments: []
       });
+      setReservedAt(null);
     } catch (e) {
       alert(
         "메일 전송 실패: " +
-        (e?.response?.data?.message || e.message || "알 수 없는 오류")
+          (e?.response?.data?.message || e.message || "알 수 없는 오류")
       );
     } finally {
       setSending(false);
@@ -289,6 +305,16 @@ function MailWritePage() {
             sx={{ mr: 2 }}
           />
           <Button size="small" sx={{ minWidth: 50, fontSize: 13 }}>중요!</Button>
+        </Box>
+        {/* 예약 발송 입력란 추가 */}
+        <Box sx={{ display: "flex", alignItems: "center", mb: 0.7 }}>
+          <Typography sx={{ width: 85, fontWeight: 700 }}>예약 발송</Typography>
+          <DateTimePicker
+            value={reservedAt}
+            onChange={setReservedAt}
+            minDateTime={dayjs()}
+            slotProps={{ textField: { variant: "standard", sx: { minWidth: 220 } } }}
+          />
         </Box>
         <Divider sx={{ my: 2 }} />
         <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
