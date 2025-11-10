@@ -1,15 +1,20 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { getDocumentDetail } from '../api/approvalApi';
+import { useNavigate, useParams } from 'react-router-dom';
+import { approveDocument, getDocumentDetail, rejectDocument } from '../api/approvalApi';
 import { Alert, Box, Button, CircularProgress, Paper, Typography } from '@mui/material';
 import DynamicApprovalTable from '../components/DynamicApprovalTable';
 import DrafterInfoTable from '../components/DrafterInfoTable';
+import ApprovalStatusChip from '../components/ApprovalStatusChip';
+import ApprovalRejectModal from './ApprovalRejectModal';
 
 function DocumentDetailPage() {
   const { documentId } = useParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [documentData, setDocumentData] = useState(null);
+  const [openRejectModal, setOpenRejectModal] = useState(false);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchDocument = async () => {
@@ -28,6 +33,41 @@ function DocumentDetailPage() {
     };
     fetchDocument();
   }, [documentId]);
+
+  const handleApprove = async () => {
+    const comment = prompt("결재 의견을 입력하세요. 하기 싫음 말고");
+    if (comment === null) {
+      return;
+    }
+
+    try {
+      const requestDTO = { approvalComment: comment || ""};
+      await approveDocument(documentId, requestDTO);
+      alert("결재가 승인되었습니다.");
+      navigate("/approval/my-tasks");
+    } catch (error) {
+      console.error("승인 처리 실패:", error);
+      alert(error.response?.data?.message || "승인 처리에 실패했습니다.");
+    }
+  };
+
+  const handleOpenRejectModal = () => setOpenRejectModal(true);
+
+  const handleCloseRejectModal = () => setOpenRejectModal(false);
+
+  const handleRejectConfirm = async reason => {
+    try {
+      const requestDTO = { approvalComment: reason };
+      await rejectDocument(documentId, requestDTO);
+
+      alert("결재가 반려되었습니다.");
+      handleCloseRejectModal();
+      navigate("/approval/my-tasks");
+    } catch (error) {
+      console.error("반려 처리 실패:", error);
+      alert(error.response?.data?.message || "반려 처리에 실패했습니다.");
+    }
+  };
 
   const mergedHtml = useMemo(() => {
     if (!documentData || !documentData.tempHtmlContent) {
@@ -63,8 +103,9 @@ function DocumentDetailPage() {
 
   return (
     <Box>
-      <Typography variant='h5' gutterBottom sx={{ fontWeight: "bold" }}>
-        {documentData.documentTitle} (상태: {documentData.docStatus})
+      <Typography variant='h5' gutterBottom sx={{ fontWeight: "bold", display: "flex", alignItems: "center", gap: 1.5 }}>
+        {documentData.documentTitle}
+        <ApprovalStatusChip status={documentData.documentStatus} />
       </Typography>
 
       <Paper elevation={3} sx={{ p: 4}}>
@@ -96,7 +137,7 @@ function DocumentDetailPage() {
             <ul>
               {documentData.files.map(file => (
                 <li key={file.fileId}>
-                  <a href={file.fileUrl} target='_blank' rel='moopener noreferrer'>
+                  <a href={file.fileUrl} target='_blank' rel='noopener noreferrer'>
                     {file.fileName}
                   </a>
                 </li>
@@ -107,12 +148,19 @@ function DocumentDetailPage() {
           )}
         </Box>
         <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-          {/* (예시: 내가 결재할 차례일 때)
-          <Button variant='outlined' color='error'>반려</Button>
-          <Button variant='contained' color='primary'>승인</Button>
-          */}
+          {documentData.myTurnApprove && (
+            <>
+              <Button variant='outlined' color='error' onClick={handleOpenRejectModal}>반려</Button>
+              <Button variant='contained' color='primary' onClick={handleApprove}>승인</Button>
+            </>
+          )}
         </Box>
       </Paper>
+      <ApprovalRejectModal
+        open={openRejectModal}
+        handleClose={handleCloseRejectModal}
+        handleSubmit={handleRejectConfirm}
+      />
     </Box>
   )
 

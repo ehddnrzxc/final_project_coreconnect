@@ -9,11 +9,13 @@ import com.goodee.coreconnect.approval.enums.DocumentStatus;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 
 /**
  * 문서 상세 조회 시 사용될 DTO (문서 상세 조회 시 사용하는 무거운 DTO)
  */
 @Getter
+@Setter
 @Builder
 public class DocumentDetailResponseDTO {
 
@@ -28,6 +30,7 @@ public class DocumentDetailResponseDTO {
   private String tempHtmlContent;
   private List<ApprovalLineResponseDTO> approvalLines;
   private List<FileResponseDTO> files;
+  private boolean isMyTurnApprove;
   
   public static DocumentDetailResponseDTO toDTO(Document document) {
     return DocumentDetailResponseDTO.builder()

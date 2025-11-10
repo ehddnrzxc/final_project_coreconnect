@@ -13,8 +13,12 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.thymeleaf.context.Context;
+import org.thymeleaf.spring6.SpringTemplateEngine;
 
 import com.goodee.coreconnect.approval.dto.request.ApprovalLineRequestDTO;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.goodee.coreconnect.approval.dto.request.ApprovalApproveRequestDTO;
 import com.goodee.coreconnect.approval.dto.request.ApprovalRejectRequestDTO;
 import com.goodee.coreconnect.approval.dto.request.DocumentCreateRequestDTO;
@@ -62,6 +66,8 @@ public class ApprovalServiceImpl implements ApprovalService {
   private final S3Service s3Service;
   private final WebSocketDeliveryService webSocketDeliveryService;
   private final NotificationRepository notificationRepository;
+  private final SpringTemplateEngine templateEngine;
+  private final ObjectMapper objectMapper;
 
   /**
    * 새 결재 문서를 상신합니다.
@@ -368,8 +374,55 @@ public class ApprovalServiceImpl implements ApprovalService {
     if (!isDrafter && !isApprover) {
       throw new IllegalStateException("문서를 열람할 권한이 없습니다.");
     }
+    
+    DocumentDetailResponseDTO responseDTO = DocumentDetailResponseDTO.toDTO(document);
+    
+    boolean isMyTurn = false;
+    
+    if (document.getDocumentStatus() == DocumentStatus.IN_PROGRESS) {
+      isMyTurn = document.getApprovalLines().stream()
+          .anyMatch(line -> line.getApprover().getId().equals(currentUserId) &&
+              line.getApprovalLineStatus() == ApprovalLineStatus.WAITING);
+    }
+    
+    responseDTO.setMyTurnApprove(isMyTurn);
+    
+    String templateKey = document.getTemplate().getTemplateKey();
+    String htmlTemplate = document.getTemplate().getTemplateHtmlContent();
+    String jsonData = document.getDocumentDataJson();
+    
+    try {
+      
+      TypeReference<Map<String, Object>> typeRef = new TypeReference<>() {};
+      Map<String, Object> data = objectMapper.readValue(jsonData, typeRef);
+      
+      String processedHtml;
+      
+      if ("EXPENSE".equals(templateKey)) {
+        Context context = new Context();
+        context.setVariables(data);
+        processedHtml = templateEngine.process(htmlTemplate, context);
+      } else {
+        processedHtml = htmlTemplate;
+        for (Map.Entry<String, Object> entry : data.entrySet()) {
+          String key = entry.getKey();
+          String value = String.valueOf(entry.getValue());
+          
+          if (entry.getValue() instanceof Map || entry.getValue() instanceof java.util.List) {
+            continue;
+          }
+          processedHtml = processedHtml.replace("${" + key + "}", value);
+        }
+      }
+      
+      responseDTO.setTempHtmlContent(processedHtml);
+      
+    } catch (Exception e) {
+      log.error("문서 상세 HTML 템플릿 처리 중 오류 발생. documentId: {}", documentId, e);
+      responseDTO.setTempHtmlContent(htmlTemplate);
+    }
 
-    return DocumentDetailResponseDTO.toDTO(document);
+    return responseDTO;
   }
 
   /**
