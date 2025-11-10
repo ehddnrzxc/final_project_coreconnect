@@ -6,6 +6,7 @@ import { getMyProfileImage } from "./features/user/api/userAPI";
 import { fetchUnreadCount, getUserEmailFromStorage } from "./features/email/api/emailApi";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import { Box, CssBaseline } from "@mui/material";
+import useAuth from "./hooks/useAuth";
 
 const theme = createTheme({
   palette: {
@@ -32,9 +33,11 @@ function App() {
     setUnreadCount(count || 0);
   };
 
-  const onLogout = () => {
-    localStorage.removeItem("user");
-    localStorage.removeItem("accessToken");
+  const { logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+
     navigate("/login"); 
   };
 
@@ -69,7 +72,9 @@ function App() {
           bgcolor: "background.default",
         }}
       >
-        <Topbar onLogout={onLogout} avatarUrl={avatarUrl} />
+
+      <Topbar onLogout={handleLogout} avatarUrl={avatarUrl} />
+
         <Box sx={{ display: "flex", flex: 1, minHeight: 0 }}>
           {/* 사이드바에 unreadCount와 refreshUnreadCount 전달 */}
           <Sidebar unreadCount={unreadCount} refreshUnreadCount={refreshUnreadCount} />
