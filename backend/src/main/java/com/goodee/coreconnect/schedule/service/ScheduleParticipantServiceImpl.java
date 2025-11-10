@@ -30,15 +30,15 @@ public class ScheduleParticipantServiceImpl implements ScheduleParticipantServic
   @Override
   public ResponseScheduleParticipantDTO addParticipant(RequestScheduleParticipantDTO dto, String email) {
 
-    // 1️ 요청자 (로그인 유저)
+    // 요청자 (로그인 유저)
     User requester = userRepository.findByEmail(email)
         .orElseThrow(() -> new IllegalArgumentException("요청자(로그인 유저)를 찾을 수 없습니다."));
   
-    // 2️ 실제 추가할 유저 (DTO의 userId)
+    // 실제 추가할 유저 (DTO의 userId)
     User targetUser = userRepository.findById(dto.getUserId())
         .orElseThrow(() -> new IllegalArgumentException("추가할 유저를 찾을 수 없습니다."));
   
-    // 3️ 일정 조회
+    // 일정 조회
     Schedule schedule = scheduleRepository.findById(dto.getScheduleId())
         .orElseThrow(() -> new IllegalArgumentException("일정을 찾을 수 없습니다."));
   
@@ -46,7 +46,7 @@ public class ScheduleParticipantServiceImpl implements ScheduleParticipantServic
     // boolean isOwner = participantRepository.existsByScheduleAndUserAndRole(schedule, requester, ScheduleRole.OWNER);
     // if (!isOwner) throw new SecurityException("다른 참여자를 추가할 권한이 없습니다.");
   
-    // 4️ 중복 체크
+    // 중복 체크
     boolean alreadyExists = participantRepository.findByScheduleAndDeletedYnFalse(schedule)
         .stream()
         .anyMatch(p -> p.getUser().equals(targetUser));

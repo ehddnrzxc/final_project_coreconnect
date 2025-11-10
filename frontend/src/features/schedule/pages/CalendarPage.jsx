@@ -28,34 +28,24 @@ export default function CalendarPage() {
   const [visibleEnd, setVisibleEnd] = useState(null);
   const { snack, showSnack, closeSnack } = useSnackbar();
 
-  const currentUserId = Number(localStorage.getItem("userId"));
+  const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+  const currentUserEmail = storedUser?.email;
+
+  console.log("✅ storedUser:", storedUser);
+  console.log("✅ currentUserEmail:", currentUserEmail);
 
   /** 내 일정 조회 */
   useEffect(() => {
     const fetchSchedules = async () => {
       try {
-        let token = localStorage.getItem("accessToken");
-        let retryCount = 0;
-
-        // 토큰이 아직 로드되지 않았다면 0.5초 간격으로 재확인 (최대 5초)
-        while (!token && retryCount < 10) {
-          await new Promise((r) => setTimeout(r, 500));
-          token = localStorage.getItem("accessToken");
-          retryCount++;
-        }
-
-        if (!token) {
-          showSnack("로그인 정보가 없습니다. 다시 로그인해주세요.", "warning");
-          setLoading(false);
-          return;
-        }
-
-        // 토큰이 확인되면 정상적으로 일정 요청
+        // [변경] accessToken 로딩/대기 로직 제거
+        //  - 이제 http.js 응답 인터셉터가 /auth/refresh 를 통해 토큰을 자동 재발급해 주므로
+        //    여기서는 단순히 API만 호출하면 됨.
         const data = await getMySchedules();
 
         const mapped = data.map((s) => ({
           id: s.id,
-          title: 
+          title:
             s.visibility === "PRIVATE"
               ? `[비공개] ${s.title}`
               : s.title,
@@ -64,8 +54,9 @@ export default function CalendarPage() {
           content: s.content,
           location: s.location,
           visibility: s.visibility,
-          userId: s.userId,        
-          userName: s.userName,  
+          userId: s.userId,
+          userName: s.userName,
+          userEmail: s.userEmail,
           categoryName: s.categoryName,
           meetingRoomName: s.meetingRoomName,
           // PRIVATE은 회색, PUBLIC은 파랑
@@ -91,33 +82,45 @@ export default function CalendarPage() {
 
   /** 일정 클릭 → 상세보기 모달 열기 */
   const handleEventClick = async (info) => {
-    const clicked = events.find((e) => e.id === Number(info.event.id));
+  const clicked = events.find((e) => e.id === Number(info.event.id));
     if (!clicked) return;
 
-    const { visibility, userId } = clicked;
+    const isOwnerEmail = clicked.userEmail === currentUserEmail;
 
-    // 비공개 일정 접근 제한: 작성자(OWNER) 또는 참여자(MEMBER)만 열람
-    if (visibility === "PRIVATE") {
-      const isOwner = userId === currentUserId;
-      let isParticipant = false;
+    // PUBLIC이면 무조건 접근 허용
+    if (clicked.visibility !== "PRIVATE" || isOwnerEmail) {
+      setDetailId(clicked.id);
+      setDetailOpen(true);
+      return;
+    }
 
-      try {
-        const partData = await getParticipantsBySchedule(clicked.id);
-        setParticipants(partData);
+    try {
+      const partData = await getParticipantsBySchedule(clicked.id);
+      const normalized = Array.isArray(partData) ? partData : [partData];
 
-        isParticipant = partData.some((p) => p.userId === currentUserId);
-      } catch (err) {
-        console.warn("참여자 조회 실패", err);
-      }
 
-      if (!isOwner && !isParticipant) {
+      console.log("✅ participants:", normalized);
+      console.log("✅ currentUserEmail:", currentUserEmail);
+
+
+      const isAuthorized = normalized.some(
+        (p) => p.userEmail && p.userEmail === currentUserEmail
+      );
+
+      console.log("✅ isAuthorized result:", isAuthorized);
+
+      if (!isAuthorized) {
         showSnack("비공개 일정은 본인 또는 참석자만 볼 수 있습니다.", "warning");
         return;
       }
-    }
 
-    setDetailId(Number(info.event.id));
-    setDetailOpen(true);
+      setParticipants(normalized);
+      setDetailId(clicked.id);
+      setDetailOpen(true);
+    } catch (err) {
+        console.warn("참여자 조회 실패:", err);
+        showSnack("일정 정보를 불러오는 중 오류가 발생했습니다.", "error");
+    }
   };
 
   /** 일정 등록 or 수정 */
@@ -132,13 +135,15 @@ export default function CalendarPage() {
             e.id === selectedEvent.id
               ? {
                   ...e,
-                  title: updated.title,
+                  title: updated.visibility === "PRIVATE" ? `[비공개] ${updated.title}` : updated.title,
                   start: toISO(updated.startDateTime),
                   end: toISO(updated.endDateTime),
                   content: updated.content,
                   location: updated.location,
                   visibility: updated.visibility,
                   userId: updated.userId,
+                  userEmail: updated.userEmail,
+                  userName: updated.userName,
                   backgroundColor:
                     updated.visibility === "PRIVATE" ? "#999999" : "#00a0e9",
                   borderColor:
@@ -159,6 +164,7 @@ export default function CalendarPage() {
           location: created.location,
           visibility: created.visibility,
           userId: created.userId,
+          userEmail: created.userEmail,
           userName: created.userName,
           backgroundColor:
             created.visibility === "PRIVATE" ? "#999999" : "#00a0e9",
@@ -198,7 +204,8 @@ export default function CalendarPage() {
   const renderEventContent = (arg) => {
     const event = arg.event.extendedProps;
     const isPrivate = event.visibility === "PRIVATE";
-    const isOwner = event.userId === currentUserId;
+
+    const isOwner = event.userEmail === currentUserEmail;
 
     return (
       <div style={{ opacity: isPrivate ? 0.7 : 1 }}>
@@ -289,7 +296,7 @@ export default function CalendarPage() {
         <ScheduleDetailModal
           open={detailOpen}
           scheduleId={detailId}
-          currentUserId={currentUserId}
+          currentUserEmail={currentUserEmail}
           onClose={() => setDetailOpen(false)}
           onEdit={(data) => {
             setSelectedEvent(data);

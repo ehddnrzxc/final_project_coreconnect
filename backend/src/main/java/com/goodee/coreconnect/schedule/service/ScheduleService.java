@@ -9,7 +9,7 @@ public interface ScheduleService {
 
   ResponseScheduleDTO createSchedule(RequestScheduleDTO dto, String email);
 
-  ResponseScheduleDTO updateSchedule(Integer id, RequestScheduleDTO dto);
+  ResponseScheduleDTO updateSchedule(Integer id, RequestScheduleDTO dto, String email);
 
   void deleteSchedule(Integer id);
 

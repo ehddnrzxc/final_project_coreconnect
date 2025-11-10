@@ -25,18 +25,28 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Integer> {
   /** 특정 카테고리에 속한 '삭제되지 않은' 일정 목록 조회 */
   List<Schedule> findByCategoryAndDeletedYnFalse(ScheduleCategory category);
   
+  
   /**
-   * 특정 유저가 OWNER 또는 MEMBER로 포함된 모든 일정 조회
-   * (ScheduleParticipant를 JOIN하여 조회)
+   * 현재 로그인한 사용자가 접근 가능한 일정 전체 조회
+   *  - PUBLIC 일정
+   *  - PRIVATE이지만 내가 OWNER이거나 MEMBER인 일정
    */
   @Query("""
-      SELECT DISTINCT s FROM ScheduleParticipant sp
-      JOIN sp.schedule s
-      WHERE sp.user = :user
-        AND s.deletedYn = false
-        AND sp.deletedYn = false
+      SELECT DISTINCT s
+      FROM Schedule s
+      LEFT JOIN s.participants sp
+      WHERE s.deletedYn = false
+        AND (
+          s.visibility = com.goodee.coreconnect.schedule.enums.ScheduleVisibility.PUBLIC
+          OR s.user = :user
+          OR sp.user = :user
+        )
+      ORDER BY s.startDateTime ASC
   """)
-  List<Schedule> findUserSchedules(@Param("user") User user);
+  List<Schedule> findAccessibleSchedules(@Param("user") User user);
+  
+  
+  
   
   /** 특정 유저의 '오늘 일정' 조회용 메서드 */
   List<Schedule> findByUserAndDeletedYnFalseAndStartDateTimeBetween(
@@ -44,6 +54,7 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Integer> {
           LocalDateTime startOfDay,
           LocalDateTime endOfDay
   );
+  
   
   /** 특정 유저가 해당 시간대에 겹치는 일정이 있는지 검사 (OWNER + MEMBER 모두 포함) */
   @Query("""
@@ -60,6 +71,8 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Integer> {
       @Param("start") LocalDateTime start,
       @Param("end") LocalDateTime end
   );
+  
+  
   
   /**
    *  특정 유저가 참여 중인 일정 중,
@@ -82,6 +95,8 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Integer> {
       @Param("end") LocalDateTime end
   );
 
+  
+  
   /** 
    * 회의실 중복 예약 여부 확인
    * 

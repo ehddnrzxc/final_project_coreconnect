@@ -13,4 +13,12 @@ export const JOB_GRADE_LABELS = {
   PRESIDENT: "대표"
 };
 
+export const LEAVE_REQUEST_LABELS = {
+  PENDING: "대기",
+  APPROVED: "승인",
+  REJECTED: "반려",
+  CANCELED: "취소",
+};
+
 export const getJobGradeLabel = key => JOB_GRADE_LABELS[key] || key;
+export const getLeaveRequestLabel = key => LEAVE_REQUEST_LABELS[key] || key;

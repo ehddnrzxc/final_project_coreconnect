@@ -105,11 +105,12 @@ function App() {
         sx={{
           display: "flex",
           flexDirection: "column",
-          height: "100vh",
+          minHeight: "100vh",
           bgcolor: "background.default",
         }}
       >
         <Topbar onLogout={handleLogout} avatarUrl={avatarUrl} />
+
 
         <MailCountContext.Provider value={mailCountContextValue}>
           <Box sx={{ display: "flex", flex: 1, minHeight: 0 }}>
@@ -125,6 +126,23 @@ function App() {
             >
               <Outlet context={mailCountContextValue} />
             </Box>
+
+      <Topbar onLogout={handleLogout} avatarUrl={avatarUrl} />
+
+        <Box sx={{ display: "flex", flex: 1, }}>
+          {/* 사이드바에 unreadCount와 refreshUnreadCount 전달 */}
+          <Sidebar unreadCount={unreadCount} refreshUnreadCount={refreshUnreadCount} />
+          <Box
+            component="main"
+            sx={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            {/* Outlet 하위 페이지에서 context로 refreshUnreadCount 사용 */}
+            <Outlet context={{ setAvatarUrl, refreshUnreadCount }} />
+
           </Box>
         </MailCountContext.Provider>
       </Box>

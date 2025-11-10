@@ -139,11 +139,13 @@ public class ScheduleServiceImpl implements ScheduleService {
 
   /** 일정 수정 (회의실 상태 자동 갱신 포함) */
   @Override
-  public ResponseScheduleDTO updateSchedule(Integer id, RequestScheduleDTO dto) {
+  public ResponseScheduleDTO updateSchedule(Integer id, RequestScheduleDTO dto, String email) {
+    
+    User user = userRepository.findByEmail(email)
+        .orElseThrow(() -> new IllegalArgumentException("유저가 존재하지 않습니다."));
 
     Schedule schedule = scheduleRepository.findById(id)
         .orElseThrow(() -> new IllegalArgumentException("해당 일정이 존재하지 않습니다."));
-
 
     MeetingRoom newMeetingRoom = (dto.getMeetingRoomId() != null)
         ? meetingRoomRepository.findById(dto.getMeetingRoomId()).orElse(null)
@@ -153,6 +155,17 @@ public class ScheduleServiceImpl implements ScheduleService {
         ? categoryRepository.findById(dto.getCategoryId()).orElse(null)
         : null;
 
+    // 수정 권한 확인 (OWNER 또는 MEMBER)
+    boolean isParticipant = scheduleParticipantRepository
+        .findByScheduleAndDeletedYnFalse(schedule)
+        .stream()
+        .anyMatch(p -> p.getUser().getId().equals(user.getId()));
+
+    if (!isParticipant) {
+        throw new SecurityException("이 일정의 참여자가 아닙니다. 수정 권한이 없습니다.");
+    }
+    
+    
     // 기존 회의실 저장 (나중에 복구를 위해)
     MeetingRoom oldMeetingRoom = schedule.getMeetingRoom();
 
@@ -206,10 +219,10 @@ public class ScheduleServiceImpl implements ScheduleService {
     
     // 모든 참여자 일정 중복 검사
     for (ScheduleParticipant p : participants) {
-      User user = p.getUser();
+      User participantUser = p.getUser();
 
       boolean hasConflict = scheduleRepository.existsUserOverlappingScheduleExceptSelf(
-          user, schedule.getId(), dto.getStartDateTime(), dto.getEndDateTime()
+          participantUser, schedule.getId(), dto.getStartDateTime(), dto.getEndDateTime()
       );
 
       if (hasConflict) {
@@ -220,7 +233,8 @@ public class ScheduleServiceImpl implements ScheduleService {
     }
     
     // 참여자 수정 로직 
-    if (dto.getParticipantIds() != null) {
+    if (dto.getParticipantIds() != null && !dto.getParticipantIds().isEmpty()) {
+      
       List<ScheduleParticipant> existingParticipants =
               scheduleParticipantRepository.findByScheduleAndDeletedYnFalse(schedule);
 
@@ -304,12 +318,14 @@ public class ScheduleServiceImpl implements ScheduleService {
       User user = userRepository.findByEmail(email)
               .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다: " + email));
 
-      List<Schedule> schedules = scheduleRepository.findUserSchedules(user);
+      List<Schedule> schedules = scheduleRepository.findAccessibleSchedules(user);
 
       return schedules.stream()
               .map(ResponseScheduleDTO::toDTO)
               .toList();
   }
+  
+  
 
   /** 유저별 일정 조회 (readOnly),  */
   @Override
@@ -318,12 +334,15 @@ public class ScheduleServiceImpl implements ScheduleService {
     User user = userRepository.findById(userId)
         .orElseThrow(() -> new IllegalArgumentException("유저가 존재하지 않습니다."));
     
-    List<Schedule> schedules = scheduleRepository.findUserSchedules(user);
+    List<Schedule> schedules = scheduleRepository.findAccessibleSchedules(user);
 
     return schedules.stream()
                      .map(ResponseScheduleDTO::toDTO)
                      .collect(Collectors.toList());
   }
+  
+  
+  
   
   /** 로그인한 사용자의 '오늘 일정' 조회 */
   @Override
