@@ -22,13 +22,15 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "email")
 @Getter
+@Setter
 @NoArgsConstructor(access = lombok.AccessLevel.PROTECTED) // 기본 생성자 protected
 @AllArgsConstructor
-@Builder
+@Builder(toBuilder = true)
 public class Email {
 	
 	@Id
@@ -62,6 +64,8 @@ public class Email {
 	private LocalDateTime emailSentTime;
 	private LocalDateTime emailDeletedTime;
 	private LocalDateTime emailReadAt;
+	@Column(name = "reserved_at")
+	private LocalDateTime reservedAt;
 	
 	private String emailFolder; // INBOX, SENT, TRASH
 	

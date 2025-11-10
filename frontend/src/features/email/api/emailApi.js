@@ -113,6 +113,8 @@ export const fetchDraftCount = (userEmail) =>
 export const getDraftDetail = (draftId, userEmail) =>
   http.get(`/email/draft/${draftId}`, { params: { userEmail } });
 
-// 임시저장 메일 삭제
-export const deleteDraftMail = (draftId) =>
-  http.delete(`/email/draft/${draftId}`);
+// 임시메일 삭제 API 함수 예시
+export function deleteDraftMail(draftId) {
+  // BASE_URL + /email/draft/delete/53 -> /api/v1/email/draft/delete/53
+  return http.delete(`/email/draft/delete/${draftId}`);
+}

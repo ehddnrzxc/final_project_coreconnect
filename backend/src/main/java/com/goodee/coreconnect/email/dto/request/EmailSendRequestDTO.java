@@ -1,5 +1,6 @@
 package com.goodee.coreconnect.email.dto.request;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import lombok.Getter;
@@ -10,6 +11,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 public class EmailSendRequestDTO {
+	private Integer emailId;
 	private String emailTitle;
 	private String emailContent;
 	private Integer senderId;
@@ -19,6 +21,7 @@ public class EmailSendRequestDTO {
 	private List<String> bccAddresses;      // 숨은참조 BCC
 	private List<Integer> fileIds;         // 첨부파일 ID
 	private String replyToEmailId;         // 답신 원본
+	private LocalDateTime reservedAt; // 예약발송 시각(yyyy-MM-ddTHH:mm:ss)
 	
     // 첨부파일(Attachment) 필드 추가! (예시: String형)
     private List<EmailAttachmentRequestDTO> attachments;

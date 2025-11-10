@@ -8,6 +8,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.goodee.coreconnect.email.dto.request.EmailSendRequestDTO;
 import com.goodee.coreconnect.email.dto.response.EmailResponseDTO;
+import com.goodee.coreconnect.email.entity.Email;
 
 public interface EmailService {
 
@@ -97,7 +98,25 @@ public interface EmailService {
 	     */
 	    boolean deleteDraft(Integer draftId);	
 		
+
+	    /**
+	     * 임시저장 메일 상세 조회 (for MailWritePage)
+	     * @param draftId 임시메일 id
+	     * @param userEmail 소유자 이메일
+	     * @return EmailResponseDTO
+	     */
+	    EmailResponseDTO getDraftMailDetail(Integer draftId, String userEmail);
 		
-		
-		
+	    /**
+	     * 임시저장 메일 삭제 
+	     * */
+	    void deleteDraftMail(Integer draftId);
+	    
+
+	    /**
+	     * 예약메일 실제 발송(예약 스케줄러 등에서 호출)
+	     * @param reservedEmail 예약된 Email 엔티티(RESERVED 상태)
+	     * @param attachments   (일반적으로 예약 저장 시 이미 등록되므로 null 가능)
+	     */
+	    void sendActualMail(Email reservedEmail, List<MultipartFile> attachments);
 }

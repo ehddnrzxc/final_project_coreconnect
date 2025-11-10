@@ -17,7 +17,6 @@ import SendIcon from '@mui/icons-material/Send';
 import { fetchSentbox } from '../api/emailApi';
 import { useNavigate } from 'react-router-dom';
 
-// 로컬스토리지에서 userEmail 추출
 function getUserEmailFromStorage() {
   const userString = localStorage.getItem("user");
   if (!userString) return null;
@@ -27,6 +26,20 @@ function getUserEmailFromStorage() {
   } catch {
     return null;
   }
+}
+
+// 상태에 따라 라벨 한글 변환 함수
+function getStatusLabel(emailStatus) {
+  if (emailStatus === "SENT") return "발신완료";
+  if (emailStatus === "FAILED" || emailStatus === "FAIL" || emailStatus === "BOUNCE") return "발신실패";
+  // 그 외 상태는 원문 노출
+  return emailStatus;
+}
+// 상태에 따라 칩 색상 결정 함수
+function getStatusColor(emailStatus) {
+  if (emailStatus === "SENT") return "success";
+  if (emailStatus === "FAILED" || emailStatus === "FAIL" || emailStatus === "BOUNCE") return "error";
+  return "default";
 }
 
 const MailSentBoxPage = () => {
@@ -159,8 +172,8 @@ const MailSentBoxPage = () => {
                   </TableCell>
                   <TableCell align="right">
                     <Chip
-                      label={mail.emailStatus}
-                      color={mail.emailStatus === "SENT" ? "success" : mail.emailStatus === "FAILED" ? "error" : "default"}
+                      label={getStatusLabel(mail.emailStatus)}
+                      color={getStatusColor(mail.emailStatus)}
                       size="small"
                     />
                   </TableCell>

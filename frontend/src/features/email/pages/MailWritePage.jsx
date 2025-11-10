@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Paper,
@@ -21,9 +21,11 @@ import DraftsOutlinedIcon from "@mui/icons-material/DraftsOutlined";
 import ContactsIcon from "@mui/icons-material/Contacts";
 import StarOutlineIcon from "@mui/icons-material/StarOutline";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import { sendMail, saveDraftMail } from "../api/emailApi";
+import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
+import dayjs from "dayjs";
+import { sendMail, saveDraftMail, getDraftDetail, getUserEmailFromStorage } from "../api/emailApi";
+import { useLocation } from "react-router-dom";
 
-// 예시: 추천 이메일 리스트 (서버/DB 등에서 불러올 수 있음)
 const emailSuggestions = [
   "admin@gmail.com",
   "ehddnras@gmail.com",
@@ -35,6 +37,7 @@ const emailSuggestions = [
 
 function MailWritePage() {
   const [form, setForm] = useState({
+    emailId: null,
     recipientAddress: [],
     ccAddresses: [],
     bccAddresses: [],
@@ -42,26 +45,69 @@ function MailWritePage() {
     emailContent: "",
     attachments: []
   });
+  const [reservedAt, setReservedAt] = useState(null); // 예약발송 시각
   const [sending, setSending] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
+
+  const location = useLocation();
+  const draftId = new URLSearchParams(location.search).get("draftId");
+  const userEmail = getUserEmailFromStorage();
+
+  useEffect(() => {
+    if (draftId && userEmail) {
+      getDraftDetail(draftId, userEmail).then(res => {
+        const data = res.data.data;
+        setForm({
+          emailId: data.emailId,
+          recipientAddress: data.recipientAddresses || [],
+          ccAddresses: data.ccAddresses || [],
+          bccAddresses: data.bccAddresses || [],
+          emailTitle: data.emailTitle || "",
+          emailContent: data.emailContent || "",
+          attachments: (data.attachments || []).map(f => ({
+            name: f.fileName,
+            fileId: f.fileId
+          }))
+        });
+        // 예약 메일이면 예약시간 값도 추출 (백엔드 연동 시 reservedAt 필드를 사용)
+        if (data.reservedAt) {
+          setReservedAt(dayjs(data.reservedAt));
+        }
+      });
+    }
+  }, [draftId, userEmail]);
 
   const handleFileChange = (e) => {
     setForm((f) => ({
       ...f,
-      attachments: [...f.attachments, ...Array.from(e.target.files)]
+      attachments: [...f.attachments, ...Array.from(e.target.files).map(file => ({
+        name: file.name,
+        file: file
+      }))]
     }));
   };
 
-  // 파일 없이 JSON만 보낼 경우
+  const handleRemoveAttachment = (idx) => {
+    setForm(f => ({
+      ...f,
+      attachments: f.attachments.filter((_, i) => i !== idx)
+    }));
+  };
+
+  const handleFieldChange = (field, value) => {
+    setForm(f => ({
+      ...f,
+      [field]: value
+    }));
+  };
+
   const plainSendMail = async (data) => {
     return await sendMail(data);
   };
 
-  // 임시저장 API 호출
   const handleSaveDraft = async () => {
     setSavingDraft(true);
     try {
-      // 임시저장에서는 제목만 있어도 저장 가능하게(혹은 필요 최소항목만)
       if (!form.emailTitle) {
         alert("임시저장하려면 제목은 입력해야 합니다.");
         setSavingDraft(false);
@@ -72,6 +118,7 @@ function MailWritePage() {
 
       alert("임시저장되었습니다!");
       setForm({
+        emailId: null,
         recipientAddress: [],
         ccAddresses: [],
         bccAddresses: [],
@@ -79,6 +126,7 @@ function MailWritePage() {
         emailContent: "",
         attachments: []
       });
+      setReservedAt(null);
     } catch (e) {
       alert(
         "임시저장 실패: " +
@@ -103,10 +151,19 @@ function MailWritePage() {
         return;
       }
 
-      await plainSendMail(form);
+      const mailData = { ...form };
+      // 예약 발송 선택 시 reservedAt 필드 추가
+      if (reservedAt) mailData.reservedAt = reservedAt.format("YYYY-MM-DDTHH:mm:ss");
 
-      alert("메일이 정상적으로 발송되었습니다!");
+      await sendMail(mailData);
+
+      alert(
+        reservedAt
+          ? "예약메일이 정상적으로 등록되었습니다!"
+          : "메일이 정상적으로 발송되었습니다!"
+      );
       setForm({
+        emailId: null,
         recipientAddress: [],
         ccAddresses: [],
         bccAddresses: [],
@@ -114,10 +171,11 @@ function MailWritePage() {
         emailContent: "",
         attachments: []
       });
+      setReservedAt(null);
     } catch (e) {
       alert(
         "메일 전송 실패: " +
-        (e?.response?.data?.message || e.message || "알 수 없는 오류")
+          (e?.response?.data?.message || e.message || "알 수 없는 오류")
       );
     } finally {
       setSending(false);
@@ -149,7 +207,6 @@ function MailWritePage() {
           mb: 2
         }}
       >
-        {/* 수신/참조/숨은참조/주소록/북마크 버튼줄 */}
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
           <Tooltip title="주소록"><IconButton><ContactsIcon /></IconButton></Tooltip>
           <Tooltip title="중요"><IconButton><StarOutlineIcon /></IconButton></Tooltip>
@@ -243,14 +300,23 @@ function MailWritePage() {
             variant="standard"
             fullWidth
             value={form.emailTitle}
-            onChange={e => setForm(f => ({ ...f, emailTitle: e.target.value }))}
+            onChange={e => handleFieldChange("emailTitle", e.target.value)}
             placeholder="제목"
             sx={{ mr: 2 }}
           />
           <Button size="small" sx={{ minWidth: 50, fontSize: 13 }}>중요!</Button>
         </Box>
+        {/* 예약 발송 입력란 추가 */}
+        <Box sx={{ display: "flex", alignItems: "center", mb: 0.7 }}>
+          <Typography sx={{ width: 85, fontWeight: 700 }}>예약 발송</Typography>
+          <DateTimePicker
+            value={reservedAt}
+            onChange={setReservedAt}
+            minDateTime={dayjs()}
+            slotProps={{ textField: { variant: "standard", sx: { minWidth: 220 } } }}
+          />
+        </Box>
         <Divider sx={{ my: 2 }} />
-        {/* 첨부파일 */}
         <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
           <AttachFileIcon fontSize="small" sx={{ mr: 1, color: "#666" }} />
           <Input type="file" inputProps={{ multiple: true }} onChange={handleFileChange} />
@@ -258,37 +324,28 @@ function MailWritePage() {
             최대 20MB, 1회에 5MB까지
           </Box>
         </Box>
-        {/* 첨부파일 리스트 */}
         <Box sx={{ mb: 2 }}>
           {form.attachments.map((file, idx) => (
             <Chip
               key={file.name + idx}
               label={file.name}
               sx={{ mr: 1, mb: 0.5 }}
-              onDelete={() =>
-                setForm(f => ({
-                  ...f,
-                  attachments: f.attachments.filter((_, i) => i !== idx)
-                }))
-              }
+              onDelete={() => handleRemoveAttachment(idx)}
             />
           ))}
         </Box>
-        {/* 본문 */}
         <Box sx={{ mb: 2 }}>
           <TextField
             label="본문"
             value={form.emailContent}
-            onChange={e => setForm(f => ({ ...f, emailContent: e.target.value }))}
+            onChange={e => handleFieldChange("emailContent", e.target.value)}
             fullWidth
             multiline
             rows={10}
             variant="outlined"
             placeholder="내용을 입력하세요"
           />
-          {/* 실제 서비스에서는 HTML 편집기(smarteditor2, quill 등) 삽입 가능 */}
         </Box>
-        {/* 메일 전송/임시저장 버튼 */}
         <Box sx={{ display: "flex", alignItems: "center", mt: 3 }}>
           <Button
             variant="contained"

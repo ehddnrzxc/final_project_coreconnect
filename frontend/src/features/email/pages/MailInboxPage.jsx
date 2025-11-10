@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, Paper, Table, TableHead, TableBody, TableRow, TableCell,
+import {
+  Box, Typography, Paper, Table, TableHead, TableBody, TableRow, TableCell,
   IconButton, ButtonGroup, Button, InputBase, Divider, Checkbox, Chip, Pagination, Badge, Tabs, Tab
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
@@ -16,9 +17,7 @@ import SyncIcon from '@mui/icons-material/Sync';
 import ViewListIcon from '@mui/icons-material/ViewList';
 
 import { fetchInbox, fetchUnreadCount, getUserEmailFromStorage } from '../api/emailApi';
-import { useNavigate, useLocation } from 'react-router-dom'; // <-- useLocation 추가
-
-// 받은메일함 첫 화면에 "오늘", "안읽음", "전체" 탭/필터, 안읽은메일 개수 Chip 반영 (Badge 제거)
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const MailInboxPage = () => {
   const [tab, setTab] = useState("all"); // all|today|unread
@@ -156,7 +155,7 @@ const MailInboxPage = () => {
               <TableCell sx={{ fontWeight: 700 }}>발신자</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>제목</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>일자</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>받는사람</TableCell>
+              <TableCell sx={{ fontWeight: 700 }}>받는사람 메일주소</TableCell>
               <TableCell align="right" sx={{ fontWeight: 700 }}>상태</TableCell>
               <TableCell sx={{ fontWeight: 700 }}></TableCell>
             </TableRow>
@@ -188,17 +187,23 @@ const MailInboxPage = () => {
                       : "-"}
                   </TableCell>
                   <TableCell sx={{ fontSize: 13 }}>
-                    {/* 받는사람: addresses 도 있고, recipient 엔티티 있을 수 있음 */}
-                    {Array.isArray(mail.recipientAddresses)
-                      ? mail.recipientAddresses.join(', ')
-                      : ''}
+                    {/* 받는사람 메일주소 (TO) 명확하게 출력 */}
+                    {Array.isArray(mail.recipientAddresses) && mail.recipientAddresses.length > 0
+                      ? mail.recipientAddresses.map((email, idx) => (
+                          <span key={email + idx}>
+                            {email}
+                            {idx < mail.recipientAddresses.length - 1 ? ', ' : ''}
+                          </span>
+                        ))
+                      : '-'
+                    }
                   </TableCell>
                   <TableCell align="right">
-                    <Chip
-                      label={mail.emailStatus}
-                      color={mail.emailStatus === "SENT" ? "success" : (mail.emailStatus === "FAILED" ? "error" : "default")}
-                      size="small"
-                    />
+                    {(mail.emailStatus === "SENT" && "수신완료") ||
+                     (mail.emailStatus === "REJECTED" && "반려") ||
+                     (mail.emailStatus === "IN_PROGRESS" && "진행중") ||
+                     (mail.emailStatus === "DRAFT" && "임시저장") ||
+                     mail.emailStatus}
                   </TableCell>
                   <TableCell>
                     <IconButton size="small" onClick={e => { e.stopPropagation(); navigate(`/email/${mail.emailId}`); }}>

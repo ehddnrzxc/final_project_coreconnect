@@ -232,16 +232,37 @@ public class EmailController {
     // 임시보관함 개수 (Redis 활용)
     @GetMapping("/draftbox/count")
     public ResponseEntity<ResponseDTO<Long>> getDraftCount(@RequestParam String userEmail) {
+    	 System.out.println("userEmail = " + userEmail); 
         long count = emailService.getDraftCount(userEmail); // 내부에 Redis/caching 사용
         return ResponseEntity.ok(ResponseDTO.success(count, "임시보관함 개수 조회 성공"));
     }
-
-    // 임시메일 삭제
-    @DeleteMapping("/draft/{draftId}")
-    public ResponseEntity<ResponseDTO<Boolean>> deleteDraft(@PathVariable("draftId") Integer draftId) {
-        boolean deleted = emailService.deleteDraft(draftId);
-        return ResponseEntity.ok(ResponseDTO.success(deleted, deleted ? "삭제 성공" : "삭제 실패"));
+    
+    /**
+     * 임시저장 메일 상세조회
+     * [프론트 메일쓰기 페이지 바인딩용]
+     * */
+    @GetMapping("/draft/{draftId}")
+    public ResponseEntity<ResponseDTO<EmailResponseDTO>> getDraftDetail(
+            @PathVariable("draftId") Integer draftId,
+            @RequestParam("userEmail") String userEmail
+    ) {
+        // 서비스에서 상세 데이터 조회 (소유자 검증 포함)
+        EmailResponseDTO dto = emailService.getDraftMailDetail(draftId, userEmail);
+        // 프론트에서 바로 사용 가능하도록 응답
+        return ResponseEntity.ok(ResponseDTO.success(dto, "임시저장 메일 상세조회 성공"));
     }
+    
+    /**
+     * 임시저장 메일(DRAFT) 삭제
+     * [프론트에서 deleteDraftMail 호출시 실행됨]
+     */
+    @DeleteMapping("/draft/delete/{draftId}")
+    public ResponseEntity<Void> deleteDraftMail(@PathVariable("draftId") Integer draftId) {
+    	log.info("draftId: {}", draftId);
+        emailService.deleteDraftMail(draftId);
+        return ResponseEntity.noContent().build();
+    }
+    
     
     
     

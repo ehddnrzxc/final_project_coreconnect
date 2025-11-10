@@ -34,9 +34,9 @@ import NewDocumentPage from "./features/approval/pages/NewDocumentPage";
 import MailSentBoxPage from "./features/email/pages/MailSentBoxPage";
 import MailDetailPage from "./features/email/pages/MailDetailPage";
 import DocumentDetailPage from "./features/approval/pages/DocumentDetailPage";
+import DraftBoxPage from "./features/email/pages/DraftBoxPage";
 import LeavePage from "./features/leave/LeavePage";
 import LeaveRequestsPage from "./features/admin/components/LeaveRequestsPage";
-
 
 /* 전체 라우트 구조 */
 const router = createBrowserRouter([
@@ -77,6 +77,7 @@ const router = createBrowserRouter([
           { path: "trash", element: <MailTrashPage /> },
           { path: "sent", element: <MailSentBoxPage/>},
           { path: ":emailId", element: <MailDetailPage /> },
+          { path: "draftbox", element: <DraftBoxPage /> }, // ★ 임시보관함 추가
         ]
       },
       {
@@ -104,7 +105,7 @@ const router = createBrowserRouter([
         path: "leave",
         element: (
           <ProtectedRoute>
-            <LeavePage />
+            {/* <LeavePage />*/}
           </ProtectedRoute>
         ),
       },
