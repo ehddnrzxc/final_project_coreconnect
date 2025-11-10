@@ -6,7 +6,7 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.goodee.coreconnect.email.dto.request.EmailSendRequestDTo;
+import com.goodee.coreconnect.email.dto.request.EmailSendRequestDTO;
 import com.goodee.coreconnect.email.dto.response.EmailResponseDTO;
 
 public interface EmailService {
@@ -16,7 +16,7 @@ public interface EmailService {
      * @param requestDTO 이메일 전송 요청 DTO (제목/내용/수신자/참조/숨은참조/첨부/답신정보 등)
      * @return EmailResponseDTO 발송된 이메일 상세정보/상태/결과
      */
-	EmailResponseDTO sendEmail(EmailSendRequestDTo requestDTO, List<MultipartFile> attachments) throws IOException; 
+	EmailResponseDTO sendEmail(EmailSendRequestDTO requestDTO, List<MultipartFile> attachments) throws IOException; 
 	
 	/**
      * 특정 이메일의 상세 정보를 조회합니다.
@@ -52,4 +52,52 @@ public interface EmailService {
      * @return Page<EmailResponseDTO> 페이징된 EmailResponseDTO 리스트
      */
 	Page<EmailResponseDTO> getBounceBox(Integer userId, int page, int size);
+
+	// [NEW] 개별 메일 읽음 처리 (상세조회 외에도 별도 PATCH 호출 대응)
+		boolean markMailAsRead(Integer emailId, String userEmail);
+
+		 // ------------- [Draft(임시저장)] 기능용 추가 메서드 -------------
+
+	    /**
+	     * 임시저장(임시보관함) 메일 저장 (등록 및 수정)
+	     * @param requestDTO 임시저장할 메일 데이터 DTO
+	     * @param attachments 첨부파일 리스트
+	     * @return EmailResponseDTO 저장된 임시메일 정보
+	     */
+	    EmailResponseDTO saveDraft(EmailSendRequestDTO requestDTO, List<MultipartFile> attachments) throws IOException;
+
+	    /**
+	     * 임시보관함(임시저장 메일함) 목록 페이징 조회
+	     * @param userEmail 발신자(본인)
+	     * @param page page 번호
+	     * @param size 페이지 크기
+	     * @return Page<EmailResponseDTO>
+	     */
+	    Page<EmailResponseDTO> getDraftbox(String userEmail, int page, int size);
+
+	    /**
+	     * 임시보관함 개수 조회 (캐싱/RDB/레디스 등 활용)
+	     * @param userEmail 발신자(본인)
+	     * @return long 임시저장메일 개수
+	     */
+	    long getDraftCount(String userEmail);
+
+	    /**
+	     * 임시저장 메일 상세 조회
+	     * @param draftId 임시메일 id
+	     * @param userEmail 소유자 이메일
+	     * @return EmailResponseDTO
+	     */
+	    EmailResponseDTO getDraftDetail(Integer draftId, String userEmail);
+
+	    /**
+	     * 임시저장 메일 삭제
+	     * @param draftId 메일id
+	     * @return boolean 삭제성공/실패
+	     */
+	    boolean deleteDraft(Integer draftId);	
+		
+		
+		
+		
 }

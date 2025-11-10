@@ -1,18 +1,20 @@
-import React, { useEffect, useState } from "react";
-import { Box, Button, Divider, List, ListItem, ListItemButton, ListItemText, Typography, IconButton, Chip, Badge } from "@mui/material";
+import React from "react";
+import {
+  Box, Button, List, ListItem, ListItemButton, ListItemText, Typography,
+  IconButton, Chip, Badge
+} from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
-import MailOutlineIcon from "@mui/icons-material/MailOutline";
-import LocalOfferOutlinedIcon from "@mui/icons-material/LocalOfferOutlined";
-import LabelOutlinedIcon from "@mui/icons-material/LabelOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { useNavigate } from "react-router-dom";
-import { fetchUnreadCount, fetchInbox, getUserEmailFromStorage } from "../api/emailApi";
+import {
+  getUserEmailFromStorage, fetchInbox, fetchDraftCount
+} from "../api/emailApi";
 
-// 커스텀 훅: 오늘 안읽은 메일 수
-function useTodayUnreadCount(userEmail) {
-  const [count, setCount] = useState(0);
-  useEffect(() => {
+// 오늘의 안읽은 메일 수
+const useTodayUnreadCount = (userEmail) => {
+  const [count, setCount] = React.useState(0);
+  React.useEffect(() => {
     if (!userEmail) return;
     fetchInbox(userEmail, 0, 100, "today").then(res => {
       const todayMails = res?.data?.data?.content || [];
@@ -21,33 +23,37 @@ function useTodayUnreadCount(userEmail) {
     });
   }, [userEmail]);
   return count;
-}
+};
 
-// 커스텀 훅: 받은 메일함 '안읽은' 전체 개수
-function useUnreadCount(userEmail) {
-  const [count, setCount] = useState(0);
-  useEffect(() => {
+// 임시저장함(임시보관함) 메일 수
+const useDraftCount = (userEmail) => {
+  const [count, setCount] = React.useState(0);
+  React.useEffect(() => {
     if (!userEmail) return;
-    fetchUnreadCount(userEmail)
-      .then(count => setCount(count || 0))
+    fetchDraftCount(userEmail)
+      .then(setCount)
       .catch(() => setCount(0));
   }, [userEmail]);
   return count;
-}
+};
 
-const MailSidebar = () => {
+const MailSidebar = ({ unreadCount, refreshUnreadCount }) => {
   const navigate = useNavigate();
   const userEmail = getUserEmailFromStorage();
-  const unreadCount = useUnreadCount(userEmail); // 전체 받은메일함에서 안읽은 메일
-  const todayUnreadCount = useTodayUnreadCount(userEmail); // 오늘 온 메일 중 안읽은 것
+  const todayUnreadCount = useTodayUnreadCount(userEmail);
+  const draftCount = useDraftCount(userEmail); // 추가: 임시저장 갯수
 
-  // 추가: 오늘의 메일을 클릭하면 오늘 탭으로 이동 (기존 기능 보존)
-  const goTodayMailTab = () => {
-    navigate('/email?tab=today');
-  };
+  const goTodayMailTab = () => navigate("/email?tab=today");
+  const goUnreadMailTab = () => navigate("/email?tab=unread");
+  const goAllMailTab = () => navigate("/email?tab=all");
 
   return (
-    <Box sx={{ width: 260, px: 2, py: 1, bgcolor: "#fff", height: "100vh", borderRight: "1px solid #e5e7eb", display: "flex", flexDirection: "column", gap: 1 }}>
+    <Box
+      sx={{
+        width: 260, px: 2, py: 1, bgcolor: "#fff", height: "100vh",
+        borderRight: "1px solid #e5e7eb", display: "flex", flexDirection: "column", gap: 1
+      }}
+    >
       {/* 상단 타이틀, 옵션 */}
       <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
         <Typography variant="h6" fontWeight={700} sx={{ flex: 1, fontSize: "1rem" }}>
@@ -95,7 +101,7 @@ const MailSidebar = () => {
               </ListItemButton>
             </ListItem>
             <ListItem disableGutters sx={{ py: 0.5, px: 0 }}>
-              <ListItemButton sx={{ borderRadius: 1, px: 1.3, py: 0.5 }}>
+              <ListItemButton sx={{ borderRadius: 1, px: 1.3, py: 0.5 }} onClick={goUnreadMailTab}>
                 <ListItemText
                   primary={
                     <Box sx={{ display: "flex", alignItems: "center" }}>
@@ -111,7 +117,6 @@ const MailSidebar = () => {
               </ListItemButton>
             </ListItem>
             <ListItem disableGutters sx={{ py: 0.5, px: 0 }}>
-              {/* 오늘의 메일 클릭시 오늘탭 바로 이동 */}
               <ListItemButton sx={{ borderRadius: 1, px: 1.3, py: 0.5 }} onClick={goTodayMailTab}>
                 <ListItemText
                   primary={
@@ -130,7 +135,6 @@ const MailSidebar = () => {
           </List>
         </Box>
 
-        {/* ... (이하 기존 메일함, 지운편지함 등 뒷부분은 그대로) ... */}
         {/* 메일함 */}
         <Box sx={{ mb: 2 }}>
           <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
@@ -142,7 +146,7 @@ const MailSidebar = () => {
             <ListItem disableGutters sx={{ py: 0.5, px: 0 }}>
               <ListItemButton
                 sx={{ borderRadius: 1, px: 1.3, py: 0.5 }}
-                onClick={() => navigate("/email")}
+                onClick={goAllMailTab}
               >
                 <ListItemText
                   primary={
@@ -166,6 +170,7 @@ const MailSidebar = () => {
                 <ListItemText primary={<Typography variant="body2">보낸메일함</Typography>} />
               </ListItemButton>
             </ListItem>
+            {/* 임시보관함 */}
             <ListItem disableGutters sx={{ py: 0.5, px: 0 }}>
               <ListItemButton
                 sx={{ borderRadius: 1, px: 1.3, py: 0.5 }}
@@ -174,10 +179,9 @@ const MailSidebar = () => {
                 <ListItemText primary={
                   <Box sx={{ display: "flex", alignItems: "center" }}>
                     <Typography variant="body2">임시보관함</Typography>
-                    {/* 예시 숫자: 실제 API와 연동 필요 */}
                     <Chip
                       size="small"
-                      label={13}
+                      label={draftCount} // 실제 개수
                       sx={{
                         ml: 1,
                         bgcolor: "#f2f4f8",
@@ -201,7 +205,7 @@ const MailSidebar = () => {
             </ListItem>
           </List>
         </Box>
-        {/* 지운편지함 */}
+        {/* 지운편지함(휴지통) */}
         <Box sx={{ mb: 2 }}>
           <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
             <Typography variant="subtitle2" fontWeight={700} sx={{ fontSize: 13, color: "#999", flex: 1 }}>
@@ -223,7 +227,6 @@ const MailSidebar = () => {
           </List>
         </Box>
       </Box>
-      {/* 아래에 필요한 추가 메뉴나 영역 있으면 여기에... */}
     </Box>
   );
 };
