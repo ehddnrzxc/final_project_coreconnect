@@ -61,7 +61,7 @@ public class AdminUserController {
   
   /** 사용자 목록 조회 */
   @GetMapping
-  @PreAuthorize("hasRole('isAuthenticated')")
+  @PreAuthorize("isAuthenticated()")
   public List<UserDTO> findAllUsers() {
     return userService.findAllUsers();
   }
