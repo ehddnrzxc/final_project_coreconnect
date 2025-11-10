@@ -123,10 +123,10 @@ public class MeetingRoomServiceImpl implements MeetingRoomService {
   @Override
   @Transactional(readOnly = true)
   public List<MeetingRoomDTO> getAvailableRooms(LocalDateTime start, LocalDateTime end) {
-    // 1️⃣ 전체 회의실 중 deletedYn = false인 것만 조회
+    // 전체 회의실 중 deletedYn = false인 것만 조회
     List<MeetingRoom> allRooms = meetingRoomRepository.findByDeletedYn(false);
 
-    // 2️⃣ 각 회의실마다 겹치는 일정이 있는지 검사
+    // 각 회의실마다 겹치는 일정이 있는지 검사
     return allRooms.stream()
             .filter(room -> {
                 boolean overlap = scheduleRepository.existsOverlappingSchedule(room, start, end);

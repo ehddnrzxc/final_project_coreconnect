@@ -55,8 +55,15 @@ export const getMyTodaySchedules = () =>
   http.get("/schedules/me/today").then((res) => res.data);
 
 /** 단일 일정 조회 */
-export const getScheduleById = (id) =>
-  http.get(`/schedules`, { params: { id } }).then((res) => res.data);
+export const getScheduleById = async (id) => {
+  try {
+    const res = await http.get(`/schedules`, { params: { id } });
+    return res.data;
+  } catch (err) {
+    const message = err.response?.data || "일정을 불러올 수 없습니다.";
+    throw new Error(message);
+  }
+};
 
 /** 카테고리 전체 조회 */
 export const getScheduleCategories = () =>
