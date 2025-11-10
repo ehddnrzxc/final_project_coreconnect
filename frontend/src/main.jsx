@@ -35,6 +35,7 @@ import MailSentBoxPage from "./features/email/pages/MailSentBoxPage";
 import MailDetailPage from "./features/email/pages/MailDetailPage";
 import DocumentDetailPage from "./features/approval/pages/DocumentDetailPage";
 import LeavePage from "./features/leave/LeavePage";
+import LeaveRequestsPage from "./features/admin/components/LeaveRequestsPage";
 
 
 /* 전체 라우트 구조 */
@@ -132,6 +133,7 @@ const router = createBrowserRouter([
           { path: "templates/create", element: <TemplateAdminCreate /> },
           { path: "board/category", element: <AdminCategoryPage /> },
           { path: "password-reset-requests", element: <PasswordResetPage /> },
+          { path: "leave-requests", element: <LeaveRequestsPage /> }
         ],
       },
       {

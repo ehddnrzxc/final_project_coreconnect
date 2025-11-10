@@ -13,9 +13,9 @@ import {
 import HomeIcon from "@mui/icons-material/Home";
 import MailOutlineIcon from "@mui/icons-material/MailOutline";
 import DescriptionIcon from "@mui/icons-material/Description";
-import WorkOutlineIcon from "@mui/icons-material/WorkOutline";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import PushPinIcon from "@mui/icons-material/PushPin";
+import BeachAccessIcon from '@mui/icons-material/BeachAccess';
 
 const items = [
   { to: "/home", label: "홈", icon: <HomeIcon fontSize="small" /> },
@@ -25,7 +25,7 @@ const items = [
     label: "전자결재",
     icon: <DescriptionIcon fontSize="small" />,
   },
-  { to: "/works", label: "Works", icon: <WorkOutlineIcon fontSize="small" /> },
+  { to: "/leave", label: "휴가", icon: <BeachAccessIcon fontSize="small" /> },
   {
     to: "/calendar",
     label: "캘린더",

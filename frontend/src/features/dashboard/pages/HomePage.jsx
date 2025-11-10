@@ -91,48 +91,6 @@ export default function Home() {
         <Grid item xs={12} md={4}>
           <AttendancePage/>
         </Grid>
-        {/* 작성할 보고 */}
-        <Grid item xs={12} md={4}>
-          <Card
-            title="작성할 보고"
-            right={
-              <Button
-                component={Link}
-                to="#"
-                size="small"
-                sx={{ textTransform: "none" }}
-              >
-                보고 작성
-              </Button>
-            }
-          >
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <Box>
-                <Chip
-                  label="제 2회차"
-                  size="small"
-                  color="success"
-                  sx={{ mb: 0.5 }}
-                />
-                <Typography variant="body2" sx={{ mb: 0.25 }}>
-                  10/29 (수)
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  test
-                </Typography>
-              </Box>
-              <Button size="small" sx={{ textTransform: "none" }}>
-                작성하기
-              </Button>
-            </Box>
-          </Card>
-        </Grid>
         {/* Quick Menu */}
         <Grid item xs={12} md={4}>
           <Card title="Quick Menu">
@@ -188,25 +146,6 @@ export default function Home() {
                 />
               </ListItem>
             </List>
-          </Card>
-        </Grid>
-        {/* 메일함 바로가기 */}
-        <Grid item xs={12} md={4}>
-          <Card title="메일함 바로가기">
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <Typography variant="body2" color="text.secondary">
-                받은메일함 1 • 오늘메일함 0 • 중요메일함 0
-              </Typography>
-              <Button variant="contained" size="small">
-                이동
-              </Button>
-            </Box>
           </Card>
         </Grid>
         {/* 캘린더 */}
@@ -279,79 +218,6 @@ export default function Home() {
                 />
               </ListItem>
             </List>
-          </Card>
-        </Grid>
-        {/* 내 경비관리 */}
-        <Grid item xs={12} md={4}>
-          <Card title="내 경비관리" right="2025.10">
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                mb: 1.5,
-              }}
-            >
-              <Typography variant="body2">
-                법인카드 0원 • 경비/일반 영수증 172,013원
-              </Typography>
-              <Button size="small" sx={{ textTransform: "none" }}>
-                영수증 제출
-              </Button>
-            </Box>
-            <Grid container spacing={1.5}>
-              {[
-                ["미결재", "2건"],
-                ["결재중", "0건"],
-                ["결재완료", "1건"],
-              ].map(([label, value]) => (
-                <Grid item xs={4} key={label}>
-                  <Box
-                    sx={{
-                      border: "1px solid #e5e7eb",
-                      borderRadius: 2,
-                      p: 1.5,
-                      bgcolor: "#ffffff",
-                    }}
-                  >
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ mb: 0.5 }}
-                    >
-                      {label}
-                    </Typography>
-                    <Typography variant="body2" fontWeight={600}>
-                      {value}
-                    </Typography>
-                  </Box>
-                </Grid>
-              ))}
-            </Grid>
-          </Card>
-        </Grid>
-        {/* 차량운행일지 */}
-        <Grid item xs={12} md={4}>
-          <Card title="차량운행일지" right="2025.10">
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <Box>
-                <Typography variant="subtitle2" fontWeight={600}>
-                  영업 3 (소나타)
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  미결재된 운행일지가 1건 있습니다
-                </Typography>
-              </Box>
-              <Button size="small" sx={{ textTransform: "none" }}>
-                결재 요청하기
-              </Button>
-            </Box>
           </Card>
         </Grid>
       </Box>
