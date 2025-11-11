@@ -1,129 +1,137 @@
-import React, { useEffect, useState } from "react";
-import {
-  Box,
-  Typography,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
-  IconButton,
-  TextField,
-  Button,
-} from "@mui/material"; // MUI: UI 구성용 기본 컴포넌트들
-import EditIcon from "@mui/icons-material/Edit"; // MUI: 수정 아이콘
-import DeleteIcon from "@mui/icons-material/Delete"; // MUI: 삭제 아이콘
-import SaveIcon from "@mui/icons-material/Save"; // MUI: 저장 아이콘
-import AddIcon from "@mui/icons-material/Add"; // MUI: 추가 아이콘
-import {
-  getAllCategories,
-  createCategory,
-  updateCategory,
-  deleteCategory,
-} from "../api/boardCategoryAPI"; // API 통신 모듈
-import { handleApiError } from "../../../utils/handleError"; // 공통 에러 처리 함수
+import { useEffect, useState } from "react";
+// React 훅 불러오기
+// useEffect: 생명주기 관리 (렌더링 이후 데이터 로드 등)
+// useState: 상태 관리 (데이터 저장 및 변경 시 리렌더링)
+import { Box, Typography, Table, TableHead, TableRow, TableCell, TableBody, IconButton, TextField, Button } from "@mui/material";
+// MUI(Material UI) 기본 UI 컴포넌트
+// Box: 레이아웃 컨테이너(div 역할)
+// Typography: 텍스트 출력용
+// Table, TableHead, TableRow, TableCell, TableBody: 표 구조 렌더링
+// IconButton: 아이콘 클릭 버튼
+// TextField: 입력 필드
+// Button: 일반 버튼
+import EditIcon from "@mui/icons-material/Edit"; // 수정 아이콘 (연필 모양)
+import DeleteIcon from "@mui/icons-material/Delete"; // 삭제 아이콘 (휴지통)
+import SaveIcon from "@mui/icons-material/Save"; // 저장 아이콘 (디스크)
+import AddIcon from "@mui/icons-material/Add"; // 추가 아이콘 (플러스)
+import { getAllCategories, createCategory, updateCategory, deleteCategory } from "../api/boardCategoryAPI";
+// 게시판 카테고리 관련 API 함수
+// getAllCategories: 전체 카테고리 조회
+// createCategory: 카테고리 생성
+// updateCategory: 카테고리 수정
+// deleteCategory: 카테고리 삭제
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext"; // 전역 스낵바 컨텍스트 추가
 
-// 관리자용 카테고리 관리 페이지 컴포넌트
+// 관리자 전용 카테고리 관리 페이지 컴포넌트
 const AdminCategoryPage = () => {
-  // React 상태 관리
-  const [categories, setCategories] = useState([]); // 전체 카테고리 목록
-  const [editingId, setEditingId] = useState(null); // 현재 수정 중인 카테고리 id
-  const [editedData, setEditedData] = useState({ name: "", orderNo: "" }); // 수정 중 데이터
-  const [newCategory, setNewCategory] = useState({ name: "", orderNo: "" }); // 새로 추가할 카테고리 데이터
+  const { showSnack } = useSnackbarContext(); // 스낵바 훅 사용
 
-  // 비동기로 전체 카테고리 조회
+  // 상태 관리
+  const [categories, setCategories] = useState([]); // 전체 카테고리 목록을 저장하는 상태
+  const [editingId, setEditingId] = useState(null); // 현재 수정 중인 카테고리의 id (수정 모드 판별용)
+  const [editedData, setEditedData] = useState({ name: "", orderNo: "" }); // 수정 중 입력값 저장
+  const [newCategory, setNewCategory] = useState({ name: "", orderNo: "" }); // 신규 등록용 입력값 저장
+
+  // 전체 카테고리 불러오기 (비동기 함수)
   const loadCategories = async () => {
     try {
-      const res = await getAllCategories(); // 백엔드에서 전체 목록 조회
-      // orderNo 기준 정렬
+      const res = await getAllCategories(); // 백엔드 API로 전체 카테고리 목록 요청
+      // 받아온 목록을 orderNo(정렬순서) 기준으로 오름차순 정렬
       const sorted = [...(res.data.data || [])].sort(
         (a, b) => (a.orderNo ?? 0) - (b.orderNo ?? 0)
       );
-      setCategories(sorted); // 상태에 반영
+      setCategories(sorted); // 정렬된 목록을 상태에 반영
     } catch (err) {
-      handleApiError(err, "카테고리 조회 실패");
+      showSnack("카테고리 목록을 불러오는 중 오류가 발생했습니다.", "error");
     }
   };
 
-  // 컴포넌트 마운트 시 한 번 실행 → 카테고리 목록 불러오기
+  // 컴포넌트 최초 마운트 시 전체 카테고리 목록 불러오기
   useEffect(() => {
-    loadCategories();
+    loadCategories(); // 페이지 로딩 시 1회 실행
   }, []);
 
-  // 수정 버튼 클릭 시 실행 → 수정 모드로 전환
+  // 수정 버튼 클릭 시 동작
   const handleEdit = (cat) => {
-    setEditingId(cat.id); // 수정 중인 행 id 저장
-    setEditedData({ name: cat.name, orderNo: cat.orderNo }); // 기존 데이터 입력 필드에 표시
+    setEditingId(cat.id); // 수정 모드로 전환 (해당 행만 수정 가능)
+    setEditedData({ name: cat.name, orderNo: cat.orderNo }); // 기존 데이터 입력창에 채워넣기
   };
 
-  // 저장 버튼 클릭 시 실행 → 수정 내용 반영
+  // 저장 버튼 클릭 시 동작 → 수정 내용 백엔드 반영
   const handleSave = async (id) => {
     try {
-      await updateCategory(id, editedData); // API 요청으로 수정
-      alert("카테고리가 수정되었습니다.");
-      setEditingId(null); // 수정 모드 해제
-      loadCategories(); // 목록 새로고침
+      await updateCategory(id, editedData); // 수정 API 요청
+      showSnack("카테고리가 수정되었습니다.", "success");
+      setEditingId(null); // 수정 모드 종료
+      loadCategories(); // 목록 새로 불러오기
     } catch (err) {
-      handleApiError(err, "수정 실패");
+      showSnack("카테고리 수정 중 오류가 발생했습니다.", "error");
     }
   };
 
-  // 삭제 버튼 클릭 시 실행
+  // 삭제 버튼 클릭 시 동작
   const handleDelete = async (id) => {
-    if (!window.confirm("정말 삭제하시겠습니까?")) return; // 사용자 확인
+    showSnack("카테고리를 삭제 중입니다...", "info"); // 사용자 확인창 표시
     try {
-      await deleteCategory(id); // API 요청으로 삭제
-      alert("삭제 완료");
-      loadCategories(); // 목록 새로고침
+      await deleteCategory(id); // 삭제 API 요청
+      showSnack("카테고리가 삭제되었습니다.", "success");
+      loadCategories(); // 목록 새로 불러오기
     } catch (err) {
-      handleApiError(err, "삭제 실패");
+      showSnack("카테고리 삭제 중 오류가 발생했습니다.", "error"); // 에러 발생 시 처리
     }
   };
 
-  // 등록 버튼 클릭 시 실행 → 신규 카테고리 생성
+  // 등록 버튼 클릭 시 동작 → 신규 카테고리 생성
   const handleCreate = async () => {
-    if (!newCategory.name.trim()) return alert("카테고리명을 입력하세요."); // 유효성 검사
+    if (!newCategory.name.trim()) {
+      showSnack("카테고리명을 입력해주세요.", "warning");
+      return;
+    }
     try {
-      await createCategory(newCategory); // API 요청으로 등록
-      alert("등록 완료");
-      setNewCategory({ name: "", orderNo: "" }); // 입력 필드 초기화
+      await createCategory(newCategory); // 등록 API 요청
+      showSnack("새 카테고리가 등록되었습니다.", "success");
+      setNewCategory({ name: "", orderNo: "" }); // 입력창 초기화
       loadCategories(); // 목록 새로고침
     } catch (err) {
-      handleApiError(err, "등록 실패");
+      showSnack("카테고리 등록 중 오류가 발생했습니다.", "error");
     }
   };
 
+  // JSX 렌더링
   return (
     <Box sx={{ p: 3, width: "80%", mx: "auto" }}>
-      {/* 페이지 제목 */}
+      {/* 페이지 제목 영역 */}
       <Typography variant="h5" sx={{ mb: 2 }}>
         카테고리 관리 (관리자 전용)
       </Typography>
 
       {/* 신규 카테고리 등록 영역 */}
       <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
+        {/* 카테고리명 입력 필드 */}
         <TextField
           label="카테고리명"
           size="small"
           value={newCategory.name}
           onChange={(e) =>
             setNewCategory((prev) => ({ ...prev, name: e.target.value }))
-          } // 입력 변경 시 상태 업데이트
+          } // 입력값 변경 시 상태 갱신
         />
+        {/* 순서번호 입력 필드 */}
         <TextField
           label="순서번호"
           size="small"
           type="number"
-          inputProps={{ min: 0 }} // 0 이상만 입력 가능
+          inputProps={{ min: 0 }} // 0 이상만 입력 허용
           value={newCategory.orderNo}
           onChange={(e) =>
             setNewCategory((prev) => ({ ...prev, orderNo: e.target.value }))
-          } // 입력 변경 시 상태 업데이트
+          } // 입력값 변경 시 상태 갱신
         />
+        {/* 등록 버튼 */}
         <Button
           variant="contained"
-          startIcon={<AddIcon />} // 아이콘: 추가
-          onClick={handleCreate} // 등록 버튼 클릭 시 실행
+          startIcon={<AddIcon />} // 추가 아이콘 표시
+          onClick={handleCreate} // 클릭 시 등록 실행
         >
           등록
         </Button>
@@ -133,17 +141,18 @@ const AdminCategoryPage = () => {
       <Table>
         <TableHead>
           <TableRow>
+            {/* 테이블 헤더: 열 이름 */}
             <TableCell>카테고리명</TableCell>
             <TableCell>순서번호</TableCell>
-            <TableCell align="center">액션</TableCell>
+            <TableCell align="center">액션</TableCell> {/* 수정/삭제 버튼 구역 */}
           </TableRow>
         </TableHead>
         <TableBody>
-          {/* 카테고리 목록을 순회하며 행 생성 */}
+          {/* 카테고리 리스트 반복 렌더링 */}
           {categories.map((cat) => (
             <TableRow key={cat.id}>
               <TableCell>
-                {/* 수정 모드일 때는 입력창 표시, 아닐 땐 텍스트만 표시 */}
+                {/* 수정 중이면 입력창, 아니면 텍스트 표시 */}
                 {editingId === cat.id ? (
                   <TextField
                     size="small"
@@ -161,6 +170,7 @@ const AdminCategoryPage = () => {
               </TableCell>
 
               <TableCell>
+                {/* 수정 중이면 입력창, 아니면 숫자 표시 */}
                 {editingId === cat.id ? (
                   <TextField
                     size="small"
@@ -179,17 +189,20 @@ const AdminCategoryPage = () => {
                 )}
               </TableCell>
 
-              {/* 액션 버튼 영역 */}
+              {/* 액션 버튼 (수정 / 저장 / 삭제) */}
               <TableCell align="center">
                 {editingId === cat.id ? (
+                  // 수정 모드일 때는 저장 버튼 표시
                   <IconButton color="primary" onClick={() => handleSave(cat.id)}>
                     <SaveIcon /> {/* 저장 아이콘 */}
                   </IconButton>
                 ) : (
+                  // 일반 모드일 때는 수정 버튼 표시
                   <IconButton color="secondary" onClick={() => handleEdit(cat)}>
                     <EditIcon /> {/* 수정 아이콘 */}
                   </IconButton>
                 )}
+                {/* 삭제 버튼은 항상 표시 */}
                 <IconButton color="error" onClick={() => handleDelete(cat.id)}>
                   <DeleteIcon /> {/* 삭제 아이콘 */}
                 </IconButton>
@@ -202,4 +215,4 @@ const AdminCategoryPage = () => {
   );
 };
 
-export default AdminCategoryPage;
+export default AdminCategoryPage;  // 컴포넌트 내보내기 (다른 페이지에서 import하여 사용 가능)

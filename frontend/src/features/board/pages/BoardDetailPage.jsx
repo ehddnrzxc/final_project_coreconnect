@@ -1,31 +1,46 @@
-import React, { useEffect, useMemo, useState, useRef } from "react"; // React 훅: 상태관리, 렌더링 최적화(useMemo), 생명주기 제어(useEffect), 렌더링과 무관한 값 저장(useRef)
-import { useParams, useNavigate } from "react-router-dom"; // React Router 훅: URL 파라미터 추출(useParams), 페이지 이동(useNavigate)
-import {
-  Box,
-  Typography,
-  Divider,
-  TextField,
-  Button,
-  Stack,
-  Paper,
-} from "@mui/material"; // MUI: 레이아웃(Box, Stack), 텍스트(Typography), 입력(TextField), 버튼(Button), 카드형 컨테이너(Paper) 등 UI 컴포넌트
-import ReplyIcon from "@mui/icons-material/Reply"; // MUI 아이콘: 답글(대댓글) 버튼에 사용
-import EditIcon from "@mui/icons-material/Edit"; // MUI 아이콘: 수정 버튼에 사용
-import DeleteIcon from "@mui/icons-material/Delete"; // MUI 아이콘: 삭제 버튼에 사용
+import React, { useEffect, useMemo, useState, useRef } from "react";
+// React 훅 불러오기
+// useEffect: 생명주기 제어
+// useState: 상태 관리
+// useMemo: 렌더링 최적화 (계산 결과 캐싱)
+// useRef: DOM 요소나 값 저장 (리렌더링과 무관)
+import { useParams, useNavigate } from "react-router-dom";
+// React Router 훅 불러오기
+// useParams: URL 파라미터 추출 (예: /board/:id)
+// useNavigate: 페이지 이동 함수
+import { Box, Typography, TextField, Button, Stack, Paper } from "@mui/material";
+// MUI 컴포넌트
+// Box: 레이아웃 컨테이너
+// Typography: 텍스트 표시
+// Divider: 구분선
+// TextField: 입력 필드
+// Button: 버튼
+// Stack: Flexbox 정렬 컨테이너
+// Paper: 카드형 컨테이너 (그림자 포함)
+import ReplyIcon from "@mui/icons-material/Reply"; // 답글 아이콘 (화살표)
+import EditIcon from "@mui/icons-material/Edit"; // 수정 아이콘
+import DeleteIcon from "@mui/icons-material/Delete"; // 삭제 아이콘
+import { getBoardDetail, deleteBoard } from "../api/boardAPI";
+// 게시글 API
+// getBoardDetail: 게시글 상세 조회
+// deleteBoard: 게시글 삭제
+import { getFilesByBoard } from "../api/boardFileAPI";
+// 파일 API: 특정 게시글의 첨부파일 목록 조회
+import { getRepliesByBoard, createReply, updateReply, deleteReply } from "../api/boardReplyAPI";
+// 댓글 API
+// getRepliesByBoard: 게시글 댓글 목록 조회
+// createReply: 댓글 등록
+// updateReply: 댓글 수정
+// deleteReply: 댓글 삭제
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext"; // 전역 스낵바 컨텍스트 추가
+import ConfirmDialog from "../../../components/utils/ConfirmDialog"; // 공용 확인창 컴포넌트 임포트
 
-import { getBoardDetail, deleteBoard } from "../api/boardAPI"; // 게시글 상세 조회, 게시글 삭제 API 함수
-import { getFilesByBoard } from "../api/boardFileAPI"; // 특정 게시글의 첨부파일 목록 조회 API
-import {
-  getRepliesByBoard,
-  createReply,
-  updateReply,
-  deleteReply,
-} from "../api/boardReplyAPI"; // 댓글 목록 조회, 댓글 등록, 수정, 삭제 API 함수들
 
 // 게시글 상세 페이지 컴포넌트
 const BoardDetailPage = () => {
   const { boardId } = useParams(); // URL 경로에서 /board/:boardId 의 boardId 값을 문자열로 가져옴
   const navigate = useNavigate(); // 다른 페이지로 이동(뒤로가기, 특정 경로 이동 등)에 사용하는 함수
+  const { showSnack } = useSnackbarContext(); // 스낵바 훅 사용
 
   // 로그인 사용자 정보 로드
   const user = JSON.parse(localStorage.getItem("user") || "{}"); // localStorage에 "user" 키로 저장된 JSON 문자열을 읽고 객체로 변환, 없으면 {} 사용
@@ -43,6 +58,11 @@ const BoardDetailPage = () => {
   const [replyParentId, setReplyParentId] = useState(null); // 대댓글 작성 시, 어떤 부모 댓글에 달리는지 그 부모 댓글 ID
   const [editReplyId, setEditReplyId] = useState(null); // 현재 "수정 모드"로 보고 있는 댓글의 ID (null이면 수정 중인 댓글 없음)
   const [editReplyText, setEditReplyText] = useState(""); // 수정 모드에서 사용하는 댓글 내용 입력값
+
+  // 확인창 상태
+  const [confirmOpen, setConfirmOpen] = useState(false); // 다이얼로그 열림 여부
+  const [confirmType, setConfirmType] = useState(null); // 'post' 또는 'reply'
+  const [targetId, setTargetId] = useState(null); // 삭제 대상 ID 저장
 
   // 날짜 포맷 변환 함수
   const formatDateTime = (str) => {
@@ -75,18 +95,18 @@ const BoardDetailPage = () => {
 
       // 비공개글 접근 차단 처리
       if (err.response?.status === 403) {
-        alert("비공개 게시글입니다. 접근할 수 없습니다.");
+        showSnack("비공개 게시글입니다. 접근할 수 없습니다.", "warning");
         navigate(-1); // 바로 이전 페이지로 돌아감 (브라우저 history 한 단계 뒤로)
         return;
       }
       // 존재하지 않거나 삭제된 게시글
       if (err.response?.status === 404) {
-        alert("존재하지 않거나 삭제된 게시글입니다.");
+        showSnack("존재하지 않거나 삭제된 게시글입니다.", "error");
         navigate(-1);
         return;
       }
       // 기타 예외
-      alert("게시글을 불러오는 중 오류가 발생했습니다."); // 위 두 케이스 외 나머지 서버/네트워크 에러
+      showSnack("게시글을 불러오는 중 오류가 발생했습니다.", "error"); // 위 두 케이스 외 나머지 서버/네트워크 에러
     }
   };
 
@@ -120,57 +140,116 @@ const BoardDetailPage = () => {
 
   // 게시글 삭제
   const handleDeletePost = async () => {
-    if (!window.confirm("정말 삭제하시겠습니까?")) return; // 브라우저 기본 confirm으로 사용자에게 재확인
-    await deleteBoard(boardId); // 게시글 삭제 API 호출 (Soft Delete 혹은 실제 삭제는 백엔드 로직에 따름)
-    alert("게시글이 삭제되었습니다.");
-    navigate(-1); // 삭제 후 이전 페이지(대부분 목록)로 이동
+    showSnack("게시글 삭제 중입니다...", "info");
+    try {
+      await deleteBoard(boardId);
+      showSnack("게시글이 삭제되었습니다.", "success");
+      navigate(-1);
+    } catch (err) {
+      showSnack("게시글 삭제 중 오류가 발생했습니다.", "error");
+    }
+  };
+
+  // 게시글 삭제 요청 전 다이얼로그 실행
+  const handleOpenPostConfirm = () => {
+    setConfirmType("post");
+    setConfirmOpen(true);
   };
 
   // 댓글 등록 (일반 댓글 전용)
   const handleReplySubmit = async () => {
     if (!replyText.trim()) return; // 공백만 있는 경우 등록하지 않음
-    await createReply({
-      boardId: Number(boardId), // URL 파라미터는 문자열이라 Number로 형변환
-      content: replyText, // 현재 입력창에 작성된 내용
-    });
-    setReplyText(""); // 입력 초기화
-    await loadAll(); // 새로고침해서 최신 댓글 목록 반영
+    try {
+      await createReply({
+        boardId: Number(boardId), // URL 파라미터는 문자열이라 Number로 형변환
+        content: replyText, // 현재 입력창에 작성된 내용
+      });
+      setReplyText(""); // 입력 초기화
+      await loadAll(); // 새로고침해서 최신 댓글 목록 반영
+      showSnack("댓글이 등록되었습니다.", "success");
+    } catch (err) {
+      showSnack("댓글 등록 중 오류가 발생했습니다.", "error");
+    }
   };
 
   // 대댓글 등록
   const handleChildReplySubmit = async () => {
     if (!childReplyText.trim()) return; // 내용이 비어 있으면 등록 안 함
-    await createReply({
-      boardId: Number(boardId), // 어떤 게시글에 대한 댓글인지
-      content: childReplyText, // 대댓글 내용
-      parentReplyId: replyParentId, // 어떤 부모 댓글에 대한 대댓글인지
-    });
-    setChildReplyText(""); // 대댓글 입력값 초기화
-    setReplyParentId(null); // 입력창 닫기 (현재 선택된 부모 댓글 해제)
-    await loadAll(); // 새로고침
+    try {
+      await createReply({
+        boardId: Number(boardId), // 어떤 게시글에 대한 댓글인지
+        content: childReplyText, // 대댓글 내용
+        parentReplyId: replyParentId, // 어떤 부모 댓글에 대한 대댓글인지
+      });
+      setChildReplyText(""); // 대댓글 입력값 초기화
+      setReplyParentId(null); // 입력창 닫기 (현재 선택된 부모 댓글 해제)
+      await loadAll(); // 새로고침
+      showSnack("답글이 등록되었습니다.", "success");
+    } catch (err) {
+      showSnack("답글 등록 중 오류가 발생했습니다.", "error");
+    }
   };
 
   // 댓글 수정
   const handleReplyUpdate = async (replyId) => {
-    if (!editReplyText.trim()) return alert("내용을 입력하세요."); // 수정 내용이 비어 있으면 경고
-    await updateReply(replyId, { content: editReplyText }); // 해당 댓글 ID 기준으로 내용 업데이트
-    setEditReplyId(null); // 수정 모드 종료
-    setEditReplyText(""); // 수정용 입력값 초기화
-    await loadAll(); // 댓글 목록 다시 조회하여 변경된 내용 반영
+    if (!editReplyText.trim()) {
+      showSnack("내용을 입력하세요.", "warning"); // 수정 내용이 비어 있으면 경고
+      return;
+    }
+    try {
+      await updateReply(replyId, { content: editReplyText }); // 해당 댓글 ID 기준으로 내용 업데이트
+      setEditReplyId(null); // 수정 모드 종료
+      setEditReplyText(""); // 수정용 입력값 초기화
+      await loadAll(); // 댓글 목록 다시 조회하여 변경된 내용 반영
+      showSnack("댓글이 수정되었습니다.", "success");
+    } catch (err) {
+      showSnack("댓글 수정 중 오류가 발생했습니다.", "error");
+    }
   };
 
   // 댓글 삭제
   const handleReplyDelete = async (replyId) => {
-    if (!window.confirm("삭제하시겠습니까?")) return; // 삭제 전 사용자 확인
-    await deleteReply(replyId); // 댓글 삭제 API 호출 (Soft Delete일 가능성 높음)
-    await loadAll(); // 삭제 후 댓글 목록 재조회
+    showSnack("댓글 삭제 중입니다...", "info"); 
+    try {
+      await deleteReply(replyId); // 댓글 삭제 API 호출 
+      await loadAll(); // 삭제 후 댓글 목록 재조회
+      showSnack("댓글이 삭제되었습니다.", "success"); 
+    } catch (err) {
+      showSnack("댓글 삭제 중 오류가 발생했습니다.", "error"); 
+    }
+  };
+
+  // 댓글 삭제 요청 전 다이얼로그 실행
+  const handleOpenReplyConfirm = (id) => {
+    setConfirmType("reply");
+    setTargetId(id);
+    setConfirmOpen(true);
+  };
+
+  // 실제 삭제 실행
+  const handleConfirm = async () => {
+    setConfirmOpen(false);
+    if (confirmType === "post") {
+      await handleDeletePost();
+    } else if (confirmType === "reply" && targetId) {
+      await handleReplyDelete(targetId);
+    }
+    setTargetId(null);
+    setConfirmType(null);
+  };
+
+  // 확인창 닫기
+  const handleCancel = () => {
+    setConfirmOpen(false);
+    setTargetId(null);
+    setConfirmType(null);
   };
 
   // 게시글이 없을 때 로딩 표시
   if (!board) return <Typography>알 수 없는 페이지</Typography>; // 아직 board 데이터가 로드되지 않았거나 에러로 null인 경우
 
   return (
-    <Box sx={{ px: "5%", pt: 2 }}> 
+    <Box sx={{ px: "5%", pt: 2 }}>
       {/* 페이지 전체를 감싸는 최상위 컨테이너 Box
           - px: 좌우 패딩 5%
           - pt: 상단 패딩 2 (theme spacing 단위) */}
@@ -201,7 +280,7 @@ const BoardDetailPage = () => {
             color="error"
             sx={{ fontSize: "0.8rem", py: 0.5, px: 1.5 }}
             startIcon={<DeleteIcon />} // 삭제 아이콘
-            onClick={handleDeletePost} // 게시글 삭제 실행
+            onClick={handleOpenPostConfirm} // 게시글 삭제 실행
           >
             삭제
           </Button>
@@ -309,7 +388,7 @@ const BoardDetailPage = () => {
                                 variant="caption"
                                 color="text.secondary"
                                 sx={{ cursor: "pointer" }}
-                                onClick={() => handleReplyDelete(r.id)}
+                                onClick={() => handleOpenReplyConfirm(r.id)}
                               >
                                 삭제
                               </Typography>
@@ -477,7 +556,7 @@ const BoardDetailPage = () => {
                                   variant="caption"
                                   color="text.secondary"
                                   sx={{ cursor: "pointer" }}
-                                  onClick={() => handleReplyDelete(child.id)}
+                                  onClick={() => handleOpenReplyConfirm(child.id)}
                                 >
                                   삭제
                                 </Typography>
@@ -578,6 +657,18 @@ const BoardDetailPage = () => {
           등록
         </Button>
       </Box>
+      {/* 삭제 확인창 다이얼로그 */}
+      <ConfirmDialog
+        open={confirmOpen}
+        title="삭제 확인"
+        message={
+          confirmType === "post"
+            ? "이 게시글을 삭제하시겠습니까?"
+            : "이 댓글을 삭제하시겠습니까?"
+        }
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
     </Box>
   );
 };

@@ -1,27 +1,13 @@
-import React, { useEffect, useState } from "react"; 
+import { useEffect, useState } from "react";
 // React 훅 불러오기: 
 // useEffect → 컴포넌트 생명주기 제어 (렌더링 이후 데이터 로드 등)
 // useState → 상태 관리 (데이터를 저장하고 변경 시 리렌더링)
-
-import { useParams, useNavigate, useSearchParams } from "react-router-dom"; 
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 // React Router 훅 불러오기:
 // useParams → URL의 동적 파라미터 추출 (예: /board/:categoryId)
-// useNavigate → 프로그래밍 방식의 페이지 이동 (navigate("/path"))
+// useNavigate → 페이지 이동 (navigate("/path"))
 // useSearchParams → URL 쿼리스트링 (예: ?page=1&sortType=latest) 제어
-
-import {
-  Box,
-  Typography,
-  ListItemButton,
-  Pagination,
-  Stack,
-  TextField,
-  Button,
-  MenuItem,
-  Select,
-  FormControl,
-  InputLabel,
-} from "@mui/material"; 
+import { Box, Typography, ListItemButton, Pagination, Stack, TextField, Button, MenuItem, Select, FormControl, InputLabel } from "@mui/material";
 // MUI(Material UI) 컴포넌트 임포트
 // Box: 레이아웃 컨테이너 (div 역할)
 // Typography: 텍스트 표현용
@@ -31,26 +17,15 @@ import {
 // TextField: 입력 필드
 // Button: 버튼
 // MenuItem, Select, FormControl, InputLabel: 선택 드롭다운 UI 구성 요소
-
-import {
-  getBoardsByCategory,
-  getBoardsOrdered,
-  searchBoards,
-} from "../api/boardAPI"; 
+import { getBoardsByCategory, getBoardsOrdered, searchBoards } from "../api/boardAPI";
 // 게시판 관련 API 모듈 임포트
 // getBoardsByCategory → 특정 카테고리의 게시글 목록 요청
 // getBoardsOrdered → 전체 게시글 목록 (정렬 기준 포함)
 // searchBoards → 검색 조건에 따른 게시글 조회
-
-import LockIcon from "@mui/icons-material/Lock"; // MUI 아이콘: 비공개 게시글 표시용 자물쇠
 import CommentIcon from "@mui/icons-material/Comment"; // 댓글 개수 표시용 아이콘
-import PushPinIcon from "@mui/icons-material/PushPin"; // 상단 고정(공지) 게시글 압정 아이콘
+import RecentViewedBoards from "./RecentViewedBoards"; // 오른쪽 사이드 영역에서 "최근 본 게시글"을 렌더링하는 컴포넌트
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext"; // 전역 스낵바 컨텍스트 추가
 
-import { handleApiError } from "../../../utils/handleError"; 
-// 공통 에러 처리 함수 (API 호출 실패 시 알림, 로그 출력 등 담당)
-
-import RecentViewedBoards from "./RecentViewedBoards"; 
-// 오른쪽 사이드 영역에서 "최근 본 게시글"을 렌더링하는 컴포넌트
 
 // ──────────────────────────────────────────────
 // BoardListPage 컴포넌트
@@ -58,12 +33,13 @@ import RecentViewedBoards from "./RecentViewedBoards";
 // - 정렬, 검색, 페이지네이션, 목록 렌더링, 최근 본 게시글 등을 모두 포함
 // ──────────────────────────────────────────────
 const BoardListPage = () => {
-  const { categoryId } = useParams(); 
+  const { categoryId } = useParams();
   // URL의 /board/:categoryId 값 추출 (없으면 undefined)
-  const [searchParams] = useSearchParams(); 
+  const [searchParams] = useSearchParams();
   // URL 쿼리스트링 (?page=, ?sortType= 등) 제어용
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
   // 페이지 이동 훅 (ex. navigate("/board/new"))
+  const { showSnack } = useSnackbarContext(); // 스낵바 훅 사용
 
   // ─────────────── URL 파라미터, 쿼리스트링 처리 ───────────────
   const currentPage = Number(searchParams.get("page")) || 0; // 현재 페이지 번호 (기본 0)
@@ -104,7 +80,7 @@ const BoardListPage = () => {
         setPageInfo(res.data.data);
       } catch (err) {
         // 오류 발생 시 공통 에러 처리 함수 실행
-        handleApiError(err, "게시글 목록 불러오기 실패");
+        showSnack("게시글 목록을 불러오는 중 오류가 발생했습니다.", "error");
       }
     })();
   }, [categoryId, currentPage, isSearchPage, urlType, urlKeyword, sortType]);
@@ -282,8 +258,8 @@ const BoardListPage = () => {
               bgcolor: b.pinned
                 ? "primary.main"
                 : b.noticeYn
-                ? "#d9d9d9"
-                : "white",
+                  ? "#d9d9d9"
+                  : "white",
               border: "1px solid #e0e0e0",
               borderRadius: 1,
               mb: 1.2,
@@ -297,8 +273,8 @@ const BoardListPage = () => {
                 bgcolor: b.pinned
                   ? "primary.light"
                   : b.noticeYn
-                  ? "#e0e0e0"
-                  : "#fafafa",
+                    ? "#e0e0e0"
+                    : "#fafafa",
               },
             }}
           >
@@ -322,17 +298,21 @@ const BoardListPage = () => {
 
             {/* 제목 행 */}
             <Stack direction="row" alignItems="center" spacing={1} sx={{ width: "100%" }}>
-              {b.pinned && (
-                <PushPinIcon
-                  sx={{
-                    fontSize: 22,
-                    color: "#004d60",
-                    transform: "rotate(45deg)",
-                  }}
-                />
+              {b.pinned && (  // 상단고정
+                <Typography
+                  component="span"
+                  sx={{ fontSize: 20, mr: 0.5 }}   
+                >
+                  📌
+                </Typography>
               )}
-              {b.privateYn && (
-                <LockIcon sx={{ fontSize: 18, color: "#9e9e9e" }} />
+              {b.privateYn && (  // 비공개
+                <Typography
+                  component="span"
+                  sx={{ fontSize: 19, mr: 0.5 }}   
+                >
+                  🔒
+                </Typography>
               )}
               <Typography
                 variant="subtitle1"
@@ -387,7 +367,7 @@ const BoardListPage = () => {
 
       {/* 오른쪽 사이드 영역: 최근 본 게시글 */}
       <Box sx={{ flex: 1.1 }}>
-        <RecentViewedBoards /> 
+        <RecentViewedBoards />
       </Box>
     </Box>
   );
