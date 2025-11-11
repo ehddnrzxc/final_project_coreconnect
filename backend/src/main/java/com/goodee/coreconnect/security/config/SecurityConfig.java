@@ -75,6 +75,8 @@ public class SecurityConfig {
                   "/swagger-resources/**",
                   "/webjars/**"
                   ).permitAll()
+              // WebSocket 알림 엔드포인트도 인증없이 허용 (이 줄 추가)
+              .requestMatchers("/ws/notification").permitAll()
               // 로그인/회원가입 등 인증 시작 엔드포인트만 오픈
               .requestMatchers("/api/v1/auth/**").permitAll()
               // 나머지 경로는 로그인 필요
