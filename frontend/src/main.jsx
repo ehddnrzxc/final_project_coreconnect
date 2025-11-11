@@ -37,7 +37,7 @@ import DocumentDetailPage from "./features/approval/pages/DocumentDetailPage";
 import DraftBoxPage from "./features/email/pages/DraftBoxPage";
 import LeavePage from "./features/leave/LeavePage";
 import LeaveRequestsPage from "./features/admin/components/LeaveRequestsPage";
-
+import { RealtimeNotificationProvider } from "./features/notification/RealtimeNotificationProvider";
 
 /* 전체 라우트 구조 */
 const router = createBrowserRouter([
@@ -157,6 +157,8 @@ const router = createBrowserRouter([
 /* 렌더링 */
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    <RealtimeNotificationProvider>
+      <RouterProvider router={router} />
+    </RealtimeNotificationProvider>
   </React.StrictMode>
 );

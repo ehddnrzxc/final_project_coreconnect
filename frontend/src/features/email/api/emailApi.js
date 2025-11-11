@@ -133,3 +133,7 @@ export const moveToTrash = (emailIds) => {
 export const emptyTrash = () => {
   return http.post('/email/trash/empty');
 };
+
+// 휴지통(TRASH) 메일 목록 조회
+export const fetchTrashList = (userEmail, page = 0, size = 20) => 
+  http.get('/email/trash', { params: { userEmail, page, size } });
