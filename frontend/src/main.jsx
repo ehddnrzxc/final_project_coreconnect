@@ -105,7 +105,7 @@ const router = createBrowserRouter([
         path: "leave",
         element: (
           <ProtectedRoute>
-            {/* <LeavePage />*/}
+            <LeavePage />
           </ProtectedRoute>
         ),
       },
