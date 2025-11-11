@@ -59,13 +59,6 @@ public class AdminUserController {
     userService.changeStatus(id, status);
   }
   
-  /** 사용자 목록 조회 */
-  @GetMapping
-  @PreAuthorize("isAuthenticated()")
-  public List<UserDTO> findAllUsers() {
-    return userService.findAllUsers();
-  }
-  
   /** 각종 통계를 제공해주는 메소드 */
   @GetMapping("/stats")
   public Map<String, Long> getAllStats() {
