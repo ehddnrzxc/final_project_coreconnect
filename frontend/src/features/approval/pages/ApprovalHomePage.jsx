@@ -3,7 +3,6 @@ import { Link as RouterLink, useNavigate } from "react-router-dom";
 import {
   Box,
   Typography,
-  Grid,
   Card,
   CardContent,
   TableContainer,
@@ -19,6 +18,9 @@ import {
   Button,
   IconButton,
 } from "@mui/material";
+import Grid from "@mui/material/Grid";
+import NavigateBeforeIcon from "@mui/icons-material/NavigateBefore"
+import NavigateNextIcon from "@mui/icons-material/NavigateNext"
 
 import {
   getPendingDocuments,
@@ -105,7 +107,7 @@ function ApprovalHomePage() {
         <>
           <Grid container spacing={2}>
             {paginatedTasks.map((doc) => (
-              <Grid item xs={12} sm={6} md={4} key={doc.documentId}>
+              <Grid item xs={12} sm={6} md={3} key={doc.documentId}>
                 <Card
                   sx={{
                     textDecoration: "none",
@@ -250,7 +252,7 @@ function ApprovalHomePage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {completedDocs.map((doc) => (
+              {completedDocs.map(doc => (
                 <TableRow
                   key={doc.documentId}
                   hover
