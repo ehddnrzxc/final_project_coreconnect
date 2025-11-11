@@ -20,6 +20,7 @@ import {
   getUsers,
   checkRoomAvailable,
 } from "../api/scheduleAPI";
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 
 export default function ScheduleModal({
   open,
@@ -32,6 +33,7 @@ export default function ScheduleModal({
   const isEdit = !!initialData;
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm")); // 모바일일 때 전체화면 처리
+  const { showSnack } = useSnackbarContext();
 
   const [meetingRooms, setMeetingRooms] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -104,7 +106,7 @@ export default function ScheduleModal({
 
   const handleSubmit = () => {
     if (!roomAvailable) {
-      alert("이 시간대에는 선택한 회의실이 이미 예약되어 있습니다.");
+      showSnack("이 시간대에는 선택한 회의실이 이미 예약되어 있습니다.", "warning");
       return;
     }
     const payload = {

@@ -7,7 +7,7 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
 import RestoreFromTrashIcon from "@mui/icons-material/RestoreFromTrash";
 import { useNavigate } from "react-router-dom";
-import { getUserEmailFromStorage, fetchTrashList, moveToTrash, emptyTrash } from "../api/emailApi";
+import { getUserEmailFromStorage, moveToTrash, emptyTrash } from "../api/emailApi";
 
 const MailTrashPage = () => {
   const [page, setPage] = useState(1);
