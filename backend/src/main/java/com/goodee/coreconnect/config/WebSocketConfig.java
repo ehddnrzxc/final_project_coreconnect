@@ -23,12 +23,11 @@ public class WebSocketConfig  implements WebSocketConfigurer {
 	@Override
 	public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
 	  
-		// 채팅용 WebSocket 엔드포인트 등록
-        registry.addHandler(chatWebSocketHandler, "/ws/chat")
-                .setAllowedOrigins("http://localhost:5173");
+		 registry.addHandler(chatWebSocketHandler, "/ws/chat")
+         .setAllowedOrigins("http://localhost:5173");
 
-        // 알림용 WebSocket 엔드포인트 등록
-        registry.addHandler(notificationWebSocketHandler, "/ws/notification")
-                .setAllowedOrigins("http://localhost:5173");
+		 registry.addHandler(notificationWebSocketHandler, "/ws/notification")
+         .addInterceptors(new WebSocketAuthInterceptor())  // ← 이 줄 추가!
+         .setAllowedOrigins("http://localhost:5173");
 	}
 }

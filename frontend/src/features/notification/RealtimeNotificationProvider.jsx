@@ -3,6 +3,7 @@ import { connectNotification, disconnectNotification } from "./notificationSocke
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 
+// 실시간 알림 Context 생성
 const RealtimeNotificationContext = createContext({
   notifications: [],
   pushNotification: () => {},
@@ -11,12 +12,9 @@ const RealtimeNotificationContext = createContext({
 
 export const useRealtimeNotifications = () => useContext(RealtimeNotificationContext);
 
-
-
-
 /**
  * 사용법:
- * - main.jsx 에서 앱 루트를 감싸세요:
+ * - main.jsx에서 앱 루트를 감싸세요:
  *   <RealtimeNotificationProvider baseUrl={import.meta.env.VITE_WS_NOTIFICATION || "ws://localhost:8080/ws/notification"}>...</RealtimeNotificationProvider>
  */
 export function RealtimeNotificationProvider({ children, baseUrl }) {
@@ -25,11 +23,12 @@ export function RealtimeNotificationProvider({ children, baseUrl }) {
   const [snackPayload, setSnackPayload] = useState(null);
 
   const pushNotification = useCallback((payload) => {
-    setNotifications(prev => [payload, ...prev].slice(0, 100));
+    setNotifications(prev => [payload, ...prev].slice(0, 100)); // 최근 100개만
   }, []);
 
   const clearNotifications = useCallback(() => setNotifications([]), []);
 
+  // 알림 타입별 severity
   const typeToSeverity = (type) => {
     switch ((type || "").toUpperCase()) {
       case "NOTICE": return "info";
@@ -40,19 +39,13 @@ export function RealtimeNotificationProvider({ children, baseUrl }) {
     }
   };
 
-  
-useEffect(() => {
-  console.log("[DEBUG] RealtimeNotificationProvider useEffect 실행됨");
-  // 이하 생략
-}, [pushNotification, baseUrl]);
-
   useEffect(() => {
-    const token = localStorage.getItem("accessToken");
-    // Vite 환경에서는 import.meta.env 사용!
+    // access_token이 HttpOnly 쿠키에 있다면, JS에서는 읽을 수 없으니 getCookie/token 관련 없이 무조건 접속만!
     const url = baseUrl || import.meta.env.VITE_WS_NOTIFICATION || "ws://localhost:8080/ws/notification";
 
     const handleMessage = (payload) => {
-      console.log("[Notification WS] message payload ::", payload); 
+      console.log("[Notification WS] message payload ::", payload);
+
       const notif = {
         id: payload.notificationId || payload.id || `${Date.now()}`,
         type: payload.notificationType || payload.type || "NOTICE",
@@ -66,7 +59,9 @@ useEffect(() => {
       setSnackOpen(true);
     };
 
-    connectNotification({ baseUrl: url, token, onMessage: handleMessage });
+    // 토큰 전달 X, 그냥 연결!
+    connectNotification({ baseUrl: url, onMessage: handleMessage });
+
     return () => {
       disconnectNotification();
     };
@@ -82,7 +77,12 @@ useEffect(() => {
         onClose={() => setSnackOpen(false)}
       >
         {snackPayload ? (
-          <Alert onClose={() => setSnackOpen(false)} severity={typeToSeverity(snackPayload.type)} sx={{ width: "100%" }} variant="filled">
+          <Alert
+            onClose={() => setSnackOpen(false)}
+            severity={typeToSeverity(snackPayload.type)}
+            sx={{ width: "100%" }}
+            variant="filled"
+          >
             <strong>{snackPayload.senderName ? `${snackPayload.senderName} — ` : ""}</strong>
             {snackPayload.message}
           </Alert>
