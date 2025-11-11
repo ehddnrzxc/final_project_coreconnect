@@ -50,6 +50,11 @@ export function SnackbarProvider({ children }) {
             px: 3,
             borderRadius: "12px",
             boxShadow: "0 4px 10px rgba(0,0,0,0.2)", // 그림자 효과
+            backgroundColor:
+              snack.severity === "success" ? "#08a7bf" : // 하늘
+              snack.severity === "error"   ? "#c62828" : // 빨강
+              snack.severity === "warning" ? "#ff7b00ff" : // 주황
+              "#08a7bf", // info
           }}
         >
           {snack.message}
