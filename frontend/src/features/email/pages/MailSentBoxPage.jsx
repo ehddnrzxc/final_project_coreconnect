@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, Paper, Table, TableHead, TableBody, TableRow, TableCell, IconButton, ButtonGroup, Button, InputBase, Divider, Checkbox, Chip, Pagination } from '@mui/material';
+import { 
+  Box, Typography, Paper, Table, TableHead, TableBody, TableRow, TableCell, 
+  IconButton, ButtonGroup, Button, InputBase, Divider, Checkbox, Chip, Pagination 
+} from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ReplyIcon from '@mui/icons-material/Reply';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -12,9 +15,8 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import SyncIcon from '@mui/icons-material/Sync';
 import ViewListIcon from '@mui/icons-material/ViewList';
 import DraftsIcon from '@mui/icons-material/Drafts';
-import SendIcon from '@mui/icons-material/Send';
 
-import { fetchSentbox } from '../api/emailApi';
+import { fetchSentbox, moveToTrash } from '../api/emailApi';
 import { useNavigate } from 'react-router-dom';
 
 function getUserEmailFromStorage() {
@@ -32,6 +34,8 @@ function getUserEmailFromStorage() {
 function getStatusLabel(emailStatus) {
   if (emailStatus === "SENT") return "발신완료";
   if (emailStatus === "FAILED" || emailStatus === "FAIL" || emailStatus === "BOUNCE") return "발신실패";
+  if (emailStatus === "TRASH") return "휴지통";
+  if (emailStatus === "DELETED") return "삭제됨";
   // 그 외 상태는 원문 노출
   return emailStatus;
 }
@@ -39,6 +43,8 @@ function getStatusLabel(emailStatus) {
 function getStatusColor(emailStatus) {
   if (emailStatus === "SENT") return "success";
   if (emailStatus === "FAILED" || emailStatus === "FAIL" || emailStatus === "BOUNCE") return "error";
+  if (emailStatus === "TRASH") return "warning";
+  if (emailStatus === "DELETED") return "default";
   return "default";
 }
 
@@ -48,9 +54,10 @@ const MailSentBoxPage = () => {
   const [size, setSize] = useState(9);
   const [total, setTotal] = useState(0);
   const [mails, setMails] = useState([]);
+  const [selected, setSelected] = useState(new Set());
   const navigate = useNavigate();
 
-  useEffect(() => {
+  const load = () => {
     fetchSentbox(page - 1, size)
       .then(res => {
         const boxData = res?.data?.data;
@@ -62,7 +69,38 @@ const MailSentBoxPage = () => {
         setMails([]);
         setTotal(0);
       });
+  };
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line
   }, [page, size]);
+
+  const toggleSelect = (id) => {
+    setSelected(prev => {
+      const copy = new Set(prev);
+      if (copy.has(id)) copy.delete(id); else copy.add(id);
+      return copy;
+    });
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selected.size === 0) return alert("삭제할 메일을 선택하세요.");
+    if (!window.confirm("선택한 메일을 휴지통으로 이동하시겠습니까?")) return;
+    try {
+      const ids = Array.from(selected);
+      await moveToTrash(ids);
+      setSelected(new Set());
+      load();
+    } catch (e) {
+      console.error(e);
+      alert("삭제 중 오류가 발생했습니다.");
+    }
+  };
+
+  // 전체 선택/해제
+  const allChecked = mails.length > 0 && selected.size === mails.length;
+  const isIndeterminate = selected.size > 0 && selected.size < mails.length;
 
   return (
     <Box sx={{ p: 4, bgcolor: "#fafbfd", minHeight: "100vh" }}>
@@ -104,7 +142,7 @@ const MailSentBoxPage = () => {
         <Box sx={{ display: 'flex', alignItems: 'center', mt: 2, mb: 2 }}>
           <ButtonGroup variant="text" sx={{ gap: 1 }}>
             <Button startIcon={<ReplyIcon />}>답장</Button>
-            <Button startIcon={<DeleteIcon />}>삭제</Button>
+            <Button startIcon={<DeleteIcon />} onClick={handleDeleteSelected}>삭제</Button>
             <Button startIcon={<TagIcon />}>태그</Button>
             <Button startIcon={<ForwardIcon />}>전달</Button>
             <Button startIcon={<MarkEmailReadIcon />}>읽음</Button>
@@ -113,7 +151,7 @@ const MailSentBoxPage = () => {
           </ButtonGroup>
           <Box sx={{ flex: 1 }} />
           <IconButton><ViewListIcon /></IconButton>
-          <IconButton><SyncIcon /></IconButton>
+          <IconButton><SyncIcon onClick={load} /></IconButton>
           <IconButton><DraftsIcon /></IconButton>
           <Paper sx={{ ml: 1, display: "inline-flex", alignItems: "center", px: 0.5 }}>
             <Typography sx={{ px: 0.5, fontWeight: 500, fontSize: 15 }}>{size}</Typography>
@@ -124,7 +162,20 @@ const MailSentBoxPage = () => {
         <Table sx={{ minWidth: 900 }}>
           <TableHead>
             <TableRow sx={{ bgcolor: "#f8fafd", borderBottom: '2px solid #e1e3ea' }}>
-              <TableCell padding="checkbox"></TableCell>
+              <TableCell padding="checkbox">
+                <Checkbox
+                  size="small"
+                  indeterminate={isIndeterminate}
+                  checked={allChecked}
+                  onChange={e => {
+                    if (e.target.checked) {
+                      setSelected(new Set(mails.map(m => m.emailId)));
+                    } else {
+                      setSelected(new Set());
+                    }
+                  }} 
+                />
+              </TableCell>
               <TableCell sx={{ fontWeight: 700 }}>수신자</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>제목</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>일자</TableCell>
@@ -145,7 +196,13 @@ const MailSentBoxPage = () => {
                   sx={{ cursor: "pointer" }}
                   onClick={() => navigate(`/email/${mail.emailId}`)}
                 >
-                  <TableCell padding="checkbox"><Checkbox size="small" /></TableCell>
+                  <TableCell padding="checkbox" onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      size="small"
+                      checked={selected.has(mail.emailId)}
+                      onChange={() => toggleSelect(mail.emailId)}
+                    />
+                  </TableCell>
                   <TableCell>
                     {(mail.recipientAddresses || []).join(", ") || "-"}
                     {mail.ccAddresses && mail.ccAddresses.length > 0 && (

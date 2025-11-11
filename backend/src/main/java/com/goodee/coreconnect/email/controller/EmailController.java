@@ -263,6 +263,27 @@ public class EmailController {
         return ResponseEntity.noContent().build();
     }
     
+    /**
+     * 선택된 메일들을 휴지통으로 이동(상태를 TRASH로 바꿈)
+     * 요청자는 본인이 발신자이거나 수신자일 경우만 적용
+     */
+    @CrossOrigin(origins="http://localhost:5173", allowCredentials="true")
+    @PostMapping("/move-to-trash")
+    public ResponseEntity<?> moveToTrash(@RequestBody List<Integer> emailIds, @AuthenticationPrincipal CustomUserDetails user) {
+        String userEmail = user != null ? user.getName() : null; // 프로젝트에 맞게 수정(예: CustomUserDetails)
+        emailService.moveEmailsToTrash(emailIds, userEmail);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * 현재 사용자의 휴지통 비우기: TRASH -> DELETED
+     */
+    @PostMapping("/trash/empty")
+    public ResponseEntity<?> emptyTrash(@AuthenticationPrincipal CustomUserDetails user) {
+        String userEmail = user != null ? user.getName() : null;
+        emailService.emptyTrash(userEmail);
+        return ResponseEntity.ok().build();
+    }
     
     
     

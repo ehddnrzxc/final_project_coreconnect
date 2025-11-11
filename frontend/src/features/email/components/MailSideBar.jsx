@@ -7,9 +7,10 @@ import EditIcon from "@mui/icons-material/Edit";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { useNavigate } from "react-router-dom";
-import { MailCountContext } from "../../../App";
+import { MailCountContext } from "../../../App"; // 상대경로: features/email/components에서! (폴더 구조 기준)
+import { emptyTrash } from "../api/emailApi"; // ← 올바른 경로: api/emailApi.js로!
 
-const MailSidebar = () => {
+const MailSideBar = () => {
   const navigate = useNavigate();
   // fallback: undefined context일 때 에러 방지
   const {
@@ -23,6 +24,21 @@ const MailSidebar = () => {
   const goTodayMailTab = () => navigate("/email?tab=today");
   const goUnreadMailTab = () => navigate("/email?tab=unread");
   const goAllMailTab = () => navigate("/email?tab=all");
+
+  // 휴지통 비우기 핸들러
+  const handleEmptyTrash = async (e) => {
+    e.stopPropagation();
+    if (!window.confirm("정말 휴지통을 비우시겠습니까? (되돌릴 수 없습니다)")) return;
+    try {
+      await emptyTrash();
+      refreshDraftCount();
+      refreshUnreadCount();
+      alert("휴지통이 비워졌습니다.");
+    } catch (err) {
+      alert("휴지통 비우기 중 오류가 발생했습니다.");
+      console.error(err);
+    }
+  };
 
   return (
     <Box
@@ -96,7 +112,6 @@ const MailSidebar = () => {
                   primary={
                     <Box sx={{ display: "flex", alignItems: "center" }}>
                       <Typography variant="body2">오늘의 메일</Typography>
-                      {/* todayUnreadCount 필요시 구현 */}
                     </Box>
                   }
                 />
@@ -189,7 +204,7 @@ const MailSidebar = () => {
                 onClick={() => navigate("/email/trash")}
               >
                 <ListItemText primary={<Typography variant="body2">휴지통</Typography>} />
-                <Button variant="text" size="small" sx={{ fontSize: 12, px: 0.5 }}>
+                <Button variant="text" size="small" sx={{ fontSize: 12, px: 0.5 }} onClick={handleEmptyTrash}>
                   비우기
                 </Button>
               </ListItemButton>
@@ -201,4 +216,4 @@ const MailSidebar = () => {
   );
 };
 
-export default MailSidebar;
+export default MailSideBar;

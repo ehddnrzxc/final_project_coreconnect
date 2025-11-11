@@ -38,6 +38,7 @@ import DraftBoxPage from "./features/email/pages/DraftBoxPage";
 import LeavePage from "./features/leave/LeavePage";
 import LeaveRequestsPage from "./features/admin/components/LeaveRequestsPage";
 
+
 /* 전체 라우트 구조 */
 const router = createBrowserRouter([
   {
