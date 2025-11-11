@@ -19,7 +19,7 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/admin/leave-requests")
+@RequestMapping("/api/v1/admin/leave")
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminLeaveController {
   
@@ -37,19 +37,19 @@ public class AdminLeaveController {
     return adminLeaveService.getPendingLeaveRequests();
   }
   
-  /** 휴가 승인 */
-  @PostMapping("/{id}/approve")
-  public ResponseEntity<Void> approve(@PathVariable("id") Integer id) {
-    adminLeaveService.approveLeave(id);
-    return ResponseEntity.noContent().build();
-  }
-  
-  /** 휴가 반려 */
-  @PostMapping("/{id}/reject")
-  public ResponseEntity<Void> reject(@PathVariable("id") Integer id,
-                                     @RequestBody RejectLeaveRequestDTO dto) {
-    adminLeaveService.rejectLeave(id, dto.reason());
-    return ResponseEntity.noContent().build();
-  }
+//  /** 휴가 승인 */
+//  @PostMapping("/{id}/approve")
+//  public ResponseEntity<Void> approve(@PathVariable("id") Integer id) {
+//    adminLeaveService.approveLeave(id);
+//    return ResponseEntity.noContent().build();
+//  }
+//  
+//  /** 휴가 반려 */
+//  @PostMapping("/{id}/reject")
+//  public ResponseEntity<Void> reject(@PathVariable("id") Integer id,
+//                                     @RequestBody RejectLeaveRequestDTO dto) {
+//    adminLeaveService.rejectLeave(id, dto.reason());
+//    return ResponseEntity.noContent().build();
+//  }
   
 }

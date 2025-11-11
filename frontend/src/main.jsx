@@ -35,7 +35,7 @@ import MailSentBoxPage from "./features/email/pages/MailSentBoxPage";
 import MailDetailPage from "./features/email/pages/MailDetailPage";
 import DocumentDetailPage from "./features/approval/pages/DocumentDetailPage";
 import DraftBoxPage from "./features/email/pages/DraftBoxPage";
-import LeavePage from "./features/leave/LeavePage";
+import LeavePage from "./features/leave/pages/LeavePage";
 import LeaveRequestsPage from "./features/admin/components/LeaveRequestsPage";
 import PendingDocuments from "./features/approval/pages/PendingDocumentPage";
 import MyDocumentsPage from "./features/approval/pages/MyDocumentsPage";

@@ -24,22 +24,22 @@ export async function approvePasswordResetRequest(id) {
 
 /** 휴가 요청 전체 조회 */
 export async function getAdminLeaveRequests() {
-  const res = await http.get("/admin/leave-requests");
+  const res = await http.get("/admin/leave");
   return res.data;
 }
 
 /** 대기 중인 휴가 요청 조회 */
 export async function getPendingLeaveRequests() {
-  const res = await http.get("/admin/leave-requests/pending");
+  const res = await http.get("/admin/leave/pending");
   return res.data;
 }
 
 /** 휴가 요청 승인 */
 export async function approveLeaveRequest(id) {
-  await http.post(`/admin/leave-requests/${id}/approve`);
+  await http.post(`/admin/leave/${id}/approve`);
 }
 
 /** 휴가 요청 반려 */
 export async function rejectLeaveRequest(id, reason) {
-  await http.post(`/admin/leave-requests/${id}/reject`, { reason });
+  await http.post(`/admin/leave/${id}/reject`, { reason });
 }

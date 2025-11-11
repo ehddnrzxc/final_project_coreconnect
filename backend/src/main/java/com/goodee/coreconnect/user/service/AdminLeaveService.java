@@ -12,10 +12,10 @@ public interface AdminLeaveService {
   /** 대기(PENDING) 상태인 휴가 요청만 */
   public List<AdminLeaveRequestDTO> getPendingLeaveRequests();
   
-  /** 휴가 승인 */
-  public void approveLeave(Integer leaveReqId);
-  
-  /** 휴가 반려 */
-  public void rejectLeave(Integer leaveReqId, String reason);
+//  /** 휴가 승인 */
+//  public void approveLeave(Integer leaveReqId);
+//  
+//  /** 휴가 반려 */
+//  public void rejectLeave(Integer leaveReqId, String reason);
 
 }

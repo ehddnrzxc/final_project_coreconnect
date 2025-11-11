@@ -1,24 +1,24 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from "react-router-dom";
 import {
   AppBar,
   Toolbar,
   Box,
-  TextField,
-  InputAdornment,
   IconButton,
   Button,
   Avatar,
+  Typography,
+  TextField,
+  InputAdornment,
 } from "@mui/material";
-import SearchIcon from "@mui/icons-material/Search";
-import MessageIcon from '@mui/icons-material/Message';
+import MessageIcon from "@mui/icons-material/Message";
 import RedeemIcon from "@mui/icons-material/Redeem";
 import NotificationsNoneIcon from "@mui/icons-material/NotificationsNone";
 import LogoutIcon from "@mui/icons-material/Logout";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
+import SearchIcon from "@mui/icons-material/Search";
+import coreconnectLogo from "../../assets/coreconnect-logo.png";
 
 const Topbar = ({ onLogout, avatarUrl }) => {
-
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const isAdmin = user?.role === "ADMIN";
@@ -38,47 +38,54 @@ const Topbar = ({ onLogout, avatarUrl }) => {
           minHeight: 60,
           px: 2,
           display: "flex",
-          justifyContent: "space-between",
+          justifyContent: "center",
           gap: 2,
         }}
       >
-        {/* 검색 */}
-        <Box sx={{ flex: 1, maxWidth: 420 }}>
-          <TextField
-            size="small"
-            fullWidth
-            placeholder="검색어를 입력하세요"
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon fontSize="small" />
-                </InputAdornment>
-              ),
-            }}
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                "& fieldset": {
-                  borderColor: "#e5e7eb",     
-                },
-                "&:hover fieldset": {
-                  borderColor: "#e5e7eb",    
-                },
-                "&.Mui-focused fieldset": {
-                  borderColor: "#00a0e9",    
-                },
-              },
-            }}
-          />
+        {/* 왼쪽: 로고 */}
+        <Box
+          component={Link}
+          to="/home"
+          sx={{
+            display: "flex",               
+            alignItems: "center",         
+            gap: 1,                        
+            textDecoration: "none",
+            color: "primary.main",
+            fontSize: 20,
+            fontWeight: 700,
+            mr: 2,
+          }}
+        >
+          CoreConnect
         </Box>
 
-        {/* 오른쪽 액션들 */}
+        {/* 가운데 여백 */}
+        <Box sx={{ flex: 1 }} />
+
+        {/* 검색 + 오른쪽 액션들 */}
         <Box
           sx={{
             display: "flex",
             alignItems: "center",
-            gap: 1,
+            gap: 1.5,
           }}
         >
+          <Box sx={{ width: 280 }}>
+            <TextField size="small"
+                       fullWidth 
+                       placeholder="검색어를 입력하세요" 
+                       InputProps={{ startAdornment: ( 
+                         <InputAdornment position="start"> 
+                         <SearchIcon fontSize="small" /> 
+                         </InputAdornment> ), 
+                       }} 
+                       sx={{ 
+                         "& .MuiOutlinedInput-root": { "& fieldset": { borderColor: "#e5e7eb", }, 
+                         "&:hover fieldset": { borderColor: "#e5e7eb", }, 
+                         "&.Mui-focused fieldset": { borderColor: "#00a0e9", }, }, 
+                       }} />
+          </Box>
           {isAdmin && (
             <Button
               variant="outlined"

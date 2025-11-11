@@ -43,6 +43,8 @@ import com.goodee.coreconnect.common.entity.Notification;
 import com.goodee.coreconnect.common.notification.dto.NotificationPayload;
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
 import com.goodee.coreconnect.common.notification.service.WebSocketDeliveryService;
+import com.goodee.coreconnect.leave.dto.request.CreateLeaveRequestDTO;
+import com.goodee.coreconnect.leave.service.LeaveService;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
@@ -68,6 +70,9 @@ public class ApprovalServiceImpl implements ApprovalService {
   private final NotificationRepository notificationRepository;
   private final SpringTemplateEngine templateEngine;
   private final ObjectMapper objectMapper;
+  private final LeaveService leaveService;
+  
+  private static final Integer LEAVE_TEMPLATE_ID= 1;
 
   /**
    * 새 결재 문서를 상신합니다.
@@ -135,6 +140,12 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     // 6. 문서 저장 (CascadeType.ALL로 인해 ApprovalLines도 함께 저장됨)
     Document savedDocument = documentRepository.save(document);
+    
+    // 휴가 템플릿이면 휴가 DB에 저장하는 로직
+    if(isLeaveTemplate(template)) {
+      CreateLeaveRequestDTO leaveDTO = CreateLeaveRequestDTO.toCreateLeaveRequestDTO(requestDTO, savedDocument.getId(), objectMapper);
+      leaveService.createLeaveFromApproval(savedDocument, drafter, leaveDTO);
+    }
 
 
     // --- 알림 전송 로직 (첫번째 결재자에게) ---
@@ -163,6 +174,7 @@ public class ApprovalServiceImpl implements ApprovalService {
       // 7-3. 실시간 알림 전송
       webSocketDeliveryService.sendToUser(firstApprover.getId(), payload);
     }
+    
 
     return savedDocument.getId();
   }
@@ -464,6 +476,11 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     // 문서 엔티티 로직 호출 (모든 결재 완료 시 문서 상태 'COMPLETED'로 변경)
     document.updateStatusAfterApproval();
+    
+    // 문서가 최종 승인(COMPLETED) && 휴가 템플릿이면 휴가 승인 처리
+    if(document.getDocumentStatus() == DocumentStatus.COMPLETED && isLeaveTemplate(document.getTemplate())) {
+      leaveService.handleApprovedLeave(document, requestDTO.getApprovalComment());
+    }
 
 
     // --- 알림 전송 로직 (다음 결재자 또는 기안자에게) ---
@@ -550,6 +567,12 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     if (currentType == ApprovalLineType.APPROVE) {
       document.reject();
+      
+      // 휴가 템플릿인지 검사하고 휴가 반려 처리
+      if(isLeaveTemplate(document.getTemplate())) {
+        leaveService.handleRejectedLeave(document, requestDTO.getApprovalComment());
+      }
+      
       // --- 알림 전송 로직 (기안자에게) ---
       User drafter = document.getUser(); // 기안자
       String message = "상신하신 결재가 반려되었습니다.";
@@ -704,5 +727,10 @@ public class ApprovalServiceImpl implements ApprovalService {
           e.getMessage()
           );
     }
+  }
+  
+  /** 휴가 템플릿인지 판별하는 메소드 */
+  private boolean isLeaveTemplate(Template template) {
+    return template.getId().equals(LEAVE_TEMPLATE_ID);
   }
 }
