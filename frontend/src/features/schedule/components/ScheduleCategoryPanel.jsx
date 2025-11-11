@@ -12,6 +12,7 @@ import {
   updateScheduleCategory,
   deleteScheduleCategory,
 } from "../api/scheduleAPI";
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 
 const COLOR_PALETTE = [ "#EF5350","#F06292","#BA68C8","#7986CB","#64B5F6",
   "#4DD0E1","#4DB6AC","#81C784","#DCE775","#FFD54F","#FFB74D","#A1887F",
@@ -24,6 +25,8 @@ export default function ScheduleCategoryPanel({ activeCategories, onToggle, onCo
   const [colors, setColors] = useState({});
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const { showSnack } = useSnackbarContext();
+
 
   // Dialog 상태
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -64,7 +67,10 @@ export default function ScheduleCategoryPanel({ activeCategories, onToggle, onCo
 
   /** Dialog 저장 */
   const handleDialogSubmit = async () => {
-    if (!inputValue.trim()) return alert("이름을 입력하세요.");
+    if (!inputValue.trim()) {
+      showSnack("카테고리 이름을 입력하세요.", "warning");
+      return;
+    }
     try {
       if (dialogMode === "add") {
         const created = await createScheduleCategory({ name: inputValue, defaultYn: false });
@@ -82,7 +88,7 @@ export default function ScheduleCategoryPanel({ activeCategories, onToggle, onCo
         );
       }
     } catch (err) {
-      alert(err.message || "카테고리 저장 중 오류 발생");
+      showSnack(err.message || "카테고리 저장 중 오류 발생", "error");
     } finally {
       setDialogOpen(false);
     }

@@ -14,6 +14,7 @@ import {
 } from "@mui/material";
 import { getScheduleById } from "../api/scheduleAPI";
 import { getParticipantsBySchedule } from "../api/scheduleParticipantAPI";
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 
 export default function ScheduleDetailModal({
   open,
@@ -26,6 +27,7 @@ export default function ScheduleDetailModal({
   const [schedule, setSchedule] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { showSnack } = useSnackbarContext();
 
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm")); // 모바일 대응
@@ -45,7 +47,7 @@ export default function ScheduleDetailModal({
         setSchedule(s);
         setParticipants(normalized);
       } catch (err) {
-        console.error("상세 일정 조회 실패:", err);
+        showSnack("상세 일정 조회 중 오류가 발생했습니다.", "error");
       } finally {
         setLoading(false);
       }

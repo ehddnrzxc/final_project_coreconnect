@@ -17,7 +17,7 @@ import { toISO } from "../../../utils/dateFormat";
 import ScheduleCategoryPanel from "../components/ScheduleCategoryPanel";
 import ScheduleModal from "../components/ScheduleModal";
 import ScheduleDetailModal from "../components/ScheduleDetailModal";
-import useSnackbar from "../../../hooks/useSnackbar";
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 
 export default function CalendarPage() {
   const [events, setEvents] = useState([]);
@@ -33,7 +33,7 @@ export default function CalendarPage() {
   const calendarRef = useRef(null);
   const [currentView, setCurrentView] = useState("dayGridMonth");
   const [visibleEnd, setVisibleEnd] = useState(null);
-  const { snack, showSnack, closeSnack } = useSnackbar();
+  const { showSnack } = useSnackbarContext();  // 전역 Snackbar 훅 사용
   const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
   const currentUserEmail = storedUser?.email;
   const [drawerOpen, setDrawerOpen] = useState(true);
@@ -394,18 +394,6 @@ export default function CalendarPage() {
             onDelete={handleDelete}
           />
         )}
-
-        {/* 전역 알림 */}
-        <Snackbar
-          open={snack.open}
-          autoHideDuration={3500}
-          onClose={closeSnack}
-          anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-        >
-          <Alert onClose={closeSnack} severity={snack.severity} variant="filled" sx={{ width: "100%" }}>
-            {snack.message}
-          </Alert>
-        </Snackbar>
       </Box>
     </Box>
   );
