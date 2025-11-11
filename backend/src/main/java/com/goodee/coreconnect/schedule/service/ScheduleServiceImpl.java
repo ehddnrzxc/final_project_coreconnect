@@ -77,6 +77,12 @@ public class ScheduleServiceImpl implements ScheduleService {
     if (ownerHasConflict) {
       throw new IllegalArgumentException("본인은 해당 시간대에 이미 다른 일정이 있습니다.");
     }
+    
+    // 시간 검증 
+    if (dto.getStartDateTime().isAfter(dto.getEndDateTime()) || 
+        dto.getStartDateTime().isEqual(dto.getEndDateTime())) {
+        throw new IllegalArgumentException("종료 시간은 시작 시간보다 이후여야 합니다.");
+    }
 
     // 일정 생성
     Schedule schedule = dto.toEntity(user, meetingRoom, category);
@@ -201,6 +207,13 @@ public class ScheduleServiceImpl implements ScheduleService {
     if (oldMeetingRoom != null && newMeetingRoom != null && !oldMeetingRoom.equals(newMeetingRoom)) {
       oldMeetingRoom.changeAvailability(true);
     }
+    
+    // 시간 검증 
+    if (dto.getStartDateTime().isAfter(dto.getEndDateTime()) || 
+        dto.getStartDateTime().isEqual(dto.getEndDateTime())) {
+        throw new IllegalArgumentException("종료 시간은 시작 시간보다 이후여야 합니다.");
+    }
+
 
     // 일정 정보 수정
     schedule.update(
