@@ -37,6 +37,9 @@ import DocumentDetailPage from "./features/approval/pages/DocumentDetailPage";
 import DraftBoxPage from "./features/email/pages/DraftBoxPage";
 import LeavePage from "./features/leave/LeavePage";
 import LeaveRequestsPage from "./features/admin/components/LeaveRequestsPage";
+import PendingDocuments from "./features/approval/pages/PendingDocumentPage";
+import MyDocumentsPage from "./features/approval/pages/MyDocumentsPage";
+import MyDraftsPage from "./features/approval/pages/MyDraftsPage";
 
 /* 전체 라우트 구조 */
 const router = createBrowserRouter([
@@ -91,6 +94,9 @@ const router = createBrowserRouter([
           { index: true, element: <ApprovalHomePage /> }, // 결재홈
           { path: "new/:templateId", element: <NewDocumentPage /> }, // 새 결제 진행
           { path: "doc/:documentId", element: <DocumentDetailPage /> },
+          { path: "pending", element: <PendingDocuments /> },
+          { path: "my-documents", element: <MyDocumentsPage /> },
+          { path: "my-drafts", element: <MyDraftsPage />},
         ],
       },
       {

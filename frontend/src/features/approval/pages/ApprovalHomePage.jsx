@@ -15,6 +15,9 @@ import {
   Paper,
   CircularProgress,
   Alert,
+  Stack,
+  Button,
+  IconButton,
 } from "@mui/material";
 
 import {
@@ -25,12 +28,16 @@ import {
 
 import ApprovalStatusChip from "../components/ApprovalStatusChip";
 
+const ITEMS_PER_PAGE = 4;
+
 function ApprovalHomePage() {
   const [myTasks, setMyTasks] = useState([]);
   const [pendingDocs, setPendingDocs] = useState([]);
   const [completedDocs, setCompletedDocs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const [page, setPage] = useState(0);
 
   const navigate = useNavigate();
 
@@ -60,9 +67,15 @@ function ApprovalHomePage() {
     fetchDocs();
   }, []);
 
-  const handleRowClick = (documentId) => {
+  const handleRowClick = documentId => {
     navigate(`/e-approval/doc/${documentId}`);
   };
+
+  const pageCount = Math.ceil(myTasks.length / ITEMS_PER_PAGE);
+  const paginatedTasks = myTasks.slice(
+    page * ITEMS_PER_PAGE,
+    (page + 1) * ITEMS_PER_PAGE
+  );
 
   if (loading) {
     return (
@@ -89,38 +102,89 @@ function ApprovalHomePage() {
       {myTasks.length === 0 ? (
         <Typography>결재 대기중인 문서가 없습니다.</Typography>
       ) : (
-        <Grid container spacing={2}>
-          {myTasks.map((doc) => (
-            <Grid item xs={12} sm={6} md={4} key={doc.documentId}>
-              <Card
-                component={RouterLink}
-                to={`/e-approval/doc/${doc.documentId}`}
-                elevation={2}
-                sx={{ textDecoration: "none", height: "100%",
-                  borderRadius: 2, transition: "all 0.2s",
-                  "&:hover": {
-                    boxShadow: 6,
-                    transform: "translateY(-2px)",
-                  },
-                }}
-                variant="outlined"
+        <>
+          <Grid container spacing={2}>
+            {paginatedTasks.map((doc) => (
+              <Grid item xs={12} sm={6} md={4} key={doc.documentId}>
+                <Card
+                  sx={{
+                    textDecoration: "none",
+                    height: "100%",
+                    borderRadius: 2,
+                    transition: "all 0.2s ease-in-out",
+                    "&:hover": {
+                      boxShadow: 8,
+                      transform: "translateY(-4px)",
+                    },
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                  }}
+                  variant="outlined"
+                >
+                  <CardContent sx={{ pb: 1 }}>
+                    <ApprovalStatusChip status={doc.documentStatus} />
+
+                    <Typography
+                      variant="h6"
+                      sx={{ fontWeight: "bold", my: 0.5 }}
+                    >
+                      {doc.documentTitle}
+                    </Typography>
+                    <Stack spacing={0.5}>
+                      <Typography variant="body2" color="text.secondary">
+                        기안자: {doc.writerName}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        기안일: {new Date(doc.createdAt).toLocaleDateString()}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        결재양식: {doc.templateName}
+                      </Typography>
+                    </Stack>
+                  </CardContent>
+
+                  <Box sx={{ p: 2, pt: 1 }}>
+                    <Button
+                      component={RouterLink}
+                      to={`/e-approval/doc/${doc.documentId}`}
+                      variant="outlined"
+                      fullWidth
+                      sx={{
+                        color: "text.primary",
+                        borderColor: "grey.300",
+                        backgroundColor: "grey.50",
+                        "&:hover": {
+                          backgroundColor: "grey.100",
+                          borderColor: "grey.400",
+                        },
+                      }}
+                    >
+                      결재하기
+                    </Button>
+                  </Box>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+
+          {pageCount > 1 && (
+            <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
+              <IconButton
+                onClick={() => setPage((prev) => prev - 1)}
+                disabled={page === 0}
               >
-                <CardContent>
-                  <Typography variant="body2" color="primary">
-                    {doc.templateName}
-                  </Typography>
-                  <Typography
-                    variant="h6"
-                    sx={{ fontWeight: "bold", my: 0.5 }}
-                  >
-                    {doc.documentTitle}
-                  </Typography>
-                  <ApprovalStatusChip status={doc.documentStatus} />
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+                <NavigateBeforeIcon />
+              </IconButton>
+              <IconButton
+                onClick={() => setPage((prev) => prev + 1)}
+                disabled={page === pageCount - 1}
+              >
+                <NavigateNextIcon />
+              </IconButton>
+            </Box>
+          )}
+        </>
       )}
 
       {/* --- 2. 진행중인 문서 (Table) --- */}
