@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState, useRef } from "react"; // React 훅: 상태관리, 렌더링 최적화, 생명주기 제어
-import { useParams, useNavigate } from "react-router-dom"; // React Router 훅: URL 파라미터와 페이지 이동 관리
+import React, { useEffect, useMemo, useState, useRef } from "react"; // React 훅: 상태관리, 렌더링 최적화(useMemo), 생명주기 제어(useEffect), 렌더링과 무관한 값 저장(useRef)
+import { useParams, useNavigate } from "react-router-dom"; // React Router 훅: URL 파라미터 추출(useParams), 페이지 이동(useNavigate)
 import {
   Box,
   Typography,
@@ -8,65 +8,67 @@ import {
   Button,
   Stack,
   Paper,
-} from "@mui/material"; // MUI: 레이아웃/텍스트/UI 기본 구성요소
-import ReplyIcon from "@mui/icons-material/Reply"; // MUI: 답글 아이콘
-import EditIcon from "@mui/icons-material/Edit"; // MUI: 수정 아이콘
-import DeleteIcon from "@mui/icons-material/Delete"; // MUI: 삭제 아이콘
+} from "@mui/material"; // MUI: 레이아웃(Box, Stack), 텍스트(Typography), 입력(TextField), 버튼(Button), 카드형 컨테이너(Paper) 등 UI 컴포넌트
+import ReplyIcon from "@mui/icons-material/Reply"; // MUI 아이콘: 답글(대댓글) 버튼에 사용
+import EditIcon from "@mui/icons-material/Edit"; // MUI 아이콘: 수정 버튼에 사용
+import DeleteIcon from "@mui/icons-material/Delete"; // MUI 아이콘: 삭제 버튼에 사용
 
-import { getBoardDetail, deleteBoard } from "../api/boardAPI"; // 게시글 관련 API 함수
-import { getFilesByBoard } from "../api/boardFileAPI"; // 게시글 첨부파일 API
+import { getBoardDetail, deleteBoard } from "../api/boardAPI"; // 게시글 상세 조회, 게시글 삭제 API 함수
+import { getFilesByBoard } from "../api/boardFileAPI"; // 특정 게시글의 첨부파일 목록 조회 API
 import {
   getRepliesByBoard,
   createReply,
   updateReply,
   deleteReply,
-} from "../api/boardReplyAPI"; // 댓글 관련 API
+} from "../api/boardReplyAPI"; // 댓글 목록 조회, 댓글 등록, 수정, 삭제 API 함수들
 
 // 게시글 상세 페이지 컴포넌트
 const BoardDetailPage = () => {
-  const { boardId } = useParams(); // URL 경로에서 게시글 ID 추출
-  const navigate = useNavigate(); // 페이지 이동용 훅
+  const { boardId } = useParams(); // URL 경로에서 /board/:boardId 의 boardId 값을 문자열로 가져옴
+  const navigate = useNavigate(); // 다른 페이지로 이동(뒤로가기, 특정 경로 이동 등)에 사용하는 함수
 
   // 로그인 사용자 정보 로드
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const loginName = user?.name || "익명"; // 로그인 이름 (없으면 '익명')
-  const loginRole = user?.role; // 사용자 역할
+  const user = JSON.parse(localStorage.getItem("user") || "{}"); // localStorage에 "user" 키로 저장된 JSON 문자열을 읽고 객체로 변환, 없으면 {} 사용
+  const loginName = user?.name || "익명"; // 로그인 이름 (user.name 이 없거나 undefined면 "익명"으로 대체)
+  const loginRole = user?.role; // 사용자 역할(권한). 예: "ADMIN", "USER" 등
 
   // 상태 정의
-  const [board, setBoard] = useState(null); // 게시글 상세 데이터
-  const [files, setFiles] = useState([]); // 첨부파일 목록
-  const [replies, setReplies] = useState([]); // 댓글 목록
+  const [board, setBoard] = useState(null); // 게시글 상세 데이터 상태 (초기값 null → 아직 로딩 전이라는 의미)
+  const [files, setFiles] = useState([]); // 첨부파일 목록 상태
+  const [replies, setReplies] = useState([]); // 댓글 전체 목록 상태 (부모 댓글 + 자식 댓글 포함)
 
   // 댓글 입력/수정 상태
-  const [replyText, setReplyText] = useState(""); // 일반 댓글 내용
-  const [childReplyText, setChildReplyText] = useState(""); // 대댓글(답글) 입력용
-  const [replyParentId, setReplyParentId] = useState(null); // 부모 댓글 ID (대댓글일 경우)
-  const [editReplyId, setEditReplyId] = useState(null); // 수정 중인 댓글 ID
-  const [editReplyText, setEditReplyText] = useState(""); // 수정 중 댓글 내용
+  const [replyText, setReplyText] = useState(""); // 일반 댓글 입력창의 내용
+  const [childReplyText, setChildReplyText] = useState(""); // 대댓글(답글) 입력창의 내용
+  const [replyParentId, setReplyParentId] = useState(null); // 대댓글 작성 시, 어떤 부모 댓글에 달리는지 그 부모 댓글 ID
+  const [editReplyId, setEditReplyId] = useState(null); // 현재 "수정 모드"로 보고 있는 댓글의 ID (null이면 수정 중인 댓글 없음)
+  const [editReplyText, setEditReplyText] = useState(""); // 수정 모드에서 사용하는 댓글 내용 입력값
 
   // 날짜 포맷 변환 함수
   const formatDateTime = (str) => {
-    if (!str) return "";
-    const d = new Date(str);
-    const pad = (n) => String(n).padStart(2, "0");
+    if (!str) return ""; // 값이 없으면 빈 문자열 반환 (표시 안 함)
+    const d = new Date(str); // 문자열을 Date 객체로 변환 (ISO 날짜 문자열 가정)
+    const pad = (n) => String(n).padStart(2, "0"); // 숫자를 항상 2자리 문자열로 만들기 위해 0을 앞에 채움
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(
       d.getHours()
-    )}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    )}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; // "YYYY-MM-DD HH:mm:ss" 형식으로 문자열 반환
   };
 
   const alertShownRef = useRef(false); // 알럿 중복 방지용 ref
+  // useRef는 값이 변해도 리렌더링을 유발하지 않음.
+  // 이 ref를 통해 한번 에러로 인해 alert를 띄웠으면 그 뒤에는 같은 렌더 사이클에서 또 띄우지 않도록 제어.
 
   // 게시글, 댓글, 파일 데이터 전체 로드
   const loadAll = async () => {
     try {
-      const detailRes = await getBoardDetail(boardId); // 게시글 상세조회
-      setBoard(detailRes.data.data);
+      const detailRes = await getBoardDetail(boardId); // 게시글 상세조회 API 호출
+      setBoard(detailRes.data.data); // 응답에서 실제 데이터 부분을 꺼내 board 상태에 저장
 
-      const replyRes = await getRepliesByBoard(boardId); // 댓글 목록 조회
-      setReplies(replyRes.data.data || []);
+      const replyRes = await getRepliesByBoard(boardId); // 댓글 목록 조회 API 호출
+      setReplies(replyRes.data.data || []); // 데이터가 없으면 null 방지를 위해 빈 배열로 대체
 
-      const fileRes = await getFilesByBoard(boardId); // 첨부파일 목록 조회
-      setFiles(fileRes.data.data || []);
+      const fileRes = await getFilesByBoard(boardId); // 첨부파일 목록 조회 API 호출
+      setFiles(fileRes.data.data || []); // 마찬가지로 없으면 빈 배열로 처리
     } catch (err) {
       if (alertShownRef.current) return; // 이미 알럿 띄웠으면 더 이상 실행 안 함
       alertShownRef.current = true; // 첫 에러 시 한 번만 true로 설정
@@ -74,7 +76,7 @@ const BoardDetailPage = () => {
       // 비공개글 접근 차단 처리
       if (err.response?.status === 403) {
         alert("비공개 게시글입니다. 접근할 수 없습니다.");
-        navigate(-1); // 바로 이전 페이지로 돌아감
+        navigate(-1); // 바로 이전 페이지로 돌아감 (브라우저 history 한 단계 뒤로)
         return;
       }
       // 존재하지 않거나 삭제된 게시글
@@ -84,99 +86,106 @@ const BoardDetailPage = () => {
         return;
       }
       // 기타 예외
-      alert("게시글을 불러오는 중 오류가 발생했습니다.");
+      alert("게시글을 불러오는 중 오류가 발생했습니다."); // 위 두 케이스 외 나머지 서버/네트워크 에러
     }
   };
 
   // 페이지 로드 시 게시글/댓글 불러오기
   useEffect(() => {
-    loadAll();
-  }, [boardId]);
+    // 컴포넌트가 처음 마운트되거나, URL의 boardId가 바뀔 때마다 실행
+    loadAll(); // 게시글 상세, 댓글, 파일 정보를 한 번에 모두 가져옴
+  }, [boardId]); // boardId가 변경되면 해당 게시글 기준으로 다시 조회
 
   // 작성자 or 관리자만 수정/삭제 가능
   const canEditOrDeletePost = useMemo(() => {
+    // board가 아직 로드 안 됐으면 false
     if (!board) return false;
+    // ADMIN 이거나, 게시글의 작성자 이름과 현재 로그인 이름이 같으면 수정/삭제 가능
     return loginRole === "ADMIN" || board.writerName === loginName;
-  }, [board, loginName, loginRole]);
+  }, [board, loginName, loginRole]); // 게시글 정보/로그인 이름/역할이 바뀔 때마다 다시 계산
 
   // 부모 댓글과 자식 댓글 분리
   const rootReplies = useMemo(
-    () => (replies || []).filter((r) => !r.parentReplyId), // 부모 댓글
+    () => (replies || []).filter((r) => !r.parentReplyId), // parentReplyId가 없는 댓글 = 부모 댓글
     [replies]
   );
   const childReplies = (parentId) =>
-    (replies || []).filter((r) => r.parentReplyId === parentId); // 자식 댓글
+    (replies || []).filter((r) => r.parentReplyId === parentId); // 인자로 들어온 parentId를 가진 댓글들만 필터링 → 해당 부모의 대댓글 목록
 
   // 상세 헤더용 "표시할 댓글 수" (삭제된 댓글 제외)
   const visibleReplyCount = useMemo(
-    () => (replies || []).filter((r) => !r.deletedYn).length,
+    () => (replies || []).filter((r) => !r.deletedYn).length, // deletedYn이 false인 댓글 수만 카운트
     [replies]
   );
 
   // 게시글 삭제
   const handleDeletePost = async () => {
-    if (!window.confirm("정말 삭제하시겠습니까?")) return; // 삭제 확인
-    await deleteBoard(boardId);
+    if (!window.confirm("정말 삭제하시겠습니까?")) return; // 브라우저 기본 confirm으로 사용자에게 재확인
+    await deleteBoard(boardId); // 게시글 삭제 API 호출 (Soft Delete 혹은 실제 삭제는 백엔드 로직에 따름)
     alert("게시글이 삭제되었습니다.");
-    navigate(-1);
+    navigate(-1); // 삭제 후 이전 페이지(대부분 목록)로 이동
   };
 
   // 댓글 등록 (일반 댓글 전용)
   const handleReplySubmit = async () => {
-    if (!replyText.trim()) return; // 빈 문자열 방지
+    if (!replyText.trim()) return; // 공백만 있는 경우 등록하지 않음
     await createReply({
-      boardId: Number(boardId),
-      content: replyText,
+      boardId: Number(boardId), // URL 파라미터는 문자열이라 Number로 형변환
+      content: replyText, // 현재 입력창에 작성된 내용
     });
     setReplyText(""); // 입력 초기화
-    await loadAll(); // 새로고침
+    await loadAll(); // 새로고침해서 최신 댓글 목록 반영
   };
 
   // 대댓글 등록
   const handleChildReplySubmit = async () => {
-    if (!childReplyText.trim()) return; // 빈 문자열 방지
+    if (!childReplyText.trim()) return; // 내용이 비어 있으면 등록 안 함
     await createReply({
-      boardId: Number(boardId),
-      content: childReplyText,
-      parentReplyId: replyParentId,
+      boardId: Number(boardId), // 어떤 게시글에 대한 댓글인지
+      content: childReplyText, // 대댓글 내용
+      parentReplyId: replyParentId, // 어떤 부모 댓글에 대한 대댓글인지
     });
     setChildReplyText(""); // 대댓글 입력값 초기화
-    setReplyParentId(null); // 입력창 닫기
+    setReplyParentId(null); // 입력창 닫기 (현재 선택된 부모 댓글 해제)
     await loadAll(); // 새로고침
   };
 
   // 댓글 수정
   const handleReplyUpdate = async (replyId) => {
-    if (!editReplyText.trim()) return alert("내용을 입력하세요.");
-    await updateReply(replyId, { content: editReplyText });
-    setEditReplyId(null);
-    setEditReplyText("");
-    await loadAll();
+    if (!editReplyText.trim()) return alert("내용을 입력하세요."); // 수정 내용이 비어 있으면 경고
+    await updateReply(replyId, { content: editReplyText }); // 해당 댓글 ID 기준으로 내용 업데이트
+    setEditReplyId(null); // 수정 모드 종료
+    setEditReplyText(""); // 수정용 입력값 초기화
+    await loadAll(); // 댓글 목록 다시 조회하여 변경된 내용 반영
   };
 
   // 댓글 삭제
   const handleReplyDelete = async (replyId) => {
-    if (!window.confirm("삭제하시겠습니까?")) return;
-    await deleteReply(replyId);
-    await loadAll();
+    if (!window.confirm("삭제하시겠습니까?")) return; // 삭제 전 사용자 확인
+    await deleteReply(replyId); // 댓글 삭제 API 호출 (Soft Delete일 가능성 높음)
+    await loadAll(); // 삭제 후 댓글 목록 재조회
   };
 
   // 게시글이 없을 때 로딩 표시
-  if (!board) return <Typography>알 수 없는 페이지</Typography>;
+  if (!board) return <Typography>알 수 없는 페이지</Typography>; // 아직 board 데이터가 로드되지 않았거나 에러로 null인 경우
 
   return (
-    <Box> 
+    <Box sx={{ px: "5%", pt: 2 }}> 
+      {/* 페이지 전체를 감싸는 최상위 컨테이너 Box
+          - px: 좌우 패딩 5%
+          - pt: 상단 패딩 2 (theme spacing 단위) */}
       <Typography variant="h5" sx={{ mb: 1 }}>
         {board.title} {/* 게시글 제목 */}
       </Typography>
       <Typography variant="body2" sx={{ mb: 2, color: "text.secondary" }}>
         {board.writerName} | {formatDateTime(board.createdAt)} | 조회수{" "}
-        {board.viewCount ?? 0}
+        {board.viewCount ?? 0} {/* 조회수가 null/undefined일 경우 0으로 대체 */}
       </Typography>
 
       {/* 게시글 작성자 or 관리자만 수정/삭제 버튼 표시 */}
       {canEditOrDeletePost && (
         <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+          {/* 수정/삭제 버튼을 가로로 배치하는 Stack 컨테이너 */}
           <Button
             variant="outlined"
             size="small"
@@ -212,6 +221,7 @@ const BoardDetailPage = () => {
           width: "80%",
         }}
       >
+        {/* 게시글 내용 영역 */}
         <Typography
           variant="body1"
           color="text.secondary"
@@ -223,6 +233,7 @@ const BoardDetailPage = () => {
           }}
         >
           {board.content?.trim() ? board.content : "등록된 내용이 없습니다."}
+          {/* content가 공백만 있는 경우 "등록된 내용이 없습니다." 표시 */}
         </Typography>
       </Paper>
 
@@ -254,6 +265,7 @@ const BoardDetailPage = () => {
           return (
             <React.Fragment key={r.id}>
               <Box sx={{ mb: children.length ? 0 : 2 }}>
+                {/* 부모 댓글 카드 */}
                 <Paper
                   variant="outlined"
                   sx={{ p: 1.5, bgcolor: "#fff", opacity: r.deletedYn ? 0.6 : 1 }}
@@ -281,13 +293,14 @@ const BoardDetailPage = () => {
                         <Stack direction="row" spacing={1}>
                           {editReplyId !== r.id ? (
                             <>
+                              {/* 수정 모드가 아닐 때: 수정 / 삭제 텍스트 버튼 */}
                               <Typography
                                 variant="caption"
                                 color="text.secondary"
                                 sx={{ cursor: "pointer" }}
                                 onClick={() => {
-                                  setEditReplyId(r.id);
-                                  setEditReplyText(r.content);
+                                  setEditReplyId(r.id); // 이 댓글을 수정 모드로 설정
+                                  setEditReplyText(r.content); // 기존 내용을 수정 입력값에 채워넣음
                                 }}
                               >
                                 수정
@@ -303,6 +316,7 @@ const BoardDetailPage = () => {
                             </>
                           ) : (
                             <>
+                              {/* 수정 모드일 때: 저장 / 취소 버튼 */}
                               <Typography
                                 variant="caption"
                                 color="primary"
@@ -335,6 +349,7 @@ const BoardDetailPage = () => {
                       삭제된 댓글입니다.
                     </Typography>
                   ) : editReplyId === r.id ? (
+                    // 이 댓글이 현재 수정 모드일 때: 입력창으로 표시
                     <TextField
                       fullWidth
                       multiline
@@ -344,6 +359,7 @@ const BoardDetailPage = () => {
                       sx={{ mt: 1 }}
                     />
                   ) : (
+                    // 일반 모드일 때: 텍스트로 내용 표시
                     <Typography variant="body2" sx={{ mt: 0.5 }}>
                       {r.content?.trim() ? r.content : "내용 없음"}
                     </Typography>
@@ -362,6 +378,7 @@ const BoardDetailPage = () => {
                       }}
                       onClick={() =>
                         setReplyParentId(replyParentId === r.id ? null : r.id)
+                        // 이미 같은 부모에 대한 답글 입력창이 열려 있으면 닫고, 아니면 해당 댓글에 대한 입력창 열기
                       }
                     >
                       <ReplyIcon fontSize="small" sx={{ mr: 0.3 }} />
@@ -384,6 +401,7 @@ const BoardDetailPage = () => {
                         width: "80%",
                       }}
                     >
+                      {/* 대댓글 내용 입력 TextField */}
                       <TextField
                         fullWidth
                         multiline
@@ -408,7 +426,7 @@ const BoardDetailPage = () => {
 
               {/* 대댓글 렌더링 */}
               {children
-                .filter((child) => !child.deletedYn)
+                .filter((child) => !child.deletedYn) // 자식 댓글 중 삭제되지 않은 것만 표시
                 .map((child, idx) => (
                   <Paper
                     key={child.id}
@@ -421,6 +439,7 @@ const BoardDetailPage = () => {
                       bgcolor: "#fcfcfc"
                     }}
                   >
+                    {/* 대댓글 상단: 작성자, 작성일, 수정/삭제 */}
                     <Stack
                       direction="row"
                       justifyContent="space-between"
@@ -442,13 +461,14 @@ const BoardDetailPage = () => {
                           <Stack direction="row" spacing={1}>
                             {editReplyId !== child.id ? (
                               <>
+                                {/* 대댓글이 수정 모드가 아닐 때: 수정 / 삭제 */}
                                 <Typography
                                   variant="caption"
                                   color="text.secondary"
                                   sx={{ cursor: "pointer" }}
                                   onClick={() => {
-                                    setEditReplyId(child.id);
-                                    setEditReplyText(child.content);
+                                    setEditReplyId(child.id); // 이 대댓글을 수정 대상으로 설정
+                                    setEditReplyText(child.content); // 기존 내용 채우기
                                   }}
                                 >
                                   수정
@@ -464,6 +484,7 @@ const BoardDetailPage = () => {
                               </>
                             ) : (
                               <>
+                                {/* 대댓글이 수정 모드일 때: 저장 / 취소 */}
                                 <Typography
                                   variant="caption"
                                   color="primary"
@@ -488,6 +509,7 @@ const BoardDetailPage = () => {
 
                     {/* 대댓글 내용 */}
                     {editReplyId === child.id ? (
+                      // 수정 모드일 때 입력창
                       <TextField
                         fullWidth
                         multiline
@@ -497,6 +519,7 @@ const BoardDetailPage = () => {
                         sx={{ mt: 1 }}
                       />
                     ) : (
+                      // 일반 모드일 때 텍스트 출력
                       <Typography variant="body2" sx={{ mt: 0.5 }}>
                         {child.content?.trim()
                           ? child.content
@@ -523,6 +546,7 @@ const BoardDetailPage = () => {
           mt: 3,
         }}
       >
+        {/* 로그인한 사용자의 이름 라벨 */}
         <Typography
           variant="body2"
           sx={{
@@ -535,6 +559,7 @@ const BoardDetailPage = () => {
           {loginName}
         </Typography>
 
+        {/* 새 댓글 입력 TextField */}
         <TextField
           fullWidth
           multiline

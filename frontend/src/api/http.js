@@ -31,7 +31,7 @@ http.interceptors.response.use(
   (res) => res,
   async (error) => {
     const { response, config } = error;
-    if (!response) throw Promise.reject(error);
+    if (!response) return Promise.reject(error);
 
     // refresh 호출 자체가 401 나면 더 진행 X
     if (config?.url?.includes("/auth/refresh")) {

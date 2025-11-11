@@ -90,9 +90,10 @@ public class BoardController {
     @Operation(summary = "게시글 상세 조회", description = "게시글의 상세 내용을 조회합니다. (조회수가 증가하고, 최근 본 게시글로 저장됩니다.)")
     @GetMapping("/{boardId}")
     public ResponseEntity<ResponseDTO<BoardResponseDTO>> getBoardDetail(
-            @AuthenticationPrincipal String email, 
+            @AuthenticationPrincipal CustomUserDetails user, 
             @PathVariable("boardId") Integer boardId
     ) {
+        String email = user.getEmail();
         BoardResponseDTO response = boardService.getBoardById(boardId, email); 
 
         ResponseDTO<BoardResponseDTO> res = ResponseDTO.<BoardResponseDTO>builder()
@@ -197,8 +198,9 @@ public class BoardController {
     @Operation(summary = "최근 본 게시글 10개 조회", description = "로그인한 사용자의 최근 본 게시글을 최대 10개까지 최신순으로 조회합니다.")
     @GetMapping("/recent")
     public ResponseEntity<ResponseDTO<List<BoardResponseDTO>>> getRecentViewedBoards(
-            @AuthenticationPrincipal String email
+            @AuthenticationPrincipal CustomUserDetails user
     ) {
+        String email = user.getEmail();
         List<BoardResponseDTO> list = boardService.getRecentViewedBoards(email);
 
         ResponseDTO<List<BoardResponseDTO>> res = ResponseDTO.<List<BoardResponseDTO>>builder()
