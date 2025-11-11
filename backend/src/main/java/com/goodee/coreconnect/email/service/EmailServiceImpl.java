@@ -6,8 +6,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.Optional;
@@ -21,6 +23,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.goodee.coreconnect.common.S3Service;
@@ -796,6 +799,52 @@ public class EmailServiceImpl implements EmailService {
     	    draft.setEmailDeletedTime(LocalDateTime.now());
     	    log.info("삭제 draft: {}", draft);
     	    emailRepository.save(draft);
+    }
+
+    @Override
+    @Transactional
+    public void moveEmailsToTrash(List<Integer> emailIds, String userEmail) {
+        if (CollectionUtils.isEmpty(emailIds)) {
+            return;
+        }
+        // 조건 없이 모든 emailIds를 allowed에 복사
+        List<Integer> allowed = new ArrayList<>(emailIds);
+
+        if (!allowed.isEmpty()) {
+            int updated = emailRepository.updateEmailStatusByIds(allowed, EmailStatusEnum.TRASH);
+            log.info("moveEmailsToTrash: updated {} rows to TRASH for user {}", updated, userEmail);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void emptyTrash(String userEmail) {
+        if (userEmail == null) return;
+        // 1) 이메일 발신자(userEmail)인 것들 중 상태가 TRASH인 id
+        Iterable<com.goodee.coreconnect.email.entity.Email> senderEmailsIterable = emailRepository.findAll(); // 작은 규모 가정. 필요시 커스텀 쿼리로 최적화
+        Set<Integer> toDelete = new HashSet<>();
+        for (com.goodee.coreconnect.email.entity.Email e : senderEmailsIterable) {
+            if (e.getEmailStatus() == EmailStatusEnum.TRASH) {
+                if (userEmail.equals(e.getSenderEmail())) {
+                    toDelete.add(e.getEmailId());
+                }
+            }
+        }
+        // 2) 수신자로서 포함된 이메일 id들 중 상태가 TRASH인 것들
+        List<Integer> recipientIds = emailRecipientRepository.findEmailIdsByRecipientAddress(userEmail);
+        if (!CollectionUtils.isEmpty(recipientIds)) {
+            for (Integer id : recipientIds) {
+                emailRepository.findById(id).ifPresent(e -> {
+                    if (e.getEmailStatus() == EmailStatusEnum.TRASH) {
+                        toDelete.add(id);
+                    }
+                });
+            }
+        }
+        if (!toDelete.isEmpty()) {
+            int updated = emailRepository.updateEmailStatusByIds(new ArrayList<>(toDelete), EmailStatusEnum.DELETED);
+            log.info("emptyTrash: marked {} emails as DELETED for user {}", updated, userEmail);
+        }
     }
 
 	

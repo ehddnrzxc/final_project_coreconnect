@@ -6,9 +6,12 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import com.goodee.coreconnect.email.entity.Email;
 import com.goodee.coreconnect.email.entity.EmailRecipient;
+
+import org.springframework.data.repository.query.Param; 
 
 public interface EmailRecipientRepository extends JpaRepository<EmailRecipient, Integer> {
 
@@ -50,5 +53,10 @@ public interface EmailRecipientRepository extends JpaRepository<EmailRecipient, 
     	    Pageable pageable
     	);
     
-    
+    @Query("SELECT r.email.emailId FROM EmailRecipient r WHERE r.emailRecipientAddress = :address")
+    List<Integer> findEmailIdsByRecipientAddress(@Param("address") String address);
+
+    @Query("SELECT CASE WHEN (COUNT(r) > 0) THEN true ELSE false END FROM EmailRecipient r WHERE r.email.emailId = :emailId AND r.emailRecipientAddress = :address")
+    boolean existsByEmailIdAndEmailRecipientAddress(@Param("emailId") Integer emailId, @Param("address") String address);
+
 }

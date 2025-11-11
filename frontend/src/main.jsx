@@ -41,6 +41,7 @@ import PendingDocuments from "./features/approval/pages/PendingDocumentPage";
 import MyDocumentsPage from "./features/approval/pages/MyDocumentsPage";
 import MyDraftsPage from "./features/approval/pages/MyDraftsPage";
 
+
 /* 전체 라우트 구조 */
 const router = createBrowserRouter([
   {

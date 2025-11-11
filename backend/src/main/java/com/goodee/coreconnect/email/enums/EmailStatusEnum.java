@@ -6,5 +6,6 @@ public enum EmailStatusEnum {
 	FAILED,      // 발송 실패
 	DELETED,    // 삭제처리됨
 	DRAFT,      // 임시저장
-	RESERVED    // 예약됨
+	RESERVED,    // 예약됨
+	TRASH       // 휴지통
 }

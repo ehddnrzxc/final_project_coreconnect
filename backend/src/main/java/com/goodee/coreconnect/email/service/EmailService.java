@@ -119,4 +119,18 @@ public interface EmailService {
 	     * @param attachments   (일반적으로 예약 저장 시 이미 등록되므로 null 가능)
 	     */
 	    void sendActualMail(Email reservedEmail, List<MultipartFile> attachments);
+	    
+	    /**
+	     * 선택된 이메일들을 휴지통(TRASH) 상태로 변경한다.
+	     * 요청한 사용자가 해당 이메일의 발신자이거나 수신자(EmailRecipient)에 포함되어 있는지 최소한 검증 후 변경.
+	     * @param emailIds emailId 리스트
+	     * @param userEmail 요청자 이메일
+	     */
+	    void moveEmailsToTrash(List<Integer> emailIds, String userEmail);
+
+	    /**
+	     * 요청자(userEmail)의 휴지통(TRASH) 상태인 모든 메일을 삭제 상태(DELETED)로 변경(휴지통 비우기)
+	     * - 발신자이거나 수신자(EmailRecipient)에 포함된 이메일만 대상으로 함
+	     */
+	    void emptyTrash(String userEmail);
 }

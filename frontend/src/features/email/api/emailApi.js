@@ -16,6 +16,9 @@ export function getUserEmailFromStorage() {
 export const fetchInboxSimple = (userEmail, page, size, filter) =>
   http.get('/email/inbox', { params: { userEmail, page, size, filter } });
 
+
+
+
 /**
  * 받은메일함 조회 (정렬/추가옵션 지원)
  */
@@ -118,3 +121,15 @@ export function deleteDraftMail(draftId) {
   // BASE_URL + /email/draft/delete/53 -> /api/v1/email/draft/delete/53
   return http.delete(`/email/draft/delete/${draftId}`);
 }
+
+// ... 기존 함수들 ...
+
+// 선택된 이메일을 휴지통(TRASH)으로 이동
+export const moveToTrash = (emailIds) => {
+  return http.post('/email/move-to-trash', emailIds);
+};
+
+// 휴지통 비우기 (현재 사용자 휴지통의 모든 TRASH -> DELETED)
+export const emptyTrash = () => {
+  return http.post('/email/trash/empty');
+};
