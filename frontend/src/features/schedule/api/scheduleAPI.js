@@ -69,9 +69,45 @@ export const getScheduleById = async (id) => {
 export const getScheduleCategories = () =>
   http.get("/scheduleCategories").then((res) => res.data);
 
+/** 카테고리 생성 */
+export const createScheduleCategory = async (data) => {
+  try {
+    const res = await http.post("/scheduleCategories", data);
+    return res.data;
+  } catch (err) {
+    const message =
+      err.response?.data || "카테고리 생성 중 오류가 발생했습니다.";
+    throw new Error(message);
+  }
+};
+
+/** 카테고리 이름 수정 */
+export const updateScheduleCategory = async (id, data) => {
+  try {
+    const res = await http.put(`/scheduleCategories/${id}`, data);
+    return res.data;
+  } catch (err) {
+    const message =
+      err.response?.data || "카테고리 수정 중 오류가 발생했습니다.";
+    throw new Error(message);
+  }
+};
+
+/** 카테고리 삭제 */
+export const deleteScheduleCategory = async (id) => {
+  try {
+    const res = await http.delete(`/scheduleCategories/${id}`);
+    return res.data;
+  } catch (err) {
+    const message =
+      err.response?.data || "카테고리 삭제 중 오류가 발생했습니다.";
+    throw new Error(message);
+  }
+};
+
 /** 사용자 목록 조회 (초대용) */
 export const getUsers = () =>
-  http.get("/users").then((res) => res.data);
+  http.get("/user").then((res) => res.data);
 
 /** 회의실 전체 조회 */
 export const getMeetingRooms = () =>

@@ -37,8 +37,12 @@ public class ResponseScheduleDTO {
   
   private String userName;
   
+  private Integer categoryId;
+  
   private String categoryName;
   
+  private Integer meetingRoomId;
+
   private String meetingRoomName;
   
   @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
@@ -58,12 +62,21 @@ public class ResponseScheduleDTO {
     dto.userEmail = entity.getUser().getEmail();
     dto.createdAt = entity.getCreatedAt();
 
-    if (entity.getUser() != null)
+    if (entity.getUser() != null) {
+      dto.userId = entity.getUser().getId();
+      dto.userEmail = entity.getUser().getEmail();
       dto.userName = entity.getUser().getName();
-    if (entity.getCategory() != null)
+    }
+    
+    if (entity.getCategory() != null) {
+      dto.categoryId = entity.getCategory().getId();
       dto.categoryName = entity.getCategory().getName();
-    if (entity.getMeetingRoom() != null)
+    }
+    
+    if (entity.getMeetingRoom() != null) {
+      dto.meetingRoomId = entity.getMeetingRoom().getId();
       dto.meetingRoomName = entity.getMeetingRoom().getName();
+    }
 
     return dto;
   }

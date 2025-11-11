@@ -75,6 +75,12 @@ const VacationForm = ({ formData, onFormChange }) => {
                 required
                 size="small"
                 sx={{ ml: 1, mr: 2 }}
+                InputLabelProps={{ shirink: true }}
+                InputProps={{
+                  inputProps: {
+                    min: formData.startDate || '',
+                  },
+                }}
               />
               사용일수:
               <TextField

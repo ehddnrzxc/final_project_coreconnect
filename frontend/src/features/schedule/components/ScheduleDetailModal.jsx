@@ -1,6 +1,16 @@
 import React, { useEffect, useState } from "react";
 import {
-  Modal, Box, Typography, Divider, Stack, CircularProgress, Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Divider,
+  Stack,
+  Typography,
+  CircularProgress,
+  Button,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { getScheduleById } from "../api/scheduleAPI";
 import { getParticipantsBySchedule } from "../api/scheduleParticipantAPI";
@@ -16,6 +26,9 @@ export default function ScheduleDetailModal({
   const [schedule, setSchedule] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down("sm")); // 모바일 대응
 
   /** 일정 + 참여자 로드 */
   useEffect(() => {
@@ -43,7 +56,6 @@ export default function ScheduleDetailModal({
   if (!open) return null;
 
   const isOwner = schedule?.userEmail === currentUserEmail;
-
   const isParticipant =
     Array.isArray(participants) &&
     participants.some((p) => p.userEmail === currentUserEmail);
@@ -51,19 +63,29 @@ export default function ScheduleDetailModal({
   const canEdit = isOwner || isParticipant;
 
   return (
-    <Modal open={open} onClose={onClose}>
-      <Box
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullWidth
+      maxWidth="sm"
+      fullScreen={fullScreen}
+      scroll="paper"
+      PaperProps={{
+        sx: { borderRadius: 2, p: 0 },
+      }}
+    >
+      {/* 제목 영역 */}
+      <DialogTitle
         sx={{
-          width: 420,
-          bgcolor: "background.paper",
-          p: 3,
-          borderRadius: 2,
-          mx: "auto",
-          mt: "12vh",
-          boxShadow: 24,
-          outline: "none",
+          fontWeight: 600,
+          borderBottom: "1px solid #ddd",
         }}
       >
+        일정 상세보기
+      </DialogTitle>
+
+      {/* 내용 영역 (스크롤 가능) */}
+      <DialogContent dividers sx={{ p: 3 }}>
         {loading ? (
           <Stack alignItems="center" justifyContent="center" p={4}>
             <CircularProgress />
@@ -73,31 +95,41 @@ export default function ScheduleDetailModal({
           </Stack>
         ) : (
           <>
-            {/* 제목 + 공개여부 아이콘 */}
+            {/* 제목 + 공개여부 */}
             <Stack direction="row" alignItems="center" spacing={1}>
               {schedule.visibility === "PRIVATE" && <span>🔒</span>}
               <Typography variant="h6">{schedule.title}</Typography>
             </Stack>
 
-            {/* 일정 시간 표시 */}
+            {/* 시간 */}
             <Typography variant="body2" color="text.secondary">
               {schedule.startDateTime} ~ {schedule.endDateTime}
             </Typography>
 
             <Divider sx={{ my: 2 }} />
 
-            {/* 일정 내용 */}
+            {/* 내용 */}
             <Typography sx={{ whiteSpace: "pre-line" }}>
               {schedule.content || "(내용 없음)"}
             </Typography>
 
             {/* 기본 정보 */}
             <Stack spacing={0.5} mt={2}>
-              <Typography variant="body2">장소: {schedule.location || "-"}</Typography>
-              <Typography variant="body2">회의실: {schedule.meetingRoomName || "-"}</Typography>
-              <Typography variant="body2">카테고리: {schedule.categoryName || "-"}</Typography>
-              <Typography variant="body2">작성자: {schedule.userName || "-"}</Typography>
-              <Typography variant="body2" color="text.secondary">작성일: {schedule.createdAt || "-"}</Typography>
+              <Typography variant="body2">
+                장소: {schedule.location || "-"}
+              </Typography>
+              <Typography variant="body2">
+                회의실: {schedule.meetingRoomName || "-"}
+              </Typography>
+              <Typography variant="body2">
+                카테고리: {schedule.categoryName || "-"}
+              </Typography>
+              <Typography variant="body2">
+                작성자: {schedule.userName || "-"}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                작성일: {schedule.createdAt || "-"}
+              </Typography>
             </Stack>
 
             <Divider sx={{ my: 2 }} />
@@ -106,6 +138,7 @@ export default function ScheduleDetailModal({
             <Typography variant="subtitle1" fontWeight={600} mb={0.5}>
               참여자 목록
             </Typography>
+
             {participants.length > 0 ? (
               <Stack spacing={0.5}>
                 {participants.map((p) => (
@@ -114,11 +147,18 @@ export default function ScheduleDetailModal({
                     variant="body2"
                     sx={{
                       fontWeight: p.role === "OWNER" ? 700 : 400,
-                      color: p.role === "OWNER" ? "primary.main" : "text.primary",
+                      color:
+                        p.role === "OWNER"
+                          ? "primary.main"
+                          : "text.primary",
                     }}
                   >
                     • {p.userName}{" "}
-                    <Typography component="span" variant="caption" color="text.secondary">
+                    <Typography
+                      component="span"
+                      variant="caption"
+                      color="text.secondary"
+                    >
                       ({p.role === "OWNER" ? "생성자" : "참석자"})
                     </Typography>
                   </Typography>
@@ -129,22 +169,45 @@ export default function ScheduleDetailModal({
                 참여자 없음
               </Typography>
             )}
-
-            {/* 하단 버튼: OWNER 전용 수정/삭제 */}
-            <Stack direction="row" spacing={1} justifyContent="flex-end" mt={2}>
-              <Button variant="outlined" onClick={onClose}>닫기</Button>
-              {canEdit  && (
-                <>
-                  <Button variant="contained" onClick={() => onEdit(schedule)}>수정</Button>
-                  {isOwner && (
-                  <Button variant="contained" color="error" onClick={() => onDelete(schedule.id)}>삭제</Button>
-                  )}
-                </>
-              )}
-            </Stack>
           </>
         )}
-      </Box>
-    </Modal>
+      </DialogContent>
+
+      {/* 하단 버튼 고정 영역 */}
+      <DialogActions
+        sx={{
+          borderTop: "1px solid #ddd",
+          p: 2,
+        }}
+      >
+        <Button variant="outlined" onClick={onClose}>
+          닫기
+        </Button>
+        {canEdit && (
+          <>
+            <Button
+              variant="contained"
+              onClick={() =>
+                onEdit({
+                  ...schedule,
+                  participantIds: participants.map((p) => p.userId),
+                })
+              }
+            >
+              수정
+            </Button>
+            {isOwner && (
+              <Button
+                variant="contained"
+                color="error"
+                onClick={() => onDelete(schedule.id)}
+              >
+                삭제
+              </Button>
+            )}
+          </>
+        )}
+      </DialogActions>
+    </Dialog>
   );
 }

@@ -124,7 +124,7 @@ const BoardWritePage = () => {
   };
 
   return (
-    <Box sx={{ maxWidth: 800 }}>
+    <Box sx={{ px: "5%", pt: 2, maxWidth: 1000 }}>
       {/* 페이지 제목 */}
       <Typography variant="h6" sx={{ mb: 2 }}>
         {boardId ? "게시글 수정" : "새 게시글 작성"}

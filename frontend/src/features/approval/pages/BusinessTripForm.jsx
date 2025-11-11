@@ -50,6 +50,11 @@ const BusinessTripForm = ({ formData, onFormChange }) => {
                 size="small"
                 InputLabelProps={{ shrink: true }}
                 sx={{ ml: 1 }}
+                InputProps={{
+                  inputProps: {
+                    min: formData.startDate || '',
+                  },
+                }}
               />
             </TableCell>
           </TableRow>

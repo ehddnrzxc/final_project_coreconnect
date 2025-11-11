@@ -64,5 +64,6 @@ public class BoardCategory {
     /** Soft Delete */
     public void delete() {
         this.deletedYn = true;
+        this.orderNo = null;
     }
 }
