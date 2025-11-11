@@ -20,6 +20,7 @@ import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
 import com.goodee.coreconnect.user.dto.request.ChangeUserDepartmentDTO;
 import com.goodee.coreconnect.user.dto.request.ChangeUserJobGradeDTO;
 import com.goodee.coreconnect.user.dto.response.OrganizationUserResponseDTO;
+import com.goodee.coreconnect.user.dto.response.UserDTO;
 import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.service.UserServiceImpl;
 
@@ -91,6 +92,12 @@ public class UserController {
     public ResponseEntity<List<OrganizationUserResponseDTO>> getOrganizationChart() {
       List<OrganizationUserResponseDTO> userList = userService.getOrganizationChart();
       return ResponseEntity.ok(userList);
+    }
+    
+    /** 사용자 목록 조회 */
+    @GetMapping
+    public List<UserDTO> findAllUsers() {
+      return userService.findAllUsers();
     }
     
 }
