@@ -1,4 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
+import Tooltip from "@mui/material/Tooltip";
 import {
   AppBar,
   Toolbar,
@@ -6,24 +7,36 @@ import {
   IconButton,
   Button,
   Avatar,
-  Typography,
   TextField,
   InputAdornment,
 } from "@mui/material";
 import MessageIcon from "@mui/icons-material/Message";
-import RedeemIcon from "@mui/icons-material/Redeem";
 import NotificationsNoneIcon from "@mui/icons-material/NotificationsNone";
 import LogoutIcon from "@mui/icons-material/Logout";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import SearchIcon from "@mui/icons-material/Search";
-import coreconnectLogo from "../../assets/coreconnect-logo.png";
+import CampaignOutlinedIcon from "@mui/icons-material/CampaignOutlined";
+import NoticeModal from "../../features/dashboard/pages/NoticeModal";
+import { useState } from "react";
+
 
 const Topbar = ({ onLogout, avatarUrl }) => {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const isAdmin = user?.role === "ADMIN";
 
+  const [noticeOpen, setNoticeOpen] = useState(false);
+
+  const handleOpenNotice = async () => {
+    setNoticeOpen(true);
+  };
+
+  const handleCloseNotice = () => {
+    setNoticeOpen(false);
+  };
+
   return (
+  <>
     <AppBar
       position="static"
       elevation={0}
@@ -101,21 +114,36 @@ const Topbar = ({ onLogout, avatarUrl }) => {
             </Button>
           )}
 
-          <IconButton
-            size="small"
-            onClick={() => navigate("/chat")}
-            aria-label="Chat"
-          >
-            <MessageIcon />
-          </IconButton>
+          {/* 채팅 */}
+          <Tooltip title="채팅" arrow>
+            <IconButton
+              size="small"
+              onClick={() => navigate("/chat")}
+              aria-label="Chat"
+              sx={{ color: "#000" }}
+            >
+              <MessageIcon />
+            </IconButton>
+          </Tooltip>
 
-          <IconButton size="small" aria-label="Gifts">
-            <RedeemIcon />
-          </IconButton>
+          {/* 알림 */}
+          <Tooltip title="알림" arrow>
+            <IconButton size="small"
+                        aria-label="Notifications"
+                        sx={{ color: "#000" }}>
+              <NotificationsNoneIcon />
+            </IconButton>
+          </Tooltip>
 
-          <IconButton size="small" aria-label="Notifications">
-            <NotificationsNoneIcon />
-          </IconButton>
+          {/* 공지사항 */}
+          <Tooltip title="공지사항" arrow>
+            <IconButton size="small"
+                        aria-label="Gifts" 
+                        onClick={handleOpenNotice}
+                        sx={{ color: "#000" }}>
+              <CampaignOutlinedIcon />
+            </IconButton>
+          </Tooltip>
 
           {avatarUrl && (
             <Avatar
@@ -137,6 +165,10 @@ const Topbar = ({ onLogout, avatarUrl }) => {
         </Box>
       </Toolbar>
     </AppBar>
+
+    {/* 공지 모달 */}
+    <NoticeModal open={noticeOpen} onClose={handleCloseNotice} />
+  </>
   );
 };
 
