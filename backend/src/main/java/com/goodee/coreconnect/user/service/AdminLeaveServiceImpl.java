@@ -44,20 +44,20 @@ public class AdminLeaveServiceImpl implements AdminLeaveService {
                                  .toList();
   }
 
-  /** 휴가 승인 */
-  @Override
-  public void approveLeave(Integer leaveReqId) {
-    LeaveRequest leave = leaveRequestRepository.findById(leaveReqId)
-                                        .orElseThrow(() -> new IllegalArgumentException("휴가 요청을 찾을 수 없습니다"));
-    leave.approve();
-  }
-
-  /** 휴가 반려 */
-  @Override
-  public void rejectLeave(Integer leaveReqId, String reason) {
-    LeaveRequest leave = leaveRequestRepository.findById(leaveReqId)
-                                               .orElseThrow(() -> new IllegalArgumentException("휴가 요청을 찾을 수 없습니다."));
-    leave.reject(reason);
-  }
+//  /** 휴가 승인 */
+//  @Override
+//  public void approveLeave(Integer leaveReqId) {
+//    LeaveRequest leave = leaveRequestRepository.findById(leaveReqId)
+//                                        .orElseThrow(() -> new IllegalArgumentException("휴가 요청을 찾을 수 없습니다"));
+//    leave.approve();
+//  }
+//
+//  /** 휴가 반려 */
+//  @Override
+//  public void rejectLeave(Integer leaveReqId, String reason) {
+//    LeaveRequest leave = leaveRequestRepository.findById(leaveReqId)
+//                                               .orElseThrow(() -> new IllegalArgumentException("휴가 요청을 찾을 수 없습니다."));
+//    leave.reject(reason);
+//  }
 
 }

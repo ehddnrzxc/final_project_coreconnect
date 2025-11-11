@@ -3,6 +3,7 @@ package com.goodee.coreconnect.leave.entity;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.leave.dto.response.LeaveRequestResponseDTO;
 import com.goodee.coreconnect.user.entity.User;
 
@@ -19,7 +20,8 @@ import lombok.NoArgsConstructor;
     indexes = {
         @Index(name = "idx_leave_req_user", columnList = "user_id"),
         @Index(name = "idx_leave_req_start", columnList = "leave_req_start_date"),
-        @Index(name = "idx_leave_req_status", columnList = "leave_req_status")
+        @Index(name = "idx_leave_req_status", columnList = "leave_req_status"),
+        @Index(name = "idx_leave_req_document", columnList = "document_id")
     }
 )
 public class LeaveRequest {
@@ -54,6 +56,15 @@ public class LeaveRequest {
         foreignKey = @ForeignKey(name = "fk_leave_request_user")
     )
     private User user;
+    
+    private Integer documentId;
+    
+    private String approvalComment; // 결재자가 남긴 의견
+    
+    @Column(name = "leave_req_created_at", 
+            nullable = false,
+            updatable = false)
+    private LocalDateTime createdAt;
 
 
     /** 정적 팩토리 메서드 */
@@ -62,7 +73,8 @@ public class LeaveRequest {
             LocalDate startDate,
             LocalDate endDate,
             String type,
-            String reason
+            String reason,
+            Integer documentId
     ) {
         LeaveRequest leave = new LeaveRequest();
         leave.user = user;
@@ -71,19 +83,22 @@ public class LeaveRequest {
         leave.type = type;
         leave.reason = reason;
         leave.status = LeaveStatus.PENDING; // 기본값: 대기 상태
+        leave.documentId = documentId;
+        leave.createdAt = LocalDateTime.now();
         return leave;
     }
 
     /** 휴가 승인 */
-    public void approve() {
+    public void approve(String approvalComment) {
         this.status = LeaveStatus.APPROVED;
         this.approvedDate = LocalDateTime.now();
+        this.approvalComment = approvalComment;
     }
 
     /** 휴가 반려 */
-    public void reject(String reason) {
+    public void reject(String approvalComment) {
         this.status = LeaveStatus.REJECTED;
-        this.reason = reason;
+        this.approvalComment = approvalComment;
         this.approvedDate = LocalDateTime.now();
     }
 
