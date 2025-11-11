@@ -1,136 +1,157 @@
-import React, { useEffect, useState } from "react"; // React 훅: 상태관리, 생명주기 제어
-import { useParams, useNavigate, useSearchParams } from "react-router-dom"; // 라우터 훅: 파라미터, 페이지 이동
-import { createBoard, getBoardDetail, updateBoard } from "../api/boardAPI"; // 게시글 관련 API
-import { uploadFiles } from "../api/boardFileAPI"; // 첨부파일 업로드 API
-import { getAllCategories } from "../api/boardCategoryAPI"; // 카테고리 조회 API
-import {
-  Box,
-  Button,
-  TextField,
-  Typography,
-  Checkbox,
-  FormControlLabel,
-  Select,
-  MenuItem,
-  InputLabel,
-  FormControl,
-} from "@mui/material"; // MUI: 입력, 선택, 버튼, 레이아웃 관련 컴포넌트
-import LockIcon from "@mui/icons-material/Lock"; // 비공개 아이콘
-import { handleApiError } from "../../../utils/handleError"; // 공통 에러 처리 함수
+import { useEffect, useState } from "react"; 
+// React 훅 불러오기
+// useEffect: 컴포넌트 생명주기 제어
+// useState: 상태 관리
+import { useParams, useNavigate, useSearchParams } from "react-router-dom"; 
+// React Router 훅 불러오기
+// useParams: URL 파라미터 추출
+// useNavigate: 페이지 이동용 함수
+// useSearchParams: 쿼리스트링 읽기/수정
+import { createBoard, getBoardDetail, updateBoard } from "../api/boardAPI"; 
+// 게시글 API
+// createBoard: 게시글 등록
+// getBoardDetail: 게시글 상세 조회
+// updateBoard: 게시글 수정
+import { uploadFiles } from "../api/boardFileAPI"; 
+// 파일 업로드 API
+import { getAllCategories } from "../api/boardCategoryAPI"; 
+// 카테고리 조회 API
+import { Box, Button, TextField, Typography, Checkbox, FormControlLabel, Select, MenuItem, InputLabel, FormControl } from "@mui/material"; 
+// MUI UI 컴포넌트
+// Box: 레이아웃
+// Button: 버튼
+// TextField: 입력창
+// Typography: 텍스트
+// Checkbox: 체크박스
+// FormControlLabel: 체크박스/라벨 묶음
+// Select/MenuItem/InputLabel/FormControl: 드롭다운 구성 요소
+import LockIcon from "@mui/icons-material/Lock"; // MUI 아이콘: 비공개 상태 자물쇠 표시
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext"; // 전역 스낵바 컨텍스트 추가
 
-// 게시글 작성 및 수정 페이지 컴포넌트
+
+// 게시글 작성 및 수정 페이지를 담당하는 컴포넌트
 const BoardWritePage = () => {
-  const { boardId } = useParams(); // URL 파라미터에서 게시글 ID 추출
-  const [searchParams] = useSearchParams(); // 수정1: 쿼리스트링 접근용
-  const navigate = useNavigate(); // 페이지 이동 훅
+  const { boardId } = useParams(); // URL 경로에서 게시글 ID 추출 (예: /board/write/:boardId 형태)
+  const [searchParams] = useSearchParams(); // URL 쿼리스트링 접근용 훅 (예: ?categoryId=3)
+  const navigate = useNavigate(); // 페이지 이동 기능 제공 훅
+  const { showSnack } = useSnackbarContext();
 
-  // 폼 상태 (제목, 내용, 옵션 등)
+  // 게시글 작성 폼에 사용되는 상태 변수 (제목, 내용, 옵션 등)
   const [form, setForm] = useState({
-    title: "",
-    content: "",
-    categoryId: "",
-    categoryName: "",
-    noticeYn: false,
-    privateYn: false,
-    pinned: false,
+    title: "",           // 게시글 제목
+    content: "",         // 게시글 내용
+    categoryId: "",      // 선택된 카테고리 ID
+    categoryName: "",    // 카테고리 이름 (수정 시 표시용)
+    noticeYn: false,     // 공지 여부
+    privateYn: false,    // 비공개 여부
+    pinned: false,       // 상단 고정 여부
   });
 
-  // 카테고리 목록, 파일 상태
-  const [categories, setCategories] = useState([]);
-  const [files, setFiles] = useState([]);
+  // 카테고리 목록과 파일 업로드 관련 상태
+  const [categories, setCategories] = useState([]); // 전체 카테고리 리스트
+  const [files, setFiles] = useState([]);           // 첨부파일 리스트
 
-  // 새 글 작성 시: 카테고리 목록 불러오기
+  // 게시글 작성 모드일 때 실행: 카테고리 목록 불러오기
   useEffect(() => {
-    if (!boardId) {
+    if (!boardId) { // boardId가 없으면 새 글 작성 모드
       (async () => {
         try {
-          const res = await getAllCategories();
-          const list = res.data.data || [];
-          setCategories(list);
+          const res = await getAllCategories(); // 전체 카테고리 목록 API 요청
+          const list = res.data.data || []; // 응답 데이터에서 카테고리 리스트 추출
+          setCategories(list); // 상태에 저장
 
-          // 수정1: URL에 categoryId 있으면 기본값으로 세팅
-          const defaultCat = searchParams.get("categoryId"); 
-          if (defaultCat) { 
+          // URL에 categoryId 쿼리스트링이 있으면 해당 값으로 기본 카테고리 선택
+          const defaultCat = searchParams.get("categoryId");
+          if (defaultCat) {
             setForm((f) => ({ ...f, categoryId: defaultCat }));
-          } 
+          }
         } catch (err) {
-          handleApiError(err, "카테고리 불러오기 실패");
+          showSnack("카테고리 목록을 불러오는 중 오류가 발생했습니다.", "error");
         }
       })();
     }
-  }, [boardId, searchParams]); 
-  // 수정 모드일 경우: 기존 게시글 불러오기
+  }, [boardId, searchParams]); // boardId나 쿼리스트링이 변경될 때 재실행
+
+  // 수정 모드일 때 실행: 기존 게시글 데이터 불러오기
   useEffect(() => {
-    if (boardId) {
+    if (boardId) { // boardId가 있으면 수정 모드
       (async () => {
         try {
-          const res = await getBoardDetail(boardId); // 게시글 상세 조회
-          const data = res.data.data;
+          const res = await getBoardDetail(boardId); // 게시글 상세 조회 API 호출
+          const data = res.data.data; // 응답 데이터 추출
+          // 기존 게시글 내용을 form 상태에 세팅
           setForm({
             id: data.id,
             title: data.title,
             content: data.content,
             categoryId: data.categoryId || "",
             categoryName: data.categoryName || "",
-            noticeYn: data.noticeYn ?? false,
+            noticeYn: data.noticeYn ?? false, // null 병합 연산자: null이면 false
             privateYn: data.privateYn ?? false,
             pinned: data.pinned ?? false,
           });
         } catch (err) {
-          handleApiError(err, "게시글 불러오기 실패");
+          showSnack("게시글 정보를 불러오지 못했습니다.", "error");
         }
       })();
     }
   }, [boardId]);
 
-  // 입력 변경 핸들러 (텍스트, 체크박스 공통)
+  // 입력값 변경 핸들러 (텍스트/체크박스 모두 대응)
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    // 상단 고정 체크 시 자동으로 공지 ON, 비공개 OFF
+    const { name, value, type, checked } = e.target; // 이벤트 객체에서 입력 이름, 값, 타입, 체크 여부 추출
+
+    // 상단고정을 체크할 경우: 자동으로 공지 ON, 비공개 OFF 설정
     if (name === "pinned" && checked) {
       setForm((f) => ({ ...f, pinned: true, noticeYn: true, privateYn: false }));
       return;
     }
+
+    // 일반 입력값(텍스트/체크박스)에 대한 상태 업데이트
     setForm((f) => ({
       ...f,
-      [name]: type === "checkbox" ? checked : value, // 입력 타입별 값 처리
+      [name]: type === "checkbox" ? checked : value, // 체크박스면 checked, 아니면 value 사용
     }));
   };
 
-  // 등록/수정 처리
+  // 게시글 등록 또는 수정 처리 함수
   const handleSubmit = async () => {
+    // 작성 모드에서 카테고리 선택 안 했을 경우
     if (!boardId && !form.categoryId) {
-      alert("카테고리를 선택해주세요.");
+      showSnack("카테고리를 선택해주세요.", "warning");
       return;
     }
 
     try {
       if (boardId) {
-        // 수정 모드
+        // 수정 모드: 기존 게시글 업데이트 API 호출
         await updateBoard(boardId, form);
-        alert("게시글이 수정되었습니다!");
-        navigate(`/board/detail/${boardId}`);
+        showSnack("게시글이 수정되었습니다.", "success");
+        navigate(`/board/detail/${boardId}`); // 수정 후 상세 페이지로 이동
       } else {
-        // 등록 모드
+        // 등록 모드: 새 게시글 등록
         const res = await createBoard(form);
-        const newId = res.data.data.id;
-        if (files.length > 0) await uploadFiles(newId, files); // 첨부파일 업로드
-        alert("게시글 등록 완료");
-        navigate(`/board/${form.categoryId}`); // 카테고리 목록으로 이동
+        const newId = res.data.data.id; // 새로 생성된 게시글 ID 추출
+
+        // 첨부파일이 존재하면 업로드 API 호출
+        if (files.length > 0) await uploadFiles(newId, files);
+        showSnack("게시글이 등록되었습니다.", "success");
+        navigate(`/board/${form.categoryId}`); // 해당 카테고리 목록으로 이동
       }
     } catch (err) {
-      handleApiError(err, "게시글 등록/수정 실패");
+      showSnack("게시글 등록 또는 수정 중 오류가 발생했습니다.", "error");
     }
   };
 
+  // 실제 렌더링 부분 (화면 표시 구성)
   return (
     <Box sx={{ px: "5%", pt: 2, maxWidth: 1000 }}>
-      {/* 페이지 제목 */}
+      {/* 페이지 제목: 수정 모드냐 신규 작성이냐에 따라 텍스트 변경 */}
       <Typography variant="h6" sx={{ mb: 2 }}>
         {boardId ? "게시글 수정" : "새 게시글 작성"}
       </Typography>
 
-      {/* 신규 작성일 경우 → 카테고리 선택 */}
+      {/* 신규 작성 시에만 카테고리 선택 가능 */}
       {!boardId ? (
         <FormControl fullWidth sx={{ mb: 2 }}>
           <InputLabel>카테고리 선택</InputLabel>
@@ -149,13 +170,13 @@ const BoardWritePage = () => {
           </Select>
         </FormControl>
       ) : (
-        // 수정일 경우 카테고리명만 표시
+        // 수정 모드일 경우 카테고리명만 표시 (수정 불가)
         <Typography variant="body1" sx={{ mb: 2 }}>
           📂 카테고리: <b>{form.categoryName || "알 수 없음"}</b>
         </Typography>
       )}
 
-      {/* 제목 입력 */}
+      {/* 제목 입력 필드 */}
       <TextField
         label="제목"
         name="title"
@@ -165,7 +186,7 @@ const BoardWritePage = () => {
         onChange={handleChange}
       />
 
-      {/* 내용 입력 */}
+      {/* 내용 입력 필드 (여러 줄 입력 가능) */}
       <TextField
         label="내용"
         name="content"
@@ -177,9 +198,9 @@ const BoardWritePage = () => {
         onChange={handleChange}
       />
 
-      {/* 옵션 영역: 공지, 비공개, 상단고정 */}
+      {/* 공지글 / 비공개 / 상단고정 옵션 구역 */}
       <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-        {/* 공지글 */}
+        {/* 공지글 체크박스 */}
         <FormControlLabel
           control={
             <Checkbox
@@ -187,16 +208,17 @@ const BoardWritePage = () => {
               checked={form.noticeYn}
               onChange={(e) => {
                 const checked = e.target.checked;
+                // 공지 ON 시 비공개 해제, OFF 시 상단고정 해제
                 setForm((f) => ({
                   ...f,
                   noticeYn: checked,
-                  privateYn: checked ? false : f.privateYn, // 공지 ON → 비공개 해제
-                  pinned: checked ? f.pinned : false,       // 공지 OFF → 상단고정 해제
+                  privateYn: checked ? false : f.privateYn,
+                  pinned: checked ? f.pinned : false,
                 }));
               }}
-              disabled={form.privateYn} // 비공개일 땐 비활성화
+              disabled={form.privateYn} // 비공개일 때는 공지 설정 불가
               sx={{
-                color: form.noticeYn ? "#9E9E9E" : "inherit",
+                color: form.noticeYn ? "#9E9E9E" : "inherit", // 회색 표시
                 "&.Mui-checked": { color: "#9E9E9E" },
               }}
             />
@@ -204,7 +226,7 @@ const BoardWritePage = () => {
           label="공지글"
         />
 
-        {/* 비공개 */}
+        {/* 비공개 체크박스 */}
         <FormControlLabel
           control={
             <Checkbox
@@ -212,20 +234,21 @@ const BoardWritePage = () => {
               checked={form.privateYn}
               onChange={(e) => {
                 const checked = e.target.checked;
+                // 비공개 ON 시 공지 및 상단고정 해제
                 setForm((f) => ({
                   ...f,
                   privateYn: checked,
-                  noticeYn: checked ? false : f.noticeYn, // 비공개 ON → 공지 해제
-                  pinned: checked ? false : f.pinned,     // 비공개 ON → 상단고정 해제
+                  noticeYn: checked ? false : f.noticeYn,
+                  pinned: checked ? false : f.pinned,
                 }));
               }}
-              disabled={form.noticeYn} // 공지글일 경우 비활성화
+              disabled={form.noticeYn} // 공지글이면 비공개 불가
             />
           }
           label="비공개"
         />
 
-        {/* 상단 고정 */}
+        {/* 상단고정 체크박스 */}
         <FormControlLabel
           control={
             <Checkbox
@@ -233,16 +256,17 @@ const BoardWritePage = () => {
               checked={form.pinned}
               onChange={(e) => {
                 const checked = e.target.checked;
+                // 상단고정 ON 시 공지 자동 설정, 비공개 해제
                 setForm((f) => ({
                   ...f,
                   pinned: checked,
-                  noticeYn: checked ? true : false,  // 상단고정 해제 시 공지도 해제
+                  noticeYn: checked ? true : false,
                   privateYn: checked ? false : f.privateYn,
                 }));
               }}
-              disabled={form.privateYn} // 비공개일 땐 비활성화
+              disabled={form.privateYn} // 비공개일 때는 상단고정 불가
               sx={{
-                color: form.pinned ? "#FFA726" : "inherit",
+                color: form.pinned ? "#FFA726" : "inherit", // 주황색 표시
                 "&.Mui-checked": { color: "#FFA726" },
               }}
             />
@@ -251,22 +275,22 @@ const BoardWritePage = () => {
         />
       </Box>
 
-      {/* 비공개 선택 시 안내문 */}
+      {/* 비공개일 때 안내문 표시 */}
       {form.privateYn && (
         <Box sx={{ display: "flex", alignItems: "center", mb: 1, color: "#616161" }}>
           <LockIcon sx={{ mr: 1 }} /> 비공개 게시글 — 작성자와 관리자만 볼 수 있습니다.
         </Box>
       )}
 
-      {/* 첨부파일 업로드 */}
+      {/* 첨부파일 입력창: 여러 개 업로드 가능 */}
       <input
         type="file"
         multiple
-        onChange={(e) => setFiles(Array.from(e.target.files))} // 파일 목록 상태에 저장
+        onChange={(e) => setFiles(Array.from(e.target.files))} // 파일 목록을 배열로 변환해 상태에 저장
         style={{ marginTop: "1rem" }}
       />
 
-      {/* 등록/수정 버튼 */}
+      {/* 등록 또는 수정 버튼 */}
       <Button variant="contained" sx={{ mt: 3 }} onClick={handleSubmit}>
         {boardId ? "수정 완료" : "등록"}
       </Button>
@@ -274,4 +298,4 @@ const BoardWritePage = () => {
   );
 };
 
-export default BoardWritePage;
+export default BoardWritePage;  // 컴포넌트 내보내기 (다른 페이지에서 import 가능)
