@@ -22,7 +22,6 @@ function DocumentDetailPage() {
         setLoading(true);
         setError(null);
         const res = await getDocumentDetail(documentId);
-        console.log("API 응답 (documentData):", res.data);
         setDocumentData(res.data);
       } catch (error) {
         console.error("문서 상세 정보 조회 실패:", error);
@@ -44,7 +43,7 @@ function DocumentDetailPage() {
       const requestDTO = { approvalComment: comment || ""};
       await approveDocument(documentId, requestDTO);
       alert("결재가 승인되었습니다.");
-      navigate("/approval/my-tasks");
+      navigate("/e-approval");
     } catch (error) {
       console.error("승인 처리 실패:", error);
       alert(error.response?.data?.message || "승인 처리에 실패했습니다.");
@@ -62,7 +61,7 @@ function DocumentDetailPage() {
 
       alert("결재가 반려되었습니다.");
       handleCloseRejectModal();
-      navigate("/approval/my-tasks");
+      navigate("/e-approval");
     } catch (error) {
       console.error("반려 처리 실패:", error);
       alert(error.response?.data?.message || "반려 처리에 실패했습니다.");

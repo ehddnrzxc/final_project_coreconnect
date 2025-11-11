@@ -1,6 +1,22 @@
 import React, { useState, useEffect } from "react";
 import { getOrganizationChart } from "../../user/api/userAPI";
-import { Alert, Box, Button, CircularProgress, Divider, Grid, IconButton, List, ListItem, ListItemText, Modal, Paper, TextField, Typography } from "@mui/material";
+import {
+  Alert,
+  Box,
+  Button,
+  ButtonGroup,
+  CircularProgress,
+  Divider,
+  Grid,
+  IconButton,
+  List,
+  ListItem,
+  ListItemText,
+  Modal,
+  Paper,
+  TextField,
+  Typography,
+} from "@mui/material";
 import ApprovalTypeChip from "../components/ApprovalTypeChip";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
@@ -57,11 +73,15 @@ function ApprovalLineModal({
 
   useEffect(() => {
     const lowerSearchTerm = searchTerm.toLowerCase();
-    const filtered = organizationUsers.filter(
-      (user) =>
-        user.name.toLowerCase().includes(lowerSearchTerm) ||
-        (user.deptName && user.teamName.toLowerCase().includes(lowerSearchTerm))
-    );
+    const filtered = organizationUsers.filter((user) => {
+      const nameMatch =
+        user.name && user.name.toLowerCase().includes(lowerSearchTerm);
+      const deptMatch =
+        user.deptName && user.deptName.toLowerCase().includes(lowerSearchTerm);
+      const teamMatch =
+        user.teamName && user.teamName.toLowerCase().includes(lowerSearchTerm);
+      return nameMatch || deptMatch || teamMatch;
+    });
     setFilteredUsers(filtered);
   }, [searchTerm, organizationUsers]);
 
@@ -117,123 +137,148 @@ function ApprovalLineModal({
   };
 
   return (
-  <Modal open={open} onClose={handleClose}>
-   <Box sx={style}>
-    <Typography variant="h5" sx={{ fontWeight: "bold", mb: 2 }}>
-     결재선 지정
-    </Typography>
-    <Grid container spacing={2} sx={{ flex: 1, overflow: "hidden" }}>
-     {/* --- 1. 왼쪽: 조직도 --- */}
-     <Grid item xs={6} sx={{ display: "flex", flexDirection: "column" }}>
-      <Paper sx={{ flex: 1, p: 2, overflowY: "auto" }}>
-       <Typography variant="h6" sx={{ mb: 1 }}>
-        조직도
-       </Typography>
-       <TextField
-        fullWidth
-        label="이름 또는 부서 검색"
-        variant="outlined"
-        size="small"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        sx={{ mb: 2 }}
-       />
-       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
-         <CircularProgress />
+    <Modal open={open} onClose={handleClose}>
+      <Box sx={style}>
+        <Typography variant="h5" sx={{ fontWeight: "bold", mb: 2 }}>
+          결재선 지정
+        </Typography>
+        <Grid container spacing={2} sx={{ flex: 1, overflow: "hidden" }}>
+          {/* --- 1. 왼쪽: 조직도 --- */}
+          <Grid item xs={6} sx={{ display: "flex", flexDirection: "column" }}>
+            <Paper sx={{ flex: 1, p: 2, overflowY: "auto" }}>
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                조직도
+              </Typography>
+              <TextField
+                fullWidth
+                label="이름 또는 부서 검색"
+                variant="outlined"
+                size="small"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                sx={{ mb: 2 }}
+              />
+              {loading ? (
+                <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
+                  <CircularProgress />
+                </Box>
+              ) : error ? (
+                <Alert severity="error">{error}</Alert>
+              ) : (
+                <List disablePadding>
+                  {filteredUsers.map((user) => (
+                    <ListItem key={user.userId}>
+                      {/* 1. ListItemText가 남은 공간을 모두 차지하도록 설정 (flex: 1)
+                        2. 내용이 길 때 줄어들도록 minWidth: 0 설정 (말줄임표시 활성화)
+                      */}
+                      <ListItemText
+                        primary={`${user.name} (${user.positionName})`}
+                        secondary={user.teamName || user.deptName}
+                        sx={{ flex: 1, minWidth: 0 }}
+                      />
+                      {/* 2. 버튼을 담은 Box가 줄어들지 않도록 설정 (flexShrink: 0)
+                        3. 텍스트와 버튼 사이에 여백 추가 (pl: 2)
+                      */}
+                      <Box sx={{ flexShrink: 0, pl: 2 }}>
+                        <ButtonGroup variant="outlined" size="small">
+                          <Button
+                            size="small"
+                            onClick={() => handleAddUser(user, "APPROVE")}
+                          >
+                            결재
+                          </Button>
+                          <Button
+                            size="small"
+                            onClick={() => handleAddUser(user, "AGREE")}
+                          >
+                            합의
+                          </Button>
+                          <Button
+                            size="small"
+                            onClick={() => handleAddUser(user, "REFER")}
+                          >
+                            참조
+                          </Button>
+                        </ButtonGroup>
+                      </Box>
+                    </ListItem>
+                  ))}
+                </List>
+              )}
+            </Paper>
+          </Grid>
+
+          {/* --- 2. 오른쪽: 결재선 --- */}
+          <Grid item xs={6} sx={{ display: "flex", flexDirection: "column" }}>
+            <Paper sx={{ flex: 1, p: 2, overflowY: "auto" }}>
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                결재선 (총 {selectedLine.length}명)
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                * 결재/합의자는 순서대로 진행되며, 참조자는 즉시 조회합니다.
+                <br />* 최종 확인 시 '참조' 유형은 맨 뒤로 정렬됩니다.
+              </Typography>
+              {selectedLine.length === 0 ? (
+                <Alert severity="info" sx={{ mt: 2 }}>
+                  왼쪽 조직도에서 사용자를 추가하세요.
+                </Alert>
+              ) : (
+                <List>
+                  {selectedLine.map((line, index) => (
+                    <ListItem
+                      key={line.userId}
+                      sx={{ border: "1px solid #eee", mb: 1, borderRadius: 2 }}
+                    >
+                      <ApprovalTypeChip type={line.type} sx={{ mr: 2 }} />
+                      <ListItemText
+                        primary={`${line.name} (${line.positionName})`}
+                        secondary={line.teamName}
+                      />
+                      <Box>
+                        <IconButton
+                          onClick={() => handleMoveUp(index)}
+                          disabled={index === 0}
+                        >
+                          <ArrowUpwardIcon />
+                        </IconButton>
+                        <IconButton
+                          onClick={() => handleMoveDown(index)}
+                          disabled={index === selectedLine.length - 1}
+                        >
+                          <ArrowDownwardIcon />
+                        </IconButton>
+                        <IconButton
+                          onClick={() => handleRemoveUser(index)}
+                          color="error"
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </Box>
+                    </ListItem>
+                  ))}
+                </List>
+              )}
+            </Paper>
+          </Grid>
+        </Grid>
+
+        {/* --- 3. 하단 버튼 --- */}
+        <Divider sx={{ my: 2 }} />
+        <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
+          <Button variant="outlined" onClick={handleClose}>
+            취소
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleConfirm}
+            disabled={selectedLine.length === 0}
+          >
+            결재선 확정
+          </Button>
         </Box>
-       ) : error ? (
-        <Alert severity="error">{error}</Alert>
-       ) : (
-        <List disablePadding>
-         {filteredUsers.map((user) => (
-          <ListItem
-           key={user.userId}
-           secondaryAction={
-            <Box>
-             <Button size="small" onClick={() => handleAddUser(user, "APPROVE")}>결재</Button>
-             <Button size="small" onClick={() => handleAddUser(user, "AGREE")}>합의</Button>
-             <Button size="small" onClick={() => handleAddUser(user, "REFER")}>참조</Button>
-            </Box>
-           }
-           disablePadding
-          >
-           <ListItemText
-            primary={`${user.name} (${user.positionName})`}
-            secondary={user.teamName}
-           />
-          </ListItem>
-         ))}
-        </List>
-       )}
-      </Paper>
-     </Grid>
-
-     {/* --- 2. 오른쪽: 결재선 --- */}
-     <Grid item xs={6} sx={{ display: "flex", flexDirection: "column" }}>
-      <Paper sx={{ flex: 1, p: 2, overflowY: "auto" }}>
-       <Typography variant="h6" sx={{ mb: 1 }}>
-        결재선 (총 {selectedLine.length}명)
-       </Typography>
-       <Typography variant="caption" color="text.secondary">
-        * 결재/합의자는 순서대로 진행되며, 참조자는 즉시 조회합니다.<br/>
-        * 최종 확인 시 '참조' 유형은 맨 뒤로 정렬됩니다.
-       </Typography>
-       {selectedLine.length === 0 ? (
-        <Alert severity="info" sx={{ mt: 2 }}>
-         왼쪽 조직도에서 사용자를 추가하세요.
-        </Alert>
-       ) : (
-        <List>
-         {selectedLine.map((line, index) => (
-          <ListItem
-           key={line.userId}
-           sx={{ border: "1px solid #eee", mb: 1, borderRadius: 2 }}
-          >
-           <ApprovalTypeChip
-            type={line.type}
-            sx={{ mr: 2 }}
-           />
-           <ListItemText
-            primary={`${line.name} (${line.positionName})`}
-            secondary={line.teamName}
-           />
-           <Box>
-            <IconButton onClick={() => handleMoveUp(index)} disabled={index === 0}>
-             <ArrowUpwardIcon />
-            </IconButton>
-            <IconButton onClick={() => handleMoveDown(index)} disabled={index === selectedLine.length - 1}>
-             <ArrowDownwardIcon />
-            </IconButton>
-            <IconButton onClick={() => handleRemoveUser(index)} color="error">
-             <DeleteIcon />
-            </IconButton>
-           </Box>
-          </ListItem>
-         ))}
-        </List>
-       )}
-      </Paper>
-     </Grid>
-    </Grid>
-
-    {/* --- 3. 하단 버튼 --- */}
-    <Divider sx={{ my: 2 }} />
-    <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
-     <Button variant="outlined" onClick={handleClose}>
-      취소
-     </Button>
-     <Button
-      variant="contained"
-      onClick={handleConfirm}
-      disabled={selectedLine.length === 0}
-     >
-      결재선 확정
-     </Button>
-    </Box>
-   </Box>
-  </Modal>
- );
+      </Box>
+    </Modal>
+  );
 }
 
 export default ApprovalLineModal;

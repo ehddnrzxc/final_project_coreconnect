@@ -50,7 +50,7 @@ function ApprovalLayout() {
       >
         {/* 상단 타이틀 및 버튼 */}
         <Box sx={{ p: 2 }}>
-          <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold" }}>
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold", letterSpacing: -2 }}>
             전자결재
           </Typography>
           <Button
