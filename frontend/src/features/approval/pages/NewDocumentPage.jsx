@@ -9,6 +9,8 @@ import ApprovalLineModal from './ApprovalLineModal';
 import ApprovalTypeChip from '../components/ApprovalTypeChip';
 import VacationForm from './VacationForm';
 import DynamicApprovalTable from '../components/DynamicApprovalTable';
+import BusinessTripForm from './BusinessTripForm';
+import ExpenseForm from './ExpenseForm';
 
 // --- 헬퍼 함수들 ---
 const getTodayDate = () => {
@@ -47,13 +49,10 @@ const DynamicFormRenderer = ({ templateKey, formData, onFormChange }) => {
   switch (templateKey) {
     case 'VACATION':
       return <VacationForm formData={formData} onFormChange={onFormChange} />;
-    
-    // 다른 템플릿 키에 대한 case를 여기에 추가
-    // case 'BUSINESSTRIP':
-    //   return <BusinessTripForm formData={formData} onFormChange={onFormChange} />;
-    // case 'EXPENSE':
-    //   return <ExpenseForm formData={formData} onFormChange={onFormChange} />;
-    
+    case 'BUSINESSTRIP':
+      return <BusinessTripForm formData={formData} onFormChange={onFormChange} />;
+    case 'EXPENSE':
+      return <ExpenseForm formData={formData} onFormChange={onFormChange} />;
     default:
       // DB에 temp_key가 있지만 React 폼이 없는 경우
       if(templateKey) {
@@ -65,7 +64,7 @@ const DynamicFormRenderer = ({ templateKey, formData, onFormChange }) => {
 };
 
 // 템플릿 키에 따라 formData의 초기값을 설정하는 함수
-const getInitialFormData = (templateKey) => {
+const getInitialFormData = templateKey => {
   const commonData = { createDate: getTodayDate() };
 
   switch (templateKey) {
@@ -78,16 +77,27 @@ const getInitialFormData = (templateKey) => {
         duration: 0,
         reason: "",
       };
-    
-    // 다른 템플릿 키에 대한 초기 데이터를 여기에 추가
-    // case 'BUSINESSTRIP':
-    //   return {
-    //     ...commonData,
-    //     destination: "",
-    //     purpose: "",
-    //     startDate: "",
-    //     endDate: "",
-    //   };
+    case 'BUSINESSTRIP':
+      return {
+        ...commonData,
+        startDate: "",
+        endDate: "",
+        destination: "",
+        transportation: "",
+        purpose: "",
+        note: "",
+        travelerEmpNo: "",
+        travelerName: "",
+        travelerPosition: "",
+        travelerDept: "",
+      };
+    case 'EXPENSE':
+      return {
+        ...commonData,
+        purpose: "",
+        items: [],
+        totalAmount: 0,
+      }
     
     default:
       // 템플릿 키가 'VACATION' 등이 아닐 경우 공통 데이터만 반환
@@ -126,6 +136,12 @@ function NewDocumentPage() {
       // 'VACATION' 폼 내부에서 처리하거나, 여기서 templateKey를 확인해야 함
       if (selectedTemplate?.temp_key === 'VACATION' && (name === 'startDate' || name === 'endDate')) {
         newData.duration = calculateDuration(newData.startDate, newData.endDate);
+      }
+
+      // 지출 총 금액 계산 로직
+      if (selectedTemplate?.temp_key === 'EXPENSE' && name === 'items') {
+        const newTotal = value.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+        newData.totalAmount = newTotal;
       }
       return newData;
     });
