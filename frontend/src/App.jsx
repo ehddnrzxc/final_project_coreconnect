@@ -13,6 +13,7 @@ import { Box, CssBaseline } from "@mui/material";
 import useAuth from "./hooks/useAuth";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { SnackbarProvider } from "./components/utils/SnackbarContext";
 
 export const MailCountContext = createContext();
 
@@ -98,34 +99,36 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <LocalizationProvider dateAdapter={AdapterDayjs}>
-        <CssBaseline />
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            minHeight: "100vh",
-            bgcolor: "background.default",
-          }}
-        >
-          <Topbar onLogout={handleLogout} avatarUrl={avatarUrl} />
-          <MailCountContext.Provider value={mailCountContextValue}>
-            <Box sx={{ display: "flex", flex: 1, minHeight: 0 }}>
-              {/* Sidebar는 Provider 내부에서 context 사용, undefined 안전 처리됨 */}
-              <Sidebar />
-              <Box
-                component="main"
-                sx={{
-                  flex: 1,
-                  minHeight: 0,
-                  display: "flex",
-                  flexDirection: "column",
-                }}
-              >
-                <Outlet context={{ setAvatarUrl, refreshUnreadCount }} />
+        <SnackbarProvider>
+          <CssBaseline />
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              minHeight: "100vh",
+              bgcolor: "background.default",
+            }}
+          >
+            <Topbar onLogout={handleLogout} avatarUrl={avatarUrl} />
+            <MailCountContext.Provider value={mailCountContextValue}>
+              <Box sx={{ display: "flex", flex: 1, minHeight: 0 }}>
+                {/* Sidebar는 Provider 내부에서 context 사용, undefined 안전 처리됨 */}
+                <Sidebar />
+                <Box
+                  component="main"
+                  sx={{
+                    flex: 1,
+                    minHeight: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                  }}
+                >
+                  <Outlet context={{ setAvatarUrl, refreshUnreadCount }} />
+                </Box>
               </Box>
-            </Box>
-          </MailCountContext.Provider>
-        </Box>
+            </MailCountContext.Provider>
+          </Box>
+        </SnackbarProvider>
       </LocalizationProvider>
     </ThemeProvider>
   );

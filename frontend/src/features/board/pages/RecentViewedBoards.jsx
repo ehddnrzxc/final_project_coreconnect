@@ -6,7 +6,7 @@ import {
   Typography,
   Paper,
   List,
-  ListItem,
+  ListItemButton,   
   ListItemText,
   Divider,
 } from "@mui/material"; // MUI: 기본 UI 구성요소
@@ -37,7 +37,7 @@ const RecentViewedBoards = () => {
   };
 
   return (
-    <Box sx={{ width: "100%", mt: 4 }}> 
+    <Box sx={{ width: "100%", mt: 4 }}>
       <Typography variant="h6" sx={{ mb: 1 }}>
         🔍 최근 본 게시글
       </Typography>
@@ -53,18 +53,17 @@ const RecentViewedBoards = () => {
           <List>
             {boards.map((b, idx) => (
               <React.Fragment key={b.id}>
-                <ListItem
-                  button
+                <ListItemButton
                   onClick={() => navigate(`/board/detail/${b.id}`)}
                   sx={{ py: 1, "&:hover": { bgcolor: "#f5f5f5" } }}
                 >
                   <ListItemText
-                    primary={b.title} 
+                    primary={b.title}
                     secondary={`${b.writerName} · ${formatDate(
                       b.createdAt
-                    )} · 조회수 ${b.viewCount}`} 
+                    )} · 조회수 ${b.viewCount}`}
                   />
-                </ListItem>
+                </ListItemButton>
                 {idx < boards.length - 1 && <Divider />}
               </React.Fragment>
             ))}

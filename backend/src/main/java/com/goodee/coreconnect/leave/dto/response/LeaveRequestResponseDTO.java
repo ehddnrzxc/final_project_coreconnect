@@ -7,13 +7,14 @@ import com.goodee.coreconnect.leave.entity.LeaveRequest;
 import com.goodee.coreconnect.leave.entity.LeaveStatus;
 
 public record LeaveRequestResponseDTO(
-  Integer LeaveReqId,
+  Integer leaveReqId,
   LocalDate startDate,
   LocalDate endDate,
   String type,
   String reason,
   LeaveStatus status,
-  LocalDateTime approvedDate
+  LocalDateTime approvedDate,
+  String approvalComment
 ) {
   /** Entity -> DTO 변환 메소드 */
   public static LeaveRequestResponseDTO toDTO(LeaveRequest entity) {
@@ -24,7 +25,8 @@ public record LeaveRequestResponseDTO(
         entity.getType(),
         entity.getReason(),
         entity.getStatus(),
-        entity.getApprovedDate()
+        entity.getApprovedDate(),
+        entity.getApprovalComment()
     );
   }
 }

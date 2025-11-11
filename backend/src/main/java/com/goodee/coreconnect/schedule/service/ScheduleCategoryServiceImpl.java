@@ -63,6 +63,7 @@ public class ScheduleCategoryServiceImpl implements ScheduleCategoryService {
     // 엔티티의 delete() 메서드 호출
     category.deleteWithSchedules();
   }
+  
 
   /** 특정 유저의 카테고리 목록 조회 (삭제 제외) */
   @Override
@@ -72,7 +73,7 @@ public class ScheduleCategoryServiceImpl implements ScheduleCategoryService {
     User user = userRepository.findByEmail(email)
             .orElseThrow(() -> new IllegalArgumentException("유저가 존재하지 않습니다."));
 
-    return scheduleCategoryRepository.findByUser(user)
+    return scheduleCategoryRepository.findAvailableCategories(user)
                                       .stream()
                                       .filter(category -> !category.getDeletedYn()) // 삭제되지 않은 항목만
                                       .map(ResponseScheduleCategoryDTO::toDTO)

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import React from "react";
+import { NavLink } from "react-router-dom";
 import {
   Box,
   List,
@@ -15,7 +15,7 @@ import MailOutlineIcon from "@mui/icons-material/MailOutline";
 import DescriptionIcon from "@mui/icons-material/Description";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import PushPinIcon from "@mui/icons-material/PushPin";
-import BeachAccessIcon from '@mui/icons-material/BeachAccess';
+import BeachAccessIcon from "@mui/icons-material/BeachAccess";
 
 const items = [
   { to: "/home", label: "홈", icon: <HomeIcon fontSize="small" /> },
@@ -39,31 +39,14 @@ const Sidebar = () => {
     <Box
       component="aside"
       sx={{
-        width: 220,
+        width: 80,                       
         bgcolor: "#ffffff",
         borderRight: "1px solid #e5e7eb",
         display: "flex",
         flexDirection: "column",
+        alignItems: "stretch",
       }}
     >
-      {/* 브랜드 로고 */}
-      <Box
-        component={Link}
-        to="/home"
-        sx={{
-          textDecoration: "none",
-          color: "primary.main",
-          cursor: "pointer",
-          px: 2,
-          py: 2,
-          fontSize: 18,
-          fontWeight: 700,
-          borderBottom: "1px solid #e5e7eb"
-        }}
-      >
-        CoreConnect
-      </Box>
-
       {/* 네비게이션 */}
       <Box sx={{ flex: 1, overflowY: "auto" }}>
         <List sx={{ py: 1 }}>
@@ -77,24 +60,40 @@ const Sidebar = () => {
                 <ListItemButton
                   selected={isActive}
                   sx={{
-                    mx: 1,
-                    mb: 0.5,
-                    borderRadius: 1.5,
+                    my: 0.5,
+                    borderRadius: 2,
+                    flexDirection: "column",       
+                    justifyContent: "center",
+                    alignItems: "center",
+                    py: 1.5,
+                    "& .MuiListItemIcon-root": {
+                      minWidth: "auto",
+                      mb: 0.5,
+                    },
+                    "& .MuiListItemText-root": {
+                      m: 0,
+                    },
+                    "& .MuiListItemText-primary": {
+                      fontSize: "0.75rem",
+                    },
                     "&.Mui-selected": {
-                      bgcolor: "primary.main",
-                      color: "#ffffff",
+                      bgcolor: "transparent",
+                      color: "primary.main",
                       "&:hover": {
-                        bgcolor: "primary.main",
+                        bgcolor: "transparent",
                       },
                     },
                   }}
                 >
-                  <ListItemIcon sx={{ minWidth: 36, color: "inherit" }}>
+                  <ListItemIcon sx={{ color: "inherit" }}>
                     {it.icon}
                   </ListItemIcon>
                   <ListItemText
                     primary={it.label}
-                    primaryTypographyProps={{ variant: "body2" }}
+                    primaryTypographyProps={{
+                      variant: "caption",
+                      align: "center",
+                    }}
                   />
                 </ListItemButton>
               )}
@@ -104,9 +103,9 @@ const Sidebar = () => {
       </Box>
 
       <Divider />
-      <Box sx={{ px: 2, py: 1.5 }}>
+      <Box sx={{ py: 1.5, textAlign: "center" }}>
         <Typography variant="caption" color="text.secondary">
-          v0.1 • demo
+          v0.1
         </Typography>
       </Box>
     </Box>

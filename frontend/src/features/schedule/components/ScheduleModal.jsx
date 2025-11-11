@@ -1,11 +1,26 @@
 import React, { useState, useEffect } from "react";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  MenuItem,
+  Button,
+  Stack,
+  Autocomplete,
+  Alert,
+  useMediaQuery,
+  useTheme,
+} from "@mui/material";
 import { toBackendFormat, toISO } from "../../../utils/dateFormat";
 import {
-  Modal, Box, TextField, Typography, Button, Stack, MenuItem,
-  Autocomplete, Alert
-} from "@mui/material";
-import { getMeetingRooms, getScheduleCategories, getUsers, checkRoomAvailable } from "../api/scheduleAPI";
-
+  getMeetingRooms,
+  getScheduleCategories,
+  getUsers,
+  checkRoomAvailable,
+} from "../api/scheduleAPI";
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 
 export default function ScheduleModal({
   open,
@@ -13,9 +28,13 @@ export default function ScheduleModal({
   date,
   onSubmit,
   onDelete,
-  initialData, // 수정 시 기존 일정 데이터
+  initialData,
 }) {
   const isEdit = !!initialData;
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down("sm")); // 모바일일 때 전체화면 처리
+  const { showSnack } = useSnackbarContext();
+
   const [meetingRooms, setMeetingRooms] = useState([]);
   const [categories, setCategories] = useState([]);
   const [users, setUsers] = useState([]);
@@ -33,23 +52,23 @@ export default function ScheduleModal({
     visibility: "PRIVATE",
   });
 
-  /** 공통 목록 로드 */
+  /** 공통 데이터 로드 */
   useEffect(() => {
     if (!open) return;
     const load = async () => {
-      const [rooms, cats, usrs] = await Promise.all([
+      const [roomsRes, catsRes, usersRes] = await Promise.allSettled([
         getMeetingRooms(),
         getScheduleCategories(),
         getUsers(),
       ]);
-      setMeetingRooms(rooms);
-      setCategories(cats);
-      setUsers(usrs);
+      if (roomsRes.status === "fulfilled") setMeetingRooms(roomsRes.value);
+      if (catsRes.status === "fulfilled") setCategories(catsRes.value);
+      if (usersRes.status === "fulfilled") setUsers(usersRes.value);
     };
     load();
   }, [open]);
 
-  // 수정 모드라면 초기값 세팅
+  /**  수정 모드라면 기존 값 채우기 */
   useEffect(() => {
     if (isEdit && initialData) {
       setForm({
@@ -66,7 +85,7 @@ export default function ScheduleModal({
     }
   }, [initialData]);
 
-  /** 회의실 예약 가능 여부 체크 */
+  /** 회의실 예약 가능 여부 검사 */
   useEffect(() => {
     const checkAvailability = async () => {
       if (!form.meetingRoomId || !form.startDateTime || !form.endDateTime) return;
@@ -87,7 +106,7 @@ export default function ScheduleModal({
 
   const handleSubmit = () => {
     if (!roomAvailable) {
-      alert("이 시간대에는 선택한 회의실이 이미 예약되어 있습니다.");
+      showSnack("이 시간대에는 선택한 회의실이 이미 예약되어 있습니다.", "warning");
       return;
     }
     const payload = {
@@ -99,29 +118,33 @@ export default function ScheduleModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose}>
-      <Box
-        sx={{
-          width: 420,
-          bgcolor: "background.paper",
-          p: 3,
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullScreen={fullScreen}
+      maxWidth="sm"
+      fullWidth
+      scroll="paper" // 내부 스크롤 자동 처리
+      PaperProps={{
+        sx: {
           borderRadius: 2,
-          mx: "auto",
-          mt: "15vh",
-          boxShadow: 24,
-        }}
-      >
-        <Typography variant="h6" mb={2}>
-          {isEdit ? "일정 수정" : "일정 등록"}
-        </Typography>
+          p: 0,
+        },
+      }}
+    >
+      {/* 제목 영역 */}
+      <DialogTitle sx={{ fontWeight: 600, borderBottom: "1px solid #ddd" }}>
+        {isEdit ? "일정 수정" : "일정 등록"}
+      </DialogTitle>
 
+      {/* 내용 영역 (자동 스크롤) */}
+      <DialogContent dividers sx={{ p: 3 }}>
         <Stack spacing={2}>
-
           <TextField label="제목" name="title" value={form.title} onChange={handleChange} fullWidth />
           <TextField label="내용" name="content" value={form.content} onChange={handleChange} fullWidth />
           <TextField label="장소" name="location" value={form.location} onChange={handleChange} fullWidth />
 
-          {/* 카테고리 선택 */}
+          {/* 카테고리 */}
           <TextField
             select
             label="카테고리"
@@ -136,8 +159,8 @@ export default function ScheduleModal({
               </MenuItem>
             ))}
           </TextField>
-          
-          {/* 회의실 선택 */}
+
+          {/* 회의실 */}
           <TextField
             select
             label="회의실"
@@ -147,24 +170,19 @@ export default function ScheduleModal({
             fullWidth
           >
             {meetingRooms.map((room) => (
-              <MenuItem
-                key={room.id}
-                value={room.id}
-                disabled={!room.availableYn}
-              >
+              <MenuItem key={room.id} value={room.id} disabled={!room.availableYn}>
                 {room.name} {room.availableYn ? "" : "(예약 불가)"}
               </MenuItem>
             ))}
           </TextField>
 
-          {/* 회의실 예약 불가능 시 경고 */}
           {!roomAvailable && (
             <Alert severity="warning">
               선택한 시간에는 해당 회의실이 이미 예약되어 있습니다.
             </Alert>
           )}
 
-          {/* 참여자 초대 Autocomplete */}
+          {/* 참여자 선택 */}
           <Autocomplete
             multiple
             options={users}
@@ -181,6 +199,7 @@ export default function ScheduleModal({
             )}
           />
 
+          {/* 시간 선택 */}
           <TextField
             label="시작 시간"
             name="startDateTime"
@@ -197,23 +216,21 @@ export default function ScheduleModal({
             onChange={handleChange}
             fullWidth
           />
-
-          <Stack direction="row" spacing={1} justifyContent="flex-end">
-            {isEdit && (
-              <Button
-                color="error"
-                onClick={() => onDelete(initialData.id)}
-              >
-                삭제
-              </Button>
-            )}
-            <Button onClick={onClose}>취소</Button>
-            <Button variant="contained" onClick={handleSubmit}>
-              {isEdit ? "수정" : "등록"}
-            </Button>
-          </Stack>
         </Stack>
-      </Box>
-    </Modal>
+      </DialogContent>
+
+      {/* 하단 버튼 (항상 고정) */}
+      <DialogActions sx={{ borderTop: "1px solid #ddd", p: 2 }}>
+        {isEdit && (
+          <Button color="error" onClick={() => onDelete(initialData.id)}>
+            삭제
+          </Button>
+        )}
+        <Button onClick={onClose}>취소</Button>
+        <Button variant="contained" onClick={handleSubmit}>
+          {isEdit ? "수정" : "등록"}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }

@@ -11,3 +11,9 @@ export async function createLeaveRequest(data) {
   const res = await http.post("/leave", data);
   return res.data;
 }
+
+/** 연차 사용 현황 */
+export async function getMyLeaveSummary() {
+  const res = await http.get("/leave/summary");
+  return res.data;
+}

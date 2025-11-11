@@ -74,7 +74,7 @@ public class ScheduleCategory {
                                                           String name, 
                                                           boolean defaultYn) {
     ScheduleCategory category = new ScheduleCategory();
-    category.user = user;
+    category.user = defaultYn ? null : user;
     category.name = name;
     category.defaultYn = defaultYn;
     category.deletedYn = false;
