@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-// React 훅 불러오기: 
+// React 훅
 // useEffect → 컴포넌트 생명주기 제어 (렌더링 이후 데이터 로드 등)
 // useState → 상태 관리 (데이터를 저장하고 변경 시 리렌더링)
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-// React Router 훅 불러오기:
+// React Router 훅
 // useParams → URL의 동적 파라미터 추출 (예: /board/:categoryId)
 // useNavigate → 페이지 이동 (navigate("/path"))
 // useSearchParams → URL 쿼리스트링 (예: ?page=1&sortType=latest) 제어
@@ -24,7 +24,7 @@ import { getBoardsByCategory, getBoardsOrdered, searchBoards } from "../api/boar
 // searchBoards → 검색 조건에 따른 게시글 조회
 import CommentIcon from "@mui/icons-material/Comment"; // 댓글 개수 표시용 아이콘
 import RecentViewedBoards from "./RecentViewedBoards"; // 오른쪽 사이드 영역에서 "최근 본 게시글"을 렌더링하는 컴포넌트
-import { useSnackbarContext } from "../../../components/utils/SnackbarContext"; // 전역 스낵바 컨텍스트 추가
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext"; // 전역 스낵바 컨텍스트
 
 
 // ──────────────────────────────────────────────
@@ -33,44 +33,38 @@ import { useSnackbarContext } from "../../../components/utils/SnackbarContext"; 
 // - 정렬, 검색, 페이지네이션, 목록 렌더링, 최근 본 게시글 등을 모두 포함
 // ──────────────────────────────────────────────
 const BoardListPage = () => {
-  const { categoryId } = useParams();
-  // URL의 /board/:categoryId 값 추출 (없으면 undefined)
-  const [searchParams] = useSearchParams();
-  // URL 쿼리스트링 (?page=, ?sortType= 등) 제어용
-  const navigate = useNavigate();
-  // 페이지 이동 훅 (ex. navigate("/board/new"))
+  const { categoryId } = useParams(); // URL의 /board/:categoryId 값 추출 (없으면 undefined)
+  const [searchParams] = useSearchParams(); // URL 쿼리스트링 (?page=, ?sortType= 등) 제어용
+  const navigate = useNavigate(); // 페이지 이동 훅 (ex. navigate("/board/new"))
   const { showSnack } = useSnackbarContext(); // 스낵바 훅 사용
-
-  // ─────────────── URL 파라미터, 쿼리스트링 처리 ───────────────
   const currentPage = Number(searchParams.get("page")) || 0; // 현재 페이지 번호 (기본 0)
   const urlType = searchParams.get("type") || ""; // 검색 유형 (title, content, author 등)
   const urlKeyword = (searchParams.get("keyword") || "").trim(); // 검색 키워드
   const urlSortType = searchParams.get("sortType") || "latest"; // 정렬 기준 (기본값: 최신순)
   const isSearchPage = urlType && urlKeyword !== ""; // 검색 페이지 여부 판단
-
-  // ─────────────── 상태 관리 ───────────────
   const [boards, setBoards] = useState([]); // 게시글 목록 배열
   const [pageInfo, setPageInfo] = useState({ number: 0, totalPages: 1 }); // 페이지 정보 객체
-  const [searchType, setSearchType] = useState("title"); // 검색 구분 (제목/내용/작성자)
-  const [keyword, setKeyword] = useState(""); // 검색어 입력값
+  const [searchType, setSearchType] = useState(urlType || "title"); // 검색 구분 (제목/내용/작성자)
+  const [keyword, setKeyword] = useState(urlKeyword || ""); // 검색어 입력값
   const [sortType, setSortType] = useState(urlSortType); // 정렬 상태 (최신순/조회순)
 
+  // URL 변경 시 검색 폼 상태를 동기화
+  useEffect(() => {
+    setSearchType(urlType || "title");  // URL 쿼리(type)과 동기화
+    setKeyword(urlKeyword || "");       // URL 쿼리(keyword)와 동기화
+  }, [urlType, urlKeyword]);            // 의존성 추가
+  
   // ─────────────── 게시글 목록 불러오기 ───────────────
   useEffect(() => {
-    // 비동기 함수 내부 정의 후 즉시 실행
     (async () => {
       try {
         let res; // API 응답 결과 저장용 변수
-        if (isSearchPage) {
-          // 검색 페이지인 경우
+        if (isSearchPage) { // 검색 페이지인 경우
           res = await searchBoards(urlType, urlKeyword, currentPage);
-        } else {
-          // 일반 목록 페이지인 경우
-          if (categoryId) {
-            // 카테고리별 게시판
+        } else { // 일반 목록 페이지인 경우
+          if (categoryId) { // 카테고리별 게시판
             res = await getBoardsByCategory(categoryId, sortType, currentPage);
-          } else {
-            // 전체 게시판 (정렬 기준 적용)
+          } else { // 전체 게시판 (정렬 기준 적용)
             res = await getBoardsOrdered(sortType, currentPage);
           }
         }
@@ -79,18 +73,15 @@ const BoardListPage = () => {
         setBoards(res.data.data.content);
         setPageInfo(res.data.data);
       } catch (err) {
-        // 오류 발생 시 공통 에러 처리 함수 실행
         showSnack("게시글 목록을 불러오는 중 오류가 발생했습니다.", "error");
       }
     })();
-  }, [categoryId, currentPage, isSearchPage, urlType, urlKeyword, sortType]);
-  // 의존성 배열: 위 값 중 하나라도 바뀌면 다시 실행
+  }, [categoryId, currentPage, isSearchPage, urlType, urlKeyword, sortType]); // 의존성 배열: 이 중 하나라도 바뀌면 다시 실행
 
   // ─────────────── 날짜 포맷 함수 ───────────────
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
-    const d = new Date(dateStr);
-    // 'MM-DD HH:mm' 형식으로 변환
+    const d = new Date(dateStr); // 'MM-DD HH:mm' 형식으로 변환
     return `${String(d.getMonth() + 1).padStart(2, "0")}-${String(
       d.getDate()
     ).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(
@@ -99,14 +90,12 @@ const BoardListPage = () => {
   };
 
   // ─────────────── 페이지 이동 함수 ───────────────
-  const handlePageChange = (e, v) => {
-    // MUI Pagination의 onChange 이벤트 → (event, pageNumber)
+  const handlePageChange = (e, v) => { 
     const newPage = v - 1; // MUI는 1부터 시작하지만 API는 0부터 시작하므로 보정
     const queryBase = categoryId ? `/board/${categoryId}` : "/board";
     const sortQuery = `sortType=${sortType}`;
 
-    if (isSearchPage) {
-      // 검색 중인 경우: 검색 상태 유지한 채 페이지 이동
+    if (isSearchPage) { // 검색 중인 경우: 검색 상태 유지한 채 페이지 이동
       navigate(
         `/board/search?type=${urlType}&keyword=${encodeURIComponent(
           urlKeyword
@@ -115,15 +104,13 @@ const BoardListPage = () => {
       return;
     }
 
-    // 일반 목록: 정렬 기준과 페이지 정보 포함 이동
-    navigate(`${queryBase}?${sortQuery}&page=${newPage}`);
+    navigate(`${queryBase}?${sortQuery}&page=${newPage}`); // 일반 목록: 정렬 기준과 페이지 정보 포함 이동
   };
 
   // ─────────────── 검색 기능 ───────────────
   const handleSearch = () => {
     const trimmed = keyword.trim(); // 공백 제거
-    if (!trimmed) {
-      // 검색어 없을 시 → 기본 목록으로 이동
+    if (!trimmed) { // 검색어 없을 시 → 기본 목록으로 이동
       if (categoryId)
         navigate(`/board/${categoryId}?sortType=${sortType}&page=0`);
       else navigate(`/board?sortType=${sortType}&page=0`);
@@ -138,8 +125,7 @@ const BoardListPage = () => {
     );
   };
 
-  // Enter 키로 검색 실행
-  const handleKeyPress = (e) => {
+  const handleKeyPress = (e) => { // Enter 키로 검색 실행
     if (e.key === "Enter") handleSearch();
   };
 
