@@ -19,8 +19,14 @@ public class ApprovalLineResponseDTO {
   private LocalDateTime processedAt; // 처리 일시
 
   private UserInfoResponseDTO approver; // 결재자 정보
+  
+  private String approvalType;  // 결재 타입
 
   public static ApprovalLineResponseDTO toDTO(ApprovalLine line) {
+    String typeName = "";
+    if (line.getApprovalLineType() != null) {
+      typeName = line.getApprovalLineType().name();
+    }
     return ApprovalLineResponseDTO.builder()
         .lineId(line.getId())
         .approvalOrder(line.getApprovalLineOrder())
@@ -28,6 +34,7 @@ public class ApprovalLineResponseDTO {
         .approvalComment(line.getApprovalLineComment())
         .processedAt(line.getApprovalLineProcessedAt())
         .approver(UserInfoResponseDTO.toDTO(line.getApprover()))
+        .approvalType(typeName)
         .build();
   }
 

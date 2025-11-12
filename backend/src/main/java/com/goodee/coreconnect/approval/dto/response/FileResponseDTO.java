@@ -13,14 +13,16 @@ import lombok.Getter;
 public class FileResponseDTO {
 
   private Integer fileId;
-  private String originalFileName;
+  private String fileName;
+  private String fileUrl;
   private long fileSize;
 
   //File 엔티티를 DTO로 변환하는 정적 메소드
   public static FileResponseDTO toDTO(File file) {
     return FileResponseDTO.builder()
         .fileId(file.getId())
-        .originalFileName(file.getFileName())
+        .fileName(file.getFileName())
+        .fileUrl(file.getFileUrl())
         .fileSize(file.getFileSize())
         .build();
   }
