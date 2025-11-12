@@ -54,6 +54,39 @@ export const getMySchedules = () =>
 export const getMyTodaySchedules = () =>
   http.get("/schedules/me/today").then((res) => res.data);
 
+/** 여러 유저의 일정 현황 조회
+ *  - 백엔드 컨트롤러가 date 또는 start/end 를 받도록 되어 있으니,
+ *    여기서는 start/end 가 넘어오면 그것으로 보내고,
+ *    없으면 date(yyyy-MM-dd) 로 보낸다.
+ */
+export const getUsersAvailability = async (userIds, startOrDate, maybeEnd) => {
+  try {
+    const params = { userIds: userIds.join(",") }; // Spring List<Integer> 매핑용 "1,2,3"
+
+    if (maybeEnd) {
+      // 시간 구간(시작/종료)으로 조회
+      params.start = toBackendFormat(startOrDate);
+      params.end = toBackendFormat(maybeEnd);
+    } else {
+      // 하루 단위(date) 조회
+      const pureDate =
+        typeof startOrDate === "string"
+          ? startOrDate.includes("T")
+            ? startOrDate.split("T")[0]
+            : startOrDate
+          : startOrDate;
+      params.date = pureDate;
+    }
+
+    const res = await http.get("/schedules/availability", { params });
+    return res.data; // { 6: [...], 7: [...] }
+  } catch (err) {
+    const message =
+      err.response?.data || "참석자 일정 현황 조회 중 오류가 발생했습니다.";
+    throw new Error(message);
+  }
+};
+
 /** 단일 일정 조회 */
 export const getScheduleById = async (id) => {
   try {
@@ -120,3 +153,9 @@ export const checkRoomAvailable = (id, start, end) =>
       params: { id, start: toBackendFormat(start), end: toBackendFormat(end) },
     })
     .then((res) => res.data);
+
+// 특정 시간대 예약 가능한 회의실 조회
+export const getAvailableMeetingRooms = (start, end) =>
+  http
+    .get("/meetingRooms/available", { params: { start, end } })
+    .then((res) => res.data.availableRooms);

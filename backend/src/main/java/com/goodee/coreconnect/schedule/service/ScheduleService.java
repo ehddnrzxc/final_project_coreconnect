@@ -1,6 +1,9 @@
 package com.goodee.coreconnect.schedule.service;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 import com.goodee.coreconnect.schedule.dto.request.RequestScheduleDTO;
 import com.goodee.coreconnect.schedule.dto.response.ResponseScheduleDTO;
@@ -24,6 +27,13 @@ public interface ScheduleService {
   /** 로그인한 사용자의 '오늘 일정' 조회 */
   List<ResponseScheduleDTO> getTodaySchedulesByEmail(String email);
 
+  /** 여러 유저의 일정 현황 조회 (하루 단위) */
+  Map<Integer, List<ResponseScheduleDTO>> getUsersAvailability(
+      List<Integer> userIds,
+      LocalDate date,
+      LocalDateTime start,
+      LocalDateTime end);
+  
   /** 특정 회의실의 일정 목록 조회 (삭제되지 않은 일정만 반환) */
   List<ResponseScheduleDTO> getSchedulesByMeetingRoom(Integer meetingRoomId);
   

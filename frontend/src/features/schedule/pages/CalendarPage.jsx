@@ -7,12 +7,10 @@ import interactionPlugin from "@fullcalendar/interaction";
 import { Box,
   Typography,
   CircularProgress,
-  Stack,
-  Snackbar,
-  Alert,
+  Stack
 } from "@mui/material";
 import { getMySchedules, createSchedule, updateSchedule, deleteSchedule } from "../api/scheduleAPI";
-import { getParticipantsBySchedule } from "../api/scheduleParticipantAPI";
+import { addParticipant, deleteParticipant, getParticipantsBySchedule } from "../api/scheduleParticipantAPI";
 import { toISO } from "../../../utils/dateFormat";
 import ScheduleCategoryPanel from "../components/ScheduleCategoryPanel";
 import ScheduleModal from "../components/ScheduleModal";
@@ -29,7 +27,6 @@ export default function CalendarPage() {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailId, setDetailId] = useState(null);
-  const [participants, setParticipants] = useState([]);
   const calendarRef = useRef(null);
   const [currentView, setCurrentView] = useState("dayGridMonth");
   const [visibleEnd, setVisibleEnd] = useState(null);
@@ -44,40 +41,20 @@ export default function CalendarPage() {
   };
 
 
-  // 마운트 시 localStorage 값 복원
-  useEffect(() => {
-    const saved = localStorage.getItem("drawerOpen");
-    if (saved !== null) {
-      setDrawerOpen(JSON.parse(saved)); // 저장된 값 불러오기
-    } else {
-      setDrawerOpen(true); // 기본값 true
-    }
-  }, []);
+  // 일정 fetch 함수를 별도 정의
+  const fetchSchedules = async (colors) => {
+    try {
+      const data = await getMySchedules();
 
-  // drawerOpen이 null이면 아직 복원 중이므로 렌더링 지연
-  if (drawerOpen === null) return null;
+      const mapped = data.map((s) => {
+        const color =
+          colors[s.categoryId] ||
+          (s.visibility === "PRIVATE" ? "#999999" : "#00a0e9");
 
-
-  /** 카테고리 색상, 체크상태 localStorage에서 불러오기 */
-  useEffect(() => {
-    const savedCategories = JSON.parse(localStorage.getItem("activeCategories") || "[]");
-    const savedColors = JSON.parse(localStorage.getItem("categoryColors") || "{}");
-    setActiveCategories(savedCategories);
-    setCategoryColors(savedColors);
-  }, []);
-
-  /** 내 일정 조회 */
-  useEffect(() => {
-    const fetchSchedules = async () => {
-      try {
-        const data = await getMySchedules();
-
-        const mapped = data.map((s) => ({
+        return {
           id: s.id,
           title:
-            s.visibility === "PRIVATE"
-              ? `[비공개] ${s.title}`
-              : s.title,
+            s.visibility === "PRIVATE" ? `[비공개] ${s.title}` : s.title,
           start: toISO(s.startDateTime),
           end: toISO(s.endDateTime),
           content: s.content,
@@ -89,19 +66,38 @@ export default function CalendarPage() {
           userEmail: s.userEmail,
           categoryName: s.categoryName,
           meetingRoomName: s.meetingRoomName,
-          // PRIVATE은 회색, PUBLIC은 파랑
-          backgroundColor: s.visibility === "PRIVATE" ? "#999999" : "#00a0e9",
-          borderColor: s.visibility === "PRIVATE" ? "#999999" : "#00a0e9",
-        }));
-        setEvents(mapped);
-      } catch {
-        showSnack("일정 불러오기 실패", "error");
-      } finally {
-        setLoading(false);
-      }
+          backgroundColor: color,
+          borderColor: color,
+        };
+      });
+
+      setEvents(mapped);
+    } catch {
+      showSnack("일정 불러오기 실패", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // localStorage 데이터 로드 후 fetchSchedules 실행
+  useEffect(() => {
+    const init = async () => {
+      const savedDrawer = localStorage.getItem("drawerOpen");
+      if (savedDrawer !== null) setDrawerOpen(JSON.parse(savedDrawer));
+
+      const savedCategories = JSON.parse(localStorage.getItem("activeCategories") || "[]");
+      const savedColors = JSON.parse(localStorage.getItem("categoryColors") || "{}");
+
+      setActiveCategories(savedCategories);
+      setCategoryColors(savedColors);
+
+      // 색상 로드가 완료된 뒤 일정 로드 시작
+      await fetchSchedules(savedColors);
     };
-    fetchSchedules();
-  }, []);
+
+    init();
+  }, []); // 로컬스토리지 로드 → 일정 로드 순서 보장
+
 
   /** 카테고리 선택 토글 */
   const handleToggleCategory = (id) => {
@@ -114,21 +110,41 @@ export default function CalendarPage() {
     });
   };
 
-  /** 색상 변경 시 반영 */
+  /** 색상 변경 함수: FullCalendar 즉시 반영 + localStorage 동기화 */
   const handleColorChange = (id, color) => {
     const updated = { ...categoryColors, [id]: color };
     setCategoryColors(updated);
     localStorage.setItem("categoryColors", JSON.stringify(updated));
+
+    // FullCalendar 즉시 반영
+    if (calendarRef.current) {
+      const api = calendarRef.current.getApi();
+      api.getEvents().forEach((ev) => {
+        if (ev.extendedProps.categoryId === id) {
+          ev.setProp("backgroundColor", color);
+          ev.setProp("borderColor", color);
+        }
+      });
+    }
+
+    showSnack("색상이 변경되었습니다.", "info"); // 스낵바 추가
   };
 
-  /** 색상 변경 감시 → FullCalendar 즉시 리렌더링 */
+  /** 색상 변경 시에만 이벤트 갱신 (덮어쓰기 방지) */
   useEffect(() => {
-    if (calendarRef.current) {
-      calendarRef.current.getApi().refetchEvents();
-    }
+    if (!calendarRef.current) return;
+    const api = calendarRef.current.getApi();
+    api.getEvents().forEach((ev) => {
+      const catId = ev.extendedProps.categoryId;
+      const color = categoryColors[catId];
+      if (color) {
+        ev.setProp("backgroundColor", color);
+        ev.setProp("borderColor", color);
+      }
+    });
   }, [categoryColors]);
 
-  /** 체크된 카테고리만 표시 */
+  /** 체크된 이벤트만 표시 */
   const filteredEvents = events.filter(
     (ev) => !ev.categoryId || activeCategories.includes(ev.categoryId)
   );
@@ -146,27 +162,37 @@ export default function CalendarPage() {
     if (!clicked) return;
 
     const isOwnerEmail = clicked.userEmail === currentUserEmail;
+    const currentUserRole = JSON.parse(localStorage.getItem("user"))?.role;
 
-    // PUBLIC이면 무조건 접근 허용
-    if (clicked.visibility !== "PRIVATE" || isOwnerEmail) {
+    // 공개 일정은 누구나 접근 가능
+    if (clicked.visibility !== "PRIVATE") {
       setDetailId(clicked.id);
       setDetailOpen(true);
       return;
     }
 
+    // 관리자면 PRIVATE은 아예 상세 요청하지 않음 (참가자 API도 호출 X)
+    if (currentUserRole === "ADMIN") {
+      showSnack("비공개 일정은 관리자도 열람할 수 없습니다.", "info");
+      return;
+    }
+
     try {
-      const isAuthorized = clicked.userEmail === currentUserEmail;
+      // PRIVATE 일정일 경우: 참가자 목록 조회
+      const participants = await getParticipantsBySchedule(clicked.id);
+      const isParticipant = participants.some(
+        (p) => p.userEmail === currentUserEmail
+      );
 
-      if (!isAuthorized) {
-        showSnack("비공개 일정은 본인 또는 참석자만 볼 수 있습니다.", "warning");
-        return;
+      if (isOwnerEmail || isParticipant) {
+        setDetailId(clicked.id);
+        setDetailOpen(true);
+      } else {
+        showSnack("비공개 일정은 본인 또는 참여자만 열람할 수 있습니다.", "warning");
       }
-
-      setDetailId(clicked.id);
-      setDetailOpen(true);
     } catch (err) {
-        console.warn("참여자 조회 실패:", err);
-        showSnack("일정 정보를 불러오는 중 오류가 발생했습니다.", "error");
+      console.warn("참여자 조회 실패:", err);
+      showSnack("일정 정보를 불러오는 중 오류가 발생했습니다.", "error");
     }
   };
 
@@ -191,10 +217,16 @@ export default function CalendarPage() {
                   userId: updated.userId,
                   userEmail: updated.userEmail,
                   userName: updated.userName,
+                  categoryId: updated.categoryId,          
+                  categoryName: updated.categoryName,
+                  meetingRoomName: updated.meetingRoomName,
+                  meetingRoomId: updated.meetingRoomId,
                   backgroundColor:
-                    updated.visibility === "PRIVATE" ? "#999999" : "#00a0e9",
+                    categoryColors[updated.categoryId] ||
+                    (updated.visibility === "PRIVATE" ? "#999999" : "#00a0e9"),
                   borderColor:
-                    updated.visibility === "PRIVATE" ? "#999999" : "#00a0e9",
+                    categoryColors[updated.categoryId] ||
+                    (updated.visibility === "PRIVATE" ? "#999999" : "#00a0e9"),
                 }
               : e
           )
@@ -213,10 +245,16 @@ export default function CalendarPage() {
           userId: created.userId,
           userEmail: created.userEmail,
           userName: created.userName,
+          categoryId: created.categoryId,          
+          categoryName: created.categoryName,
+          meetingRoomName: created.meetingRoomName,
+          meetingRoomId: created.meetingRoomId,
           backgroundColor:
-            created.visibility === "PRIVATE" ? "#999999" : "#00a0e9",
+            categoryColors[created.categoryId] ||
+            (created.visibility === "PRIVATE" ? "#999999" : "#00a0e9"),
           borderColor:
-            created.visibility === "PRIVATE" ? "#999999" : "#00a0e9",
+            categoryColors[created.categoryId] ||
+            (created.visibility === "PRIVATE" ? "#999999" : "#00a0e9"),
         };
         setEvents((prev) => [...prev, newEvent]);
         showSnack("일정이 등록되었습니다", "success");
@@ -300,13 +338,13 @@ export default function CalendarPage() {
             activeCategories={activeCategories}
             onToggle={handleToggleCategory}
             onColorChange={handleColorChange}
+            categoryColors={categoryColors}
           />
         </Box>
       )}
 
       {/* 캘린더 영역 */}
       <Box sx={{ flexGrow: 1, p: 3, overflowY: "auto" }}>
-
         <FullCalendar
           ref={calendarRef} // 캘린더 API 제어를 위해 ref 바인딩
           plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
@@ -331,11 +369,21 @@ export default function CalendarPage() {
             list15days: "목록",
           }}
           height="auto"
-          events={filteredEvents.map((e) => ({
-            ...e,
-            backgroundColor: categoryColors[e.categoryId] || e.backgroundColor,
-            borderColor: categoryColors[e.categoryId] || e.borderColor,
-          }))}
+          dayMaxEvents={3}          // 하루 최대 표시 일정 수 (넘으면 ‘+n개 더 보기’로 요약)
+          moreLinkClick="popover"   // ‘+n개 더 보기’ 클릭 시 팝오버로 상세 일정 표시
+          moreLinkContent={(arg) => ({
+            html: `<span style="
+                      color: rgba(0,0,0,0.6);
+                      font-weight: 500;           
+                      font-size: 0.9em;           
+                      text-shadow: 0 0 2px rgba(0,0,0,0.1);
+                      transition: all 0.2s ease;
+                     "
+                   >
+                    +${arg.num}
+                   </span>`,
+          })}
+          events={filteredEvents}
           eventContent={renderEventContent}
           dateClick={handleDateClick}
           eventClick={handleEventClick}
