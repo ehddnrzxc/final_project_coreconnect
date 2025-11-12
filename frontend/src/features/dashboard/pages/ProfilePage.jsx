@@ -160,7 +160,7 @@ const ProfilePage = () => {
 
   const items = [
     {
-      label: "부서 커뮤니티 새 글",
+      label: "부서 커뮤니티 오늘의 새 글",
       value: deptNewCount == null ? "-" : deptNewCount,
       highlight: Number(deptNewCount) > 0,
       to: deptCategoryId ? `/board/${deptCategoryId}?sortType=latest&scope=today` : null,
@@ -250,14 +250,31 @@ const ProfilePage = () => {
       </Box>
 
       {/* 오늘 일정 */}
-      <Box sx={{ textAlign: "center", my: 1 }}>
+      <Box
+        component={Link}
+        to="/calendar"
+        aria-label="캘린더로 이동"
+        sx={{
+          textAlign: "center",
+          my: 1,
+          textDecoration: "none",
+          color: "inherit",
+          display: "block",
+          '&:hover .calendar-title': { textDecoration: "underline" }, // 호버 효과(선택)
+        }}
+      >
         <Typography
           variant="h3"
           sx={{ fontWeight: 800, color: "primary.main", lineHeight: 1 }}
         >
           {todayScheduleCount === null ? "-" : todayScheduleCount}
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+        <Typography
+          className="calendar-title"
+          variant="body2"
+          color="text.secondary"
+          sx={{ mt: 0.5 }}
+        >
           오늘의 일정
         </Typography>
 

@@ -166,7 +166,7 @@ export default function AdminHome() {
           { icon: <People />, color: "#2e8cf0", label: "전체 사용자", value: stats.totalUsers + " 명" },
           { icon: <CheckCircle />, color: "#31b77c", label: "활성 사용자", value: stats.activeUsers + " 명" },
           { icon: <Business />, color: "#f59e0b", label: "부서 수", value: stats.departments + " 개" },
-          { icon: <ErrorOutline />, color: "#ef4444", label: "승인 대기", value: "?" + " 건"},
+          { icon: <ErrorOutline />, color: "#ef4444", label: "전사원 근태 현황", value: "구현 예정"},
         ].map((c, i) => (
           <Grid item xs={12} sm={6} md={3} key={i}>
             <Card
