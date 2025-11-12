@@ -12,9 +12,11 @@ import React from "react";
 import { getJobGradeLabel } from "../../../components/utils/labelUtils";
 
 const DynamicApprovalTable = ({ approvers = [], drafter }) => {
-  const actualApprovers = approvers;
+  // "REFER" 타입을 거르기 위한 필터
+  const actualApprovers = approvers.filter(
+    (line) => line.approvalType !== "REFER"
+  );
 
-  // 각 결재자의 직위, 이름, 서명/상태를 담을 배열
   const approverPositionCells = [];
   const approverNameCells = [];
   const approverSignatureCells = [];
@@ -24,20 +26,19 @@ const DynamicApprovalTable = ({ approvers = [], drafter }) => {
       let userId, positionName, name, approvalStatus;
 
       if (line.approver) {
-        // 상세 페이지 (DocumentDetailPage) 데이터 처리
+        // 'approver' 객체가 있는 경우 (결재, 합의 등)
         userId = line.approver.userId;
-        positionName = getJobGradeLabel(line.approver.positionName); // 직급 번역 적용
+        positionName = getJobGradeLabel(line.approver.positionName);
         name = line.approver.userName;
-        approvalStatus = line.approvalStatus; // 결재 상태
+        approvalStatus = line.approvalStatus;
       } else {
-        // 작성 페이지 (NewDocumentPage) 데이터 처리
+        // 'approver' 객체가 없는 경우
         userId = line.userId;
-        positionName = getJobGradeLabel(line.positionName); // 직급 번역 적용
+        positionName = getJobGradeLabel(line.positionName);
         name = line.name;
-        approvalStatus = ""; // 작성 페이지에서는 결재 상태 없음
+        approvalStatus = line.approvalStatus || "";
       }
 
-      // 각 결재자의 데이터 셀 생성
       approverPositionCells.push(
         <TableCell key={`${userId}-pos`} sx={{ width: 70 }}>
           {positionName}
@@ -53,7 +54,7 @@ const DynamicApprovalTable = ({ approvers = [], drafter }) => {
       } else if (approvalStatus === "REJECTED") {
         sigContent = "반려";
       } else if (approvalStatus === "WAITING") {
-        sigContent = ""; // 대기 중일 때는 비워둠
+        sigContent = "";
       }
       approverSignatureCells.push(
         <TableCell key={`${userId}-sig`} sx={{ height: "60px" }}>
@@ -62,7 +63,6 @@ const DynamicApprovalTable = ({ approvers = [], drafter }) => {
       );
     });
   } else {
-    // 결재자가 없을 경우 빈 셀 생성
     approverPositionCells.push(
       <TableCell key="blank-pos" sx={{ width: 70, color: "#ccc" }}></TableCell>
     );
@@ -71,10 +71,6 @@ const DynamicApprovalTable = ({ approvers = [], drafter }) => {
       <TableCell key="blank-sig" sx={{ height: "60px" }}></TableCell>
     );
   }
-
-  // 결재자 수가 0일 때를 대비해 colSpan을 동적으로 계산
-  const approverColSpan =
-    actualApprovers.length > 0 ? actualApprovers.length : 1;
 
   return (
     <TableContainer
@@ -95,9 +91,7 @@ const DynamicApprovalTable = ({ approvers = [], drafter }) => {
         }}
       >
         <TableHead>
-          {/* 첫 번째 행: 기안자 직위 / (결재 승인) 직위 */}
           <TableRow sx={{ backgroundColor: "#f9f9f9", height: "30px" }}>
-            {/* 기안자 직위 (rowSpan 2 -> 기안자 이름까지 합치기 위해 3으로 변경) */}
             <TableCell
               rowSpan={3}
               sx={{
@@ -111,7 +105,6 @@ const DynamicApprovalTable = ({ approvers = [], drafter }) => {
             <TableCell sx={{ width: 70 }}>
               {getJobGradeLabel(drafter?.positionName) || "기안자"}
             </TableCell>
-            {/* 결재자들의 직위 칸들 */}
             <TableCell
               rowSpan={3}
               sx={{
@@ -124,12 +117,10 @@ const DynamicApprovalTable = ({ approvers = [], drafter }) => {
             </TableCell>
             {approverPositionCells}
           </TableRow>
-          {/* 두 번째 행: 기안자 이름 / (결재 승인) 이름 */}
           <TableRow sx={{ height: "30px" }}>
             <TableCell>{drafter?.userName || drafter?.name}</TableCell>
             {approverNameCells}
           </TableRow>
-          {/* 세 번째 행: 기안자 상신 / (결재 승인) 서명 */}
           <TableRow sx={{ height: "60px" }}>
             <TableCell>상신</TableCell>
             {approverSignatureCells}

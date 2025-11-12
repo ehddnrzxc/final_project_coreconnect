@@ -189,7 +189,11 @@ function NewDocumentPage() {
   };
 
   const handleModalSubmit = selectedLineFromModal => {
-    setApprovalLine(selectedLineFromModal);
+    const remappedLine = selectedLineFromModal.map(line => ({
+      ...line,
+      approvalType: line.type
+    }));
+    setApprovalLine(remappedLine);
   };
 
   const handleSubmit = async isDraft => {
