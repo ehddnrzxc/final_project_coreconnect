@@ -2,6 +2,8 @@ package com.goodee.coreconnect.approval.repository;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -9,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import com.goodee.coreconnect.approval.entity.ApprovalLine;
 import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.approval.enums.ApprovalLineStatus;
+import com.goodee.coreconnect.approval.enums.ApprovalLineType;
 import com.goodee.coreconnect.approval.enums.DocumentStatus;
 import com.goodee.coreconnect.user.entity.User;
 
@@ -47,4 +50,32 @@ public interface ApprovalLineRepository extends JpaRepository<ApprovalLine, Inte
       @Param("status") ApprovalLineStatus status, 
       @Param("docStatus") DocumentStatus docStatus
       );
+  
+  //합의/결재 대기 문서
+   @Query("""
+     select l.document
+     from ApprovalLine l
+     where l.approver.email = :email
+       and l.approvalLineType = :type
+       and l.approvalLineStatus = :status
+   """)
+   Page<Document> findPageByApproverAndTypeAndStatus(
+       @Param("email") String email,
+       @Param("type") ApprovalLineType type,          
+       @Param("status") ApprovalLineStatus status,    
+       Pageable pageable
+   );
+  
+   // 참조 문서(전체)
+   @Query("""
+     select l.document
+     from ApprovalLine l
+     where l.approver.email = :email
+       and l.approvalLineType = :type
+   """)
+   Page<Document> findPageByApproverAndType(
+       @Param("email") String email,
+       @Param("type") ApprovalLineType type,          
+       Pageable pageable
+   );
 }

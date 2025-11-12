@@ -19,7 +19,16 @@ export async function getPasswordResetRequests(status) {
 /** 비밀번호 초기화 요청 승인 */
 export async function approvePasswordResetRequest(id) {
   const res = await http.put(`/admin/users/password-reset/requests/${id}/approve`);
-  return res.data; // 204. res.data는 비어있음.
+  return res.data; 
+}
+
+/** 비밀번호 초기화 요청 거절 */
+export async function rejectPasswordResetRequest(id, rejectReason) {
+  const res = await http.put(
+    `/admin/users/password-reset/requests/${id}/reject`,
+    { rejectReason, }
+  );
+  return res.data; 
 }
 
 /** 휴가 요청 전체 조회 */

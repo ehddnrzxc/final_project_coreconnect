@@ -27,5 +27,6 @@ public interface UserService {
   public Long getAllActiveUserCount();
   public List<OrganizationUserResponseDTO> getOrganizationChart();
   public User getUserByEmail(String email);
+  public Integer getDeptIdByEmail(String email);
 
 }

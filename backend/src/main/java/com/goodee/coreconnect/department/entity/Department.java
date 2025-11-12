@@ -3,6 +3,7 @@ package com.goodee.coreconnect.department.entity;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.goodee.coreconnect.board.entity.BoardCategory;
 import com.goodee.coreconnect.user.entity.User;
 
 import jakarta.persistence.*;
@@ -37,6 +38,11 @@ public class Department {
 
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
     private List<Department> children = new ArrayList<>();
+    
+    // 부서 전용 보드 카테고리 (1:1 매핑)
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "board_category_id") 
+    private BoardCategory boardCategory;
 
 
 
@@ -63,4 +69,9 @@ public class Department {
     public void changeParent(Department newParent) {
       this.parent = newParent;
     }
+    
+    public void linkBoardCategory(BoardCategory category) {
+      this.boardCategory = category; 
+    }
+    
 }

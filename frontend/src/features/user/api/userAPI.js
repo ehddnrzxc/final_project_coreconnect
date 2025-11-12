@@ -28,3 +28,9 @@ export const getAdminUsers = () => http.get("/user").then(res => res.data);
 
 // 조직도/사용자 조회
 export const getOrganizationChart = () => http.get("/user/organization");
+
+// 로그인된 사용자의 부서 ID 조회
+export async function getUserDeptId() {
+  const res = await http.get("/departments/get-dept-id");
+  return res.data;
+} 

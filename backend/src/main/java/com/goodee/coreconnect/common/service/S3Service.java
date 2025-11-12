@@ -1,4 +1,4 @@
-package com.goodee.coreconnect.common;
+package com.goodee.coreconnect.common.service;
 
 import java.io.IOException;
 import java.net.URL;

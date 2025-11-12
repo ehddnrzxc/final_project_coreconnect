@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.goodee.coreconnect.user.dto.request.PasswordResetRequestDTO;
+import com.goodee.coreconnect.user.dto.request.RejectLeaveRequestDTO;
 import com.goodee.coreconnect.user.dto.response.PasswordResetResponseDTO;
 import com.goodee.coreconnect.user.entity.PasswordResetRequest;
 import com.goodee.coreconnect.user.entity.ResetStatus;
@@ -82,6 +83,19 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     
     // 이메일 발송
     mailService.sendTempPassword(user.getEmail(), tempPassword);
+  }
+  
+  /** 거절 처리 */
+  @Override
+  public void reject(Long requestId, User admin, RejectLeaveRequestDTO rejectReason) {
+    PasswordResetRequest req = passwordResetRequestRepository.findById(requestId)
+        .orElseThrow(() -> new IllegalArgumentException("요청을 찾을 수 없습니다."));
+    if(req.getStatus() != ResetStatus.PENDING) {
+      throw new IllegalStateException("이미 처리된 요청입니다.");
+    }
+    
+    // 요청 엔티티 상태 변경
+    req.reject(admin, rejectReason);
   }
   
   /** 랜덤 비밀번호 생성 유틸 */
