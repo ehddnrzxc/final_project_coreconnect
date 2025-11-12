@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react"; 
-// React 훅 불러오기
+// React 훅
 // useEffect: 컴포넌트 생명주기 제어
 // useState: 상태 관리
 import { useParams, useNavigate, useSearchParams } from "react-router-dom"; 
-// React Router 훅 불러오기
+// React Router 훅
 // useParams: URL 파라미터 추출
 // useNavigate: 페이지 이동용 함수
 // useSearchParams: 쿼리스트링 읽기/수정
@@ -26,7 +26,7 @@ import { Box, Button, TextField, Typography, Checkbox, FormControlLabel, Select,
 // FormControlLabel: 체크박스/라벨 묶음
 // Select/MenuItem/InputLabel/FormControl: 드롭다운 구성 요소
 import LockIcon from "@mui/icons-material/Lock"; // MUI 아이콘: 비공개 상태 자물쇠 표시
-import { useSnackbarContext } from "../../../components/utils/SnackbarContext"; // 전역 스낵바 컨텍스트 추가
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext"; // 전역 스낵바 컨텍스트
 
 
 // 게시글 작성 및 수정 페이지를 담당하는 컴포넌트
@@ -118,7 +118,7 @@ const BoardWritePage = () => {
   const handleSubmit = async () => {
     // 작성 모드에서 카테고리 선택 안 했을 경우
     if (!boardId && !form.categoryId) {
-      showSnack("카테고리를 선택해주세요.", "warning");
+      showSnack("카테고리를 선택해주세요.", "error");
       return;
     }
 

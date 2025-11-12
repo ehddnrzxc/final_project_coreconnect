@@ -126,6 +126,7 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <BoardListPage /> },
           { path: ":categoryId", element: <BoardListPage /> },
+          { path: "search", element: <BoardListPage /> },
           { path: "detail/:boardId", element: <BoardDetailPage /> },
           { path: "new", element: <BoardWritePage /> },
           { path: "edit/:boardId", element: <BoardWritePage /> },
