@@ -6,12 +6,15 @@ import {
   Button,
   ButtonGroup,
   CircularProgress,
+  Collapse,
   Divider,
   Grid,
   IconButton,
   List,
   ListItem,
+  ListItemButton,
   ListItemText,
+  ListSubheader,
   Modal,
   Paper,
   TextField,
@@ -21,6 +24,8 @@ import ApprovalTypeChip from "../components/ApprovalTypeChip";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import DeleteIcon from "@mui/icons-material/Delete";
+import ExpandLess from "@mui/icons-material/ExpandLess";
+import ExpandMore from "@mui/icons-material/ExpandMore";
 
 const style = {
   position: "absolute",
@@ -45,10 +50,12 @@ function ApprovalLineModal({
 }) {
   const [organizationUsers, setOrganizationUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
+  const [groupedUsers, setGroupedUsers] = useState({});
   const [selectedLine, setSelectedLine] = useState(currentLine || []);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [openDepartments, setOpenDepartments] = useState({});
 
   useEffect(() => {
     if (open) {
@@ -59,6 +66,22 @@ function ApprovalLineModal({
           const res = await getOrganizationChart();
           setOrganizationUsers(res.data);
           setFilteredUsers(res.data);
+
+          const groupedData = res.data.reduce((acc, user) => {
+            const dept = user.deptName || "소속 없음";
+            if (!acc[dept]) {
+              acc[dept] = [];
+            }
+            acc[dept].push(user);
+            return acc;
+          }, {});
+          setGroupedUsers(groupedData);
+
+          const initialOpenState = Object.keys(groupedData).reduce((acc, dept) => {
+            acc[dept] = true;
+            return acc;
+          }, {});
+          setOpenDepartments(initialOpenState);
         } catch (error) {
           console.error("Error fetching organization chart:", error);
           setError("조직도 데이터를 불러오는 데 실패했습니다.");
@@ -68,6 +91,8 @@ function ApprovalLineModal({
       };
       fetchOrgUsers();
       setSelectedLine(currentLine || []);
+      setSearchTerm("");
+      setOpenDepartments({});
     }
   }, [open, currentLine]);
 
@@ -78,12 +103,17 @@ function ApprovalLineModal({
         user.name && user.name.toLowerCase().includes(lowerSearchTerm);
       const deptMatch =
         user.deptName && user.deptName.toLowerCase().includes(lowerSearchTerm);
-      const teamMatch =
-        user.teamName && user.teamName.toLowerCase().includes(lowerSearchTerm);
-      return nameMatch || deptMatch || teamMatch;
+      return nameMatch || deptMatch;
     });
     setFilteredUsers(filtered);
   }, [searchTerm, organizationUsers]);
+
+  const handleToggleDepartment = (deptName) => {
+    setOpenDepartments((prevOpen) => ({
+      ...prevOpen,
+      [deptName]: !prevOpen[deptName],
+    }));
+  };
 
   const handleAddUser = (user, type) => {
     if (selectedLine.some((line) => line.userId === user.userId)) {
@@ -100,14 +130,12 @@ function ApprovalLineModal({
     setSelectedLine([...selectedLine, newUser]);
   };
 
-  // 사용자 제거
   const handleRemoveUser = (idx) => {
     const newLine = [...selectedLine];
     newLine.splice(idx, 1);
     setSelectedLine(newLine);
   };
 
-  // 순서 변경 (위)
   const handleMoveUp = (index) => {
     if (index === 0) return;
     const newLine = [...selectedLine];
@@ -116,7 +144,6 @@ function ApprovalLineModal({
     setSelectedLine(newLine);
   };
 
-  // 순서 변경 (아래)
   const handleMoveDown = (index) => {
     if (index === selectedLine.length - 1) return;
     const newLine = [...selectedLine];
@@ -125,7 +152,6 @@ function ApprovalLineModal({
     setSelectedLine(newLine);
   };
 
-  // 최종 확인
   const handleConfirm = () => {
     const sortedLine = [...selectedLine].sort((a, b) => {
       const orderA = a.type === "REFER" ? 1 : 0;
@@ -136,6 +162,38 @@ function ApprovalLineModal({
     handleClose();
   };
 
+  const renderUserItem = (user) => (
+    <ListItem key={user.userId}>
+      <ListItemText
+        primary={`${user.name} (${user.positionName})`}
+        secondary={user.deptName}
+        sx={{ flex: 1, minWidth: 0 }}
+      />
+      <Box sx={{ flexShrink: 0, pl: 2 }}>
+        <ButtonGroup variant="outlined" size="small">
+          <Button
+            size="small"
+            onClick={() => handleAddUser(user, "APPROVE")}
+          >
+            결재
+          </Button>
+          <Button
+            size="small"
+            onClick={() => handleAddUser(user, "AGREE")}
+          >
+            합의
+          </Button>
+          <Button
+            size="small"
+            onClick={() => handleAddUser(user, "REFER")}
+          >
+            참조
+          </Button>
+        </ButtonGroup>
+      </Box>
+    </ListItem>
+  );
+
   return (
     <Modal open={open} onClose={handleClose}>
       <Box sx={style}>
@@ -144,9 +202,22 @@ function ApprovalLineModal({
         </Typography>
         <Grid container spacing={2} sx={{ flex: 1, overflow: "hidden" }}>
           {/* --- 1. 왼쪽: 조직도 --- */}
-          <Grid item xs={6} sx={{ display: "flex", flexDirection: "column" }}>
-            <Paper sx={{ flex: 1, p: 2, overflowY: "auto" }}>
-              <Typography variant="h6" sx={{ mb: 1 }}>
+          <Grid
+            item
+            xs={6}
+            sx={{ display: "flex", flexDirection: "column", height: "100%" }}
+          >
+            <Paper
+              sx={{
+                flex: 1,
+                p: 2,
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+                minHeight: 0,
+              }}
+            >
+              <Typography variant="h6" sx={{ mb: 1, flexShrink: 0 }}>
                 조직도
               </Typography>
               <TextField
@@ -156,7 +227,7 @@ function ApprovalLineModal({
                 size="small"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                sx={{ mb: 2 }}
+                sx={{ mb: 2, flexShrink: 0 }}
               />
               {loading ? (
                 <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
@@ -165,56 +236,65 @@ function ApprovalLineModal({
               ) : error ? (
                 <Alert severity="error">{error}</Alert>
               ) : (
-                <List disablePadding>
-                  {filteredUsers.map((user) => (
-                    <ListItem key={user.userId}>
-                      {/* 1. ListItemText가 남은 공간을 모두 차지하도록 설정 (flex: 1)
-                        2. 내용이 길 때 줄어들도록 minWidth: 0 설정 (말줄임표시 활성화)
-                      */}
-                      <ListItemText
-                        primary={`${user.name} (${user.positionName})`}
-                        secondary={user.teamName || user.deptName}
-                        sx={{ flex: 1, minWidth: 0 }}
-                      />
-                      {/* 2. 버튼을 담은 Box가 줄어들지 않도록 설정 (flexShrink: 0)
-                        3. 텍스트와 버튼 사이에 여백 추가 (pl: 2)
-                      */}
-                      <Box sx={{ flexShrink: 0, pl: 2 }}>
-                        <ButtonGroup variant="outlined" size="small">
-                          <Button
-                            size="small"
-                            onClick={() => handleAddUser(user, "APPROVE")}
-                          >
-                            결재
-                          </Button>
-                          <Button
-                            size="small"
-                            onClick={() => handleAddUser(user, "AGREE")}
-                          >
-                            합의
-                          </Button>
-                          <Button
-                            size="small"
-                            onClick={() => handleAddUser(user, "REFER")}
-                          >
-                            참조
-                          </Button>
-                        </ButtonGroup>
-                      </Box>
-                    </ListItem>
-                  ))}
+                <List disablePadding sx={{ overflowY: "auto", flex: 1 }}>
+                  {searchTerm ? (
+                    // 1. 검색어가 있으면: 필터링된 목록 표시
+                    filteredUsers.map(renderUserItem)
+                  ) : (
+                    // 2. 검색어가 없으면: 부서별 그룹 목록 표시
+                    Object.keys(groupedUsers)
+                      .sort()
+                      .map((deptName) => {
+                        const isOpen = !!openDepartments[deptName];
+                        return (
+                          <React.Fragment key={deptName}>
+                            <ListItemButton
+                              onClick={() => handleToggleDepartment(deptName)}
+                            >
+                              <ListItemText
+                                primary={deptName}
+                                primaryTypographyProps={{ fontWeight: "bold" }}
+                              />
+                              {isOpen ? <ExpandLess /> : <ExpandMore />}
+                            </ListItemButton>
+                            <Collapse in={isOpen} timeout="auto" unmountOnExit>
+                              <List component="div" disablePadding sx={{ pl: 2 }}>
+                                {groupedUsers[deptName].map(renderUserItem)}
+                              </List>
+                            </Collapse>
+                          </React.Fragment>
+                        );
+                      })
+                  )}
                 </List>
               )}
             </Paper>
           </Grid>
 
-          {/* --- 2. 오른쪽: 결재선 --- */}
-          <Grid item xs={6} sx={{ display: "flex", flexDirection: "column" }}>
-            <Paper sx={{ flex: 1, p: 2, overflowY: "auto" }}>
-              <Typography variant="h6" sx={{ mb: 1 }}>
+          {/* --- 2. 오른쪽: 결재선 (스크롤 되도록 수정) --- */}
+          <Grid
+            item
+            xs={6}
+            sx={{ display: "flex", flexDirection: "column", height: "100%" }}
+          >
+            <Paper
+              sx={{
+                flex: 1,
+                p: 2,
+                display: "flex",
+                flexDirection: "column",
+                overflow: "hidden",
+                minHeight: 0,
+              }}
+            >
+              <Typography variant="h6" sx={{ mb: 1, flexShrink: 0 }}>
                 결재선 (총 {selectedLine.length}명)
               </Typography>
-              <Typography variant="caption" color="text.secondary">
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ mb: 2, flexShrink: 0 }}
+              >
                 * 결재/합의자는 순서대로 진행되며, 참조자는 즉시 조회합니다.
                 <br />* 최종 확인 시 '참조' 유형은 맨 뒤로 정렬됩니다.
               </Typography>
@@ -223,7 +303,7 @@ function ApprovalLineModal({
                   왼쪽 조직도에서 사용자를 추가하세요.
                 </Alert>
               ) : (
-                <List>
+                <List sx={{ overflowY: "auto", flex: 1 }}>
                   {selectedLine.map((line, index) => (
                     <ListItem
                       key={line.userId}
@@ -232,7 +312,7 @@ function ApprovalLineModal({
                       <ApprovalTypeChip type={line.type} sx={{ mr: 2 }} />
                       <ListItemText
                         primary={`${line.name} (${line.positionName})`}
-                        secondary={line.teamName}
+                        secondary={line.deptName}
                       />
                       <Box>
                         <IconButton
