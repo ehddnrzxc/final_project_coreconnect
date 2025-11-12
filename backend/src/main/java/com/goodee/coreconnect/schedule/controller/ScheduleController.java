@@ -1,7 +1,11 @@
 package com.goodee.coreconnect.schedule.controller;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -101,6 +105,22 @@ public class ScheduleController {
   public List<ResponseScheduleDTO> getMyTodaySchedules(@AuthenticationPrincipal CustomUserDetails user) {
       String email = user.getEmail();
       return scheduleService.getTodaySchedulesByEmail(email);
+  }
+  
+  /** 여러 유저의 일정 현황 조회 (하루 단위) */
+  @Operation(summary = "참석자 일정 현황 조회", description = "선택된 참석자들의 하루 일정 목록을 조회합니다.")
+  @GetMapping("/availability")
+  public ResponseEntity<Map<Integer, List<ResponseScheduleDTO>>> getUsersAvailability(
+      @RequestParam("userIds") List<Integer> userIds,
+      @RequestParam(value = "date", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date,
+      @RequestParam(value = "start", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime start,
+      @RequestParam(value = "end", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime end
+  ) {
+      // start/end가 없으면 하루 단위 기본 조회
+      LocalDate baseDate = (date != null) ? date : LocalDate.now();
+      Map<Integer, List<ResponseScheduleDTO>> result =
+          scheduleService.getUsersAvailability(userIds, baseDate, start, end);
+      return ResponseEntity.ok(result);
   }
 
   /** 특정 회의실의 일정 목록 조회 */
