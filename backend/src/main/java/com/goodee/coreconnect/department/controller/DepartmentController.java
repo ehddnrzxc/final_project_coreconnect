@@ -3,6 +3,7 @@ package com.goodee.coreconnect.department.controller;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,6 +19,9 @@ import com.goodee.coreconnect.department.dto.request.UpdateRequestDTO;
 import com.goodee.coreconnect.department.dto.response.DepartmentFlatDTO;
 import com.goodee.coreconnect.department.dto.response.DepartmentTreeDTO;
 import com.goodee.coreconnect.department.service.DepartmentService;
+import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
+import com.goodee.coreconnect.user.entity.User;
+import com.goodee.coreconnect.user.service.UserService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +33,7 @@ import lombok.RequiredArgsConstructor;
 public class DepartmentController {
   
   private final DepartmentService departmentService;
+  private final UserService userService;
   
   /** 부서 조회(트리 형식) */
   @GetMapping("/tree")
@@ -69,5 +74,18 @@ public class DepartmentController {
   public ResponseEntity<Void> delete(@PathVariable Integer id) {
     departmentService.delete(id);
     return ResponseEntity.noContent().build();
+  }
+  
+  /** 사용자의 부서 ID 조회 */
+  @GetMapping("/get-dept-id")
+  public ResponseEntity<Integer> getUserDeptId(
+      @AuthenticationPrincipal CustomUserDetails user
+  ) {
+    User foundUser = userService.getUserByEmail(user.getEmail());
+    if(foundUser.getDepartment() == null) {
+      return ResponseEntity.ok(null);
+    }
+    Integer deptId = foundUser.getDepartment().getId();
+    return ResponseEntity.ok(deptId);
   }
 }

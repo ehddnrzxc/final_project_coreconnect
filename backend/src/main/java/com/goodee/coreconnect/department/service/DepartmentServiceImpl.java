@@ -10,6 +10,8 @@ import java.util.NoSuchElementException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.goodee.coreconnect.board.entity.BoardCategory;
+import com.goodee.coreconnect.board.repository.BoardCategoryRepository;
 import com.goodee.coreconnect.department.dto.response.DepartmentFlatDTO;
 import com.goodee.coreconnect.department.dto.response.DepartmentTreeDTO;
 import com.goodee.coreconnect.department.entity.Department;
@@ -23,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 public class DepartmentServiceImpl implements DepartmentService {
   
   private final DepartmentRepository departmentRepository;
+  private final BoardCategoryRepository boardCategoryRepository;
 
   /** 전체 조직도 트리 조회 */
   @Override
@@ -161,6 +164,26 @@ public class DepartmentServiceImpl implements DepartmentService {
   @Override
   public Long getAllDepartmentCount() {
     return departmentRepository.count();
+  }
+
+  /** 부서 ID로 게시판 카테고리 ID 조회 */
+  @Override
+  public Integer getBoardCategoryIdByDeptId(Integer deptId) {
+    return departmentRepository
+        .findBoardCategoryIdByDeptId(deptId)
+        .orElseThrow(() -> new IllegalArgumentException("해당 부서 ID에 해당하는 게시판 카테고리 ID를 조회할 수 없습니다."));
+  }
+
+  /** 부서와 게시판 카테고리 매핑 */
+  @Override
+  public void linkDeptWithCategory(Integer deptId, Integer categoryId) {
+    Department dept = departmentRepository
+        .findById(deptId)
+        .orElseThrow(() -> new IllegalArgumentException("부서를 찾을 수 없습니다."));
+    BoardCategory category = boardCategoryRepository
+        .findById(categoryId)
+        .orElseThrow(() -> new IllegalArgumentException("카테고리를 찾을 수 없습니다."));
+    dept.linkBoardCategory(category);
   }
   
   

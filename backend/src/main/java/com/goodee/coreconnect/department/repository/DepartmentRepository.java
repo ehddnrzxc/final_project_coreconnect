@@ -5,6 +5,8 @@ import java.util.Optional;
 
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.goodee.coreconnect.department.entity.Department;
 
@@ -28,7 +30,10 @@ public interface DepartmentRepository extends JpaRepository<Department, Integer>
   
   /** 부서 이름으로 부서를 찾는 메소드 */
   Optional<Department> findByDeptName(String deptName);
-
+  
+  /** 부서 ID로 게시판 카테고리ID를 찾는 메소드 */
+  @Query("select d.boardCategory.id from Department d where d.id = :deptId")
+  Optional<Integer> findBoardCategoryIdByDeptId(@Param("deptId") Integer deptId);
   
   
 

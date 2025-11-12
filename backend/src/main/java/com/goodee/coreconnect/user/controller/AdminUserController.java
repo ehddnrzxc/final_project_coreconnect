@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.goodee.coreconnect.department.service.DepartmentService;
 import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
 import com.goodee.coreconnect.user.dto.request.CreateUserReqDTO;
+import com.goodee.coreconnect.user.dto.request.RejectLeaveRequestDTO;
 import com.goodee.coreconnect.user.dto.response.PasswordResetResponseDTO;
 import com.goodee.coreconnect.user.dto.response.TempPasswordResponseDTO;
 import com.goodee.coreconnect.user.dto.response.UserDTO;
@@ -98,12 +99,25 @@ public class AdminUserController {
   
   /** 비밀번호 변경 요청 승인 */
   @PutMapping("/password-reset/requests/{id}/approve")
-  public ResponseEntity<TempPasswordResponseDTO> approve(@PathVariable(name = "id") long id,
+  public ResponseEntity<TempPasswordResponseDTO> approve(@PathVariable(name = "id") Long id,
                                                          @AuthenticationPrincipal CustomUserDetails customUserDetails) {
     String email = customUserDetails.getEmail();
     User user = userService.getUserByEmail(email);
     passwordResetService.approve(id, user);
     return ResponseEntity.noContent().build();
+  }
+  
+  /** 비밀번호 변경 요청 거절 */
+  @PutMapping("/password-reset/requests/{id}/reject")
+  public ResponseEntity<TempPasswordResponseDTO> reject(
+      @PathVariable(name = "id") Long id,
+      @AuthenticationPrincipal CustomUserDetails customUserDetails,
+      @RequestBody RejectLeaveRequestDTO rejectReason
+  ) {
+      String email = customUserDetails.getEmail();
+      User user = userService.getUserByEmail(email);
+      passwordResetService.reject(id, user, rejectReason);
+      return ResponseEntity.noContent().build();
   }
   
 }

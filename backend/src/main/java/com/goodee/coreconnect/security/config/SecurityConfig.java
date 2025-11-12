@@ -79,6 +79,7 @@ public class SecurityConfig {
               .requestMatchers("/ws/notification").permitAll()
               // 로그인/회원가입 등 인증 시작 엔드포인트만 오픈
               .requestMatchers("/api/v1/auth/**").permitAll()
+              .requestMatchers("/api/v1/password-reset/requests").permitAll()
               // 나머지 경로는 로그인 필요
               .anyRequest().authenticated()
               )

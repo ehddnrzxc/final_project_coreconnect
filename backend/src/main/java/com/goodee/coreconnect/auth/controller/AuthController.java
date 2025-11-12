@@ -1,4 +1,4 @@
-package com.goodee.coreconnect.auth;
+package com.goodee.coreconnect.auth.controller;
 
 import java.time.Duration;
 
@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.goodee.coreconnect.auth.dto.LoginRequestDTO;
 import com.goodee.coreconnect.auth.dto.LoginResponseDTO;
+import com.goodee.coreconnect.auth.util.JwtConstants;
 import com.goodee.coreconnect.security.jwt.JwtProvider;
 import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.User;

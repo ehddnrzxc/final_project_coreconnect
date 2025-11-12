@@ -16,7 +16,6 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/password-reset")
-@PreAuthorize("hasRole('ADMIN')")
 public class PasswordResetController {
   
   private final PasswordResetService passwordResetService;

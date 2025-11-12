@@ -17,7 +17,7 @@ import com.goodee.coreconnect.board.entity.Board;
 import com.goodee.coreconnect.board.entity.BoardFile;
 import com.goodee.coreconnect.board.repository.BoardFileRepository;
 import com.goodee.coreconnect.board.repository.BoardRepository;
-import com.goodee.coreconnect.common.S3Service;
+import com.goodee.coreconnect.common.service.S3Service;
 import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
