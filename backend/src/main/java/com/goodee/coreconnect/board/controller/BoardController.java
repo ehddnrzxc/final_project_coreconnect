@@ -212,4 +212,21 @@ public class BoardController {
         return ResponseEntity.ok(res);
     }
 
+    @Operation(summary = "전체 게시글 최신순 조회 (공지/상단고정 구분 없음)", 
+               description = "공지나 상단고정 구분 없이 전체 게시판에서 최근 등록된 순서대로만 조회합니다.")
+    @GetMapping("/latest")
+    public ResponseEntity<ResponseDTO<Page<BoardResponseDTO>>> getBoardsByLatestOnly(
+            @PageableDefault(size = 10) Pageable pageable
+    ) {
+        Page<BoardResponseDTO> page = boardService.getBoardsByLatestOnly(pageable);
+
+        ResponseDTO<Page<BoardResponseDTO>> res = ResponseDTO.<Page<BoardResponseDTO>>builder()
+                                                             .status(HttpStatus.OK.value())
+                                                             .message("게시글 최신순 목록 조회 성공")
+                                                             .data(page)
+                                                             .build();
+
+        return ResponseEntity.ok(res);
+    }
+
 }

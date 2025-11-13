@@ -9,12 +9,12 @@ import App from "./App";
 import LoginPage from "./features/auth/pages/LoginPage";
 import HomePage from "./features/dashboard/pages/HomePage";
 import UserCreateForm from "./features/admin/components/UserCreateForm";
-import AdminRoute from "./features/admin/components/AdminRoute";
+import AdminRoute from "./features/admin/utils/AdminRoute";
 import "@fortawesome/fontawesome-free/css/all.min.css";
 import ApprovalHomePage from "./features/approval/pages/ApprovalHomePage";
 import ApprovalLayout from "./features/approval/pages/ApprovalLayout";
-import AdminHome from "./features/admin/components/AdminHome";
-import UserListPage from "./features/admin/components/UserListPage";
+import AdminHomePage from "./features/admin/pages/AdminHomePage";
+import UserList from "./features/admin/components/UserList";
 import ChatHomePage from "./features/chat/pages/ChatHomePage";
 import ChatLayout from "./features/chat/pages/ChatLayout";
 import EmailLayout from "./features/email/pages/EmailLayout";
@@ -29,14 +29,15 @@ import AdminCategoryPage from "./features/board/pages/AdminCategoryPage";
 import MailInboxPage from "./features/email/pages/MailInboxPage";
 import MailWritePage from "./features/email/pages/MailWritePage";
 import MailTrashPage from "./features/email/pages/MailTrashPage";
-import PasswordResetPage from "./features/admin/components/PasswordResetPage";
+import PasswordResetPage from "./features/admin/components/PasswordReset";
 import NewDocumentPage from "./features/approval/pages/NewDocumentPage";
 import MailSentBoxPage from "./features/email/pages/MailSentBoxPage";
 import MailDetailPage from "./features/email/pages/MailDetailPage";
 import DocumentDetailPage from "./features/approval/pages/DocumentDetailPage";
 import DraftBoxPage from "./features/email/pages/DraftBoxPage";
 import LeavePage from "./features/leave/pages/LeavePage";
-import LeaveRequestsPage from "./features/admin/components/LeaveRequestsPage";
+import LeaveRequestsPage from "./features/admin/components/LeaveRequests";
+import DepartmentManagementPage from "./features/admin/pages/DepartmentManagementPage";
 import { RealtimeNotificationProvider } from "./features/notification/RealtimeNotificationProvider";
 import PendingDocuments from "./features/approval/pages/PendingDocumentPage";
 import MyDocumentsPage from "./features/approval/pages/MyDocumentsPage";
@@ -138,13 +139,14 @@ const router = createBrowserRouter([
         path: "admin",
         element: <AdminRoute />,
         children: [
-          { path: "", element: <AdminHome /> },
+          { path: "", element: <AdminHomePage /> },
           { path: "users/create", element: <UserCreateForm /> },
-          { path: "users", element: <UserListPage /> },
+          { path: "users", element: <UserList /> },
           { path: "templates/create", element: <TemplateAdminCreate /> },
           { path: "board/category", element: <AdminCategoryPage /> },
           { path: "password-reset-requests", element: <PasswordResetPage /> },
-          { path: "leave-requests", element: <LeaveRequestsPage /> }
+          { path: "leave-requests", element: <LeaveRequestsPage /> },
+          { path: "departments", element: <DepartmentManagementPage /> }
         ],
       },
       {

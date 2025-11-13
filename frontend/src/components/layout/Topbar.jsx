@@ -21,7 +21,7 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import SearchIcon from "@mui/icons-material/Search";
 import CampaignOutlinedIcon from "@mui/icons-material/CampaignOutlined";
-import NoticeModal from "../../features/dashboard/pages/NoticeModal";
+import NoticeModal from "../../features/dashboard/components/NoticeModal";
 import { useState } from "react";
 
 

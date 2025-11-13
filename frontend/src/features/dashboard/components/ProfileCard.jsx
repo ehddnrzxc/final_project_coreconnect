@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { getMyLeaveSummary } from "../../leave/api/leaveAPI";
-import { getMyPendingApprovalCount } from "../api/dashboardAPI";
+import { getMyPendingApprovalCount, getMyReceivedApprovalCount  } from "../api/dashboardAPI";
 import { Link, useOutletContext } from "react-router-dom";
 import Card from "../../../components/ui/Card";
 import {
@@ -30,6 +30,7 @@ const ProfilePage = () => {
   const [deptNewCount, setDeptNewCount] = useState(null);
   const [remainingLeaveDays, setRemainingLeaveDays] = useState(null);
   const [pendingApprovalCount, setPendingApprovalCount] = useState(null);
+  const [receivedApprovalCount, setReceivedApprovalCount] = useState(null);
 
   const { setAvatarUrl } = useOutletContext();
 
@@ -79,7 +80,7 @@ const ProfilePage = () => {
         setRemainingLeaveDays(Number.isFinite(days) ? days : 0);
       } catch (e) {
         console.error("잔여 연차 로딩 실패:", e);
-        setRemainingLeaveDays(null); // 화면엔 "-"로 표시하도록
+        setRemainingLeaveDays(null); 
       }
     })();
   }, []);
@@ -88,16 +89,21 @@ const ProfilePage = () => {
   useEffect(() => {
     (async () => {
       try {
-        const pending = await getMyPendingApprovalCount();    
+        const [pending, received] = await Promise.all([
+          getMyPendingApprovalCount(),
+          getMyReceivedApprovalCount(),
+        ]);
         setPendingApprovalCount(Number.isFinite(pending) ? pending : 0);
+        setReceivedApprovalCount(Number.isFinite(received) ? received : 0);
       } catch (e) {
         console.error("결재 카운트 로딩 실패:", e);
-        setPendingApprovalCount(null);   // 화면에서 "-" 표기
+        setPendingApprovalCount(null);   
+        setReceivedApprovalCount(null);
       }
     })();
   }, []);
 
-  /** 오늘 새 글 카운트 (ID가 준비되면 호출) */ 
+  /** 오늘 새 글 카운트 */ 
   useEffect(() => {
     if (!deptCategoryId) {
       setDeptNewCount(0); // 부서 카테고리 없으면 0
@@ -165,14 +171,15 @@ const ProfilePage = () => {
       highlight: Number(deptNewCount) > 0,
       to: deptCategoryId ? `/board/${deptCategoryId}?sortType=latest&scope=today` : null,
     },
-    { label: "결재할 문서", 
+    { label: "결재/합의 대기 문서", 
       value: pendingApprovalCount == null ? "-" : pendingApprovalCount,
       highlight: Number(pendingApprovalCount) > 0, 
       to: "/e-approval/pending", 
     },
-    { label: " 합의/참조 대기 문서", 
-      value: "0", highlight: false, 
-      to: "/approvals/inbox" 
+    { label: "참조 대기 문서", 
+      value: receivedApprovalCount == null ? "-" : receivedApprovalCount, 
+      highlight: Number(receivedApprovalCount) > 0,
+      to: "/e-approval/refer" 
     },
     { label: "내 잔여 연차", 
       value: remainingLeaveDays == null ? "-" : remainingLeaveDays, 

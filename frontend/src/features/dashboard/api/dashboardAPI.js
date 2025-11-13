@@ -1,6 +1,8 @@
 import http from "../../../api/http";
 
-// 로컬(KST 가정) 오늘 00:00~내일 00:00
+//----------------- 내부 유틸 함수 -----------------//
+
+/** 한국 시간대(KST) 기준으로 오늘 00:00부터 내일 00:00 직전까지의 시간 범위를 Date 객체로 계산해 반환 */
 function getTodayRangeKST() {
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
@@ -8,7 +10,7 @@ function getTodayRangeKST() {
   return { start, end };
 }
 
-// "YYYY-MM-DDTHH:mm:ss" 를 안전하게 파싱 
+/** "YYYY-MM-DDTHH:mm:ss" 형태의 문자열을 안전하게 Date 객체로 변환 */
 function parseLocalDateTime(s) {
   if (!s) return new Date(NaN);
   const [date, time = "00:00:00"] = s.split("T");
@@ -17,15 +19,17 @@ function parseLocalDateTime(s) {
   return new Date(y, (m ?? 1) - 1, d ?? 1, hh ?? 0, mm ?? 0, ss ?? 0);
 }
 
-/** 내부 유틸: Page/배열 응답 어떤 형식이든 카운트 빼기 */
+/** axios 응답(res) 객체 안에 있는 실제 데이터를 꺼내 목록 길이나 총 개수를 유연하게 계산 */
 function extractCount(res) {
   const raw = res?.data;
-  const page = raw?.data ?? raw;           // ResponseDTO<Page<...>> | Page | Array
+  const page = raw?.data ?? raw;           
   if (Array.isArray(page)) return page.length;
   if (typeof page?.totalElements === "number") return page.totalElements;
   if (Array.isArray(page?.content)) return page.content.length;
   return 0;
 }
+
+//----------------- API 함수 -----------------//
 
 /** 공지사항 목록 가져오기 */
 export async function getDashboardNotices(size = 5) {
@@ -66,14 +70,13 @@ export async function countTodayPostsByCategoryClientOnly(categoryId, pageSize =
 
     const pageData = data?.data; 
     const content = pageData?.content ?? [];
+    
     if (content.length === 0) break;
 
     for (const item of content) {
       const created = parseLocalDateTime(item.createdAt); 
       if (created >= start && created < end) {
         total++;
-      } else if (created < start) {
-        return total; 
       }
     }
 
@@ -89,8 +92,26 @@ export async function countTodayPostsByCategoryClientOnly(categoryId, pageSize =
 
 /** 내가 결재해야 할 문서 수 */
 export async function getMyPendingApprovalCount() {
-  const res = await http.get("/approvals/my-tasks", {
-    params: { page: 0, size: 1, sort: "createdAt,desc" },
-  });
+  const res = await http.get("/approvals/my-tasks");
   return extractCount(res);
 }
+
+/** 내가 수신한 문서(참조/수신함) 카운트 */
+export async function getMyReceivedApprovalCount() {
+  const res = await http.get("/approvals/my-reference-docs");
+  return extractCount(res);
+}
+
+/** 전체 게시판 최신순 조회 (공지/상단고정 구분 없음) */
+export async function getBoardsByLatestOnly(page = 0, size = 10) {
+  const res = await http.get("/board/latest", {
+    params: { page, size },
+  });
+  return res.data;
+}
+
+/** 월간 일정 요약 조회 */
+export const getMonthlyScheduleSummary = (year, month) =>
+  http.get("/schedules/summary", {
+    params: { year, month },
+  });

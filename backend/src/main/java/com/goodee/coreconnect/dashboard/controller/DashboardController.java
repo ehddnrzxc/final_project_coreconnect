@@ -62,19 +62,19 @@ public class DashboardController {
 	public ResponseEntity<MyInboxResponseDTO> getMyInbox(
 	    @AuthenticationPrincipal CustomUserDetails user,
 	    // 합의(내 액션)용 필터
-	    @RequestParam(defaultValue = "PENDING") String consentStatus,
+	    @RequestParam(name = "consentStatus", defaultValue = "PENDING") String consentStatus,
 	    // 참조(열람)용 필터
-	    @RequestParam(defaultValue = "true") boolean unreadOnly,
+	    @RequestParam(name = "unreadOnly", defaultValue = "true") boolean unreadOnly,
 	    // 각 섹션 페이징 (독립적으로 컨트롤)
-	    @RequestParam(defaultValue = "0") int consentsPage,
-	    @RequestParam(defaultValue = "5") int consentsSize,
-	    @RequestParam(defaultValue = "0") int referencesPage,
-	    @RequestParam(defaultValue = "5") int referencesSize
+	    @RequestParam(name = "consentsPage", defaultValue = "0") int consentsPage,
+	    @RequestParam(name = "consentsSize", defaultValue = "5") int consentsSize,
+	    @RequestParam(name = "referencesPage", defaultValue = "0") int referencesPage,
+	    @RequestParam(name = "referencesSize", defaultValue = "5") int referencesSize
 	) {
 	    String email = user.getEmail();
 
-	    Pageable consentsPageable   = PageRequest.of(consentsPage, consentsSize, Sort.by(Sort.Direction.DESC, "createdAt"));
-	    Pageable referencesPageable = PageRequest.of(referencesPage, referencesSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+	    Pageable consentsPageable   = PageRequest.of(consentsPage, consentsSize);
+	    Pageable referencesPageable = PageRequest.of(referencesPage, referencesSize);
 
 	    // 서비스에서 리스트 + 총합을 각각 가져옴
 	    var consentsPageResult   = dashboardService.findMyConsents(email, consentsPageable);
