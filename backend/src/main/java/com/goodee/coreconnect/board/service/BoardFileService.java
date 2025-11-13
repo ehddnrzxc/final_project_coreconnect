@@ -6,6 +6,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.goodee.coreconnect.board.dto.response.BoardFileResponseDTO;
 
+import jakarta.servlet.http.HttpServletResponse;
+
 public interface BoardFileService {
 
     /** 다중 파일 업로드 */
@@ -19,4 +21,7 @@ public interface BoardFileService {
 
     /** 파일 삭제 (Soft Delete) */
     void deleteFile(Integer fileId);
+    
+    /** ZIP 전체 다운로드 */
+    void downloadAllFiles(Integer boardId, HttpServletResponse response) throws Exception;
 }

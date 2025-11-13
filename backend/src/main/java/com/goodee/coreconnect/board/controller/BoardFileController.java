@@ -1,6 +1,7 @@
 package com.goodee.coreconnect.board.controller;
 
 import java.util.List;
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -89,5 +90,14 @@ public class BoardFileController {
                                            .data(null)
                                            .build();
         return ResponseEntity.status(HttpStatus.NO_CONTENT).body(res);
+    }
+    
+    @Operation(summary = "전체 파일 다운로드", description = "게시글의 모든 첨부파일을 ZIP으로 다운로드합니다.")
+    @GetMapping("/board/{boardId}/download-all")      
+    public void downloadAllFiles(                     
+            @PathVariable("boardId") Integer boardId,
+            HttpServletResponse response
+    ) throws Exception {
+        boardFileService.downloadAllFiles(boardId, response);  
     }
 }
