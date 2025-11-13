@@ -108,7 +108,7 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
 
         // ⚠️ 부적절한 값(필수 id 없음) 체크!
         if (recipientId == null) {
-            log.warn("[WebSocket] handleTextMessage: recipientId가 null입니다. 메시지 무시.");
+//            log.warn("[WebSocket] handleTextMessage: recipientId가 null입니다. 메시지 무시.");
             return;
         }
         if (senderId == null) {
