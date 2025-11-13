@@ -34,6 +34,9 @@ export const getMyDraftBox = () => http.get("/approvals/drafts");
 // 내 결재함 (내가 결재할 문서)
 export const getMyTasks = () => http.get("/approvals/my-tasks");
 
+// 내 참조함 (내가 참조자로 지정된 문서)
+export const getMyReferenceDocuments = () => http.get("/approvals/my-reference-docs");
+
 // 문서 승인
 export const approveDocument = (documentId, requestDTO) => http.post(`/approvals/${documentId}/approve`, requestDTO);
 

@@ -17,7 +17,8 @@ const navSections = [
     title: "결재하기",
     items: [
       { text: "결재홈", path: "/e-approval" }, // index: true
-      { text: "결재 대기 문서", path: "/e-approval/pending" },
+      { text: "결재/합의 대기 문서", path: "/e-approval/pending" },
+      { text: "참조 대기 문서", path: "/e-approval/refer"}
     ],
   },
   {
@@ -42,6 +43,7 @@ function ApprovalLayout() {
         sx={{
           width: 240,
           flexShrink: 0,
+          bgcolor: '#ffffff',
           borderRight: "1px solid",
           borderColor: "divider",
           display: "flex",
