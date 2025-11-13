@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getMyDocuments } from '../api/approvalApi'; 
 import {
@@ -13,14 +13,26 @@ import {
   Paper,
   CircularProgress,
   Alert,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import { format } from 'date-fns'; 
 import ApprovalStatusChip from '../components/ApprovalStatusChip'; 
+
+const STATUS_OPTIONS = ["전체", "진행중", "반려", "완료"];
+const STATUS_MAP = {
+  진행중: ["IN_PROGRESS", "DRAFT"],
+  반려: ["REJECTED"],
+  완료: ["COMPLETED"],
+};
 
 function MyDocumentsPage() {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [statusFilter, setStatusFilter] = useState("전체");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -56,6 +68,12 @@ function MyDocumentsPage() {
     return '-';
   };
 
+  const filteredDocuments = useMemo(() => {
+    if (statusFilter === "전체") return documents;
+    const targets = STATUS_MAP[statusFilter] || [];
+    return documents.filter((doc) => targets.includes(doc.documentStatus));
+  }, [documents, statusFilter]);
+
   if (loading) return <Box sx={{ display: 'flex', justifyContent: "center", mt: 4 }}><CircularProgress /></Box>;
   if (error) return <Alert severity='error'>{error}</Alert>;
 
@@ -65,7 +83,25 @@ function MyDocumentsPage() {
         내 상신함
       </Typography>
       
-      {!loading && documents.length === 0 ? (
+      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 1.5, gap: 1 }}>
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <InputLabel id="status-filter-label">결재 상태</InputLabel>
+          <Select
+            labelId="status-filter-label"
+            label="결재 상태"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            {STATUS_OPTIONS.map((option) => (
+              <MenuItem key={option} value={option}>
+                {option}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
+
+      {!loading && filteredDocuments.length === 0 ? (
         <Alert severity='info'>상신한 문서가 없습니다.</Alert>
       ) : (
         <TableContainer component={Paper} variant="outlined">
@@ -82,7 +118,7 @@ function MyDocumentsPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {documents.map((doc) => (
+              {filteredDocuments.map((doc) => (
                 <TableRow
                   key={doc.documentId}
                   hover

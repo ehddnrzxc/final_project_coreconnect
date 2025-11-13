@@ -18,6 +18,7 @@ public class DocumentSimpleResponseDTO {
   private Integer documentId;
   private String documentTitle;
   private String writerName;
+  private String deptName;
   private DocumentStatus documentStatus;
   private LocalDateTime createdAt;
   private LocalDateTime completedAt;
@@ -28,6 +29,9 @@ public class DocumentSimpleResponseDTO {
         .documentId(document.getId())
         .documentTitle(document.getDocumentTitle())
         .writerName(document.getUser().getName())
+        .deptName(document.getUser().getDepartment() != null
+            ? document.getUser().getDepartment().getDeptName()
+            : null)
         .documentStatus(document.getDocumentStatus())
         .createdAt(document.getCreatedAt())
         .completedAt(document.getCompletedAt())
