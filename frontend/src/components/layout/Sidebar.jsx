@@ -40,8 +40,9 @@ const Sidebar = () => {
       component="aside"
       sx={{
         width: 80,                       
-        bgcolor: "#ffffff",
-        borderRight: "1px solid #e5e7eb",
+        bgcolor: "background.paper",
+        borderRight: "1px solid",
+        borderColor: "divider",
         display: "flex",
         flexDirection: "column",
         alignItems: "stretch",

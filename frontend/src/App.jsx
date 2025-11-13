@@ -17,16 +17,54 @@ import { SnackbarProvider } from "./components/utils/SnackbarContext";
 
 export const MailCountContext = createContext();
 
-const theme = createTheme({
-  palette: {
-    primary: { main: "#08a7bf" },
-    background: { default: "#ffffff" },
+const themeOptions = {
+  light: {
+    name: "라이트",
+    palette: {
+      mode: "light",
+      primary: { main: "#08a7bf" },
+      background: { default: "#ffffff", paper: "#f5f5f5" },
+    },
   },
-  typography: {
-    fontFamily:
-      '"Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  dark: {
+    name: "다크",
+    palette: {
+      mode: "dark",
+      primary: { main: "#08a7bf" },
+      background: { default: "#121212", paper: "#1e1e1e" },
+      text: {
+        primary: "rgba(255, 255, 255, 0.87)",
+        secondary: "rgba(255, 255, 255, 0.6)",
+      },
+      divider: "rgba(255, 255, 255, 0.12)",
+    },
   },
-});
+  pink: {
+    name: "핑크",
+    palette: {
+      mode: "light",
+      primary: { main: "#08a7bf" },
+      background: { default: "#fdd3efff", paper: "#ffffff" },
+    },
+  },
+  blue: {
+    name: "블루",
+    palette: {
+      mode: "light",
+      primary: { main: "#1976d2" },
+      background: { default: "#e3f2fd", paper: "#ffffff" },
+    },
+  },
+  green: {
+    name: "그린",
+    palette: {
+      mode: "light",
+      primary: { main: "#2e7d32" },
+      background: { default: "#e8f5e9", paper: "#ffffff" },
+    },
+  },
+
+};
 
 function App() {
   const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
@@ -36,6 +74,32 @@ function App() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [draftCount, setDraftCount] = useState(0);
   const navigate = useNavigate();
+
+  const [themeMode, setThemeMode] = useState(() => {
+    const saved = localStorage.getItem("themeMode");
+    return saved && themeOptions[saved] ? saved : "light";
+  });
+
+  const theme = React.useMemo(() => {
+    const selectedTheme = themeOptions[themeMode];
+    return createTheme({
+      palette: {
+        ...selectedTheme.palette,
+      },
+      typography: {
+        fontFamily:
+        '"Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+      },
+    });
+  }, [themeMode]);
+
+  // 테마 변경 함수
+  const handleThemeChange = newTheme => {
+    if (themeOptions[newTheme]) {
+      setThemeMode(newTheme);
+      localStorage.setItem("themeMode", newTheme);
+    }
+  };
 
   // 받은메일함(안읽은)
   const refreshUnreadCount = async () => {
@@ -109,7 +173,13 @@ function App() {
               bgcolor: "background.default",
             }}
           >
-            <Topbar onLogout={handleLogout} avatarUrl={avatarUrl} />
+            <Topbar 
+              onLogout={handleLogout} 
+              avatarUrl={avatarUrl}
+              themeMode={themeMode}
+              themeOptions={themeOptions}
+              onThemeChange={handleThemeChange}
+            />
             <MailCountContext.Provider value={mailCountContextValue}>
               <Box sx={{ display: "flex", flex: 1, minHeight: 0 }}>
                 {/* Sidebar는 Provider 내부에서 context 사용, undefined 안전 처리됨 */}

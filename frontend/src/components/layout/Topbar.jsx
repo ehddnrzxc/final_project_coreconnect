@@ -9,7 +9,12 @@ import {
   Avatar,
   TextField,
   InputAdornment,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from "@mui/material";
+import PaletteIcon from "@mui/icons-material/Palette";
 import MessageIcon from "@mui/icons-material/Message";
 import NotificationsNoneIcon from "@mui/icons-material/NotificationsNone";
 import LogoutIcon from "@mui/icons-material/Logout";
@@ -20,7 +25,7 @@ import NoticeModal from "../../features/dashboard/pages/NoticeModal";
 import { useState } from "react";
 
 
-const Topbar = ({ onLogout, avatarUrl }) => {
+const Topbar = ({ onLogout, avatarUrl, themeMode, themeOptions, onThemeChange }) => {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const isAdmin = user?.role === "ADMIN";
@@ -41,8 +46,9 @@ const Topbar = ({ onLogout, avatarUrl }) => {
       position="static"
       elevation={0}
       sx={{
-        bgcolor: "#ffffff",
-        borderBottom: "1px solid #e5e7eb",
+        bgcolor: "background.paper",
+        borderBottom: "1px solid",
+        borderColor: "divider",
         color: "text.primary",
       }}
     >
@@ -143,6 +149,39 @@ const Topbar = ({ onLogout, avatarUrl }) => {
                         sx={{ color: "#000" }}>
               <CampaignOutlinedIcon />
             </IconButton>
+          </Tooltip>
+
+          <Tooltip title="테마 변경" arrow>
+            <FormControl size="small" sx={{ minWidth: 120 }}>
+              <Select
+                value={themeMode}
+                onChange={(e) => onThemeChange(e.target.value)}
+                sx={{
+                  height: 36,
+                  fontSize: "0.875rem",
+                  "& .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "#e5e7eb",
+                  },
+                  "&:hover .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "#e5e7eb",
+                  },
+                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "#00a0e9",
+                  },
+                }}
+                startAdornment={
+                  <Box sx={{ display: "flex", alignItems: "center", mr: 1}}>
+                    <PaletteIcon sx={{ fontSize: 18, color: "text.secondary", mr: 0.5 }} />
+                  </Box>
+                }
+              >
+                {themeOptions && Object.entries(themeOptions).map(([key, theme]) => (
+                  <MenuItem key={key} value={key}>
+                    {theme.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Tooltip>
 
           {avatarUrl && (
