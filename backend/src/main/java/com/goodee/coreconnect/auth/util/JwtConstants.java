@@ -1,4 +1,4 @@
-package com.goodee.coreconnect.auth;
+package com.goodee.coreconnect.auth.util;
 
 /**
  * Access Token, Refresh Token의 유효기간을 상수로 나타내는 클래스

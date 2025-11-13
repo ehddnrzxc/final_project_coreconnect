@@ -2,7 +2,9 @@ package com.goodee.coreconnect.schedule.service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -17,10 +19,12 @@ import com.goodee.coreconnect.schedule.entity.Schedule;
 import com.goodee.coreconnect.schedule.entity.ScheduleCategory;
 import com.goodee.coreconnect.schedule.entity.ScheduleParticipant;
 import com.goodee.coreconnect.schedule.enums.ScheduleRole;
+import com.goodee.coreconnect.schedule.enums.ScheduleVisibility;
 import com.goodee.coreconnect.schedule.repository.MeetingRoomRepository;
 import com.goodee.coreconnect.schedule.repository.ScheduleCategoryRepository;
 import com.goodee.coreconnect.schedule.repository.ScheduleParticipantRepository;
 import com.goodee.coreconnect.schedule.repository.ScheduleRepository;
+import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
@@ -328,14 +332,45 @@ public class ScheduleServiceImpl implements ScheduleService {
   @Override
   @Transactional(readOnly = true)
   public List<ResponseScheduleDTO> getSchedulesByEmail(String email) {
-      User user = userRepository.findByEmail(email)
-              .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다: " + email));
+    
+    User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다: " + email));
 
-      List<Schedule> schedules = scheduleRepository.findAccessibleSchedules(user);
+    boolean isAdmin = user.getRole() == Role.ADMIN;
 
-      return schedules.stream()
-              .map(ResponseScheduleDTO::toDTO)
-              .toList();
+    List<Schedule> schedules;
+
+    if (isAdmin) {
+        // 관리자: PUBLIC + PRIVATE 구분 없이 모든 일정 접근 가능
+        schedules = scheduleRepository.findByDeletedYnFalse();
+    } else {
+        // 일반 사용자: 자신이 관련된 일정만
+        schedules = scheduleRepository.findAccessibleSchedules(user)
+          .stream()
+          .filter(s -> {
+            // PRIVATE → 본인 + 참가자만
+            if (s.getVisibility() == ScheduleVisibility.PRIVATE) {
+                return s.getUser().equals(user)
+                    || s.getParticipants().stream()
+                         .anyMatch(p -> p.getUser().equals(user));
+            }
+
+            // PUBLIC → 본인 + 참가자만 (다른 유저의 PUBLIC은 제외)
+            if (s.getVisibility() == ScheduleVisibility.PUBLIC) {
+                return s.getUser().equals(user)
+                    || s.getParticipants().stream()
+                         .anyMatch(p -> p.getUser().equals(user));
+            }
+
+            return false;
+          })
+          .toList();
+    }
+
+    return schedules.stream()
+            .map(ResponseScheduleDTO::toDTO)
+            .toList();
+   
   }
   
   
@@ -379,6 +414,33 @@ public class ScheduleServiceImpl implements ScheduleService {
               .map(ResponseScheduleDTO::toDTO)
               .toList();
   }
+  
+  
+  /** 여러 유저의 일정 현황 조회 (하루 단위) */
+  @Override
+  @Transactional(readOnly = true)
+  public Map<Integer, List<ResponseScheduleDTO>> getUsersAvailability(
+      List<Integer> userIds,
+      LocalDate date,
+      LocalDateTime start,
+      LocalDateTime end
+  ) {
+    LocalDateTime startTime = (start != null) ? start : date.atStartOfDay();
+    LocalDateTime endTime = (end != null) ? end : date.atTime(23, 59, 59);
+
+    Map<Integer, List<ResponseScheduleDTO>> result = new HashMap<>();
+    for (Integer userId : userIds) {
+        List<Schedule> schedules = scheduleRepository.findOverlappingSchedules(userId, startTime, endTime);
+        result.put(userId, schedules.stream()
+            .map(ResponseScheduleDTO::toDTO)
+            .toList());
+    }
+    return result;
+  }
+
+  
+  
+  
 
   /** 단일 일정 조회 (readOnly) */
   @Override

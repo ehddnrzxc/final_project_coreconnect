@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.goodee.coreconnect.common.S3Service;
+import com.goodee.coreconnect.common.service.S3Service;
 import com.goodee.coreconnect.department.entity.Department;
 import com.goodee.coreconnect.department.repository.DepartmentRepository;
 import com.goodee.coreconnect.user.dto.request.CreateUserReqDTO;
@@ -187,6 +187,14 @@ public class UserServiceImpl implements UserService {
   public User getUserByEmail(String email) {
     return userRepository.findByEmail(email)
                          .orElseThrow(() -> new IllegalArgumentException("사용자가 존재하지 않습니다."));
+  }
+  
+  /** 로그인된 사용자의 부서 ID를 조회 */
+  @Override
+  public Integer getDeptIdByEmail(String email) {
+    User user = userRepository.findByEmail(email).
+    orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+    return user.getDepartment().getId();
   }
 
 

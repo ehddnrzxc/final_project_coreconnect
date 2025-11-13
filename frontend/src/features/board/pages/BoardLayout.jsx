@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-// React 훅 불러오기:
+// React 훅
 // useEffect: 컴포넌트가 마운트/업데이트/언마운트될 때 부수 효과(side effect)를 실행하는 훅
 // useRef: DOM 요소나 변경 가능한 값을 기억하기 위한 훅 (값이 바뀌어도 리렌더링을 발생시키지 않음)
 import { Box, Button, List, ListItemButton, ListItemText, Typography } from "@mui/material";
@@ -19,42 +19,35 @@ import { Outlet, useNavigate, useLocation, useParams } from "react-router-dom";
 import { getAllCategories } from "../api/boardCategoryAPI";
 // 게시판 카테고리 관련 API 모듈
 // getAllCategories(): 백엔드에서 삭제되지 않은 카테고리 목록을 가져오는 함수
-import { useSnackbarContext } from "../../../components/utils/SnackbarContext"; // 전역 Snackbar 컨텍스트 임포트 추가
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext"; // 전역 Snackbar 컨텍스트 임포트
 
-
+// ──────────────────────────────────────────────
 // BoardLayout 컴포넌트
 // 게시판 모듈의 전체 레이아웃을 담당 (왼쪽 카테고리 리스트 + 오른쪽 콘텐츠 영역)
 // 모든 게시판 페이지(BoardList, BoardDetail, BoardWrite 등)의 공통 부모 레이아웃 역할
+// ──────────────────────────────────────────────
 const BoardLayout = () => {
   const [categories, setCategories] = React.useState([]);
   // 상태값: 게시판 카테고리 목록 배열
   // 서버에서 불러온 카테고리들을 저장하고, 좌측 리스트 렌더링에 사용
-
   const navigate = useNavigate();
   // 페이지 이동을 위한 훅
   // 예: navigate("/board"), navigate("/board/new")
-
   const location = useLocation();
   // 현재 URL 경로 정보를 가져오는 훅
   // 예: location.pathname → "/board/3", "/board/detail/10" 등
-
   const { categoryId } = useParams();
   // URL 파라미터에서 categoryId 추출 (예: /board/3 → categoryId="3")
   // /board, /board/detail/:id 같은 경로에서는 undefined일 수 있음
-
   const contentRef = useRef(null);
   // 스크롤을 제어하기 위해 오른쪽 콘텐츠 영역(Box)을 참조할 ref 객체
   // 현재는 window.scrollTo를 사용하고 있어 직접 사용되지는 않지만,
   // 필요시 contentRef.current.scrollTo(...) 방식으로 영역 내부 스크롤 제어 가능
-
-  // SnackbarContext에서 showSnack 함수 불러오기
   const { showSnack } = useSnackbarContext(); // 스낵바 표시 함수 (success, error 등 상태별 호출)
-
-  // 로컬 스토리지에 저장된 로그인 사용자 정보 가져오기
   const user = JSON.parse(localStorage.getItem("user") || "{}");
+  // 로컬 스토리지에 저장된 로그인 사용자 정보 가져오기
   // "user" 키로 저장된 JSON 문자열을 파싱하여 객체로 변환
   // 존재하지 않으면 "{}"를 파싱하므로, user는 항상 객체 형태를 가짐
-
   const isAdmin = user?.role === "ADMIN";
   // 사용자 권한이 ADMIN인지 확인 → 관리자 여부 판별
   // ADMIN이면 카테고리 관리 버튼을 보여줌
@@ -67,6 +60,7 @@ const BoardLayout = () => {
   const [activeCategoryId, setActiveCategoryId] = React.useState(categoryId || "");
   // activeCategoryId: 좌측 리스트에서 "어떤 카테고리가 선택되었는지" 표시하기 위한 값
   // categoryId가 있으면 그 값으로, 없으면 ""로 시작
+
 
   // ────────────────────────────────
   // 전체 카테고리 목록 불러오기
@@ -89,7 +83,6 @@ const BoardLayout = () => {
 
         setCategories(sorted); // 정렬된 카테고리 목록을 상태로 저장 → 좌측 리스트에서 사용
       } catch (err) {
-        // API 호출이 실패했을 경우 콘솔에 에러 로그 출력
         showSnack("카테고리 목록을 불러오지 못했습니다.", "error");
       }
     })();
@@ -102,13 +95,11 @@ const BoardLayout = () => {
   // - /board 전체 게시판일 경우는 선택 해제
   // ────────────────────────────────
   useEffect(() => {
-    const path = location.pathname;
-    // 현재 URL 경로 문자열 (예: "/board/3", "/board/detail/12", "/board/new" 등)
+    const path = location.pathname; // 현재 URL 경로 문자열 (예: "/board/3", "/board/detail/12", "/board/new" 등)
 
     // 카테고리 리스트 화면: URL에 categoryId가 있을 때
     if (categoryId) {
-      setActiveCategoryId(categoryId);
-      // 현재 URL의 categoryId를 "선택된 카테고리"로 반영
+      setActiveCategoryId(categoryId); // 현재 URL의 categoryId를 "선택된 카테고리"로 반영
 
       localStorage.setItem("lastCategoryId", categoryId);
       // 최근 선택된 카테고리 ID를 로컬스토리지에 저장
@@ -117,8 +108,7 @@ const BoardLayout = () => {
 
     // 게시글 상세 or 글쓰기 페이지: 최근 선택 카테고리 복원
     else if (path.includes("/board/detail") || path.includes("/board/new")) {
-      const savedId = localStorage.getItem("lastCategoryId");
-      // 마지막으로 저장된 카테고리 ID 가져오기 (문자열 또는 null)
+      const savedId = localStorage.getItem("lastCategoryId"); // 마지막으로 저장된 카테고리 ID 가져오기 (문자열 또는 null)
 
       if (savedId) setActiveCategoryId(savedId);
       // savedId가 존재하면, 그 값을 현재 활성 카테고리로 사용
@@ -127,8 +117,7 @@ const BoardLayout = () => {
 
     // /board (전체 게시판): 선택 초기화
     else {
-      setActiveCategoryId("");
-      // 특정 카테고리에 속하지 않는 "전체 게시판"일 때는 선택된 카테고리를 없애서 음영 제거
+      setActiveCategoryId(""); // 특정 카테고리에 속하지 않는 "전체 게시판"일 때는 선택된 카테고리를 없애서 음영 제거
     }
   }, [location, categoryId]);
   // location 또는 categoryId가 변경될 때마다 위 로직을 다시 실행
@@ -141,11 +130,9 @@ const BoardLayout = () => {
   // ────────────────────────────────
   const handleWriteClick = () => {
     if (categoryId)
-      navigate(`/board/new?categoryId=${categoryId}`);
-    // 현재 카테고리가 있을 때 → /board/new?categoryId=xx 형태로 이동
+      navigate(`/board/new?categoryId=${categoryId}`); // 현재 카테고리가 있을 때 → /board/new?categoryId=xx 형태로 이동
     else
-      navigate(`/board/new`);
-    // 전체 게시판일 경우 → 단순히 글쓰기 페이지로 이동
+      navigate(`/board/new`); // 전체 게시판일 경우 → 단순히 글쓰기 페이지로 이동
   };
 
   // 카테고리 클릭 시 해당 카테고리 게시판 페이지로 이동

@@ -19,6 +19,7 @@ import LockResetIcon from "@mui/icons-material/LockReset";
 import {
   getPasswordResetRequests,
   approvePasswordResetRequest,
+  rejectPasswordResetRequest
 } from "../api/adminAPI";
 
 export default function PasswordResetPage() {
@@ -26,6 +27,8 @@ export default function PasswordResetPage() {
   const [statusFilter, setStatusFilter] = useState("PENDING"); 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [actioningId, setActioningId] = useState(null); // 진행 중인 행 ID
+
 
   const loadRequests = async (status) => {
     setLoading(true);
@@ -52,12 +55,43 @@ export default function PasswordResetPage() {
     if (!ok) return;
 
     try {
+      setActioningId(id);
       await approvePasswordResetRequest(id);
       alert("승인되었습니다. 임시 비밀번호가 사용자 이메일로 발송되었습니다.");
-      loadRequests(statusFilter); 
+      loadRequests(statusFilter); // 현재 필터 기준으로 목록 새로 불러오기
     } catch (e) {
       console.error("승인 실패:", e);
       alert("승인 처리 중 오류가 발생했습니다.");
+    } finally {
+      setActioningId(null);
+    }
+  };
+
+  const handleReject = async (id) => {
+    const reason = window.prompt("거절 사유를 입력해주세요.");
+    if(reason === null) {
+      return; // 취소 눌렀을 때
+    }
+    if(!reason.trim()) {
+      alert("거절 사유를 입력해야 합니다.");
+      return;
+    }
+
+    const ok = window.confirm("정말 이 비밀번호 초기화 요청을 거절하시겠습니까?");
+    if(!ok) {
+      return;
+    }
+
+    try {
+      setActioningId(id);
+      await rejectPasswordResetRequest(id, reason.trim());
+      alert("요청이 거절되었습니다.");
+      loadRequests(statusFilter); 
+    } catch (e) {
+      console.error("거절 실패:", e);
+      alert("거절 처리 중 오류가 발생했습니다.");
+    } finally {
+      setActioningId(null);
     }
   };
 
@@ -93,7 +127,7 @@ export default function PasswordResetPage() {
           </Typography>
         </Box>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          사용자가 요청한 비밀번호 초기화 내역을 조회하고 승인할 수 있습니다.
+          사용자가 요청한 비밀번호 초기화 내역을 조회하고 승인/거절할 수 있습니다.
         </Typography>
       </Box>
 
@@ -223,14 +257,26 @@ export default function PasswordResetPage() {
                   </TableCell>
                   <TableCell align="center">
                     {req.status === "PENDING" ? (
+                    <Stack direction="row" spacing={1} justifyContent="center">
                       <Button
                         size="small"
-                        variant="contained"
-                        color="primary"
+                        variant="outlined"
+                        color="success"
+                        disabled={actioningId === req.id}
                         onClick={() => handleApprove(req.id)}
                       >
                         승인
                       </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="error"
+                        disabled={actioningId === req.id}
+                        onClick={() => handleReject(req.id)}
+                      >
+                        거절
+                      </Button>
+                    </Stack>
                     ) : (
                       <Typography variant="caption" color="text.secondary">
                         처리완료

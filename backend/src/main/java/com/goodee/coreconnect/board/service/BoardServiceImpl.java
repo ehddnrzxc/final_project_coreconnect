@@ -81,7 +81,7 @@ public class BoardServiceImpl implements BoardService {
 
         // 공지글일 경우 -> 알림 전송
         if (Boolean.TRUE.equals(dto.getNoticeYn())) {
-            String message = "새 공지사항이 등록되었습니다: " + dto.getTitle();
+            String message = "공지사항입니다: " + dto.getTitle();
 
             if (user.getRole() == Role.ADMIN) {
                 // 전체 유저 조회
@@ -153,6 +153,10 @@ public class BoardServiceImpl implements BoardService {
         } else {
             category = board.getCategory(); // 기존 카테고리 유지
         }
+        
+        // 수정 전 공지/상단고정 상태 저장
+        boolean wasNotice = Boolean.TRUE.equals(board.getNoticeYn());
+        boolean wasPinned = Boolean.TRUE.equals(board.getPinned());
 
         // 카테고리별 pinned 중복 방지 (category가 null이어도 안전)
         if (Boolean.TRUE.equals(dto.getPinned()) && category != null) {
@@ -171,7 +175,7 @@ public class BoardServiceImpl implements BoardService {
                           dto.getPinned(),
                           dto.getPrivateYn());
         
-        // 상단고정 수정 시 — 동일 카테고리 내 기존 고정글 해제
+        // 상단고정으로 수정 시 동일 카테고리 내 기존 고정글 해제
         if (Boolean.TRUE.equals(dto.getPinned())) {
             List<Board> pinnedBoards = boardRepository.findByCategoryIdAndDeletedYnFalse(
                 board.getCategory().getId()).stream()
@@ -179,6 +183,66 @@ public class BoardServiceImpl implements BoardService {
                                    .toList();
             for (Board pinned : pinnedBoards) {
               pinned.unpin();
+            }
+        }
+        
+        // 알림 중복 방지 플래그
+        boolean sentNotice = false;
+
+        // 일반 → 공지 시 알림 (공지+고정일 때도 여기 한 번만 실행)
+        if (!wasNotice && Boolean.TRUE.equals(board.getNoticeYn())) { 
+            String message = "공지사항입니다: " + board.getTitle();
+            sentNotice = true; // 공지 알림 전송 표시
+
+            if (loginUser.getRole() == Role.ADMIN) {
+                List<Integer> allUserIds = userRepository.findAll().stream()
+                                                         .map(u -> u.getId())
+                                                         .filter(id -> !id.equals(loginUser.getId()))
+                                                         .toList();
+                notificationService.sendNotificationToUsers(
+                        allUserIds, NotificationType.NOTICE, message, null, null,
+                        loginUser.getId(), loginUser.getName());
+            } else if (loginUser.getRole() == Role.MANAGER) {
+                Integer deptId = loginUser.getDepartment() != null
+                        ? loginUser.getDepartment().getId() : null;
+                if (deptId != null) {
+                    List<Integer> deptUserIds = userRepository.findAll().stream()
+                                                              .filter(u -> u.getDepartment() != null && u.getDepartment().getId().equals(deptId))
+                                                              .map(u -> u.getId())
+                                                              .filter(id -> !id.equals(loginUser.getId()))
+                                                              .toList();
+                    notificationService.sendNotificationToUsers(
+                            deptUserIds, NotificationType.NOTICE, message, null, null,
+                            loginUser.getId(), loginUser.getName());
+                }
+            }
+        }
+
+        // 일반 → 상단고정 시 알림
+        if (!wasPinned && Boolean.TRUE.equals(board.getPinned()) && !sentNotice && !wasNotice) {
+            String message = "공지사항입니다: " + board.getTitle();
+
+            if (loginUser.getRole() == Role.ADMIN) {
+                List<Integer> allUserIds = userRepository.findAll().stream()
+                                                         .map(u -> u.getId())
+                                                         .filter(id -> !id.equals(loginUser.getId()))
+                                                         .toList();
+                notificationService.sendNotificationToUsers(
+                        allUserIds, NotificationType.NOTICE, message, null, null,
+                        loginUser.getId(), loginUser.getName());
+            } else if (loginUser.getRole() == Role.MANAGER) {
+                Integer deptId = loginUser.getDepartment() != null
+                        ? loginUser.getDepartment().getId() : null;
+                if (deptId != null) {
+                    List<Integer> deptUserIds = userRepository.findAll().stream()
+                                                              .filter(u -> u.getDepartment() != null && u.getDepartment().getId().equals(deptId))
+                                                              .map(u -> u.getId())
+                                                              .filter(id -> !id.equals(loginUser.getId()))
+                                                              .toList();
+                    notificationService.sendNotificationToUsers(
+                            deptUserIds, NotificationType.NOTICE, message, null, null,
+                            loginUser.getId(), loginUser.getName());
+                }
             }
         }
 

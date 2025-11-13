@@ -2,6 +2,8 @@ package com.goodee.coreconnect.user.entity;
 
 import java.time.LocalDateTime;
 
+import com.goodee.coreconnect.user.dto.request.RejectLeaveRequestDTO;
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -64,10 +66,10 @@ public class PasswordResetRequest {
   }
 
   /** 거절 처리용 메서드 */
-  public void reject(User admin, String rejectReason) {
+  public void reject(User admin, RejectLeaveRequestDTO rejectReason) {
     this.status = ResetStatus.REJECTED;
     this.processedBy = admin;
     this.processedAt = LocalDateTime.now();
-    this.rejectReason = rejectReason;
+    this.rejectReason = rejectReason.reason();
   }
 }

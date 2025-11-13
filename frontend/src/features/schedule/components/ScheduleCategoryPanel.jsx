@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState} from "react";
 import {
   Box, Stack, Typography, Checkbox, IconButton,
   Popover, Grid, Tooltip, Button, Dialog,
@@ -14,15 +14,15 @@ import {
 } from "../api/scheduleAPI";
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 
-const COLOR_PALETTE = [ "#EF5350","#F06292","#BA68C8","#7986CB","#64B5F6",
-  "#4DD0E1","#4DB6AC","#81C784","#DCE775","#FFD54F","#FFB74D","#A1887F",
-  "#90A4AE","#B0BEC5","#E57373","#FF8A65","#9575CD","#4FC3F7","#AED581","#FFB300"
+const COLOR_PALETTE = [ 
+  "#EF5350","#F06292","#BA68C8","#7986CB","#64B5F6",
+  "#4DD0E1","#4DB6AC","#81C784","#DCE775","#FFD54F",
+  "#FFB74D","#A1887F","#90A4AE","#B0BEC5","#E57373",
+  "#FF8A65","#9575CD","#4FC3F7","#AED581","#FFB300"
 ];
-const getRandomColor = () => COLOR_PALETTE[Math.floor(Math.random() * COLOR_PALETTE.length)];
 
-export default function ScheduleCategoryPanel({ activeCategories, onToggle, onColorChange }) {
+export default function ScheduleCategoryPanel({ activeCategories, onToggle, onColorChange, categoryColors }) {
   const [categories, setCategories] = useState([]);
-  const [colors, setColors] = useState({});
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const { showSnack } = useSnackbarContext();
@@ -33,26 +33,18 @@ export default function ScheduleCategoryPanel({ activeCategories, onToggle, onCo
   const [dialogMode, setDialogMode] = useState("add"); // "add" | "edit"
   const [inputValue, setInputValue] = useState("");
 
+  /** 초기 카테고리 로드 */
   useEffect(() => {
     const load = async () => {
       const list = await getScheduleCategories();
       setCategories(list);
-      const savedColors = JSON.parse(localStorage.getItem("categoryColors") || "{}");
-      const newColors = {};
-      list.forEach((cat) => {
-        newColors[cat.id] = savedColors[cat.id] || getRandomColor();
-      });
-      setColors(newColors);
     };
     load();
   }, []);
 
-  /** 색상 선택 */
+  /** 색상 선택 시 부모에 전달 */
   const handleSelectColor = (color) => {
     if (!selectedCategory) return;
-    const newColors = { ...colors, [selectedCategory.id]: color };
-    setColors(newColors);
-    localStorage.setItem("categoryColors", JSON.stringify(newColors));
     onColorChange(selectedCategory.id, color);
     setAnchorEl(null);
   };
@@ -73,12 +65,11 @@ export default function ScheduleCategoryPanel({ activeCategories, onToggle, onCo
     }
     try {
       if (dialogMode === "add") {
+        // 새 카테고리 생성
         const created = await createScheduleCategory({ name: inputValue, defaultYn: false });
-        const color = getRandomColor();
         setCategories((prev) => [...prev, created]);
-        setColors((prev) => ({ ...prev, [created.id]: color }));
-        localStorage.setItem("categoryColors", JSON.stringify({ ...colors, [created.id]: color }));
       } else if (dialogMode === "edit" && selectedCategory) {
+        // 기존 카테고리 이름 수정
         const updated = await updateScheduleCategory(selectedCategory.id, {
           name: inputValue,
           defaultYn: selectedCategory.defaultYn,
@@ -98,12 +89,9 @@ export default function ScheduleCategoryPanel({ activeCategories, onToggle, onCo
   const handleDelete = async (id) => {
     await deleteScheduleCategory(id);
     setCategories((prev) => prev.filter((c) => c.id !== id));
-    const updated = { ...colors };
-    delete updated[id];
-    setColors(updated);
-    localStorage.setItem("categoryColors", JSON.stringify(updated));
-  };
+    };
 
+  /** 렌더링 */
   return (
     <Box
       sx={{
@@ -112,7 +100,7 @@ export default function ScheduleCategoryPanel({ activeCategories, onToggle, onCo
         p: 2,
         height: "100%", 
         overflowY: "auto",
-        overflowX: "hidden",
+        overflowX: "hidden",  
         "&::-webkit-scrollbar": { width: 6 },
         "&::-webkit-scrollbar-thumb": { backgroundColor: "#bbb", borderRadius: 3 }
       }}
@@ -126,9 +114,9 @@ export default function ScheduleCategoryPanel({ activeCategories, onToggle, onCo
               <Checkbox
                 checked={activeCategories.includes(cat.id)}
                 onChange={() => onToggle(cat.id)}
-                sx={{ color: colors[cat.id], "&.Mui-checked": { color: colors[cat.id] } }}
+                sx={{ color: categoryColors[cat.id] || "#999", "&.Mui-checked": { color: categoryColors[cat.id] || "#999" } }}
               />
-              <Typography sx={{ color: colors[cat.id], fontSize: 15 }}>
+              <Typography sx={{ color: categoryColors[cat.id] || "#999", fontSize: 15 }}>
                 {cat.name}
               </Typography>
             </Stack>
@@ -177,7 +165,7 @@ export default function ScheduleCategoryPanel({ activeCategories, onToggle, onCo
                     bgcolor: color,
                     cursor: "pointer",
                     border:
-                      colors[selectedCategory?.id] === color
+                      categoryColors[selectedCategory?.id] === color
                         ? "2px solid #333"
                         : "1px solid #ccc",
                   }}

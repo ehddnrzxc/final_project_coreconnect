@@ -230,10 +230,10 @@ export default function UserCreateForm() {
                 </FormControl>
 
                 <FormControl fullWidth size="medium" required>
-                  <InputLabel id="role-select-label">권한(Role)</InputLabel>
+                  <InputLabel id="role-select-label">권한</InputLabel>
                   <Select
                     labelId="role-select-label"
-                    label="권한(Role)"
+                    label="권한"
                     name="role"
                     value={form.role}
                     onChange={onChange}
@@ -250,8 +250,9 @@ export default function UserCreateForm() {
                   )}
                   </Select>
                 </FormControl>
+
                 <FormControl fullWidth size="medium" required>
-                  <InputLabel id="jobgrade-select-label">직급(JobGrade)</InputLabel>
+                  <InputLabel id="jobgrade-select-label">직급</InputLabel>
                   <Select
                     labelId="jobgrade-select-label"
                     label="직급"

@@ -120,3 +120,26 @@ export const toISOFromDate = (date) => {
   log("toISOFromDate", date, result);
   return result;
 };
+
+
+/**
+ * LocalDateTime / ISO / JS Date → "yyyy-MM-dd" (LocalDate 전용)
+ * 백엔드 @DateTimeFormat(pattern="yyyy-MM-dd")용 파라미터에 사용
+ */
+export const toLocalDate = (input) => {
+  if (!input) return null;
+
+  // Date 객체인 경우
+  if (input instanceof Date && !isNaN(input)) {
+    return `${input.getFullYear()}-${pad(input.getMonth() + 1)}-${pad(input.getDate())}`;
+  }
+
+  // 문자열인 경우 ("T" 또는 " " 포함)
+  if (typeof input === "string") {
+    const temp = input.includes("T") ? input.split("T")[0] : input.split(" ")[0];
+    return temp;
+  }
+
+  // 기타 타입
+  return String(input).slice(0, 10);
+};

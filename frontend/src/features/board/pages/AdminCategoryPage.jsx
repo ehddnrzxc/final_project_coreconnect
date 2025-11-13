@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-// React 훅 불러오기
+// React 훅
 // useEffect: 생명주기 관리 (렌더링 이후 데이터 로드 등)
 // useState: 상태 관리 (데이터 저장 및 변경 시 리렌더링)
 import { Box, Typography, Table, TableHead, TableRow, TableCell, TableBody, IconButton, TextField, Button } from "@mui/material";
@@ -20,7 +20,8 @@ import { getAllCategories, createCategory, updateCategory, deleteCategory } from
 // createCategory: 카테고리 생성
 // updateCategory: 카테고리 수정
 // deleteCategory: 카테고리 삭제
-import { useSnackbarContext } from "../../../components/utils/SnackbarContext"; // 전역 스낵바 컨텍스트 추가
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext"; // 전역 스낵바 컨텍스트
+
 
 // 관리자 전용 카테고리 관리 페이지 컴포넌트
 const AdminCategoryPage = () => {
@@ -84,7 +85,7 @@ const AdminCategoryPage = () => {
   // 등록 버튼 클릭 시 동작 → 신규 카테고리 생성
   const handleCreate = async () => {
     if (!newCategory.name.trim()) {
-      showSnack("카테고리명을 입력해주세요.", "warning");
+      showSnack("카테고리명을 입력해주세요.", "error");
       return;
     }
     try {

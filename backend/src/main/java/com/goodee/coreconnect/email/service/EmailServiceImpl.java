@@ -26,7 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.goodee.coreconnect.common.S3Service;
+import com.goodee.coreconnect.common.service.S3Service;
 import com.goodee.coreconnect.email.dto.request.EmailAttachmentRequestDTO;
 import com.goodee.coreconnect.email.dto.request.EmailSendRequestDTO;
 import com.goodee.coreconnect.email.dto.response.EmailResponseDTO;

@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
-// React 훅 불러오기
+// React 훅
 // useEffect: 생명주기 제어
 // useState: 상태 관리
 // useMemo: 렌더링 최적화 (계산 결과 캐싱)
 // useRef: DOM 요소나 값 저장 (리렌더링과 무관)
 import { useParams, useNavigate } from "react-router-dom";
-// React Router 훅 불러오기
+// React Router 훅
 // useParams: URL 파라미터 추출 (예: /board/:id)
 // useNavigate: 페이지 이동 함수
 import { Box, Typography, TextField, Button, Stack, Paper } from "@mui/material";
@@ -32,7 +32,7 @@ import { getRepliesByBoard, createReply, updateReply, deleteReply } from "../api
 // createReply: 댓글 등록
 // updateReply: 댓글 수정
 // deleteReply: 댓글 삭제
-import { useSnackbarContext } from "../../../components/utils/SnackbarContext"; // 전역 스낵바 컨텍스트 추가
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext"; // 전역 스낵바 컨텍스트
 import ConfirmDialog from "../../../components/utils/ConfirmDialog"; // 공용 확인창 컴포넌트 임포트
 
 
@@ -95,7 +95,7 @@ const BoardDetailPage = () => {
 
       // 비공개글 접근 차단 처리
       if (err.response?.status === 403) {
-        showSnack("비공개 게시글입니다. 접근할 수 없습니다.", "warning");
+        showSnack("비공개 게시글입니다. 접근할 수 없습니다.", "error");
         navigate(-1); // 바로 이전 페이지로 돌아감 (브라우저 history 한 단계 뒤로)
         return;
       }
@@ -193,7 +193,7 @@ const BoardDetailPage = () => {
   // 댓글 수정
   const handleReplyUpdate = async (replyId) => {
     if (!editReplyText.trim()) {
-      showSnack("내용을 입력하세요.", "warning"); // 수정 내용이 비어 있으면 경고
+      showSnack("내용을 입력하세요.", "error"); // 수정 내용이 비어 있으면 경고
       return;
     }
     try {

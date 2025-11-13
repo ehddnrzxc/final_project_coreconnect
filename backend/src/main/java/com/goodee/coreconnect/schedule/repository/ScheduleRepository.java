@@ -48,6 +48,32 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Integer> {
   
   
   
+  /**
+   * 특정 유저가 OWNER 또는 PARTICIPANT인 일정 중,
+   * 지정된 기간(start~end)과 겹치는 모든 일정 조회
+   */
+  @Query("""
+      SELECT DISTINCT s
+      FROM Schedule s
+      LEFT JOIN s.participants sp
+      WHERE s.deletedYn = false
+        AND (
+             s.user.id = :userId
+          OR sp.user.id = :userId
+        )
+        AND (:start < s.endDateTime AND :end > s.startDateTime)
+      ORDER BY s.startDateTime ASC
+  """)
+  List<Schedule> findOverlappingSchedules(
+      @Param("userId") Integer userId,
+      @Param("start") LocalDateTime start,
+      @Param("end") LocalDateTime end
+  );
+  
+  
+  
+  
+  
   /** 특정 유저의 '오늘 일정' 조회용 메서드 */
   List<Schedule> findByUserAndDeletedYnFalseAndStartDateTimeBetween(
           User user,

@@ -32,5 +32,11 @@ public interface DepartmentService {
   
   /** 부서 갯수 조회 */
   public Long getAllDepartmentCount();
+  
+  /** 부서 ID로 게시판 카테고리 ID 조회 */
+  public Integer getBoardCategoryIdByDeptId(Integer deptId);
+  
+  /** 부서와 게시판 카테고리 매핑 */
+  public void linkDeptWithCategory(Integer deptId, Integer categoryId);
 
 }
