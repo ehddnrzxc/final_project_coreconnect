@@ -149,8 +149,8 @@ function DocumentDetailPage() {
         <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
           {documentData.myTurnApprove && (
             <>
+              <Button variant='outlined' color='primary' onClick={handleApprove}>승인</Button>
               <Button variant='outlined' color='error' onClick={handleOpenRejectModal}>반려</Button>
-              <Button variant='contained' color='primary' onClick={handleApprove}>승인</Button>
             </>
           )}
         </Box>

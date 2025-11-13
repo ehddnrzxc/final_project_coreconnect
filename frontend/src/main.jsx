@@ -41,6 +41,7 @@ import { RealtimeNotificationProvider } from "./features/notification/RealtimeNo
 import PendingDocuments from "./features/approval/pages/PendingDocumentPage";
 import MyDocumentsPage from "./features/approval/pages/MyDocumentsPage";
 import MyDraftsPage from "./features/approval/pages/MyDraftsPage";
+import ReferDocumentPage from "./features/approval/pages/ReferDocumentPage";
 
 /* 전체 라우트 구조 */
 const router = createBrowserRouter([
@@ -98,6 +99,7 @@ const router = createBrowserRouter([
           { path: "pending", element: <PendingDocuments /> },
           { path: "my-documents", element: <MyDocumentsPage /> },
           { path: "my-drafts", element: <MyDraftsPage />},
+          { path: "refer", element: <ReferDocumentPage />},
         ],
       },
       {
