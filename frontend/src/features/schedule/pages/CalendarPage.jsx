@@ -16,6 +16,7 @@ import ScheduleCategoryPanel from "../components/ScheduleCategoryPanel";
 import ScheduleModal from "../components/ScheduleModal";
 import ScheduleDetailModal from "../components/ScheduleDetailModal";
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
+import "./CalendarPage.css";
 
 export default function CalendarPage() {
   const [events, setEvents] = useState([]);
@@ -54,7 +55,7 @@ export default function CalendarPage() {
         return {
           id: s.id,
           title:
-            s.visibility === "PRIVATE" ? `[비공개] ${s.title}` : s.title,
+            s.visibility === "PRIVATE" ? `${s.title}` : s.title,
           start: toISO(s.startDateTime),
           end: toISO(s.endDateTime),
           content: s.content,
@@ -66,8 +67,7 @@ export default function CalendarPage() {
           userEmail: s.userEmail,
           categoryName: s.categoryName,
           meetingRoomName: s.meetingRoomName,
-          backgroundColor: color,
-          borderColor: color,
+          dotColor: color,
         };
       });
 
@@ -116,18 +116,12 @@ export default function CalendarPage() {
     setCategoryColors(updated);
     localStorage.setItem("categoryColors", JSON.stringify(updated));
 
-    // FullCalendar 즉시 반영
-    if (calendarRef.current) {
-      const api = calendarRef.current.getApi();
-      api.getEvents().forEach((ev) => {
-        if (ev.extendedProps.categoryId === id) {
-          ev.setProp("backgroundColor", color);
-          ev.setProp("borderColor", color);
-        }
-      });
-    }
-
-    showSnack("색상이 변경되었습니다.", "info"); // 스낵바 추가
+    // 일정 배열 자체에 dotColor 업데이트
+    setEvents(prev =>
+      prev.map(e =>
+        e.categoryId === id ? { ...e, dotColor: color } : e
+      )
+    );
   };
 
   /** 색상 변경 시에만 이벤트 갱신 (덮어쓰기 방지) */
@@ -138,8 +132,7 @@ export default function CalendarPage() {
       const catId = ev.extendedProps.categoryId;
       const color = categoryColors[catId];
       if (color) {
-        ev.setProp("backgroundColor", color);
-        ev.setProp("borderColor", color);
+        ev.setExtendedProp("dotColor", color);
       }
     });
   }, [categoryColors]);
@@ -156,9 +149,23 @@ export default function CalendarPage() {
     setModalOpen(true);
   };
 
+  // popover 닫기 + 상세 모달 열기
+  const handleEventClickWrapper = (info) => {
+    setTimeout(() => {
+      document
+        .querySelectorAll(".fc-popover, .fc-more-popover")
+        .forEach((el) => el.remove());
+    }, 0);
+
+    handleEventClick(info);
+  };
+
   /** 일정 클릭 → 상세보기 모달 열기 */
   const handleEventClick = async (info) => {
-  const clicked = events.find((e) => e.id === Number(info.event.id));
+
+    info.jsEvent.stopPropagation(); 
+
+    const clicked = events.find((e) => e.id === Number(info.event.id));
     if (!clicked) return;
 
     const isOwnerEmail = clicked.userEmail === currentUserEmail;
@@ -208,7 +215,7 @@ export default function CalendarPage() {
             e.id === selectedEvent.id
               ? {
                   ...e,
-                  title: updated.visibility === "PRIVATE" ? `[비공개] ${updated.title}` : updated.title,
+                  title: updated.visibility === "PRIVATE" ? `${updated.title}` : updated.title,
                   start: toISO(updated.startDateTime),
                   end: toISO(updated.endDateTime),
                   content: updated.content,
@@ -221,12 +228,7 @@ export default function CalendarPage() {
                   categoryName: updated.categoryName,
                   meetingRoomName: updated.meetingRoomName,
                   meetingRoomId: updated.meetingRoomId,
-                  backgroundColor:
-                    categoryColors[updated.categoryId] ||
-                    (updated.visibility === "PRIVATE" ? "#999999" : "#00a0e9"),
-                  borderColor:
-                    categoryColors[updated.categoryId] ||
-                    (updated.visibility === "PRIVATE" ? "#999999" : "#00a0e9"),
+                  dotColor: categoryColors[updated.categoryId]
                 }
               : e
           )
@@ -236,7 +238,7 @@ export default function CalendarPage() {
         const created = await createSchedule(formData);
         const newEvent = {
           id: created.id,
-          title: created.visibility === "PRIVATE" ? `[비공개] ${created.title}` : created.title,
+          title: created.visibility === "PRIVATE" ? `${created.title}` : created.title,
           start: toISO(created.startDateTime),
           end: toISO(created.endDateTime),
           content: created.content,
@@ -249,12 +251,7 @@ export default function CalendarPage() {
           categoryName: created.categoryName,
           meetingRoomName: created.meetingRoomName,
           meetingRoomId: created.meetingRoomId,
-          backgroundColor:
-            categoryColors[created.categoryId] ||
-            (created.visibility === "PRIVATE" ? "#999999" : "#00a0e9"),
-          borderColor:
-            categoryColors[created.categoryId] ||
-            (created.visibility === "PRIVATE" ? "#999999" : "#00a0e9"),
+          dotColor: categoryColors[created.categoryId],
         };
         setEvents((prev) => [...prev, newEvent]);
         showSnack("일정이 등록되었습니다", "success");
@@ -285,25 +282,145 @@ export default function CalendarPage() {
     setVisibleEnd(info.end);        // 표시 끝일(Date)  ※ list 뷰에서는 15일 경계
   };
 
-  /** PRIVATE 일정 🔒 표시 */
+  /** 일정 표시 */
   const renderEventContent = (arg) => {
     const event = arg.event.extendedProps;
     const isPrivate = event.visibility === "PRIVATE";
+    const color = event.dotColor;  
 
-    const isOwner = event.userEmail === currentUserEmail;
+    const start = arg.event.start;
+    const end = arg.event.end;
+    const isMultiDay = end && (end - start) >= 24 * 60 * 60 * 1000;
+    
 
-    return (
-      <div style={{ opacity: isPrivate ? 0.7 : 1 }}>
-        {arg.timeText && (
-          <span style={{ color: "#555", marginRight: 4 }}>{arg.timeText}</span>
-        )}
-        {isPrivate && <span>🔒 </span>}
-        <b>{arg.event.title}</b>
-        {isOwner && (
-          <span style={{ fontSize: "0.8em", marginLeft: 4, color: "#333" }}>
-            (내 일정)
+    const view = arg.view.type;               // 뷰 타입 체크
+    const isAllDay = arg.event.allDay;        // 종일 일정 여부
+    const isTimeView = view === "timeGridWeek" || view === "timeGridDay"; 
+
+    const privateStyle = isPrivate ? { opacity: 0.55 } : {};
+
+    // 공통 Hover 스타일 적용 함수
+    const handleEnter = (e) => {
+      e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.06)";
+    };
+    const handleLeave = (e) => {
+      e.currentTarget.style.backgroundColor = "transparent";
+    };
+
+    /** 종일 또는 날짜 범위 일정 → bar 스타일 */
+    if (isAllDay || isMultiDay) {
+      return (
+        <div
+          onMouseEnter={(e) => {
+            e.currentTarget.style.filter = "brightness(0.92)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.filter = "none";
+          }}  
+          style={{
+            backgroundColor: color,      // 바 배경 = 카테고리색
+            color: "#fff",               // 글자 흰색
+            padding: "3px 6px",
+            borderRadius: "4px",
+            fontWeight: 600,
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            overflow: "hidden",
+            ...privateStyle,
+          }}
+        >
+          {/* 시간 */}
+          {arg.timeText && (
+            <span style={{ flexShrink: 0, color: "#555" }}>{arg.timeText}</span>
+          )}
+
+          {isPrivate && "🔒"}
+          <span>{arg.event.title}</span>
+        </div>
+      );
+    }
+
+    /** 주간/일간 뷰 → left border 스타일 */
+    if (isTimeView) {
+      return (
+        <div
+          onMouseEnter={handleEnter}   
+          onMouseLeave={handleLeave}  
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            minWidth: 0,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            borderLeft: `4px solid ${color}`, 
+            paddingLeft: 6,
+            borderRadius: 4,
+          }}
+        >
+          {/* 시간 */}
+          {arg.timeText && (
+            <span style={{ flexShrink: 0, color: "#555" }}>{arg.timeText}</span>
+          )}
+
+          <span
+            style={{
+              fontWeight: 600,
+              color: "#000",
+              minWidth: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              ...privateStyle,
+            }}
+          >
+            {isPrivate && "🔒"}
+            {arg.event.title}
           </span>
-        )}
+        </div>
+      );
+    }
+
+    
+    /** 월간(dayGridMonth) / 목록(list) 스타일 */
+    return (
+      <div
+        onMouseEnter={handleEnter}   
+        onMouseLeave={handleLeave}   
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          minWidth: 0,                 
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          borderRadius: 4,
+          borderLeft: `4px solid ${color}`,
+          paddingLeft: 6,
+          ...privateStyle,
+        }}
+      >
+        {/* 시간 */}
+        {arg.timeText && (
+          <span style={{ flexShrink: 0, color: "#555" }}>{arg.timeText}</span>
+        )}        
+
+        {/* 제목 */}
+        <span
+          style={{
+            fontWeight: 600,
+            color: "#000",
+            minWidth: 0,               //  내부 텍스트 ellipsis 필수
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            ...privateStyle,
+          }}
+        >
+          {isPrivate && "🔒 "}
+          {arg.event.title}
+        </span>
       </div>
     );
   };
@@ -354,6 +471,7 @@ export default function CalendarPage() {
             center: "title",
             right: "prev,next today",
           }}
+
           customButtons={{
             // 아이콘 버튼 추가
             toggleCategoryButton: {
@@ -370,7 +488,16 @@ export default function CalendarPage() {
           }}
           height="auto"
           dayMaxEvents={3}          // 하루 최대 표시 일정 수 (넘으면 ‘+n개 더 보기’로 요약)
-          moreLinkClick="popover"   // ‘+n개 더 보기’ 클릭 시 팝오버로 상세 일정 표시
+          moreLinkClick={(arg) => {
+            // popover 강제 제거
+            setTimeout(() => {
+              document
+                .querySelectorAll(".fc-popover, .fc-more-popover")
+                .forEach((el) => el.remove());
+            }, 0);
+
+            return "popover"; //‘+n개 더 보기’ 클릭 시 팝오버로 상세 일정 표시
+          }}   
           moreLinkContent={(arg) => ({
             html: `<span style="
                       color: rgba(0,0,0,0.6);
@@ -386,7 +513,7 @@ export default function CalendarPage() {
           events={filteredEvents}
           eventContent={renderEventContent}
           dateClick={handleDateClick}
-          eventClick={handleEventClick}
+          eventClick={handleEventClickWrapper}
           datesSet={handleDatesSet} // 표시 범위 변경 시 호출되어 visibleStart/visibleEnd 갱신
           slotMinTime="08:00:00"
           slotMaxTime="21:00:00"
@@ -397,16 +524,16 @@ export default function CalendarPage() {
 
           eventDisplay="block"
           eventDidMount={(info) => {
-            info.el.style.whiteSpace = "normal";
+
+            info.el.style.border = "none";
+            info.el.style.whiteSpace = "nowrap";
             info.el.style.overflow = "hidden";
             info.el.style.textOverflow = "ellipsis";
-            info.el.style.wordBreak = "break-word";
-            info.el.style.padding = "2px 4px";
-            info.el.style.borderRadius = "4px";
+            info.el.style.backgroundColor = "transparent";
           }}
         />
 
-        {/* 목록(15일) 뷰 전용 보조 UI: "~까지 표시 중" */}
+        {/* 목록(15일) 뷰 전용 보조 UI: "~까지 표시 중" */} 
         {currentView === "list15days" && visibleEnd && (
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 2 }}>
             <Typography variant="body2" color="text.secondary">

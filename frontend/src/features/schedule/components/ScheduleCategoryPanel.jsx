@@ -68,6 +68,10 @@ export default function ScheduleCategoryPanel({ activeCategories, onToggle, onCo
         // 새 카테고리 생성
         const created = await createScheduleCategory({ name: inputValue, defaultYn: false });
         setCategories((prev) => [...prev, created]);
+
+        const defaultColor = "#00a0e9";
+        onColorChange(created.id, defaultColor);
+
       } else if (dialogMode === "edit" && selectedCategory) {
         // 기존 카테고리 이름 수정
         const updated = await updateScheduleCategory(selectedCategory.id, {

@@ -32,9 +32,20 @@ export default function ScheduleDetailModal({
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm")); // 모바일 대응
 
+   /** 모달이 닫힐 때 상태 초기화 */
+  useEffect(() => {
+    if (!open) {
+      setSchedule(null);
+      setParticipants([]);
+      setLoading(true);
+    }
+  }, [open]);
+
   /** 일정 + 참여자 로드 */
   useEffect(() => {
     if (!open || !scheduleId) return;
+
+    let cancelled = false; // 언마운트 후 setState 방지 플래그
 
     setLoading(true);
     const load = async () => {
@@ -43,16 +54,26 @@ export default function ScheduleDetailModal({
           getScheduleById(scheduleId),
           getParticipantsBySchedule(scheduleId),
         ]);
+        if (cancelled) return;
+
         const normalized = Array.isArray(p) ? p : [p];
         setSchedule(s);
         setParticipants(normalized);
       } catch (err) {
-        showSnack("상세 일정 조회 중 오류가 발생했습니다.", "error");
+         if (!cancelled) {
+           showSnack("상세 일정 조회 중 오류가 발생했습니다.", "error");
+         }
       } finally {
-        setLoading(false);
+         if (!cancelled) {
+           setLoading(false);
+         }
       }
     };
     load();
+
+    return () => {
+      cancelled = true;
+    };
   }, [open, scheduleId]);
 
   if (!open) return null;
