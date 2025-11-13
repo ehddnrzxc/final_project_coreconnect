@@ -78,4 +78,25 @@ public interface ApprovalLineRepository extends JpaRepository<ApprovalLine, Inte
        @Param("type") ApprovalLineType type,          
        Pageable pageable
    );
+   
+   /**
+    * 참조 문서 조회
+    * @param approver
+    * @param type
+    * @return
+    */
+   @Query("""
+       SELECT l.document FROM ApprovalLine l
+       JOIN l.document d
+       JOIN FETCH d.user
+       WHERE l.approver = :approver
+       AND l.approvalLineType = :type
+       AND (d.docDeletedYn IS NULL OR d.docDeletedYn = false)
+       ORDER BY d.createdAt DESC
+       """)
+   List<Document> findDocumentsByApproverAndType(
+       @Param("approver") User approver,
+       @Param("type") ApprovalLineType type
+       );
+   
 }

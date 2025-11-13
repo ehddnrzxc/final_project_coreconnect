@@ -52,6 +52,13 @@ public interface ApprovalService {
    * @return 문서 목록
    */
   List<DocumentSimpleResponseDTO> getMyTasks(String email);
+  
+  /**
+   * 내 참조함(내가 참조자로 지정된 문서) 목록을 조회합니다.
+   * @param email
+   * @return
+   */
+  List<DocumentSimpleResponseDTO> getMyReferenceDocuments(String email);
 
   /**
    * 문서 상세 내용을 조회합니다.

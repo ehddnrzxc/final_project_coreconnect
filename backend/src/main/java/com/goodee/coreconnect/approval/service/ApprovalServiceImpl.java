@@ -331,6 +331,21 @@ public class ApprovalServiceImpl implements ApprovalService {
         .map(DocumentSimpleResponseDTO::toDTO)
         .collect(Collectors.toList());
   }
+  
+  @Override
+  public List<DocumentSimpleResponseDTO> getMyReferenceDocuments(String email) {
+    User approver = findUserByEmail(email);
+    
+    List<Document> referenceDocuments = approvalLineRepository.findDocumentsByApproverAndType(
+        approver,
+        ApprovalLineType.REFER
+        );
+    
+    return referenceDocuments.stream()
+        .distinct()
+        .map(DocumentSimpleResponseDTO::toDTO)
+        .collect(Collectors.toList());
+  }
 
   /**
    * 전자결재 홈에 표시할 완료 문서

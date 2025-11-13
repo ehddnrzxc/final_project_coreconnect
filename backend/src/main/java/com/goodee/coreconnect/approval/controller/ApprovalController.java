@@ -123,6 +123,21 @@ public class ApprovalController {
     List<DocumentSimpleResponseDTO> myTasks = approvalService.getMyTasks(email);
     return ResponseEntity.ok(myTasks);
   }
+  
+  /**
+   * 3-1. 내 참조함 (내가 참조자로 지정된 문서) 목록 조회
+   * @param user
+   * @return
+   */
+  @Operation(summary = "내 참조함 조회", description = "내가 참조자로 지정된 문서 목록을 조회합니다.")
+  @GetMapping("/my-reference-docs")
+  public ResponseEntity<List<DocumentSimpleResponseDTO>> getMyReferenceDocuments(
+      @AuthenticationPrincipal CustomUserDetails user
+      ) {
+    String email = user.getEmail();
+    List<DocumentSimpleResponseDTO> refDocs = approvalService.getMyReferenceDocuments(email);
+    return ResponseEntity.ok(refDocs);
+  }
 
   /**
    * 전자 결재 홈에 표시할 기안 진행 문서
