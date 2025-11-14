@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { getMyLeaveSummary } from "../../leave/api/leaveAPI";
 import { getMyPendingApprovalCount, getMyReceivedApprovalCount  } from "../api/dashboardAPI";
 import { Link, useOutletContext } from "react-router-dom";
@@ -12,14 +12,16 @@ import {
   Typography,
 } from "@mui/material";
 import {
-  getMyProfileImage,
   uploadMyProfileImage,
+  getMyProfileInfo,
 } from "../../user/api/userAPI";
 import { getMyTodaySchedules } from "../../schedule/api/scheduleAPI";
 import {
   countTodayPostsByCategoryClientOnly,
   getMyDeptBoardCategoryId,
 } from "../api/dashboardAPI";
+import { UserProfileContext } from "../../../App";
+import { jobGradeLabel } from "../../../utils/jobGradeUtils";
 
 const ProfilePage = () => {
   const [loading, setLoading] = useState(false);
@@ -33,12 +35,12 @@ const ProfilePage = () => {
   const [receivedApprovalCount, setReceivedApprovalCount] = useState(null);
 
   const { setAvatarUrl } = useOutletContext();
+  const userProfile = useContext(UserProfileContext);
 
-  const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
-  const email = storedUser.email || "";
-  const displayName = storedUser.name || "";
-  const grade = storedUser.jobGrade;
-  const deptName = storedUser.departmentName;
+  const email = userProfile?.email || "";
+  const displayName = userProfile?.name || "";
+  const grade = userProfile?.jobGrade ? jobGradeLabel(userProfile.jobGrade) : "";
+  const deptName = userProfile?.deptName || "";
 
   const DEFAULT_AVATAR = "https://i.pravatar.cc/80?img=12";
 
@@ -143,15 +145,9 @@ const ProfilePage = () => {
       // 업로드 실행
       await uploadMyProfileImage(file);
 
-      // 업로드 후 서버 URL 재조회
-      const newUrl = await getMyProfileImage();
-      setAvatarUrl(newUrl);
-
-      // 새로고침 대비 저장(원본 URL 저장)
-      localStorage.setItem(
-        "user",
-        JSON.stringify({ ...storedUser, imageUrl: newUrl || "" })
-      );
+      // 업로드 후 프로필 정보 재조회
+      const updatedProfile = await getMyProfileInfo();
+      setAvatarUrl(updatedProfile.profileImageUrl || DEFAULT_AVATAR);
     } catch (err) {
       console.error("이미지 업로드 실패:", err);
       setError("이미지 업로드에 실패했습니다.");
@@ -162,7 +158,9 @@ const ProfilePage = () => {
   };
 
   // 안전한 아바타 경로 계산
-  const avatarUrl = storedUser.imageUrl && storedUser.imageUrl.trim() !== "" ? storedUser.imageUrl : DEFAULT_AVATAR;
+  const avatarUrl = userProfile?.profileImageUrl && userProfile.profileImageUrl.trim() !== "" 
+    ? userProfile.profileImageUrl 
+    : DEFAULT_AVATAR;
 
   const items = [
     {

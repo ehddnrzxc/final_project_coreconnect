@@ -1,4 +1,4 @@
-package com.goodee.coreconnect.user.dto.request;
+package com.goodee.coreconnect.admin.dto.request;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

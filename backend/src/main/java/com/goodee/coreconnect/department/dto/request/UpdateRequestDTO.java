@@ -12,4 +12,4 @@ public record UpdateRequestDTO(
     String name, 
     
     @NotNull(message = "정렬 순서를 입력해야 합니다.")
-    Integer OrderNo) {}
+    Integer orderNo) {}

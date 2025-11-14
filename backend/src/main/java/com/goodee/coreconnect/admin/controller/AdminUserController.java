@@ -1,4 +1,4 @@
-package com.goodee.coreconnect.user.controller;
+package com.goodee.coreconnect.admin.controller;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -19,10 +19,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.goodee.coreconnect.admin.dto.request.CreateUserReqDTO;
+import com.goodee.coreconnect.admin.dto.request.ChangeUserDepartmentDTO;
+import com.goodee.coreconnect.admin.dto.request.ChangeUserJobGradeDTO;
+import com.goodee.coreconnect.admin.dto.request.RejectLeaveRequestDTO;
+import com.goodee.coreconnect.admin.dto.request.UpdateUserReqDTO;
+import com.goodee.coreconnect.admin.service.AdminUserService;
 import com.goodee.coreconnect.department.service.DepartmentService;
 import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
-import com.goodee.coreconnect.user.dto.request.CreateUserReqDTO;
-import com.goodee.coreconnect.user.dto.request.RejectLeaveRequestDTO;
 import com.goodee.coreconnect.user.dto.response.PasswordResetResponseDTO;
 import com.goodee.coreconnect.user.dto.response.TempPasswordResponseDTO;
 import com.goodee.coreconnect.user.dto.response.UserDTO;
@@ -44,6 +48,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class AdminUserController {
   
+  private final AdminUserService adminUserService;
   private final UserService userService;
   private final DepartmentService departmentService;
   private final PasswordResetService passwordResetService;
@@ -51,23 +56,68 @@ public class AdminUserController {
   /** 신규 사용자 생성 */
   @PostMapping
   public UserDTO create(@Valid @RequestBody CreateUserReqDTO req) {
-    return userService.createUser(req);
+    return adminUserService.createUser(req);
   }
   
+  /** 사용자 정보 수정 */
+  @PutMapping("/{id}")
+  public ResponseEntity<UserDTO> update(
+      @PathVariable(name = "id") Integer id,
+      @RequestBody UpdateUserReqDTO req
+  ) {
+    UserDTO updated = adminUserService.updateUser(id, req);
+    return ResponseEntity.ok(updated);
+  }
+
+  /** 유저의 부서 변경 메소드 */
+  @PutMapping("/{id}/department")
+  public ResponseEntity<Void> changeUserDepartment(
+      @PathVariable("id") Integer id,
+      @RequestBody ChangeUserDepartmentDTO req
+  ) {
+    adminUserService.changeUserDepartment(id, req.deptId());
+    return ResponseEntity.noContent().build();
+  }
+
+  /** 유저의 직급 변경 메소드 */
+  @PutMapping("/{id}/job-grade")
+  public ResponseEntity<Void> changeUserJobGrade(
+      @PathVariable("id") Integer id,
+      @Valid @RequestBody ChangeUserJobGradeDTO req
+  ) {
+    adminUserService.changeUserJobGrade(id, req.jobGrade());
+    return ResponseEntity.noContent().build();
+  }
+
+  /** 사용자의 권한(Role) 변경 */
+  @PutMapping("/{id}/role")
+  public ResponseEntity<Void> changeUserRole(
+      @PathVariable("id") Integer id,
+      @RequestBody Map<String, String> body
+  ) {
+    String newRoleStr = body.get("role");
+    if (newRoleStr == null) {
+      throw new IllegalArgumentException("role 값이 필요합니다.");
+    }
+
+    Role newRole = Role.valueOf(newRoleStr.toUpperCase());
+    adminUserService.changeUserRole(id, newRole);
+    return ResponseEntity.noContent().build();
+  }
+ 
   /** 사용자 상태 변경 (활성/비활성) */
   @DeleteMapping("/{id}")
   public void changeStatus(@PathVariable("id") Integer id, @RequestParam("status") Status status) {
-    userService.changeStatus(id, status);
+    adminUserService.changeStatus(id, status);
   }
   
   /** 각종 통계를 제공해주는 메소드 */
   @GetMapping("/stats")
   public Map<String, Long> getAllStats() {
     Map<String, Long> stats = new HashMap<>();
-    stats.put("totalUsers", userService.getAllUserCount());
-    stats.put("activeUsers", userService.getAllActiveUserCount());
+    stats.put("totalUsers", adminUserService.getAllUserCount());
+    stats.put("activeUsers", adminUserService.getAllActiveUserCount());
     stats.put("departments", departmentService.getAllDepartmentCount());
-    // 전자결재 관련 메소드 추후에 추가 예정(승인 예정 결재 수 등)
     return stats;
   }
   

@@ -129,44 +129,8 @@ public class User {
     }
 
 
-    // ─────────────── 연관관계 편의 메서드(나중에 필요하면 추가) ───────────────
+    // ─────────────── 연관관계 편의 메서드 ───────────────
 
-    /** 게시글 추가 */
-//    public void addBoard(Board board) {
-//        if (board == null) return;
-//        boards.add(board);
-//        board.assignUser(this); 
-//    }
-//
-//    /** 결재문서 추가 */
-//    public void addDocument(Document document) {
-//        if (document == null) return;
-//        documents.add(document);
-//        document.assignUser(this);
-//    }
-//
-//    /** 결재선 추가 */
-//    public void addApprovalLine(ApprovalLine line) {
-//        if (line == null) return;
-//        approvalLines.add(line);
-//        line.assignApprover(this);
-//    }
-//
-//    /** 결재 양식(템플릿) 추가 */
-//    public void addTemplate(Template template) {
-//        if (template == null) return;
-//        templates.add(template);
-//        template.assignUser(this);
-//    }
-//
-//    /** 채팅방 참여자 추가 */
-//    public void addChatRoomUser(ChatRoomUser chatRoomUser) {
-//        if (chatRoomUser == null) return;
-//        chatRoomUsers.add(chatRoomUser);
-//        chatRoomUser.assignUser(this);
-//    }
-//
-    
     /** 부서 변경 */
     public void changeDepartment(Department department) {
         if (this.department != null) {
@@ -217,6 +181,13 @@ public class User {
     /** 전화번호 변경 */
     public void changePhone(String newPhone) {
         this.phone = newPhone;
+    }
+    
+    /** 이름 변경 */
+    public void changeName(String newName) {
+        if (newName != null && !newName.isBlank()) {
+            this.name = newName;
+        }
     }
     
     

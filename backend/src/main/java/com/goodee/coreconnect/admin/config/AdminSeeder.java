@@ -1,22 +1,20 @@
-package com.goodee.coreconnect.user.config;
+package com.goodee.coreconnect.admin.config;
 
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.goodee.coreconnect.department.entity.Department;
 import com.goodee.coreconnect.department.repository.DepartmentRepository;
 import com.goodee.coreconnect.user.entity.JobGrade;
 import com.goodee.coreconnect.user.entity.Role;
-import com.goodee.coreconnect.user.entity.Status;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * AdminSeeder
@@ -32,7 +30,7 @@ public class AdminSeeder {
     private final PasswordEncoder passwordEncoder;
     private final DepartmentRepository departmentRepository; 
 
-    private static final String ADMIN_EMAIL = "admin";
+    private static final String ADMIN_EMAIL = "admin@gmail.com";
     private static final String ADMIN_NAME  = "시스템관리자";
     private static final String ADMIN_PHONE = "010-0000-0000";
     private static final String ADMIN_RAW_PASSWORD = "1"; 

@@ -16,6 +16,7 @@ import DescriptionIcon from "@mui/icons-material/Description";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import PushPinIcon from "@mui/icons-material/PushPin";
 import BeachAccessIcon from "@mui/icons-material/BeachAccess";
+import AccountTreeIcon from "@mui/icons-material/AccountTree";
 
 const items = [
   { to: "/home", label: "홈", icon: <HomeIcon fontSize="small" /> },
@@ -49,7 +50,7 @@ const Sidebar = () => {
       }}
     >
       {/* 네비게이션 */}
-      <Box sx={{ flex: 1, overflowY: "auto" }}>
+      <Box sx={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
         <List sx={{ py: 1 }}>
           {items.map((it) => (
             <NavLink
@@ -101,6 +102,51 @@ const Sidebar = () => {
             </NavLink>
           ))}
         </List>
+
+        <Box sx={{ mt: "auto", px: 1, pb: 1 }}>
+          <NavLink
+            to="/organization"
+            style={{ textDecoration: "none", color: "inherit" }}
+          >
+            {({ isActive }) => (
+              <ListItemButton
+                selected={isActive}
+                sx={{
+                  borderRadius: 2,
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  py: 1.5,
+                  "& .MuiListItemIcon-root": {
+                    minWidth: "auto",
+                    mb: 0.5,
+                  },
+                  "& .MuiListItemText-root": {
+                    m: 0,
+                  },
+                  "& .MuiListItemText-primary": {
+                    fontSize: "0.75rem",
+                  },
+                  "&.Mui-selected": {
+                    bgcolor: "transparent",
+                    color: "primary.main",
+                    "&:hover": {
+                      bgcolor: "transparent",
+                    },
+                  },
+                }}
+              >
+                <ListItemIcon sx={{ color: "inherit" }}>
+                  <AccountTreeIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText
+                  primary="조직도"
+                  primaryTypographyProps={{ variant: "caption", align: "center", sx: { whiteSpace: "nowrap" } }}
+                />
+              </ListItemButton>
+            )}
+          </NavLink>
+        </Box>
       </Box>
 
       <Divider />

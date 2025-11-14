@@ -2,8 +2,8 @@ package com.goodee.coreconnect.user.service;
 
 import java.util.List;
 
-import com.goodee.coreconnect.user.dto.request.PasswordResetRequestDTO;
-import com.goodee.coreconnect.user.dto.request.RejectLeaveRequestDTO;
+import com.goodee.coreconnect.admin.dto.request.PasswordResetRequestDTO;
+import com.goodee.coreconnect.admin.dto.request.RejectLeaveRequestDTO;
 import com.goodee.coreconnect.user.dto.response.PasswordResetResponseDTO;
 import com.goodee.coreconnect.user.entity.User;
 
