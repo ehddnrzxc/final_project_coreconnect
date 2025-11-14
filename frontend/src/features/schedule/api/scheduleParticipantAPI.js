@@ -14,9 +14,23 @@
   };
 
   /** 참여자 추가 (단건) */
-  export const addParticipant = (data) =>
-    http.post(`/scheduleParticipants`, data).then((res) => res.data);
+  export const addParticipant = async (data) => {
+    try {
+      const res = await http.post(`/scheduleParticipants`, data);
+      return res.data;
+    } catch (err) {
+      const message = err.response?.data || "참여자 추가 중 오류가 발생했습니다.";
+      throw new Error(message);
+    }
+  };
 
   /** 참여자 삭제 */
-  export const deleteParticipant = (id) =>
-    http.delete(`/scheduleParticipants/${id}`).then((res) => res.data);
+  export const deleteParticipant = async (id) => {
+    try {
+      const res = await http.delete(`/scheduleParticipants/${id}`);
+      return res.data;
+    } catch (err) {
+      const message = err.response?.data || "참여자 삭제 중 오류가 발생했습니다.";
+      throw new Error(message);
+    }
+  };

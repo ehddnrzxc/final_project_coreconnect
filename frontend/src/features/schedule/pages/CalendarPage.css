@@ -7,3 +7,104 @@
 .fc-daygrid-event-dot {
   display: none !important;
 }
+
+/* 주간/일간 뷰에서 일정이 시간에 맞게 높이 자동 조정 */
+.fc-timeGrid-event {
+  height: 100% !important;
+  min-height: 100% !important;
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+.fc-timeGrid-event .fc-event-main {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+/* 주간/일간 뷰에서 일정 컨테이너가 시간대에 맞게 늘어나도록 */
+.fc-timeGrid-event-frame {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  /* renderEventContent에서 설정한 배경색이 보이도록 투명 유지 */
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+/* 일정 내부 특정 요소만 배경 투명 처리 (renderEventContent에서 설정한 배경은 유지) */
+.fc-timeGrid-event .fc-event-time,
+.fc-timeGrid-event .fc-event-title {
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+/* 주간/일간 뷰에서 그리드 라인이 일정 위에 표시되도록 */
+.fc-timeGrid-col {
+  position: relative;
+}
+
+.fc-timeGrid-event {
+  position: relative;
+  z-index: 0 !important;
+  margin-left: 1px !important;
+  margin-right: 1px !important;
+  width: calc(100% - 2px) !important;
+  box-sizing: border-box !important;
+}
+
+/* 그리드 라인(시간 구분선)이 일정 위에 표시되도록 */
+.fc-timeGrid-col-frame {
+  position: relative;
+  z-index: 1 !important;
+}
+
+.fc-timeGrid-col-events {
+  position: relative;
+  z-index: 0 !important;
+}
+
+/* 시간 구분선이 일정 위에 표시되도록 */
+.fc-timeGrid-col-separator {
+  z-index: 2 !important;
+  position: relative;
+}
+
+.fc-timeGrid-slot {
+  border-top: 1px solid #ddd !important;
+  z-index: 1 !important;
+  position: relative;
+  background-color: transparent !important;
+}
+
+/* 그리드 라인을 더 명확하게 표시 */
+.fc-timeGrid-slot-lane {
+  border-top: 1px solid #ddd !important;
+  z-index: 1 !important;
+  position: relative;
+}
+
+/* 목록 뷰에서 일정 텍스트 ellipsis 처리 */
+.fc-list-event {
+  overflow: hidden !important;
+}
+
+.fc-list-event-title {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  min-width: 0 !important;
+}
+
+.fc-list-event-title-container {
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+/* 팝오버가 모달 뒤에 숨겨지도록 z-index 설정 */
+.fc-popover,
+.fc-more-popover {
+  z-index: 1000 !important; /* MUI 모달(1300)보다 낮게 설정 */
+}

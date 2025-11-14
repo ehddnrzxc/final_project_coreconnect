@@ -11,7 +11,7 @@ import { Box,
 } from "@mui/material";
 import { getMySchedules, createSchedule, updateSchedule, deleteSchedule } from "../api/scheduleAPI";
 import { addParticipant, deleteParticipant, getParticipantsBySchedule } from "../api/scheduleParticipantAPI";
-import { toISO } from "../../../utils/dateFormat";
+import { toISO, toLocalDate } from "../../../utils/dateFormat";
 import ScheduleCategoryPanel from "../components/ScheduleCategoryPanel";
 import ScheduleModal from "../components/ScheduleModal";
 import ScheduleDetailModal from "../components/ScheduleDetailModal";
@@ -42,6 +42,36 @@ export default function CalendarPage() {
   };
 
 
+  // 하루 종일 일정인지 판단하는 헬퍼 함수
+  const isFullDayEvent = (startDateTime, endDateTime) => {
+    const startDate = new Date(startDateTime);
+    const endDate = new Date(endDateTime);
+    const startDateStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, "0")}-${String(startDate.getDate()).padStart(2, "0")}`;
+    const endDateStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, "0")}-${String(endDate.getDate()).padStart(2, "0")}`;
+    
+    // 같은 날짜에 시작하고 끝나는 경우
+    const isSameDay = startDateStr === endDateStr;
+    if (!isSameDay) return false;
+    
+    const startHour = startDate.getHours();
+    const startMinute = startDate.getMinutes();
+    const endHour = endDate.getHours();
+    const endMinute = endDate.getMinutes();
+    const duration = endDate.getTime() - startDate.getTime();
+    
+    // 하루 종일 일정 판단: 정확히 00:00부터 23:59까지 또는 다음날 00:00까지
+    // 1. 시작이 00:00:00이고 종료가 23:59:00 이상이거나 다음날 00:00:00
+    // 2. duration이 23시간 59분 이상 (거의 하루 종일)
+    const isFullDay = 
+      startHour === 0 && 
+      startMinute === 0 && 
+      ((endHour === 23 && endMinute >= 59) || // 23:59 이상
+       (endHour >= 24) || // 다음날 00:00 (24시 이상)
+       (duration >= 23 * 60 * 60 * 1000 + 59 * 60 * 1000)); // 23시간 59분 이상
+    
+    return isFullDay;
+  };
+
   // 일정 fetch 함수를 별도 정의
   const fetchSchedules = async (colors) => {
     try {
@@ -52,12 +82,36 @@ export default function CalendarPage() {
           colors[s.categoryId] ||
           (s.visibility === "PRIVATE" ? "#999999" : "#00a0e9");
 
+        // multi-day event인지 확인 (하루를 넘어가는지)
+        const startDateStr = toLocalDate(s.startDateTime);
+        const endDateStr = toLocalDate(s.endDateTime);
+        const isMultiDay = startDateStr !== endDateStr;
+        const isAllDayEvent = isFullDayEvent(s.startDateTime, s.endDateTime) || isMultiDay;
+        
+        // FullCalendar의 all-day event는 날짜 문자열 형식 사용 (timezone 문제 방지)
+        // end는 exclusive이므로 종료일까지 포함하려면 다음날로 설정
+        let eventStart = toISO(s.startDateTime);
+        let eventEnd = toISO(s.endDateTime);
+        
+        if (isAllDayEvent) {
+          // 날짜 문자열로 직접 생성 (timezone 문제 방지)
+          // 시작일: YYYY-MM-DD 형식
+          eventStart = startDateStr;
+          
+          // 종료일의 다음날 (종료일까지 포함하기 위해)
+          const endDateObj = new Date(s.endDateTime);
+          endDateObj.setDate(endDateObj.getDate() + 1);
+          eventEnd = toLocalDate(endDateObj);
+        }
+        
         return {
-          id: s.id,
+          id: String(s.id), // 문자열로 변환하여 일관성 유지
           title:
             s.visibility === "PRIVATE" ? `${s.title}` : s.title,
-          start: toISO(s.startDateTime),
-          end: toISO(s.endDateTime),
+          start: eventStart,
+          end: eventEnd,
+          // 하루 종일 일정이거나 multi-day event인 경우 allDay로 설정
+          allDay: isAllDayEvent,
           content: s.content,
           location: s.location,
           visibility: s.visibility,
@@ -68,6 +122,9 @@ export default function CalendarPage() {
           categoryName: s.categoryName,
           meetingRoomName: s.meetingRoomName,
           dotColor: color,
+          // 원래 시작/종료 시간 저장 (multi-day event 처리용)
+          originalStartDateTime: s.startDateTime,
+          originalEndDateTime: s.endDateTime,
         };
       });
 
@@ -151,40 +208,54 @@ export default function CalendarPage() {
 
   // popover 닫기 + 상세 모달 열기
   const handleEventClickWrapper = (info) => {
-    setTimeout(() => {
-      document
-        .querySelectorAll(".fc-popover, .fc-more-popover")
-        .forEach((el) => el.remove());
-    }, 0);
-
+    // handleEventClick 내부에서 팝오버 제거를 처리하므로 여기서는 바로 호출
     handleEventClick(info);
   };
 
   /** 일정 클릭 → 상세보기 모달 열기 */
   const handleEventClick = async (info) => {
-
-    info.jsEvent.stopPropagation(); 
-
-    const clicked = events.find((e) => e.id === Number(info.event.id));
-    if (!clicked) return;
-
-    const isOwnerEmail = clicked.userEmail === currentUserEmail;
-    const currentUserRole = JSON.parse(localStorage.getItem("user"))?.role;
-
-    // 공개 일정은 누구나 접근 가능
-    if (clicked.visibility !== "PRIVATE") {
-      setDetailId(clicked.id);
-      setDetailOpen(true);
-      return;
-    }
-
-    // 관리자면 PRIVATE은 아예 상세 요청하지 않음 (참가자 API도 호출 X)
-    if (currentUserRole === "ADMIN") {
-      showSnack("비공개 일정은 관리자도 열람할 수 없습니다.", "info");
-      return;
-    }
-
+    // 팝오버 즉시 제거 (모달 열기 전에)
+    document
+      .querySelectorAll(".fc-popover, .fc-more-popover")
+      .forEach((el) => el.remove());
+    
     try {
+      info.jsEvent.stopPropagation();
+      info.jsEvent.preventDefault(); // FullCalendar의 기본 동작(팝오버 유지 등) 차단 
+
+      // 이벤트 ID를 문자열로 변환하여 비교 (FullCalendar는 ID를 문자열로 저장할 수 있음)
+      const eventId = String(info.event.id);
+      const clicked = events.find((e) => String(e.id) === eventId);
+      
+      if (!clicked) {
+        console.warn("일정을 찾을 수 없습니다. eventId:", eventId, "events:", events);
+        return;
+      }
+
+      const isOwnerEmail = clicked.userEmail === currentUserEmail;
+      const currentUserRole = JSON.parse(localStorage.getItem("user"))?.role;
+
+      // 공개 일정은 누구나 접근 가능
+      if (clicked.visibility !== "PRIVATE") {
+        // React 렌더링 중 상태 업데이트를 방지하기 위해 setTimeout 사용
+        setTimeout(() => {
+          // 모달 열기 직전에 팝오버 재제거 (FullCalendar가 재생성했을 수 있음)
+          document
+            .querySelectorAll(".fc-popover, .fc-more-popover")
+            .forEach((el) => el.remove());
+          
+          setDetailId(clicked.id);
+          setDetailOpen(true);
+        }, 0);
+        return;
+      }
+
+      // 관리자면 PRIVATE은 아예 상세 요청하지 않음 (참가자 API도 호출 X)
+      if (currentUserRole === "ADMIN") {
+        showSnack("비공개 일정은 관리자도 열람할 수 없습니다.", "info");
+        return;
+      }
+
       // PRIVATE 일정일 경우: 참가자 목록 조회
       const participants = await getParticipantsBySchedule(clicked.id);
       const isParticipant = participants.some(
@@ -192,8 +263,16 @@ export default function CalendarPage() {
       );
 
       if (isOwnerEmail || isParticipant) {
-        setDetailId(clicked.id);
-        setDetailOpen(true);
+        // React 렌더링 중 상태 업데이트를 방지하기 위해 setTimeout 사용
+        setTimeout(() => {
+          // 모달 열기 직전에 팝오버 재제거 (FullCalendar가 재생성했을 수 있음)
+          document
+            .querySelectorAll(".fc-popover, .fc-more-popover")
+            .forEach((el) => el.remove());
+          
+          setDetailId(clicked.id);
+          setDetailOpen(true);
+        }, 0);
       } else {
         showSnack("비공개 일정은 본인 또는 참여자만 열람할 수 있습니다.", "warning");
       }
@@ -207,40 +286,80 @@ export default function CalendarPage() {
   const handleSubmit = async (formData, isEdit) => {
     try {
       if (isEdit && selectedEvent) {
-
         const updated = await updateSchedule(selectedEvent.id, formData);
 
+        // allDay 이벤트인지 확인 (수정 후에도 동일한 로직 적용)
+        const startDateStr = toLocalDate(updated.startDateTime);
+        const endDateStr = toLocalDate(updated.endDateTime);
+        const isMultiDay = startDateStr !== endDateStr;
+        const isAllDayEvent = isFullDayEvent(updated.startDateTime, updated.endDateTime) || isMultiDay;
+        
+        // start/end 형식 결정 (allDay는 YYYY-MM-DD, 일반은 ISO)
+        let eventStart = toISO(updated.startDateTime);
+        let eventEnd = toISO(updated.endDateTime);
+        
+        if (isAllDayEvent) {
+          eventStart = startDateStr;
+          const endDateObj = new Date(updated.endDateTime);
+          endDateObj.setDate(endDateObj.getDate() + 1);
+          eventEnd = toLocalDate(endDateObj);
+        }
+
         setEvents((prev) =>
-          prev.map((e) =>
-            e.id === selectedEvent.id
-              ? {
-                  ...e,
-                  title: updated.visibility === "PRIVATE" ? `${updated.title}` : updated.title,
-                  start: toISO(updated.startDateTime),
-                  end: toISO(updated.endDateTime),
-                  content: updated.content,
-                  location: updated.location,
-                  visibility: updated.visibility,
-                  userId: updated.userId,
-                  userEmail: updated.userEmail,
-                  userName: updated.userName,
-                  categoryId: updated.categoryId,          
-                  categoryName: updated.categoryName,
-                  meetingRoomName: updated.meetingRoomName,
-                  meetingRoomId: updated.meetingRoomId,
-                  dotColor: categoryColors[updated.categoryId]
-                }
-              : e
-          )
+          prev.map((e) => {
+            // ID 타입 불일치 문제 해결: String 변환으로 비교
+            if (String(e.id) === String(selectedEvent.id)) {
+              return {
+                ...e,
+                title: updated.visibility === "PRIVATE" ? `${updated.title}` : updated.title,
+                start: eventStart,
+                end: eventEnd,
+                allDay: isAllDayEvent,
+                content: updated.content,
+                location: updated.location,
+                visibility: updated.visibility,
+                userId: updated.userId,
+                userEmail: updated.userEmail,
+                userName: updated.userName,
+                categoryId: updated.categoryId,          
+                categoryName: updated.categoryName,
+                meetingRoomName: updated.meetingRoomName,
+                meetingRoomId: updated.meetingRoomId,
+                dotColor: categoryColors[updated.categoryId],
+                originalStartDateTime: updated.startDateTime,
+                originalEndDateTime: updated.endDateTime,
+              };
+            }
+            return e;
+          })
         );
         showSnack("일정이 수정되었습니다", "success");
       } else {
         const created = await createSchedule(formData);
+        
+        // allDay 이벤트인지 확인 (등록 시에도 동일한 로직 적용)
+        const startDateStr = toLocalDate(created.startDateTime);
+        const endDateStr = toLocalDate(created.endDateTime);
+        const isMultiDay = startDateStr !== endDateStr;
+        const isAllDayEvent = isFullDayEvent(created.startDateTime, created.endDateTime) || isMultiDay;
+        
+        // start/end 형식 결정 (allDay는 YYYY-MM-DD, 일반은 ISO)
+        let eventStart = toISO(created.startDateTime);
+        let eventEnd = toISO(created.endDateTime);
+        
+        if (isAllDayEvent) {
+          eventStart = startDateStr;
+          const endDateObj = new Date(created.endDateTime);
+          endDateObj.setDate(endDateObj.getDate() + 1);
+          eventEnd = toLocalDate(endDateObj);
+        }
+        
         const newEvent = {
-          id: created.id,
+          id: String(created.id), // 문자열로 변환하여 일관성 유지
           title: created.visibility === "PRIVATE" ? `${created.title}` : created.title,
-          start: toISO(created.startDateTime),
-          end: toISO(created.endDateTime),
+          start: eventStart,
+          end: eventEnd,
+          allDay: isAllDayEvent,
           content: created.content,
           location: created.location,
           visibility: created.visibility,
@@ -252,6 +371,8 @@ export default function CalendarPage() {
           meetingRoomName: created.meetingRoomName,
           meetingRoomId: created.meetingRoomId,
           dotColor: categoryColors[created.categoryId],
+          originalStartDateTime: created.startDateTime,
+          originalEndDateTime: created.endDateTime,
         };
         setEvents((prev) => [...prev, newEvent]);
         showSnack("일정이 등록되었습니다", "success");
@@ -288,139 +409,185 @@ export default function CalendarPage() {
     const isPrivate = event.visibility === "PRIVATE";
     const color = event.dotColor;  
 
-    const start = arg.event.start;
-    const end = arg.event.end;
-    const isMultiDay = end && (end - start) >= 24 * 60 * 60 * 1000;
-    
-
     const view = arg.view.type;               // 뷰 타입 체크
     const isAllDay = arg.event.allDay;        // 종일 일정 여부
-    const isTimeView = view === "timeGridWeek" || view === "timeGridDay"; 
+    const isTimeView = view === "timeGridWeek" || view === "timeGridDay";
+    
+    // multi-day event인지 확인 (원래 시작/종료 날짜로 판단)
+    const originalStart = event.originalStartDateTime ? new Date(event.originalStartDateTime) : null;
+    const originalEnd = event.originalEndDateTime ? new Date(event.originalEndDateTime) : null;
+    const getDateStr = (date) => {
+      if (!date) return null;
+      const d = date instanceof Date ? date : new Date(date);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    };
+    const originalStartDate = originalStart ? getDateStr(originalStart) : null;
+    const originalEndDate = originalEnd ? getDateStr(originalEnd) : null;
+    const isMultiDay = originalStartDate && originalEndDate && originalStartDate !== originalEndDate; 
 
     const privateStyle = isPrivate ? { opacity: 0.55 } : {};
 
-    // 공통 Hover 스타일 적용 함수
+    // 카테고리 색상을 rgba로 변환하는 헬퍼 함수
+    const hexToRgba = (hex, alpha = 0.15) => {
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    };
+    
+    // 시간 포맷팅 헬퍼
+    const formatTime = (date) => {
+      if (!date) return "";
+      const d = date instanceof Date ? date : new Date(date);
+      return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    };
+
+    // 모든 뷰용 Hover 스타일 적용 함수
     const handleEnter = (e) => {
-      e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.06)";
+      // 카테고리 색상을 더 진하게 표시
+      e.currentTarget.style.backgroundColor = hexToRgba(color, 0.25);
     };
     const handleLeave = (e) => {
-      e.currentTarget.style.backgroundColor = "transparent";
+      // 원래 배경색으로 복원
+      e.currentTarget.style.backgroundColor = hexToRgba(color, 0.15);
     };
 
-    /** 종일 또는 날짜 범위 일정 → bar 스타일 */
-    if (isAllDay || isMultiDay) {
-      return (
-        <div
-          onMouseEnter={(e) => {
-            e.currentTarget.style.filter = "brightness(0.92)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.filter = "none";
-          }}  
-          style={{
-            backgroundColor: color,      // 바 배경 = 카테고리색
-            color: "#fff",               // 글자 흰색
-            padding: "3px 6px",
-            borderRadius: "4px",
-            fontWeight: 600,
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            overflow: "hidden",
-            ...privateStyle,
-          }}
-        >
-          {/* 시간 */}
-          {arg.timeText && (
-            <span style={{ flexShrink: 0, color: "#555" }}>{arg.timeText}</span>
-          )}
+    // 모든 뷰에서 공통으로 사용할 시간 표시 포맷팅 함수
+    const getTimeDisplayText = () => {
+      // 원래 시간이 없으면 기존 방식 사용
+      if (!originalStart || !originalEnd) {
+        return arg.timeText;
+      }
+      
+      // 하루 이내 일정: "시작시간 ~ 종료시간" 형식으로 표시
+      if (!isMultiDay) {
+        return `${formatTime(originalStart)} ~ ${formatTime(originalEnd)}`;
+      }
 
-          {isPrivate && "🔒"}
-          <span>{arg.event.title}</span>
-        </div>
-      );
-    }
+      // FullCalendar는 multi-day event를 날짜별로 분할합니다.
+      // arg.isStart와 arg.isEnd 속성을 우선 사용합니다.
+      
+      // 시작일 판단: arg.isStart가 true인 경우
+      if (arg.isStart) {
+        return `${formatTime(originalStart)} ~`;
+      }
+      
+      // 종료일 판단: arg.isEnd가 true인 경우
+      if (arg.isEnd) {
+        return `~ ${formatTime(originalEnd)}`;
+      }
+      
+      // 중간 날짜는 시간 표시 없음
+      return "";
+    };
 
     /** 주간/일간 뷰 → left border 스타일 */
     if (isTimeView) {
+
+      const timeDisplayText = getTimeDisplayText();
+      
+      // isMultiDay는 이미 위에서 계산됨 (원래 시작/종료 날짜로 판단)
+      
+      // multi-day event도 하루 이내 일정과 동일한 스타일로 표시 (left border 스타일)
+      // 하루 이내 일정과 동일한 스타일
       return (
         <div
           onMouseEnter={handleEnter}   
           onMouseLeave={handleLeave}  
           style={{
             display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            minWidth: 0,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
+            flexDirection: "column",
+            alignItems: "flex-start",
+            gap: "4px",
+            height: "100%",
+            minHeight: "100%",
             borderLeft: `4px solid ${color}`, 
+            backgroundColor: hexToRgba(color, 0.15),
             paddingLeft: 6,
+            paddingTop: 4,
+            paddingBottom: 4,
             borderRadius: 4,
+            boxSizing: "border-box",
+            fontSize: "0.95em",
+            lineHeight: "1.4",
           }}
         >
-          {/* 시간 */}
-          {arg.timeText && (
-            <span style={{ flexShrink: 0, color: "#555" }}>{arg.timeText}</span>
-          )}
-
-          <span
-            style={{
-              fontWeight: 600,
-              color: "#000",
-              minWidth: 0,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              ...privateStyle,
-            }}
-          >
-            {isPrivate && "🔒"}
-            {arg.event.title}
-          </span>
+          {/* 시간 + 제목을 세로로 배치 */}
+          <div style={{ display: "flex", alignItems: "center", gap: "4px", width: "100%", minWidth: 0 }}>
+            {timeDisplayText && (
+              <span style={{ flexShrink: 0, color: "#555", fontSize: "0.85em", lineHeight: "1.4" }}>{timeDisplayText}</span>
+            )}
+            <span
+              style={{
+                fontWeight: 600,
+                color: "#000",
+                fontSize: "0.95em",
+                lineHeight: "1.4",
+                minWidth: 0,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                flex: 1,
+                ...privateStyle,
+              }}
+            >
+              {isPrivate && "🔒 "}
+              {arg.event.title}
+            </span>
+          </div>
         </div>
       );
     }
 
     
     /** 월간(dayGridMonth) / 목록(list) 스타일 */
+    // 주간/일간 뷰와 동일한 스타일로 통일
+    const timeDisplayText = getTimeDisplayText();
+    
     return (
       <div
         onMouseEnter={handleEnter}   
         onMouseLeave={handleLeave}   
         style={{
           display: "flex",
-          alignItems: "center",
-          gap: "6px",
-          minWidth: 0,                 
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          borderRadius: 4,
-          borderLeft: `4px solid ${color}`,
+          flexDirection: "column",
+          alignItems: "flex-start",
+          gap: "4px",
+          borderLeft: `4px solid ${color}`, 
+          backgroundColor: hexToRgba(color, 0.15),
           paddingLeft: 6,
+          paddingTop: 4,
+          paddingBottom: 4,
+          borderRadius: 4,
+          boxSizing: "border-box",
+          fontSize: "0.95em",
+          lineHeight: "1.4",
           ...privateStyle,
         }}
       >
-        {/* 시간 */}
-        {arg.timeText && (
-          <span style={{ flexShrink: 0, color: "#555" }}>{arg.timeText}</span>
-        )}        
-
-        {/* 제목 */}
-        <span
-          style={{
-            fontWeight: 600,
-            color: "#000",
-            minWidth: 0,               //  내부 텍스트 ellipsis 필수
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            ...privateStyle,
-          }}
-        >
-          {isPrivate && "🔒 "}
-          {arg.event.title}
-        </span>
+        {/* 시간 + 제목을 세로로 배치 */}
+        <div style={{ display: "flex", alignItems: "center", gap: "4px", width: "100%", minWidth: 0 }}>
+          {timeDisplayText && (
+            <span style={{ flexShrink: 0, color: "#555", fontSize: "0.85em", lineHeight: "1.4" }}>{timeDisplayText}</span>
+          )}
+          <span
+            style={{
+              fontWeight: 600,
+              color: "#000",
+              fontSize: "0.95em",
+              lineHeight: "1.4",
+              minWidth: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              flex: 1,
+              ...privateStyle,
+            }}
+          >
+            {isPrivate && "🔒 "}
+            {arg.event.title}
+          </span>
+        </div>
       </div>
     );
   };
@@ -524,12 +691,32 @@ export default function CalendarPage() {
 
           eventDisplay="block"
           eventDidMount={(info) => {
-
+            const view = info.view.type;
+            const isTimeView = view === "timeGridWeek" || view === "timeGridDay";
+            
             info.el.style.border = "none";
-            info.el.style.whiteSpace = "nowrap";
-            info.el.style.overflow = "hidden";
-            info.el.style.textOverflow = "ellipsis";
             info.el.style.backgroundColor = "transparent";
+            info.el.style.background = "transparent";
+            
+            // 주간/일간 뷰일 때
+            if (isTimeView) {
+              // renderEventContent에서 설정한 배경색은 유지하고, FullCalendar 기본 요소만 투명 처리
+              const eventMain = info.el.querySelector(".fc-event-main");
+              if (eventMain) {
+                // .fc-event-main은 renderEventContent의 div를 감싸는 요소이므로 투명 유지
+                eventMain.style.backgroundColor = "transparent";
+                eventMain.style.background = "transparent";
+              }
+
+              // 주간/일간 뷰에서는 높이가 시간에 맞게 자동 조정되도록
+              info.el.style.height = "100%";
+              info.el.style.minHeight = "100%";
+            } else {
+              // 주간/일간 뷰가 아닐 때만 텍스트 줄바꿈 방지
+              info.el.style.whiteSpace = "nowrap";
+              info.el.style.overflow = "hidden";
+              info.el.style.textOverflow = "ellipsis";
+            }
           }}
         />
 

@@ -18,7 +18,7 @@ import {
   Chip, 
   Box,
 } from "@mui/material";
-import { toBackendFormat, toISO } from "../../../utils/dateFormat";
+import { toBackendFormat, toISO, toDateTimeLocal, fromDateTimeLocal } from "../../../utils/dateFormat";
 import {
   getMeetingRooms,
   getScheduleCategories,
@@ -56,7 +56,7 @@ export default function ScheduleModal({
     startDateTime: date ? `${date} 09:00:00` : "",
     endDateTime: date ? `${date} 10:00:00` : "",
     meetingRoomId: "",
-    categoryId: "1",
+    categoryId: "",
     participantIds: [],
     visibility: "PUBLIC", 
   });
@@ -77,8 +77,25 @@ export default function ScheduleModal({
     load();
   }, [open]);
 
-  /**  수정 모드라면 기존 값 채우기 */
+  /** 모달이 열릴 때 초기화 및 수정 모드일 때 기존 값 채우기 */
   useEffect(() => {
+    if (!open) {
+      // 모달이 닫히면 form 초기화
+      setForm({
+        title: "",
+        content: "",
+        location: "",
+        startDateTime: date ? `${date} 09:00:00` : "",
+        endDateTime: date ? `${date} 10:00:00` : "",
+        meetingRoomId: "",
+        categoryId: "",
+        participantIds: [],
+        visibility: "PUBLIC",
+      });
+      return;
+    }
+
+    // 수정 모드라면 기존 값 채우기
     if (isEdit && initialData) {
       setForm({
         title: initialData.title || "",
@@ -91,42 +108,25 @@ export default function ScheduleModal({
         participantIds: initialData.participantIds || [],
         visibility: initialData.visibility || "PUBLIC",
       });
+    } else if (date) {
+      // 새 일정 등록 모드이고 date가 있으면 초기값 설정
+      setForm((prev) => ({
+        ...prev,
+        startDateTime: `${date} 09:00:00`,
+        endDateTime: `${date} 10:00:00`,
+      }));
     }
-  }, [initialData]);
-
-  /** 수정 모드 전용: initialData 세팅 후 참석자 일정 현황 즉시 재조회 */
-  useEffect(() => {
-    if (
-      isEdit &&
-      form.participantIds.length > 0 &&
-      form.startDateTime &&
-      form.endDateTime
-    ) {
-      (async () => {
-        try {
-          const availability = await getUsersAvailability(
-            form.participantIds,
-            toBackendFormat(form.startDateTime),
-            toBackendFormat(form.endDateTime)
-          );
-          setAvailabilityMap({ ...availability });
-        } catch (err) {
-          showSnack("참석자 일정 현황을 불러오는 중 오류가 발생했습니다.", "error");
-        }
-      })();
-    }
-  }, [isEdit, form.participantIds, form.startDateTime, form.endDateTime]);
-
+  }, [open, initialData, isEdit, date]);
 
   /** 참석자 일정 현황 조회 */
   useEffect(() => {
-    const checkParticipantsAvailability = async () => {
-      if (form.participantIds.length === 0 || !form.startDateTime || !form.endDateTime) return;
+    if (form.participantIds.length === 0 || !form.startDateTime || !form.endDateTime) return;
 
+    const checkParticipantsAvailability = async () => {
       try {
         const availability = await getUsersAvailability(
           form.participantIds,
-          toBackendFormat(form.startDateTime), // "yyyy-MM-dd HH:mm:ss"
+          toBackendFormat(form.startDateTime),
           toBackendFormat(form.endDateTime)
         );
         setAvailabilityMap({ ...availability });
@@ -136,7 +136,6 @@ export default function ScheduleModal({
     };
     checkParticipantsAvailability();
   }, [form.participantIds, form.startDateTime, form.endDateTime, showSnack]);
-
 
   /** 회의실 선택 시 시간대 기반으로 가용성 조회 */
   const handleRoomSelectOpen = async () => {
@@ -265,14 +264,12 @@ export default function ScheduleModal({
               ))}
             </TextField>
 
-            
-
             {/* 참석자 선택 + 상태 표시 */}
             <Autocomplete
               multiple
               options={users}
               getOptionLabel={(option) => `${option.name} (${option.email})`}
-              value={users.filter((u) => form.participantIds.includes(u.id))}
+              value={selectedUsers}
               onChange={(e, selected) =>
                 setForm((prev) => ({
                   ...prev,
@@ -309,16 +306,22 @@ export default function ScheduleModal({
               label="시작 시간"
               name="startDateTime"
               type="datetime-local"
-              value={form.startDateTime ? form.startDateTime.replace(" ", "T") : ""}
-              onChange={handleChange}
+              value={toDateTimeLocal(form.startDateTime)}
+              onChange={(e) => {
+                const formatted = fromDateTimeLocal(e.target.value);
+                setForm((prev) => ({ ...prev, startDateTime: formatted }));
+              }}
               fullWidth
             />
             <TextField
               label="종료 시간"
               name="endDateTime"
               type="datetime-local"
-              value={form.endDateTime ? form.endDateTime.replace(" ", "T") : ""}
-              onChange={handleChange}
+              value={toDateTimeLocal(form.endDateTime)}
+              onChange={(e) => {
+                const formatted = fromDateTimeLocal(e.target.value);
+                setForm((prev) => ({ ...prev, endDateTime: formatted }));
+              }}
               fullWidth
             />
 

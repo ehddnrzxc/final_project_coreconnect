@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Box, Typography, Stack, Tooltip } from "@mui/material";
+import { toDate } from "../../../utils/dateFormat";
 
 /**
  * 참석자 일정표 (그룹웨어 스타일)
@@ -17,8 +18,10 @@ export default function AttendeeTimelinePanel({
   // 30분 단위 구간 생성
   const timeSlots = useMemo(() => {
     const slots = [];
-    const start = new Date(startDateTime.replace(" ", "T"));
-    const end = new Date(endDateTime.replace(" ", "T"));
+    const start = toDate(startDateTime);
+    const end = toDate(endDateTime);
+    if (!start || !end) return [];
+    
     for (let t = new Date(start); t < end; t.setMinutes(t.getMinutes() + 30)) {
       slots.push(`${t.getHours().toString().padStart(2, "0")}:${t
         .getMinutes()
@@ -31,17 +34,20 @@ export default function AttendeeTimelinePanel({
   // 특정 시간대에 일정이 있는지 여부
   const isBusy = (userId, time) => {
     const schedules = availabilityMap[userId] || [];
+    if (schedules.length === 0) return false;
 
     // ISO(T포함) / LocalDateTime(공백) 모두 대응
     const dateBase = startDateTime.includes("T")
       ? startDateTime.split("T")[0]
       : startDateTime.split(" ")[0];
 
-    const target = new Date(`${dateBase}T${time}:00`);
+    const target = toDate(`${dateBase}T${time}:00`);
+    if (!target) return false;
 
     return schedules.some((s) => {
-      const sStart = new Date(s.startDateTime.replace(" ", "T"));
-      const sEnd = new Date(s.endDateTime.replace(" ", "T"));
+      const sStart = toDate(s.startDateTime);
+      const sEnd = toDate(s.endDateTime);
+      if (!sStart || !sEnd) return false;
       return target >= sStart && target < sEnd;
     });
   };
@@ -97,19 +103,16 @@ export default function AttendeeTimelinePanel({
                     title={
                       busy
                         ? availabilityMap[u.id]
-                            ?.filter(
-                              (s) =>
-                                new Date(
-                                  `${startDateTime.split(" ")[0]}T${time}:00`
-                                ) >=
-                                  new Date(
-                                    s.startDateTime.replace(" ", "T")
-                                  ) &&
-                                new Date(
-                                  `${startDateTime.split(" ")[0]}T${time}:00`
-                                ) <
-                                  new Date(s.endDateTime.replace(" ", "T"))
-                            )
+                            ?.filter((s) => {
+                              const dateBase = startDateTime.includes("T")
+                                ? startDateTime.split("T")[0]
+                                : startDateTime.split(" ")[0];
+                              const target = toDate(`${dateBase}T${time}:00`);
+                              const sStart = toDate(s.startDateTime);
+                              const sEnd = toDate(s.endDateTime);
+                              if (!target || !sStart || !sEnd) return false;
+                              return target >= sStart && target < sEnd;
+                            })
                             .map((s) => s.title)
                             .join(", ")
                         : "일정 없음"

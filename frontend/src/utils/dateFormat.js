@@ -89,6 +89,34 @@ export const toISO = (input) => {
 };
 
 /**
+ * ISO / LocalDateTime → datetime-local input 형식("yyyy-MM-ddThh:mm")
+ * 타임존 오프셋과 초를 제거하여 datetime-local input에 맞게 변환
+ */
+export const toDateTimeLocal = (input) => {
+  if (!input) return "";
+  const iso = toISO(input);
+  if (!iso) return "";
+  
+  // 타임존 오프셋 제거 (+09:00, -05:00 등)
+  let result = iso.replace(/[+-]\d{2}:\d{2}$/, "");
+  
+  // 초(:ss) 제거 (datetime-local은 초를 표시하지 않음)
+  result = result.replace(/:\d{2}$/, "");
+  
+  return result;
+};
+
+/**
+ * datetime-local input 값 → LocalDateTime 형식("yyyy-MM-dd HH:mm:ss")
+ * datetime-local input에서 받은 "yyyy-MM-ddThh:mm" 형식을 백엔드 형식으로 변환
+ */
+export const fromDateTimeLocal = (input) => {
+  if (!input) return "";
+  // "yyyy-MM-ddThh:mm" → "yyyy-MM-dd HH:mm:ss"
+  return input.replace("T", " ") + ":00";
+};
+
+/**
  * 백엔드(LocalDateTime or ISO) → JS Date 객체 변환
  * DatePicker 초기값, 시간 계산 등에서 사용
  */
