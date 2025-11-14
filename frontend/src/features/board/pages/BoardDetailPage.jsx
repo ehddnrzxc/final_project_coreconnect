@@ -24,8 +24,7 @@ import { getBoardDetail, deleteBoard } from "../api/boardAPI";
 // 게시글 API
 // getBoardDetail: 게시글 상세 조회
 // deleteBoard: 게시글 삭제
-import { getFilesByBoard, getFile, downloadZipFiles } from "../api/boardFileAPI";
-// 파일 API: 특정 게시글의 첨부파일 목록 조회
+import { getFilesByBoard, getFile, downloadZipFiles } from "../api/boardFileAPI"; // 파일 API: 특정 게시글의 첨부파일 목록 조회
 import { getRepliesByBoard, createReply, updateReply, deleteReply } from "../api/boardReplyAPI";
 // 댓글 API
 // getRepliesByBoard: 게시글 댓글 목록 조회
@@ -34,13 +33,12 @@ import { getRepliesByBoard, createReply, updateReply, deleteReply } from "../api
 // deleteReply: 댓글 삭제
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext"; // 전역 스낵바 컨텍스트
 import ConfirmDialog from "../../../components/utils/ConfirmDialog"; // 공용 확인창 컴포넌트 임포트
-import {
-  Modal,      // 첨부파일 미리보기 모달
-  Card,       // 첨부파일 카드
-  CardMedia,  // 카드 안 이미지
-  CardContent,// 카드 하단 텍스트 영역
-  IconButton, // 카드 우측 상단 X 버튼 등
-} from "@mui/material";
+import { Modal, Card, CardMedia, CardContent, IconButton } from "@mui/material";
+// Modal: 첨부파일 미리보기 모달
+// Card: 첨부파일 카드
+// CardMedia: 카드 안 이미지
+// CardContent: 카드 하단 텍스트 영역
+// IconButton: 카드 우측 상단 X 버튼
 import CloseIcon from "@mui/icons-material/Close";             // 카드 X 버튼
 import DownloadIcon from "@mui/icons-material/Download";       // 다운로드 버튼
 import DescriptionIcon from "@mui/icons-material/Description"; // 비이미지 파일 아이콘
@@ -265,7 +263,7 @@ const BoardDetailPage = () => {
     setConfirmType(null);
   };
 
-  // ★★★ A버전 변경 — 단일 파일 Blob 다운로드 방식으로 완전 교체
+  // 단일 파일 Blob 다운로드 방식으로 완전 교체
   const handleSingleDownload = async (file) => {
   const res = await getFile(file.id);
   const data = res.data.data;
@@ -376,7 +374,7 @@ const BoardDetailPage = () => {
         </Typography>
       </Paper>
 
-      {/* ★★★ 첨부파일 섹션 (내용 아래 / 댓글 위) ★★★ */}
+      {/* 첨부파일 섹션 (내용 아래 / 댓글 위) */}
       {files.length > 0 && (
         <Box sx={{ width: "80%", mb: 4 }}>
           {/* 상단 타이틀 + 전체 다운로드 버튼 */}
@@ -475,7 +473,7 @@ const BoardDetailPage = () => {
         </Box>
       )}
 
-      {/* ★ 첨부파일 미리보기 모달 (작성 페이지와 동일 컨셉) */}
+      {/* 첨부파일 미리보기 모달 */}
       <Modal open={openModal} onClose={closePreview}>
         <Box
           sx={{

@@ -1,19 +1,15 @@
 import { useEffect, useState } from "react";
 import {
-  Box, Button, TextField, Typography, Checkbox, FormControlLabel, Select, MenuItem, InputLabel, FormControl, Modal, Card, CardMedia, CardContent, IconButton,
-} from "@mui/material";
-
+  Box, Button, TextField, Typography, Checkbox, FormControlLabel, Select, MenuItem, InputLabel,
+  FormControl, Modal, Card, CardMedia, CardContent, IconButton } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import DownloadIcon from "@mui/icons-material/Download";
 import DescriptionIcon from "@mui/icons-material/Description";
-
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-
 import { createBoard, getBoardDetail, updateBoard } from "../api/boardAPI";
-import { uploadFiles, getFilesByBoard } from "../api/boardFileAPI";              // 서버 업로드 API
+import { uploadFiles, getFilesByBoard } from "../api/boardFileAPI"; // 서버 업로드 API
 import { getAllCategories } from "../api/boardCategoryAPI";
-import { downloadZipFiles } from "../api/boardFileAPI";         // ZIP 다운로드 API 사용
-
+import { downloadZipFiles } from "../api/boardFileAPI"; // ZIP 다운로드 API
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 
 
@@ -79,7 +75,7 @@ const BoardWritePage = () => {
 
     (async () => {
       try {
-        // 1) 게시글 정보
+        // 게시글 정보
         const res = await getBoardDetail(boardId);
         const data = res.data.data;
 
@@ -94,21 +90,21 @@ const BoardWritePage = () => {
           pinned: data.pinned,
         });
 
-        // 2) 기존 파일 목록 조회 추가 (★필수)
-        const fileRes = await getFilesByBoard(boardId);               // ★ 수정
-        const rawFiles = fileRes.data.data || [];                     // ★ 수정
+        // 기존 파일 목록 조회 추가
+        const fileRes = await getFilesByBoard(boardId);          
+        const rawFiles = fileRes.data.data || [];                
 
         // 기존 파일은 백엔드 DTO 구조(fileName, fileSize, fileUrl 등)를
         // 프론트에서 사용하는 통합 구조(name, size, url, type 등)로 변환
-        const existingFiles = rawFiles.map((f) => ({                  // ★ 수정
-          ...f,                                                       // ★ 수정: 필요시 다른 필드도 같이 보존
-          type: "existing",                                           // ★ 수정: 기존 파일 표시용 플래그
-          name: f.fileName,                                           // ★ 수정: 렌더링에서 공통으로 사용할 필드
-          size: f.fileSize,                                           // ★ 수정
-          url: f.fileUrl,                                             // ★ 수정: presigned URL
+        const existingFiles = rawFiles.map((f) => ({               
+          ...f, // 필요시 다른 필드도 같이 보존
+          type: "existing", // 기존 파일 표시용 플래그
+          name: f.fileName, // 렌더링에서 공통으로 사용할 필드
+          size: f.fileSize,                                           
+          url: f.fileUrl, // presigned URL
         }));
 
-        setFiles(existingFiles);  // ★ 이거 추가가 핵심 (변환된 구조로 세팅)
+        setFiles(existingFiles); // 변환된 구조로 세팅
 
       } catch (err) {
         showSnack("게시글 정보를 불러오지 못했습니다.", "error");
@@ -141,14 +137,14 @@ const BoardWritePage = () => {
 
     // 기존 파일 유지 + 새 파일 append
     // → 새 파일도 기존과 동일한 구조(type/new, name, size, file)로 맞춰줌
-    const wrapped = newFiles.map((file) => ({                       // ★ 수정
-      type: "new",                                                  // ★ 수정: 신규 파일 표시
-      file,                                                         // ★ 수정: 실제 File 객체 보관
-      name: file.name,                                              // ★ 수정
-      size: file.size,                                              // ★ 수정
-    }));                                                             // ★ 수정
+    const wrapped = newFiles.map((file) => ({                       
+      type: "new", // 신규 파일 표시
+      file, // 실제 File 객체 보관
+      name: file.name,                                              
+      size: file.size,                                              
+    }));                                                            
 
-    setFiles((prev) => [...prev, ...wrapped]);                       // ★ 수정
+    setFiles((prev) => [...prev, ...wrapped]);                      
   };
 
   // ---------------------------
@@ -183,20 +179,20 @@ const BoardWritePage = () => {
 
     try {
       // -----------------------------
-      // ① 수정 모드
+      // 수정 모드
       // -----------------------------
       if (boardId) {
 
-        // 1) 게시글 기본 정보 업데이트
+        // 게시글 기본 정보 업데이트
         await updateBoard(boardId, form);
 
-        // 2) ★ 새로 추가된 파일만 업로드
-        const uploadList = files                // ★ 추가
-          .filter((f) => f.type === "new")      // ★ 추가 (기존 파일 제외)
-          .map((f) => f.file);                  // ★ 추가 (File 객체만 추출)
+        // 새로 추가된 파일만 업로드
+        const uploadList = files                
+          .filter((f) => f.type === "new") // 기존 파일 제외
+          .map((f) => f.file); // File 객체만 추출
 
-        if (uploadList.length > 0) {            // ★ 추가
-          await uploadFiles(boardId, uploadList);  // ★ 추가
+        if (uploadList.length > 0) {          
+          await uploadFiles(boardId, uploadList);
         }
 
         showSnack("수정 완료!", "success");
@@ -205,7 +201,7 @@ const BoardWritePage = () => {
       }
 
       // -----------------------------
-      // ② 신규 작성 모드
+      // 신규 작성 모드
       // -----------------------------
       const res = await createBoard(form);
       const newId = res.data.data.id;
@@ -229,7 +225,7 @@ const BoardWritePage = () => {
   // 모달 열기
   // ---------------------------
   const openPreview = (file) => {
-    setPreviewFile(file);   // file 객체 그대로 저장 (type/new,existing 포함)  // ★ 수정(설명)
+    setPreviewFile(file);   // file 객체 그대로 저장 (type/new,existing 포함)
     setOpenModal(true);
   };
 
@@ -396,9 +392,9 @@ const BoardWritePage = () => {
                 component="img"
                 height="100"
                 image={
-                  file.type === "existing"                             // ★ 수정
-                    ? file.url                                         // ★ 수정: 기존 파일 → presigned URL
-                    : URL.createObjectURL(file.file)                  // ★ 수정: 신규 파일 → File 객체
+                  file.type === "existing"                           
+                    ? file.url // 기존 파일 → presigned URL
+                    : URL.createObjectURL(file.file) // 신규 파일 → File 객체
                 }
                 onClick={() => openPreview(file)}
               />
@@ -460,9 +456,9 @@ const BoardWritePage = () => {
           {previewFile && isImage(previewFile.name) ? (
             <img
               src={
-                previewFile.type === "existing"                        // ★ 수정
-                  ? previewFile.url                                    // ★ 수정: 기존 파일
-                  : URL.createObjectURL(previewFile.file)             // ★ 수정: 신규 파일
+                previewFile.type === "existing"                      
+                  ? previewFile.url // 기존 파일
+                  : URL.createObjectURL(previewFile.file) // 신규 파일
               }
               alt="preview"
               style={{
@@ -481,14 +477,14 @@ const BoardWritePage = () => {
               variant="contained"
               startIcon={<DownloadIcon />}
               onClick={() => {
-                if (!previewFile) return;                             // ★ 수정: 안전 체크
+                if (!previewFile) return; // 안전 체크
 
                 const link = document.createElement("a");
 
-                if (previewFile.type === "existing") {                // ★ 수정
-                  link.href = previewFile.url;                         // ★ 수정: 기존 파일은 URL 직접 다운로드
+                if (previewFile.type === "existing") {              
+                  link.href = previewFile.url; // 기존 파일은 URL 직접 다운로드
                 } else {
-                  link.href = URL.createObjectURL(previewFile.file);  // ★ 수정: 신규 파일은 File 객체로부터 URL 생성
+                  link.href = URL.createObjectURL(previewFile.file); // 신규 파일은 File 객체로부터 URL 생성
                 }
 
                 link.download = previewFile.name;

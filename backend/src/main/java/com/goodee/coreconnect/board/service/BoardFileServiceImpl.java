@@ -228,10 +228,9 @@ public class BoardFileServiceImpl implements BoardFileService {
             ResponseInputStream<GetObjectResponse> s3Input =
                     s3Client.getObject(
                             GetObjectRequest.builder()
-                                    .bucket(bucket)
-                                    .key(file.getS3ObjectKey())
-                                    .build()
-                    );
+                                            .bucket(bucket)
+                                            .key(file.getS3ObjectKey())
+                                            .build());
 
             // Zip 파일 항목 추가
             ZipEntry zipEntry = new ZipEntry(file.getFileName());
