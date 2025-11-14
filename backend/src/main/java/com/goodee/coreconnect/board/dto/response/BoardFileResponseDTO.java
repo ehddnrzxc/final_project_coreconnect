@@ -23,12 +23,13 @@ public class BoardFileResponseDTO {
     /**
      * Entity -> DTO 변환
      */
-    public static BoardFileResponseDTO toDTO(BoardFile file) {
+    public static BoardFileResponseDTO toDTO(BoardFile file, String presignedUrl) {
         return BoardFileResponseDTO.builder()
                                     .id(file.getId())
                                     .fileName(file.getFileName())
                                     .fileSize(file.getFileSize())
                                     .s3ObjectKey(file.getS3ObjectKey())
+                                    .fileUrl(presignedUrl)
                                     .deletedYn(file.getDeletedYn())
                                     .build();
     }

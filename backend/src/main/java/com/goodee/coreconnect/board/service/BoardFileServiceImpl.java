@@ -50,15 +50,14 @@ public class BoardFileServiceImpl implements BoardFileService {
     @Value("${cloud.aws.s3.bucket}")
     private String bucket;
 
+    /** Presigned URL 생성 */
     private String getPresignedUrl(String key) {
       GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
-              .signatureDuration(Duration.ofMinutes(3))
-              .getObjectRequest(req -> req
-                      .bucket(bucket)
-                      .key(key)
-                      .responseContentDisposition("attachment")
-              )
-              .build();
+                                                                      .signatureDuration(Duration.ofMinutes(3))
+                                                                      .getObjectRequest(req -> req.bucket(bucket)
+                                                                                                  .key(key)
+                                                                                                  .responseContentDisposition("attachment"))
+                                                                      .build();
 
       return presigner.presignGetObject(presignRequest).url().toString();
     }
@@ -81,8 +80,9 @@ public class BoardFileServiceImpl implements BoardFileService {
             throw new AccessDeniedException("인증된 사용자만 파일을 업로드할 수 있습니다.");
         }
 
-        // 본인 글이 아니면 업로드 불가
-        if (!loginUser.getId().equals(board.getUser().getId())) {
+        // 본인 글이 아니면 업로드 불가 (단, ADMIN 허용)
+        if (!loginUser.getId().equals(board.getUser().getId())
+            && loginUser.getRole() != Role.ADMIN) {
             throw new AccessDeniedException("본인 게시글만 파일을 업로드할 수 있습니다.");
         }
 
@@ -182,7 +182,6 @@ public class BoardFileServiceImpl implements BoardFileService {
     /**
      * 파일 삭제 (Soft Delete)
      * - S3 실제 삭제 하지 않음
-     * - 본인 글 또는 ADMIN만 가능
      */
     @Override
     public void deleteFile(Integer fileId) {
@@ -194,14 +193,34 @@ public class BoardFileServiceImpl implements BoardFileService {
             throw new AccessDeniedException("인증된 사용자만 파일을 삭제할 수 있습니다.");
         }
 
-        // 본인 또는 관리자만 삭제 가능
         if (!loginUser.getId().equals(file.getBoard().getUser().getId())
                 && loginUser.getRole() != Role.ADMIN) {
             throw new AccessDeniedException("본인 게시글의 파일만 삭제할 수 있습니다.");
         }
 
-        // Soft Delete
-        file.delete();
+        file.delete(); // Soft Delete
+    }
+    
+    /** 여러 파일 삭제 (1개 이상) */
+    @Override
+    public void deleteFiles(List<Integer> fileIds) {
+        if (fileIds == null || fileIds.isEmpty()) return;
+
+        User loginUser = User.getAuthenticatedUser(userRepository);
+        if (loginUser == null) {
+            throw new AccessDeniedException("인증된 사용자만 파일을 삭제할 수 있습니다.");
+        }
+
+        List<BoardFile> files = fileRepository.findAllById(fileIds);
+
+        for (BoardFile file : files) {
+            if (!loginUser.getId().equals(file.getBoard().getUser().getId())
+                    && loginUser.getRole() != Role.ADMIN) {
+                throw new AccessDeniedException("본인 게시글의 파일만 삭제할 수 있습니다.");
+            }
+
+            file.delete(); // Soft Delete
+        }
     }
     
     /** ZIP 전체 다운로드 */
@@ -217,13 +236,11 @@ public class BoardFileServiceImpl implements BoardFileService {
         response.setContentType("application/zip");
         response.setHeader(
                 "Content-Disposition",
-                "attachment; filename=attachments_" + boardId + ".zip"
-        );
+                "attachment; filename=attachments_" + boardId + ".zip");
 
         ZipOutputStream zipOut = new ZipOutputStream(response.getOutputStream());
 
         for (BoardFile file : files) {
-
             // S3 파일 스트림 가져오기
             ResponseInputStream<GetObjectResponse> s3Input =
                     s3Client.getObject(
@@ -245,5 +262,45 @@ public class BoardFileServiceImpl implements BoardFileService {
 
         zipOut.finish();
         zipOut.close();
+    }
+    
+    /** Presigned URL 내부 접근용 */
+    @Override
+    public String getPresignedUrlInternal(String key) {
+        return getPresignedUrl(key);                  
+    }
+    
+    /** 단일 파일 다운로드 */
+    @Override
+    public void downloadSingleFile(Integer fileId, HttpServletResponse response) throws Exception {
+
+        BoardFile file = fileRepository.findByIdAndDeletedYnFalse(fileId)
+                .orElseThrow(() -> new EntityNotFoundException("파일을 찾을 수 없습니다."));
+
+        // S3에서 파일 byte stream 가져오기
+        ResponseInputStream<GetObjectResponse> s3Input =
+                s3Client.getObject(
+                        GetObjectRequest.builder()
+                                .bucket(bucket)
+                                .key(file.getS3ObjectKey())
+                                .build()
+                );
+
+        // Content-Type 자동 적용
+        response.setContentType(s3Input.response().contentType());
+
+        // 다운로드 헤더
+        response.setHeader(
+                "Content-Disposition",
+                "attachment; filename=\"" + 
+                    new String(file.getFileName().getBytes("UTF-8"), "ISO-8859-1") 
+                + "\""
+        );
+
+        // byte 전송
+        s3Input.transferTo(response.getOutputStream());
+
+        response.flushBuffer();
+        s3Input.close();
     }
 }

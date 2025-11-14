@@ -269,7 +269,7 @@ const BoardDetailPage = () => {
   const data = res.data.data;
 
   const link = document.createElement("a");
-  link.href = data.s3ObjectKey;  // presigned URL 직접 사용
+  link.href = data.fileUrl;  // presigned URL 직접 사용
   link.download = data.fileName; // 다운로드 이름
   link.target = "_self";
   link.click();
