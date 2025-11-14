@@ -47,12 +47,26 @@ export const deleteSchedule = async (id) => {
 };
 
 /** 내 일정 조회 */
-export const getMySchedules = () =>
-  http.get("/schedules/me").then((res) => res.data);
+export const getMySchedules = async () => {
+  try {
+    const res = await http.get("/schedules/me");
+    return res.data;
+  } catch (err) {
+    const message = err.response?.data || "일정을 불러올 수 없습니다.";
+    throw new Error(message);
+  }
+};
 
 /** 내 일정 조회(일간) */
-export const getMyTodaySchedules = () =>
-  http.get("/schedules/me/today").then((res) => res.data);
+export const getMyTodaySchedules = async () => {
+  try {
+    const res = await http.get("/schedules/me/today");
+    return res.data;
+  } catch (err) {
+    const message = err.response?.data || "오늘 일정을 불러올 수 없습니다.";
+    throw new Error(message);
+  }
+};
 
 /** 여러 유저의 일정 현황 조회
  *  - 백엔드 컨트롤러가 date 또는 start/end 를 받도록 되어 있으니,
@@ -99,8 +113,15 @@ export const getScheduleById = async (id) => {
 };
 
 /** 카테고리 전체 조회 */
-export const getScheduleCategories = () =>
-  http.get("/scheduleCategories").then((res) => res.data);
+export const getScheduleCategories = async () => {
+  try {
+    const res = await http.get("/scheduleCategories");
+    return res.data;
+  } catch (err) {
+    const message = err.response?.data || "카테고리를 불러올 수 없습니다.";
+    throw new Error(message);
+  }
+};
 
 /** 카테고리 생성 */
 export const createScheduleCategory = async (data) => {
@@ -139,23 +160,47 @@ export const deleteScheduleCategory = async (id) => {
 };
 
 /** 사용자 목록 조회 (초대용) */
-export const getUsers = () =>
-  http.get("/user").then((res) => res.data);
+export const getUsers = async () => {
+  try {
+    const res = await http.get("/user");
+    return res.data;
+  } catch (err) {
+    const message = err.response?.data || "사용자 목록을 불러올 수 없습니다.";
+    throw new Error(message);
+  }
+};
 
 /** 회의실 전체 조회 */
-export const getMeetingRooms = () =>
-  http.get("/meetingRooms").then((res) => res.data);
+export const getMeetingRooms = async () => {
+  try {
+    const res = await http.get("/meetingRooms");
+    return res.data;
+  } catch (err) {
+    const message = err.response?.data || "회의실 목록을 불러올 수 없습니다.";
+    throw new Error(message);
+  }
+};
 
 /** 회의실 예약 가능 여부 검사 */
-export const checkRoomAvailable = (id, start, end) =>
-  http
-    .get(`/meetingRooms/availability`, {
+export const checkRoomAvailable = async (id, start, end) => {
+  try {
+    const res = await http.get(`/meetingRooms/availability`, {
       params: { id, start: toBackendFormat(start), end: toBackendFormat(end) },
-    })
-    .then((res) => res.data);
+    });
+    return res.data;
+  } catch (err) {
+    const message = err.response?.data || "회의실 예약 가능 여부를 확인할 수 없습니다.";
+    throw new Error(message);
+  }
+};
 
-// 특정 시간대 예약 가능한 회의실 조회
-export const getAvailableMeetingRooms = (start, end) =>
-  http
-    .get("/meetingRooms/available", { params: { start, end } })
-    .then((res) => res.data.availableRooms);
+/** 특정 시간대 예약 가능한 회의실 조회 */
+export const getAvailableMeetingRooms = async (start, end) => {
+  try {
+    const res = await http.get("/meetingRooms/available", { params: { start, end } });
+    return res.data.availableRooms;
+  } catch (err) {
+    const message = err.response?.data || "예약 가능한 회의실을 불러올 수 없습니다.";
+    throw new Error(message);
+  }
+};

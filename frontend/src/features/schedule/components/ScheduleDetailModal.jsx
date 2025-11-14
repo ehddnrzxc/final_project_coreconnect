@@ -74,7 +74,7 @@ export default function ScheduleDetailModal({
     return () => {
       cancelled = true;
     };
-  }, [open, scheduleId]);
+  }, [open, scheduleId, showSnack]);
 
   if (!open) return null;
 

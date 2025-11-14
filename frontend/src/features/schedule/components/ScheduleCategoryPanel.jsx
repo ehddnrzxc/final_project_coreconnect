@@ -190,6 +190,12 @@ export default function ScheduleCategoryPanel({ activeCategories, onToggle, onCo
             label="카테고리 이름"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault(); // 폼 기본 submit 막기
+                handleDialogSubmit(); // 확인 버튼과 동일한 함수 실행
+              }
+            }}
           />
         </DialogContent>
         <DialogActions>
