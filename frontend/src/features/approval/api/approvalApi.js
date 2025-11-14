@@ -25,6 +25,12 @@ export const submitDocument = formData => http.post("/approvals", formData);
 // 새 결재 문서 임시저장
 export const saveDraft = formData => http.post("/approvals/drafts", formData);
 
+// 임시저장 문서 수정
+export const updateDraft = (documentId, formData) => http.put(`/approvals/drafts/${documentId}`, formData);
+
+// 임시저장 문서 수정 후 상신
+export const updateDocument = (docuemtnId, formData) => http.put(`/approvals/${documentId}`, formData);
+
 // 내 상신함 (내가 작성한 모든 문서)
 export const getMyDocuments = () => http.get("/approvals/my-documents");
 

@@ -51,7 +51,7 @@ function MyDraftsPage() {
       return;
     }
 
-    navigate(`/e-approval/new-doc/${draft.templateId}?draftId=${draft.documentId}`);
+    navigate(`/e-approval/doc/${draft.documentId}`);
   };
 
   if (loading) return <Box sx={{ display: 'flex', justifyContent: "center", mt: 4 }}><CircularProgress /></Box>;
