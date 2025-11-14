@@ -96,6 +96,7 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <ApprovalHomePage /> }, // 결재홈
           { path: "new/:templateId", element: <NewDocumentPage /> }, // 새 결제 진행
+          { path: "edit/:documentId", element: <NewDocumentPage />},
           { path: "doc/:documentId", element: <DocumentDetailPage /> },
           { path: "pending", element: <PendingDocuments /> },
           { path: "my-documents", element: <MyDocumentsPage /> },

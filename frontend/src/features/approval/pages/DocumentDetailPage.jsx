@@ -6,6 +6,19 @@ import DynamicApprovalTable from '../components/DynamicApprovalTable';
 import DrafterInfoTable from '../components/DrafterInfoTable';
 import ApprovalStatusChip from '../components/ApprovalStatusChip';
 import ApprovalRejectModal from './ApprovalRejectModal';
+import EditIcon from '@mui/icons-material/Edit';
+
+const getCurrentUser = () => {
+  try {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      return JSON.parse(userStr);
+    }
+  } catch (error) {
+    console.error("로컬 스토리지 사용자 정보 파싱 실패:", error);
+  }
+  return null;
+};
 
 function DocumentDetailPage() {
   const { documentId } = useParams();
@@ -15,6 +28,8 @@ function DocumentDetailPage() {
   const [openRejectModal, setOpenRejectModal] = useState(false);
 
   const navigate = useNavigate();
+
+  const currentUser = useMemo(() => getCurrentUser(), []);
 
   useEffect(() => {
     const fetchDocument = async () => {
@@ -68,33 +83,33 @@ function DocumentDetailPage() {
     }
   };
 
+  const handleEdit = () => {
+    navigate(`/e-approval/edit/${documentId}`);
+  };
+
   const mergedHtml = useMemo(() => {
-    if (!documentData || !documentData.tempHtmlContent) {
+    if (!documentData || !documentData.processedHtmlContent) {
       return "";
     }
 
-    try {
-      let htmlContent = documentData.tempHtmlContent;
-      const jsonData = JSON.parse(documentData.documentContent || '{}');
-
-      const mergeData = { ...jsonData };
-
-
-      for (const key in mergeData) {
-        const value = mergeData[key] || '';
-        const placeholder = new RegExp(`\\\${${key}}`, 'g');
-        htmlContent = htmlContent.replace(placeholder, value);
-      }
-
-      htmlContent = htmlContent.replace(/\$\{.*?\}/g, '');
-
-      return htmlContent;
-
-    } catch (error) {
-      console.error("HTML 병합 실패:", error);
-      return "<p>양식을 렌더링하는 데 실패했습니다.</p>";
-    }
+    return documentData.processedHtmlContent;
   }, [documentData]);
+
+  const isDrafter = useMemo(() => {
+    
+    if (!currentUser || !currentUser.email) {
+      return false;
+    }
+
+    if (!documentData || !documentData.drafter || !documentData.drafter.userEmail) {
+      return false;
+    }
+
+    const userEmail = currentUser.email.trim().toLowerCase();
+    const drafterEmail = documentData.drafter.userEmail.trim().toLowerCase();
+
+    return userEmail === drafterEmail;
+  }, [currentUser, documentData]);
 
   if (loading) return <Box sx={{ display: 'flex', justifyContent: "center", mt: 4 }}><CircularProgress /></Box>;
   if (error) return <Alert severity='error'>{error}</Alert>;
@@ -152,6 +167,11 @@ function DocumentDetailPage() {
               <Button variant='outlined' color='primary' onClick={handleApprove}>승인</Button>
               <Button variant='outlined' color='error' onClick={handleOpenRejectModal}>반려</Button>
             </>
+          )}
+          {documentData.documentStatus === 'DRAFT' && isDrafter && (
+            <Button variant='contained' startIcon={<EditIcon />} onClick={handleEdit}>
+              수정하기
+            </Button>
           )}
         </Box>
       </Paper>

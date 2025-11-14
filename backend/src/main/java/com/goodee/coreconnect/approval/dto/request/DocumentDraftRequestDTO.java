@@ -37,7 +37,7 @@ public class DocumentDraftRequestDTO {
   /**
    * 문서 내용
    */
-  private String documentContent;
+  private String documentDataJson;
 
   /**
    * 결재선에 포함될 (사용자 + 역할) 목록 (순서대로) (임시저장은 비어있을 수 있음)
@@ -52,7 +52,7 @@ public class DocumentDraftRequestDTO {
    * @return
    */
   public Document toEntity(Template template, User user) {
-    return Document.createDocument(template, user, this.documentTitle, this.documentContent);
+    return Document.createDocument(template, user, this.documentTitle, this.documentDataJson);
   }
 
 }

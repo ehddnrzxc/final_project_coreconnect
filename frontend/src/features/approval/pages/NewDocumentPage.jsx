@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getTemplateDetail, submitDocument, saveDraft } from '../api/approvalApi';
+import { getTemplateDetail, submitDocument, saveDraft, getDocumentDetail, updateDraft, updateDocument } from '../api/approvalApi';
 import { Button, Alert, Box, CircularProgress, Paper, TextField, Typography, List, ListItem, ListItemText, TableContainer, Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import SendIcon from '@mui/icons-material/Send';
@@ -11,6 +11,7 @@ import VacationForm from './VacationForm';
 import DynamicApprovalTable from '../components/DynamicApprovalTable';
 import BusinessTripForm from './BusinessTripForm';
 import ExpenseForm from './ExpenseForm';
+import { getJobGradeLabel } from '../../../components/utils/labelUtils';
 
 // --- 헬퍼 함수들 ---
 const getTodayDate = () => {
@@ -108,7 +109,8 @@ const getInitialFormData = templateKey => {
 
 function NewDocumentPage() {
   const navigate = useNavigate();
-  const { templateId } = useParams();
+  const { templateId, documentId } = useParams();
+  const isEditMode = !!documentId;  // 수정 모드인지 확인하는 플래그
 
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [documentTitle, setDocumentTitle] = useState("");
@@ -149,26 +151,62 @@ function NewDocumentPage() {
 
 
   useEffect(() => {
-    if (!templateId) {
-      setError("유효하지 않은 양식 ID입니다.");
+    if (!currentUser) {
+      setError("로그인 정보가 없습니다.");
       setLoading(false);
       return;
     }
 
-    const fetchTemplateDetail = async () => {
+    const fetchDocumentForEdit = async () => {
       try {
         setLoading(true);
         setError(null);
-        const detailRes = await getTemplateDetail(templateId); 
-        
-        setSelectedTemplate(detailRes.data);
-        setDocumentTitle(detailRes.data.templateName || "");
+        const res = await getDocumentDetail(documentId);
+        const doc = res.data;
+
+        if (!doc.temp_key) {
+          console.error("API 응답 오류:", doc);
+          throw new Error("getDocumentDetail 응답에 'temp_key' 필드가 포함되어야 합니다.");
+        }
+
+        setDocumentTitle(doc.documentTitle);
+        setApprovalLine(doc.approvalLines || []);
+
+        setSelectedTemplate({
+          templateId: doc.templateId,
+          templateName: doc.templateName,
+          temp_key: doc.temp_key,
+          tempHtmlContent: doc.tempHtmlContent
+        });
+
+        setFormData(JSON.parse(doc.documentContent || '{}'));
+
+      } catch (error) {
+        console.error("Error fetching document detail for edit:", error);
+        setError("임시저장 문서를 불러오는 데 실패했습니다: " + error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const fetchTemplateForNew = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const detailRes = await getTemplateDetail(templateId);
 
         if(!detailRes.data.temp_key) {
-           setError("API 응답에 'temp_key'가 포함되어 있지 않습니다. 백엔드를 확인해주세요.");
-           setLoading(false);
-           return;
+          setError("API 응답에 'temp_key'가 포함되어 있지 않습니다.");
+          return;
         }
+
+        const templateData = {
+          ...detailRes.data,
+          templateId: detailRes.data.templateId || templateId
+        };
+
+        setSelectedTemplate(templateData);
+        setDocumentTitle(detailRes.data.templateName || "");
         setFormData(getInitialFormData(detailRes.data.temp_key));
 
       } catch (error) {
@@ -178,11 +216,17 @@ function NewDocumentPage() {
         setLoading(false);
       }
     };
-    
-    if (currentUser) {
-      fetchTemplateDetail();
+
+    if (isEditMode) {
+      fetchDocumentForEdit();
+    } else if (templateId) {
+      fetchTemplateForNew();
+    } else {
+      setError("잘못된 접근입니다. (ID 없음)");
+      setLoading(false);
     }
-  }, [templateId, currentUser]);
+
+  }, [documentId, templateId, isEditMode, currentUser]);
 
   const handleFileChange = e => {
     setFiles(Array.from(e.target.files));
@@ -197,67 +241,92 @@ function NewDocumentPage() {
   };
 
   const handleSubmit = async isDraft => {
-    if (!selectedTemplate) return;
+    if (!selectedTemplate) {
+      alert("템플릿 정보가 로드되지 않았습니다.");
+      return;
+    }
 
     if (!documentTitle.trim()) {
       alert("문서 제목을 입력해주세요.");
       return;
     }
-
+  
     if (!isDraft && approvalLine.length === 0) {
-      alert("결재선을 1명 이상 지정해야 합니다. (상신 시 필수)");
+      alert("결재선을 1명 이상 지정해야 합니다.");
       setModalOpen(true);
       return;
     }
-
+  
     const documentDataJson = JSON.stringify(formData);
-
     const formattedApprovalLines = approvalLine.map(line => ({
       userId: line.userId,
-      type: line.type,
+      type: line.type || line.approvalType,
     }));
-
-    const requestDTO = {
-      templateId: parseInt(templateId),
-      documentTitle: documentTitle,
-      documentDataJson: documentDataJson,
-      approvalLines: formattedApprovalLines
-    };
-    
+  
     const formDataToSend = new FormData();
-    formDataToSend.append("dto", new Blob([JSON.stringify(requestDTO)], { type: "application/json" }));
-
     files.forEach(file => {
       formDataToSend.append("files", file);
     });
 
+    setLoading(true);
     try {
-      setLoading(true);
       let res;
-      if (isDraft) {
-        res = await saveDraft(formDataToSend);
-        alert(`문서가 임시저장되었습니다.`);
-      } else {
-        res = await submitDocument(formDataToSend);
-        alert(`문서가 성공적으로 상신되었습니다.`);
-      }
 
-      if (res && res.data) {
-        // 상신 성공 시, '문서 상세 페이지'로 이동합니다.
-        navigate(`/e-approval/doc/${res.data}`);
+      if (isEditMode) {
+        const requestDTO = {
+          documentTitle: documentTitle,
+          documentDataJson: documentDataJson,
+          approvalLines: formattedApprovalLines
+        };
+        formDataToSend.append("dto", new Blob([JSON.stringify(requestDTO)], { type: "application/json" }));
+
+        if (isDraft) {
+          res = await updateDraft(documentId, formDataToSend);
+          alert(`문서가 수정되어 임시저장되었습니다.`);
+        } else {
+          res = await updateDocument(documentId, formDataToSend);
+          alert(`문서가 수정되어 상신되었습니다.`);
+        }
+        navigate(`/e-approval/doc/${documentId}`);
       } else {
-        navigate("/e-approval");
+        if (!selectedTemplate.templateId) {
+          console.error("selectedTemplate에 templateId가 없습니다.", selectedTemplate);
+          throw new Error("템플릿 ID를 찾을 수 없습니다.");
+        }
+        const requestDTO = {
+          templateId: parseInt(selectedTemplate.templateId),
+          documentTitle: documentTitle,
+          documentDataJson: documentDataJson,
+          approvalLines: formattedApprovalLines
+        };
+        formDataToSend.append("dto", new Blob([JSON.stringify(requestDTO)], { type: "application/json" }));
+
+        if (isDraft) {
+          res = await saveDraft(formDataToSend);
+          alert(`문서가 임시저장되었습니다.`);
+        } else {
+          res = await submitDocument(formDataToSend);
+          alert(`문서가 성공적으로 상신되었습니다.`);
+        }
+
+        if (res && res.data) {
+          navigate(`/e-approval/doc/${res.data}`);
+        } else {
+          navigate("/e-approval");
+        }
       }
 
     } catch (error) {
       console.error("문서 처리 실패:", error);
-      const errorMsg = error.response?.data?.message || `문서 ${isDraft ? '임시저장' : '상신'}에 실패했습니다.`;
-      setError(errorMsg);
+      const errorMsg = error.response?.data?.message || `문서 ${isDraft ? '저장' : '상신'}에 실패했습니다.`;
+      setError(errorMsg)
       alert(errorMsg);
     } finally {
       setLoading(false);
     }
+
   };
+
 
   if (loading) return <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}><CircularProgress /></Box>;
   if (error) return <Alert severity='error'>{error}</Alert>;
@@ -266,7 +335,7 @@ function NewDocumentPage() {
   return (
     <Box>
       <Typography variant='h5' gutterBottom sx={{ fontWeight: "bold" }}>
-        새 결재 문서 작성
+        {isEditMode ? "결재 문서 수정" : "새 결재 문서 작성"}
       </Typography>
       <Paper elevation={1} sx={{ p: 2, mb: 2 }}>
         <TextField
@@ -310,7 +379,9 @@ function NewDocumentPage() {
                   </tr>
                   <tr>
                     <td style={{ border: '1px solid #ccc', backgroundColor: '#f8f8f8', padding: '10px', textAlign: 'center', fontWeight: 'bold' }}>문서번호</td>
-                    <td style={{ border: '1px solid #ccc', padding: '10px', color: '#999' }}>(자동채번)</td>
+                    <td style={{ border: '1px solid #ccc', padding: '10px', color: '#999' }}>
+                      {isEditMode ? documentId : '(자동채번)'}
+                    </td>
                   </tr>
                 </TableBody>
               </table>
@@ -346,8 +417,8 @@ function NewDocumentPage() {
             <List dense>
               {approvalLine.map((line, index) => (
                 <ListItem key={line.userId} disablePadding>
-                  <ApprovalTypeChip type={line.type} size="small" sx={{ mr: 1.5, minWidth: '50px' }} />
-                  <ListItemText primary={`${index + 1}. ${line.name} (${line.positionName})`} secondary={line.deptName} />
+                  <ApprovalTypeChip type={line.type || line.approvalType} size="small" sx={{ mr: 1.5, minWidth: '50px' }} />
+                  <ListItemText primary={`${index + 1}. ${line.name} (${getJobGradeLabel(line.positionName)})`} secondary={line.deptName} />
                 </ListItem>
               ))}
             </List>

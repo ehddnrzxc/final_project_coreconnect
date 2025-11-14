@@ -110,6 +110,14 @@ public class Document {
 
     this.documentStatus = DocumentStatus.IN_PROGRESS;
   }
+  
+  public void updateDraftDetails(String newTitle, String newDataJson) {
+    if (this.documentStatus != DocumentStatus.DRAFT) {
+      throw new IllegalStateException("임시저장 상태의 문서만 수정할 수 있습니다.");
+    }
+    this.documentTitle = newTitle;
+    this.documentDataJson = newDataJson;
+  }
 
   /**
    * 문서를 회수하는 메소드 (기안자가 사용)
