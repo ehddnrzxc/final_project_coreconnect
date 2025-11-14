@@ -18,6 +18,7 @@ public class BoardFileResponseDTO {
     private Long fileSize;       
     private String s3ObjectKey;  
     private Boolean deletedYn;   
+    private String fileUrl;
 
     /**
      * Entity -> DTO 변환

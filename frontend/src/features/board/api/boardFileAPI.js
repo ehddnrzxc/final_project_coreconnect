@@ -18,3 +18,10 @@ export const getFile = (fileId) => http.get(`/board-file/${fileId}`);
 
 // 파일 삭제
 export const deleteFile = (fileId) => http.delete(`/board-file/${fileId}`);
+
+// ZIP 파일 다운로드
+export const downloadZipFiles = async (boardId) => {
+  return http.get(`/board-file/board/${boardId}/download-all`, {
+    responseType: "blob",        // ZIP은 blob으로 받아야 함
+  });
+};

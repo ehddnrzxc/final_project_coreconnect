@@ -25,6 +25,7 @@ import { getBoardsByCategory, getBoardsOrdered, searchBoards } from "../api/boar
 import CommentIcon from "@mui/icons-material/Comment"; // 댓글 개수 표시용 아이콘
 import RecentViewedBoards from "./RecentViewedBoards"; // 오른쪽 사이드 영역에서 "최근 본 게시글"을 렌더링하는 컴포넌트
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext"; // 전역 스낵바 컨텍스트
+import AttachFileIcon from "@mui/icons-material/AttachFile";  // 첨부파일 아이콘 추가
 
 
 // ──────────────────────────────────────────────
@@ -53,7 +54,7 @@ const BoardListPage = () => {
     setSearchType(urlType || "title");  // URL 쿼리(type)과 동기화
     setKeyword(urlKeyword || "");       // URL 쿼리(keyword)와 동기화
   }, [urlType, urlKeyword]);            // 의존성 추가
-  
+
   // ─────────────── 게시글 목록 불러오기 ───────────────
   useEffect(() => {
     (async () => {
@@ -90,7 +91,7 @@ const BoardListPage = () => {
   };
 
   // ─────────────── 페이지 이동 함수 ───────────────
-  const handlePageChange = (e, v) => { 
+  const handlePageChange = (e, v) => {
     const newPage = v - 1; // MUI는 1부터 시작하지만 API는 0부터 시작하므로 보정
     const queryBase = categoryId ? `/board/${categoryId}` : "/board";
     const sortQuery = `sortType=${sortType}`;
@@ -269,25 +270,42 @@ const BoardListPage = () => {
                 noticeYn → 회색 배경 (공지글)
                 나머지 → 흰색 배경 */}
 
-            {/* 상단: 카테고리명 + 댓글 수 */}
+            {/* 상단: 카테고리명 + 댓글 수 + 첨부파일 수 */}
             <Stack direction="row" alignItems="center" spacing={1}>
               <Typography variant="body2" color="text.secondary">
                 {b.categoryName || "전체 게시판"}
               </Typography>
+
+              {/* 댓글 개수 */}
               <Stack direction="row" alignItems="center" spacing={0.5}>
                 <CommentIcon sx={{ fontSize: 15, color: "#616161" }} />
                 <Typography variant="caption" color="text.secondary">
                   {b.replyCount ?? 0}
                 </Typography>
+
+                {/* 첨부파일 아이콘 + 파일 개수 */}
+                {b.files && b.files.length > 0 && (
+                  <Stack
+                    direction="row"
+                    alignItems="center"
+                    spacing={0.3}
+                    sx={{ ml: 1 }}
+                  >
+                    <AttachFileIcon sx={{ fontSize: 15, color: "#616161" }} />
+                    <Typography variant="caption" color="text.secondary">
+                      {b.files.length}
+                    </Typography>
+                  </Stack>
+                )}
               </Stack>
             </Stack>
 
             {/* 제목 행 */}
-            <Stack direction="row" alignItems="center" spacing={1} sx={{ width: "100%" }}>
+            < Stack direction="row" alignItems="center" spacing={1} sx={{ width: "100%" }}>
               {b.pinned && (  // 상단고정
                 <Typography
                   component="span"
-                  sx={{ fontSize: 20, mr: 0.5 }}   
+                  sx={{ fontSize: 20, mr: 0.5 }}
                 >
                   📌
                 </Typography>
@@ -295,7 +313,7 @@ const BoardListPage = () => {
               {b.privateYn && (  // 비공개
                 <Typography
                   component="span"
-                  sx={{ fontSize: 19, mr: 0.5 }}   
+                  sx={{ fontSize: 19, mr: 0.5 }}
                 >
                   🔒
                 </Typography>
@@ -338,7 +356,8 @@ const BoardListPage = () => {
               {b.viewCount ?? 0}
             </Typography>
           </ListItemButton>
-        ))}
+        ))
+        }
 
         {/* 페이지네이션 영역 */}
         <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
@@ -349,13 +368,13 @@ const BoardListPage = () => {
             onChange={handlePageChange} // 페이지 변경 이벤트
           />
         </Box>
-      </Box>
+      </Box >
 
       {/* 오른쪽 사이드 영역: 최근 본 게시글 */}
-      <Box sx={{ flex: 1.1 }}>
+      < Box sx={{ flex: 1.1 }}>
         <RecentViewedBoards />
-      </Box>
-    </Box>
+      </Box >
+    </Box >
   );
 };
 

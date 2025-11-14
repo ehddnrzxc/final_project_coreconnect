@@ -24,8 +24,7 @@ import { getBoardDetail, deleteBoard } from "../api/boardAPI";
 // 게시글 API
 // getBoardDetail: 게시글 상세 조회
 // deleteBoard: 게시글 삭제
-import { getFilesByBoard } from "../api/boardFileAPI";
-// 파일 API: 특정 게시글의 첨부파일 목록 조회
+import { getFilesByBoard, getFile, downloadZipFiles } from "../api/boardFileAPI"; // 파일 API: 특정 게시글의 첨부파일 목록 조회
 import { getRepliesByBoard, createReply, updateReply, deleteReply } from "../api/boardReplyAPI";
 // 댓글 API
 // getRepliesByBoard: 게시글 댓글 목록 조회
@@ -34,7 +33,22 @@ import { getRepliesByBoard, createReply, updateReply, deleteReply } from "../api
 // deleteReply: 댓글 삭제
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext"; // 전역 스낵바 컨텍스트
 import ConfirmDialog from "../../../components/utils/ConfirmDialog"; // 공용 확인창 컴포넌트 임포트
+import { Modal, Card, CardMedia, CardContent, IconButton } from "@mui/material";
+// Modal: 첨부파일 미리보기 모달
+// Card: 첨부파일 카드
+// CardMedia: 카드 안 이미지
+// CardContent: 카드 하단 텍스트 영역
+// IconButton: 카드 우측 상단 X 버튼
+import CloseIcon from "@mui/icons-material/Close";             // 카드 X 버튼
+import DownloadIcon from "@mui/icons-material/Download";       // 다운로드 버튼
+import DescriptionIcon from "@mui/icons-material/Description"; // 비이미지 파일 아이콘
 
+
+// 파일이 이미지인지 판단하는 헬퍼 함수 (확장자 기준)
+const isImage = (name) => {
+  if (!name) return false;
+  return /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(name);
+};
 
 // 게시글 상세 페이지 컴포넌트
 const BoardDetailPage = () => {
@@ -51,6 +65,10 @@ const BoardDetailPage = () => {
   const [board, setBoard] = useState(null); // 게시글 상세 데이터 상태 (초기값 null → 아직 로딩 전이라는 의미)
   const [files, setFiles] = useState([]); // 첨부파일 목록 상태
   const [replies, setReplies] = useState([]); // 댓글 전체 목록 상태 (부모 댓글 + 자식 댓글 포함)
+
+  // 첨부파일 미리보기 모달용 상태
+  const [previewFile, setPreviewFile] = useState(null); // 현재 모달에서 보고 있는 파일 정보
+  const [openModal, setOpenModal] = useState(false);    // 모달 열림 여부
 
   // 댓글 입력/수정 상태
   const [replyText, setReplyText] = useState(""); // 일반 댓글 입력창의 내용
@@ -209,13 +227,13 @@ const BoardDetailPage = () => {
 
   // 댓글 삭제
   const handleReplyDelete = async (replyId) => {
-    showSnack("댓글 삭제 중입니다...", "info"); 
+    showSnack("댓글 삭제 중입니다...", "info");
     try {
       await deleteReply(replyId); // 댓글 삭제 API 호출 
       await loadAll(); // 삭제 후 댓글 목록 재조회
-      showSnack("댓글이 삭제되었습니다.", "success"); 
+      showSnack("댓글이 삭제되었습니다.", "success");
     } catch (err) {
-      showSnack("댓글 삭제 중 오류가 발생했습니다.", "error"); 
+      showSnack("댓글 삭제 중 오류가 발생했습니다.", "error");
     }
   };
 
@@ -243,6 +261,46 @@ const BoardDetailPage = () => {
     setConfirmOpen(false);
     setTargetId(null);
     setConfirmType(null);
+  };
+
+  // 단일 파일 Blob 다운로드 방식으로 완전 교체
+  const handleSingleDownload = async (file) => {
+  const res = await getFile(file.id);
+  const data = res.data.data;
+
+  const link = document.createElement("a");
+  link.href = data.s3ObjectKey;  // presigned URL 직접 사용
+  link.download = data.fileName; // 다운로드 이름
+  link.target = "_self";
+  link.click();
+};
+
+  // ZIP 다운로드는 fileNames만 전달
+  const handleDownloadAll = async () => {
+    try {
+      const res = await downloadZipFiles(boardId);
+      const blob = new Blob([res.data], { type: "application/zip" });
+
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `attachments_${boardId}.zip`;
+      link.click();
+
+    } catch (err) {
+      showSnack("ZIP 다운로드 실패", "error");
+    }
+  };
+
+  // 미리보기 모달 열기
+  const openPreview = (file) => {
+    setPreviewFile(file);
+    setOpenModal(true);
+  };
+
+  // 미리보기 모달 닫기
+  const closePreview = () => {
+    setOpenModal(false);
+    setPreviewFile(null);
   };
 
   // 게시글이 없을 때 로딩 표시
@@ -315,6 +373,167 @@ const BoardDetailPage = () => {
           {/* content가 공백만 있는 경우 "등록된 내용이 없습니다." 표시 */}
         </Typography>
       </Paper>
+
+      {/* 첨부파일 섹션 (내용 아래 / 댓글 위) */}
+      {files.length > 0 && (
+        <Box sx={{ width: "80%", mb: 4 }}>
+          {/* 상단 타이틀 + 전체 다운로드 버튼 */}
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+            sx={{ mb: 1 }}
+          >
+            <Typography variant="h6">
+              첨부파일{" "}
+              <Typography
+                component="span"
+                variant="h6"
+                color="primary"
+              >
+                ({files.length}개)
+              </Typography>
+            </Typography>
+
+            {/* 1개 이상이면 항상 전체 다운로드 버튼 표시 */}
+            <Button
+              variant="text"
+              startIcon={<DownloadIcon />}
+              onClick={handleDownloadAll}
+            >
+              전체 다운로드
+            </Button>
+          </Stack>
+
+          {/* 카드 리스트 (작성 페이지와 동일 스타일) */}
+          <Box
+            sx={{
+              mt: 1,
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 2,
+            }}
+          >
+            {files.map((file) => (
+              <Card
+                key={file.id}
+                sx={{
+                  width: 150, // 작성 페이지와 동일
+                  p: 1,
+                  borderRadius: 2,
+                  boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
+                  position: "relative",
+                  cursor: "pointer",
+                }}
+                onClick={() => openPreview(file)} // 카드 클릭 → 미리보기 모달
+              >
+                {/* X 버튼 (상세에선 실제 삭제가 아니라 단순 UI 제거는 아니므로, 제거 버튼은 넣지 않음) */}
+
+                {/* 썸네일 */}
+                {isImage(file.fileName) ? (
+                  <CardMedia
+                    component="img"
+                    height="100"
+                    image={file.fileUrl} // S3에 저장된 이미지 URL
+                    alt={file.fileName}
+                  />
+                ) : (
+                  <Box
+                    sx={{
+                      height: 120,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      bgcolor: "#f5f5f5",
+                    }}
+                  >
+                    <DescriptionIcon sx={{ fontSize: 80, color: "#9e9e9e" }} />
+                  </Box>
+                )}
+
+                {/* 파일명 / 용량 */}
+                <CardContent sx={{ p: 1 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      textOverflow: "ellipsis",
+                      overflow: "hidden",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {file.fileName}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {(file.fileSize / 1024).toFixed(1)} KB
+                  </Typography>
+                </CardContent>
+              </Card>
+            ))}
+          </Box>
+        </Box>
+      )}
+
+      {/* 첨부파일 미리보기 모달 */}
+      <Modal open={openModal} onClose={closePreview}>
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            bgcolor: "white",
+            p: 3,
+            borderRadius: 2,
+            width: 400,
+            textAlign: "center",
+          }}
+        >
+          {/* 모달 상단 X 버튼 */}
+          <IconButton
+            size="small"
+            sx={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+            }}
+            onClick={closePreview}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            파일 미리보기
+          </Typography>
+
+          {previewFile && isImage(previewFile.fileName) ? (
+            <img
+              src={previewFile.fileUrl}
+              alt={previewFile.fileName}
+              style={{
+                width: "100%",
+                maxHeight: 300,
+                objectFit: "contain",
+                borderRadius: 8,
+              }}
+            />
+          ) : (
+            <DescriptionIcon sx={{ fontSize: 80, color: "#777" }} />
+          )}
+
+          {/* 모달에서 다운로드 클릭 */}
+          <Box sx={{ mt: 2 }}>
+            <Button
+              variant="contained"
+              startIcon={<DownloadIcon />}
+              onClick={() => {
+                handleSingleDownload(previewFile);
+              }}
+            >
+              다운로드
+            </Button>
+          </Box>
+        </Box>
+      </Modal>
 
       {/* 댓글 섹션 제목 */}
       <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>

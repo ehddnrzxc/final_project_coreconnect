@@ -1,9 +1,12 @@
 package com.goodee.coreconnect.board.service;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
@@ -17,16 +20,21 @@ import com.goodee.coreconnect.board.entity.Board;
 import com.goodee.coreconnect.board.entity.BoardFile;
 import com.goodee.coreconnect.board.repository.BoardFileRepository;
 import com.goodee.coreconnect.board.repository.BoardRepository;
-import com.goodee.coreconnect.common.service.S3Service;
 import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
 @Service
 @RequiredArgsConstructor
@@ -36,12 +44,25 @@ public class BoardFileServiceImpl implements BoardFileService {
     private final BoardRepository boardRepository;
     private final BoardFileRepository fileRepository;
     private final UserRepository userRepository;
-    private final S3Service s3Service;
     private final S3Client s3Client;
+    private final S3Presigner presigner;
 
     @Value("${cloud.aws.s3.bucket}")
     private String bucket;
 
+    private String getPresignedUrl(String key) {
+      GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
+              .signatureDuration(Duration.ofMinutes(3))
+              .getObjectRequest(req -> req
+                      .bucket(bucket)
+                      .key(key)
+                      .responseContentDisposition("attachment")
+              )
+              .build();
+
+      return presigner.presignGetObject(presignRequest).url().toString();
+    }
+    
     /**
      * 다중 파일 업로드
      * - S3 업로드 + DB 저장
@@ -96,12 +117,13 @@ public class BoardFileServiceImpl implements BoardFileService {
                 BoardFile saved = fileRepository.save(boardFile);
 
                 // 응답 DTO 변환 (S3 URL 포함)
-                String fileUrl = s3Service.getFileUrl(key);
+                String presignedUrl = getPresignedUrl(key);
                 resultList.add(BoardFileResponseDTO.builder()
                                                    .id(saved.getId())
                                                    .fileName(saved.getFileName())
                                                    .fileSize(saved.getFileSize())
-                                                   .s3ObjectKey(fileUrl)
+                                                   .s3ObjectKey(saved.getS3ObjectKey())
+                                                   .fileUrl(presignedUrl)
                                                    .deletedYn(saved.getDeletedYn())
                                                    .build());
             } catch (IOException e) {
@@ -121,13 +143,14 @@ public class BoardFileServiceImpl implements BoardFileService {
         BoardFile file = fileRepository.findByIdAndDeletedYnFalse(fileId)
                 .orElseThrow(() -> new EntityNotFoundException("파일을 찾을 수 없습니다."));
 
-        String fileUrl = s3Service.getFileUrl(file.getS3ObjectKey());
+        String presignedUrl = getPresignedUrl(file.getS3ObjectKey());
 
         return BoardFileResponseDTO.builder()
                                     .id(file.getId())
                                     .fileName(file.getFileName())
                                     .fileSize(file.getFileSize())
-                                    .s3ObjectKey(fileUrl)
+                                    .s3ObjectKey(file.getS3ObjectKey())
+                                    .fileUrl(presignedUrl)
                                     .deletedYn(file.getDeletedYn())
                                     .build();
     }
@@ -143,12 +166,13 @@ public class BoardFileServiceImpl implements BoardFileService {
         List<BoardFileResponseDTO> dtoList = new ArrayList<>();
 
         for (BoardFile file : files) {
-            String fileUrl = s3Service.getFileUrl(file.getS3ObjectKey());
+            String presignedUrl = getPresignedUrl(file.getS3ObjectKey());
             dtoList.add(BoardFileResponseDTO.builder()
                                             .id(file.getId())
                                             .fileName(file.getFileName())
                                             .fileSize(file.getFileSize())
-                                            .s3ObjectKey(fileUrl)
+                                            .s3ObjectKey(file.getS3ObjectKey())
+                                            .fileUrl(presignedUrl)
                                             .deletedYn(file.getDeletedYn())
                                             .build());
         }
@@ -178,5 +202,48 @@ public class BoardFileServiceImpl implements BoardFileService {
 
         // Soft Delete
         file.delete();
+    }
+    
+    /** ZIP 전체 다운로드 */
+    @Override
+    public void downloadAllFiles(Integer boardId, HttpServletResponse response) throws Exception {
+
+        List<BoardFile> files = fileRepository.findByBoardIdAndDeletedYnFalse(boardId);
+
+        if (files.isEmpty()) {
+            throw new EntityNotFoundException("첨부파일이 없습니다.");
+        }
+
+        response.setContentType("application/zip");
+        response.setHeader(
+                "Content-Disposition",
+                "attachment; filename=attachments_" + boardId + ".zip"
+        );
+
+        ZipOutputStream zipOut = new ZipOutputStream(response.getOutputStream());
+
+        for (BoardFile file : files) {
+
+            // S3 파일 스트림 가져오기
+            ResponseInputStream<GetObjectResponse> s3Input =
+                    s3Client.getObject(
+                            GetObjectRequest.builder()
+                                            .bucket(bucket)
+                                            .key(file.getS3ObjectKey())
+                                            .build());
+
+            // Zip 파일 항목 추가
+            ZipEntry zipEntry = new ZipEntry(file.getFileName());
+            zipOut.putNextEntry(zipEntry);
+
+            // 파일 스트리밍 전송
+            s3Input.transferTo(zipOut);
+
+            zipOut.closeEntry();
+            s3Input.close();
+        }
+
+        zipOut.finish();
+        zipOut.close();
     }
 }
