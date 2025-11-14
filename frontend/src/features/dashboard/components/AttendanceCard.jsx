@@ -1,4 +1,4 @@
-import { Box, Button, Chip, LinearProgress, Typography } from "@mui/material";
+import { Box, Button, Chip, LinearProgress, Typography, useTheme } from "@mui/material";
 import { checkIn, checkOut, getTodayAttendance } from "../api/attendanceAPI";
 import { formatKoreanDate, formatKoreanTime, formatTime } from "../../../utils/TimeUtils";
 import { useState, useEffect } from "react";
@@ -7,6 +7,7 @@ import { formatHM } from "../../../utils/TimeUtils";
 import http from "../../../api/http";
 
 function AttendancePage() {
+  const theme = useTheme();
   const [now, setNow] = useState(new Date());
   const [attendance, setAttendance] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -148,7 +149,7 @@ function AttendancePage() {
       {/* 출근 / 퇴근 박스 */}
       <Box
         sx={{
-          bgcolor: "grey.50",
+          bgcolor: theme.palette.background.secondary,
           borderRadius: 3,
           px: 3,
           py: 2.5,

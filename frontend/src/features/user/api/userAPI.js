@@ -34,3 +34,9 @@ export async function getUserDeptId() {
   const res = await http.get("/departments/get-dept-id");
   return res.data;
 } 
+
+// 로그인된 사용자의 프로필 표시용 정보 조회
+export async function getMyProfileInfo() {
+  const res = await http.get("/user/profile-info");
+  return res.data; // ResponseEntity.ok(dto)로 반환하므로 res.data가 UserDTO
+}

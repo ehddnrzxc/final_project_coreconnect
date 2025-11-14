@@ -8,7 +8,6 @@ import RecentBoardsCard from "../components/RecentBoardsCard";
 import CalendarCard from "../components/CalendarCard";
 import RecentNotificationsCard from "../components/RecentNotificationsCard";
 
-/* ─ Page ─ */
 export default function Home() {
   return (
     <Container maxWidth={false} sx={{ py: 3, px: 3 }}>

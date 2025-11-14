@@ -5,7 +5,6 @@ import java.util.List;
 import com.goodee.coreconnect.department.dto.response.DepartmentFlatDTO;
 import com.goodee.coreconnect.department.dto.response.DepartmentTreeDTO;
 import com.goodee.coreconnect.department.entity.Department;
-import com.goodee.coreconnect.department.repository.DepartmentRepository;
 
 public interface DepartmentService {
   

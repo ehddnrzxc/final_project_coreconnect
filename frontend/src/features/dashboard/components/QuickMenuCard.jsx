@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import Card from "../../../components/ui/Card";
-import { Box, Button, Grid, Typography } from "@mui/material";
+import { Box, Button, Grid, Typography, useTheme } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import ArticleIcon from "@mui/icons-material/Article";
 import DescriptionIcon from "@mui/icons-material/Description";
@@ -10,6 +10,7 @@ import MessageIcon from "@mui/icons-material/Message";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 
 export default function QuickMenuCard() {
+  const theme = useTheme();
   const menuItems = [
     { label: "메일쓰기", icon: <EditIcon />, path: "/email/write" },
     { label: "게시판 글쓰기", icon: <ArticleIcon />, path: "/board/new" },
@@ -35,10 +36,13 @@ export default function QuickMenuCard() {
           py: 1.2,
           textTransform: "none",
           borderRadius: 2,
-          bgcolor: "#f3f4f6",
+          bgcolor: theme.palette.background.secondary,
           borderColor: "transparent",
+          color: "text.primary",
           "&:hover": {
-            bgcolor: "#e5e7eb",
+            bgcolor: theme.palette.mode === "dark" 
+              ? "rgba(255, 255, 255, 0.1)" 
+              : "rgba(0, 0, 0, 0.05)",
             borderColor: "transparent",
           },
         }}

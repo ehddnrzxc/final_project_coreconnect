@@ -56,7 +56,7 @@ export default function LeavePage() {
             p: 2,
             borderRadius: 2,
             border: "1px solid",
-            borderColor: "grey.300",
+            borderColor: "divider",
             display: "flex",
             gap: 4,
           }}
@@ -114,7 +114,13 @@ export default function LeavePage() {
       </Button>
 
       {/* 내 휴가 내역 테이블 (leave_request 조회) */}
-      <Table>
+      <Table
+        sx={{
+          "& .MuiTableCell-root": {
+            borderColor: "divider",
+          },
+        }}
+      >
         <TableHead>
           <TableRow>
             <TableCell>시작일</TableCell>

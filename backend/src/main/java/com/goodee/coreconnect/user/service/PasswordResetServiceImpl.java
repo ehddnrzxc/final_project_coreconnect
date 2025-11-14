@@ -8,8 +8,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.goodee.coreconnect.user.dto.request.PasswordResetRequestDTO;
-import com.goodee.coreconnect.user.dto.request.RejectLeaveRequestDTO;
+import com.goodee.coreconnect.admin.dto.request.PasswordResetRequestDTO;
+import com.goodee.coreconnect.admin.dto.request.RejectLeaveRequestDTO;
+import com.goodee.coreconnect.admin.service.MailService;
 import com.goodee.coreconnect.user.dto.response.PasswordResetResponseDTO;
 import com.goodee.coreconnect.user.entity.PasswordResetRequest;
 import com.goodee.coreconnect.user.entity.ResetStatus;

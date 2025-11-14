@@ -1,4 +1,4 @@
-package com.goodee.coreconnect.user.service;
+package com.goodee.coreconnect.admin.service;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;

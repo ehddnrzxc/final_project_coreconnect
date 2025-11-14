@@ -58,7 +58,7 @@ public class DepartmentController {
   @PutMapping("/{id}")
   public ResponseEntity<Void> update(@PathVariable Integer id, 
                                      @Valid @RequestBody UpdateRequestDTO req) {
-    departmentService.updateBasic(id, req.name(), req.OrderNo());
+    departmentService.updateBasic(id, req.name(), req.orderNo());
     return ResponseEntity.noContent().build(); 
   }
   

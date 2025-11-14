@@ -7,24 +7,17 @@ import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
-import com.goodee.coreconnect.user.dto.request.ChangeUserDepartmentDTO;
-import com.goodee.coreconnect.user.dto.request.ChangeUserJobGradeDTO;
 import com.goodee.coreconnect.user.dto.response.OrganizationUserResponseDTO;
 import com.goodee.coreconnect.user.dto.response.UserDTO;
-import com.goodee.coreconnect.user.entity.Role;
-import com.goodee.coreconnect.user.service.UserServiceImpl;
+import com.goodee.coreconnect.user.service.UserService;
 
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -34,7 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class UserController {
 
-    private final UserServiceImpl userService;
+    private final UserService userService;
 
     /** 프로필 이미지 업로드 */
     @PostMapping("/profile-image")
@@ -57,36 +50,6 @@ public class UserController {
         return ResponseEntity.ok(Map.of("imageUrl", imageUrl));
     }
     
-    /** 사용자의 소속 부서 변경 */
-    @PutMapping("/{id}/department") 
-    ResponseEntity<Void> changeUserDeptartment(@PathVariable("id") Integer id, 
-                                               @RequestBody ChangeUserDepartmentDTO req) {
-      userService.moveUserToDepartment(id, req.deptId());
-      return ResponseEntity.noContent().build();
-    }
-    
-    /** 사용자의 직급 변경 */
-    @PutMapping("/{id}/job-grade")
-    ResponseEntity<Void> changeUserJobGrade(@PathVariable("id") Integer id,
-                                            @Valid @RequestBody ChangeUserJobGradeDTO req) {
-      userService.moveUserToJobGrade(id, req.jobGrade());
-      return ResponseEntity.noContent().build();
-    }
-    
-    /** 사용자의 권한(Role) 변경 */
-    @PutMapping("/{id}/role")
-    public ResponseEntity<Void> changeUserRole(@PathVariable("id") Integer id,
-                                               @RequestBody Map<String, String> body) {
-        String newRoleStr = body.get("role");
-        if (newRoleStr == null) {
-            throw new IllegalArgumentException("role 값이 필요합니다.");
-        }
-
-        Role newRole = Role.valueOf(newRoleStr.toUpperCase());
-        userService.moveUserToRole(id, newRole);
-        return ResponseEntity.noContent().build();
-    }
-    
     /** 조직도 전체 사용자 목록 조회 */
     @GetMapping("/organization")
     public ResponseEntity<List<OrganizationUserResponseDTO>> getOrganizationChart() {
@@ -99,5 +62,16 @@ public class UserController {
     public List<UserDTO> findAllUsers() {
       return userService.findAllUsers();
     }
+    
+    /** 사용자 로그인 정보로부터 사용자의 정보를 가져오는 API */
+    @GetMapping("/profile-info")
+    public ResponseEntity<UserDTO> getCurrentUser(
+      @AuthenticationPrincipal CustomUserDetails user    
+    ) {
+      String email = user.getEmail();
+      UserDTO dto = userService.getProfile(email);
+      return ResponseEntity.ok(dto);
+    }
+    
     
 }

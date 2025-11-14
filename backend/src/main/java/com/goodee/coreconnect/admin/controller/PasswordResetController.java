@@ -1,13 +1,12 @@
-package com.goodee.coreconnect.user.controller;
+package com.goodee.coreconnect.admin.controller;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.goodee.coreconnect.user.dto.request.PasswordResetRequestDTO;
+import com.goodee.coreconnect.admin.dto.request.PasswordResetRequestDTO;
 import com.goodee.coreconnect.user.service.PasswordResetService;
 
 import jakarta.validation.Valid;

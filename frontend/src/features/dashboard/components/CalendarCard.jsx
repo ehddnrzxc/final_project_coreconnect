@@ -12,6 +12,10 @@ import {
   ListItem,
   ListItemText,
   Stack,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
@@ -35,6 +39,7 @@ export default function CalendarCard() {
   const [selectedDate, setSelectedDate] = useState(dayjs().format("YYYY-MM-DD"));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [listOpen, setListOpen] = useState(false);
 
   useEffect(() => {
     const fetchSummary = async () => {
@@ -114,6 +119,7 @@ export default function CalendarCard() {
       setCurrentMonth(cell.date.startOf("month"));
     }
     setSelectedDate(cell.iso);
+    setListOpen(true);
   };
 
   return (
@@ -186,7 +192,7 @@ export default function CalendarCard() {
                       bgcolor: "transparent",
                       color: cell.isCurrentMonth ? "text.primary" : "text.disabled",
                       cursor: "pointer",
-                      minHeight: 64,
+                      minHeight: 48,
                       padding: 1,
                       transition: "all 0.2s ease",
                       boxShadow: isSelected ? 2 : 0,
@@ -230,39 +236,55 @@ export default function CalendarCard() {
               })}
             </Box>
 
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                {dayjs(selectedDate).format("YYYY년 M월 D일 (ddd)")}
-              </Typography>
-              {selectedInfo && selectedInfo.items.length > 0 ? (
-                <List dense disablePadding>
-                  {selectedInfo.items.map((item) => (
-                    <ListItem key={item.id} disableGutters sx={{ pb: 0.75 }}>
-                      <ListItemText
-                        primary={
-                          <Typography variant="body2" fontWeight={600}>
-                            {item.title}
-                          </Typography>
-                        }
-                        secondary={
-                          <Typography variant="caption" color="text.secondary">
-                            {formatTimeRange(item)}
-                            {item.location ? ` · ${item.location}` : ""}
-                          </Typography>
-                        }
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              ) : (
-                <Typography variant="body2" color="text.secondary">
-                  일정이 없습니다.
-                </Typography>
-              )}
-            </Box>
           </>
         )}
       </Box>
+
+      <Dialog open={listOpen} onClose={() => setListOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>
+          {dayjs(selectedDate).format("YYYY년 M월 D일 (ddd)")}
+        </DialogTitle>
+        <DialogContent dividers>
+          {selectedInfo && selectedInfo.items.length > 0 ? (
+            <List dense>
+              {selectedInfo.items.map((item) => (
+                <ListItem key={item.id} disableGutters sx={{ pb: 1 }}>
+                  <ListItemText
+                    primary={
+                      <Typography variant="body2" fontWeight={600}>
+                        {item.title}
+                      </Typography>
+                    }
+                    secondary={
+                      <Typography variant="caption" color="text.secondary">
+                        {formatTimeRange(item)}
+                        {item.location ? ` · ${item.location}` : ""}
+                      </Typography>
+                    }
+                  />
+                </ListItem>
+              ))}
+            </List>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              일정이 없습니다.
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setListOpen(false)} sx={{ textTransform: "none" }}>
+            닫기
+          </Button>
+          <Button
+            component={Link}
+            to="/calendar"
+            onClick={() => setListOpen(false)}
+            sx={{ textTransform: "none" }}
+          >
+            캘린더로 이동
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Card>
   );
 }

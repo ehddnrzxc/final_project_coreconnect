@@ -17,7 +17,9 @@ public record UserDTO(
     Integer deptId,
     String deptName,
     LocalDateTime joinDate,
-    JobGrade jobGrade
+    JobGrade jobGrade,
+    String profileImageKey,
+    String profileImageUrl
 ) {
     /** 정적 팩토리 생성자 메서드 */
     public static UserDTO toDTO(User u) {
@@ -31,7 +33,9 @@ public record UserDTO(
             u.getDepartment() != null ? u.getDepartment().getId() : null,
             u.getDepartment() != null ? u.getDepartment().getDeptName() : null,
             u.getJoinDate(),
-            u.getJobGrade() != null ? u.getJobGrade() : null
+            u.getJobGrade() != null ? u.getJobGrade() : null,
+            u.getProfileImageKey() != null ? u.getProfileImageKey() : null,
+            null 
         );
     }
 }

@@ -5,28 +5,29 @@ import java.util.List;
 
 import org.springframework.web.multipart.MultipartFile;
 
-import com.goodee.coreconnect.user.dto.request.CreateUserReqDTO;
 import com.goodee.coreconnect.user.dto.response.OrganizationUserResponseDTO;
 import com.goodee.coreconnect.user.dto.response.UserDTO;
-import com.goodee.coreconnect.user.entity.JobGrade;
-import com.goodee.coreconnect.user.entity.Role;
-import com.goodee.coreconnect.user.entity.Status;
 import com.goodee.coreconnect.user.entity.User;
 
 public interface UserService {
-  
-  public void updateProfileImage(String email, MultipartFile file) throws IOException;
-  public String getProfileImageUrlByEmail(String email);
-  public UserDTO createUser(CreateUserReqDTO req);
-  public void changeStatus(Integer userId, Status status);
-  public List<UserDTO> findAllUsers();
-  public void moveUserToDepartment(Integer userId, Integer newDeptId);
-  public void moveUserToJobGrade(Integer userId, JobGrade jobGrade);
-  public void moveUserToRole(Integer userId, Role newRole);
-  public Long getAllUserCount();
-  public Long getAllActiveUserCount();
-  public List<OrganizationUserResponseDTO> getOrganizationChart();
-  public User getUserByEmail(String email);
-  public Integer getDeptIdByEmail(String email);
+  /** 프로필 이미지를 업로드 */
+  void updateProfileImage(String email, MultipartFile file) throws IOException;
 
+  /** 프로필 이미지 URL을 조회 */
+  String getProfileImageUrlByEmail(String email);
+
+  /** 전체 사용자 목록을 조회 */
+  List<UserDTO> findAllUsers();
+
+  /** 조직도용 사용자 목록을 조회 */
+  List<OrganizationUserResponseDTO> getOrganizationChart();
+
+  /** 이메일로 사용자 엔티티를 조회 */
+  User getUserByEmail(String email);
+
+  /** 이메일로 사용자의 부서 ID를 조회 */
+  Integer getDeptIdByEmail(String email);
+  
+  /** 이메일로 프로필 카드 표시용 사용자의 정보를 조회 */
+  UserDTO getProfile(String email);
 }

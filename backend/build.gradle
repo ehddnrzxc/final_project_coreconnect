@@ -66,5 +66,5 @@ tasks.named('test') {
 }
 
 tasks.withType(JavaCompile) {
-    options.compilerArgs += ["-parameters"]
+    options.compilerArgs.add("-parameters")
 }

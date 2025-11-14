@@ -9,11 +9,6 @@ import {
   IconButton,
   MenuItem,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   TextField,
   Typography,
   Alert,
@@ -28,10 +23,12 @@ import {
   updateDepartment,
   moveDepartment,
   deleteDepartment,
+  fetchDepartmentTree,
 } from "../api/departmentAPI";
 
 export default function DepartmentManagementPage() {
   const [departments, setDepartments] = useState([]);
+  const [tree, setTree] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState(null);
@@ -49,8 +46,27 @@ export default function DepartmentManagementPage() {
     setLoading(true);
     setMessage(null);
     try {
-      const data = await fetchDepartmentsFlat();
-      setDepartments(data ?? []);
+      const treeData = await fetchDepartmentTree();
+      const safeTree = treeData ?? [];
+      setTree(safeTree);
+
+      const flat = [];
+      const flatten = (nodes, parentId = null) => {
+        nodes.forEach((node) => {
+          flat.push({
+            id: node.id,
+            name: node.name,
+            orderNo: node.orderNo,
+            parentId,
+            userCount: node.userCount,
+          });
+          if (node.children?.length) {
+            flatten(node.children, node.id);
+          }
+        });
+      };
+      flatten(safeTree);
+      setDepartments(flat);
     } catch (err) {
       console.error("부서 목록 불러오기 실패:", err);
       setMessage({ type: "error", text: "부서 목록을 불러오지 못했습니다." });
@@ -113,7 +129,7 @@ export default function DepartmentManagementPage() {
     }
   };
 
-  const handleEdit = (dept) => {
+  const applyEdit = (dept) => {
     setEditingId(dept.id);
     setOriginParent(dept.parentId ?? null);
     setForm({
@@ -122,6 +138,8 @@ export default function DepartmentManagementPage() {
       parentId: dept.parentId ?? "",
     });
   };
+
+  const handleEdit = (dept) => applyEdit(dept);
 
   const handleDelete = async (dept) => {
     const confirmDelete = window.confirm(
@@ -151,6 +169,51 @@ export default function DepartmentManagementPage() {
     if (!editingId) return departments;
     return departments.filter((dept) => dept.id !== editingId);
   }, [departments, editingId]);
+
+  const renderTree = (nodes, depth = 0, parentId = null) =>
+    nodes.map((node) => (
+      <Box key={node.id} sx={{ pl: depth * 3, py: 1 }}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between">
+          <Box>
+            <Typography variant="body2" fontWeight={600}>
+              {node.name}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              ID {node.id} · 정렬 {node.orderNo ?? "-"} · 구성원 {node.userCount ?? 0}
+            </Typography>
+          </Box>
+          <Stack direction="row" spacing={1}>
+            <IconButton
+              size="small"
+              onClick={() =>
+                applyEdit({
+                  id: node.id,
+                  name: node.name,
+                  orderNo: node.orderNo ?? 0,
+                  parentId,
+                  userCount: node.userCount,
+                })
+              }
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+            <IconButton
+              size="small"
+              color="error"
+              onClick={() =>
+                handleDelete({
+                  id: node.id,
+                  name: node.name,
+                })
+              }
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Stack>
+        </Stack>
+        {node.children?.length ? renderTree(node.children, depth + 1, node.id) : null}
+      </Box>
+    ));
 
   return (
     <Box sx={{ px: 4, py: 3, width: "100%", maxWidth: 1200, mx: "auto" }}>
@@ -240,59 +303,18 @@ export default function DepartmentManagementPage() {
           <Card sx={{ borderRadius: 3, boxShadow: "0 10px 24px rgba(15,23,42,0.05)" }}>
             <CardContent>
               <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
-                부서 목록 ({departments.length}개)
+                부서 트리 ({departments.length}개)
               </Typography>
               <Divider sx={{ mb: 2 }} />
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>ID</TableCell>
-                    <TableCell>부서명</TableCell>
-                    <TableCell>상위 부서</TableCell>
-                    <TableCell>정렬 순서</TableCell>
-                    <TableCell align="right">구성원</TableCell>
-                    <TableCell align="right">작업</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {departments.map((dept) => {
-                    const parentName = dept.parentId ? parentMap.get(dept.parentId) || "-" : "(최상위)";
-                    return (
-                      <TableRow key={dept.id} hover>
-                        <TableCell>{dept.id}</TableCell>
-                        <TableCell>{dept.name}</TableCell>
-                        <TableCell>{parentName}</TableCell>
-                        <TableCell>{dept.orderNo ?? "-"}</TableCell>
-                        <TableCell align="right">{dept.userCount ?? 0}</TableCell>
-                        <TableCell align="right">
-                          <IconButton size="small" onClick={() => handleEdit(dept)}>
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => handleDelete(dept)}
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                  {departments.length === 0 && !loading && (
-                    <TableRow>
-                      <TableCell colSpan={6} align="center">
-                        <Typography variant="body2" color="text.secondary">
-                          등록된 부서가 없습니다.
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-              {loading && (
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                  부서 목록을 불러오는 중...
+              {loading ? (
+                <Typography variant="body2" color="text.secondary">
+                  부서 정보를 불러오는 중...
+                </Typography>
+              ) : tree.length > 0 ? (
+                <Box>{renderTree(tree)}</Box>
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  등록된 부서가 없습니다.
                 </Typography>
               )}
             </CardContent>

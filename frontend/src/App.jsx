@@ -2,7 +2,7 @@ import React, { useState, useEffect, createContext } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import Topbar from "./components/layout/Topbar";
 import Sidebar from "./components/layout/Sidebar";
-import { getMyProfileImage } from "./features/user/api/userAPI";
+import { getMyProfileInfo } from "./features/user/api/userAPI";
 import {
   fetchUnreadCount,
   fetchDraftbox,
@@ -16,6 +16,7 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { SnackbarProvider } from "./components/utils/SnackbarContext";
 
 export const MailCountContext = createContext();
+export const UserProfileContext = createContext(null);
 
 const themeOptions = {
   light: {
@@ -23,7 +24,8 @@ const themeOptions = {
     palette: {
       mode: "light",
       primary: { main: "#08a7bf" },
-      background: { default: "#ffffff", paper: "#f5f5f5" },
+      background: { default: "#f5f5f5", paper: "#ffffff", secondary: "#f5f5f5" },
+      divider: "rgba(0, 0, 0, 0.12)",
     },
   },
   dark: {
@@ -31,7 +33,7 @@ const themeOptions = {
     palette: {
       mode: "dark",
       primary: { main: "#08a7bf" },
-      background: { default: "#121212", paper: "#1e1e1e" },
+      background: { default: "#121212", paper: "#1e1e1e", secondary: "#2d2d2d" },
       text: {
         primary: "rgba(255, 255, 255, 0.87)",
         secondary: "rgba(255, 255, 255, 0.6)",
@@ -43,8 +45,9 @@ const themeOptions = {
     name: "핑크",
     palette: {
       mode: "light",
-      primary: { main: "#08a7bf" },
-      background: { default: "#fdd3efff", paper: "#ffffff" },
+      primary: { main: "#ec4899" },
+      background: { default: "#fdd3efff", paper: "#ffffff", secondary: "#fce4f0" },
+      divider: "rgba(0, 0, 0, 0.12)",
     },
   },
   blue: {
@@ -52,7 +55,8 @@ const themeOptions = {
     palette: {
       mode: "light",
       primary: { main: "#1976d2" },
-      background: { default: "#e3f2fd", paper: "#ffffff" },
+      background: { default: "#e3f2fd", paper: "#ffffff", secondary: "#e1eff9" },
+      divider: "rgba(0, 0, 0, 0.12)",
     },
   },
   green: {
@@ -60,16 +64,17 @@ const themeOptions = {
     palette: {
       mode: "light",
       primary: { main: "#2e7d32" },
-      background: { default: "#e8f5e9", paper: "#ffffff" },
+      background: { default: "#e8f5e9", paper: "#ffffff", secondary: "#e1f5e4" },
+      divider: "rgba(0, 0, 0, 0.12)",
     },
   },
 
 };
 
 function App() {
-  const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
   const DEFAULT_AVATAR = "https://i.pravatar.cc/80?img=12";
-  const [avatarUrl, setAvatarUrl] = useState(storedUser.imageUrl || DEFAULT_AVATAR);
+  const [userProfile, setUserProfile] = useState(null);
+  const [avatarUrl, setAvatarUrl] = useState(DEFAULT_AVATAR);
 
   const [unreadCount, setUnreadCount] = useState(0);
   const [draftCount, setDraftCount] = useState(0);
@@ -130,19 +135,16 @@ function App() {
     navigate("/login");
   };
 
-  // 프로필 이미지 로딩
+  // 프로필 정보 로딩
   useEffect(() => {
     (async () => {
-      const token = localStorage.getItem("accessToken");
-      if (!token) return;
       try {
-        const url = await getMyProfileImage();
-        const user = JSON.parse(localStorage.getItem("user") || "{}");
-        const updated = { ...user, imageUrl: url || "" };
-        localStorage.setItem("user", JSON.stringify(updated));
-        setAvatarUrl(updated.imageUrl || DEFAULT_AVATAR);
+        const profileData = await getMyProfileInfo();
+        setUserProfile(profileData);
+        console.log("profileData:", profileData);
+        setAvatarUrl(profileData.profileImageUrl || DEFAULT_AVATAR);
       } catch (e) {
-        console.error("프로필 이미지 불러오기 실패:", e);
+        console.warn("프로필 정보 불러오기 실패:", e);
       }
     })();
   }, []);
@@ -165,39 +167,41 @@ function App() {
       <LocalizationProvider dateAdapter={AdapterDayjs}>
         <SnackbarProvider>
           <CssBaseline />
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              minHeight: "100vh",
-              bgcolor: "background.default",
-            }}
-          >
-            <Topbar 
-              onLogout={handleLogout} 
-              avatarUrl={avatarUrl}
-              themeMode={themeMode}
-              themeOptions={themeOptions}
-              onThemeChange={handleThemeChange}
-            />
-            <MailCountContext.Provider value={mailCountContextValue}>
-              <Box sx={{ display: "flex", flex: 1, minHeight: 0 }}>
-                {/* Sidebar는 Provider 내부에서 context 사용, undefined 안전 처리됨 */}
-                <Sidebar />
-                <Box
-                  component="main"
-                  sx={{
-                    flex: 1,
-                    minHeight: 0,
-                    display: "flex",
-                    flexDirection: "column",
-                  }}
-                >
-                  <Outlet context={{ setAvatarUrl, refreshUnreadCount }} />
+          <UserProfileContext.Provider value={userProfile}>
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                minHeight: "100vh",
+                bgcolor: "background.default",
+              }}
+            >
+              <Topbar 
+                onLogout={handleLogout} 
+                themeMode={themeMode}
+                themeOptions={themeOptions}
+                onThemeChange={handleThemeChange}
+              />
+              <MailCountContext.Provider value={mailCountContextValue}>
+                <Box sx={{ display: "flex", flex: 1, minHeight: 0 }}>
+                  {/* Sidebar는 Provider 내부에서 context 사용, undefined 안전 처리됨 */}
+                  <Sidebar />
+                  <Box
+                    component="main"
+                    sx={{
+                      flex: 1,
+                      minHeight: 0,
+                      display: "flex",
+                      flexDirection: "column",
+                      bgcolor: "background.default",
+                    }}
+                  >
+                    <Outlet context={{ setAvatarUrl, refreshUnreadCount }} />
+                  </Box>
                 </Box>
-              </Box>
-            </MailCountContext.Provider>
-          </Box>
+              </MailCountContext.Provider>
+            </Box>
+          </UserProfileContext.Provider>
         </SnackbarProvider>
       </LocalizationProvider>
     </ThemeProvider>
