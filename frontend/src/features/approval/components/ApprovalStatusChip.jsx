@@ -6,7 +6,7 @@ function ApprovalStatusChip({ status }) {
 
   if (status === "COMPLETED") {
     color = "success";
-    label = "완료";
+    label = "승인";
   } else if (status === "REJECTED") {
     color = "error";
     label = "반려";
