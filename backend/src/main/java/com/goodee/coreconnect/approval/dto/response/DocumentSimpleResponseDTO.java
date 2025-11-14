@@ -23,6 +23,7 @@ public class DocumentSimpleResponseDTO {
   private LocalDateTime createdAt;
   private LocalDateTime completedAt;
   private String templateName;
+  private Integer templateId;
   
   public static DocumentSimpleResponseDTO toDTO(Document document) {
     return DocumentSimpleResponseDTO.builder()
@@ -36,6 +37,7 @@ public class DocumentSimpleResponseDTO {
         .createdAt(document.getCreatedAt())
         .completedAt(document.getCompletedAt())
         .templateName(document.getTemplate().getTemplateName())
+        .templateId(document.getTemplate().getId())
         .build();
   }
   

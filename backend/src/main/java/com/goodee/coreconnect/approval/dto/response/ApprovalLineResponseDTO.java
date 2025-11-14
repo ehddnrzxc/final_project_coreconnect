@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 
 import com.goodee.coreconnect.approval.entity.ApprovalLine;
 import com.goodee.coreconnect.approval.enums.ApprovalLineStatus;
+import com.goodee.coreconnect.user.entity.User;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -19,10 +20,14 @@ public class ApprovalLineResponseDTO {
   private LocalDateTime processedAt; // 처리 일시
 
   private UserInfoResponseDTO approver; // 결재자 정보
+  private String name;
+  private String positionName;
+  private String deptName;
   
   private String approvalType;  // 결재 타입
 
   public static ApprovalLineResponseDTO toDTO(ApprovalLine line) {
+    User approver = line.getApprover();
     String typeName = "";
     if (line.getApprovalLineType() != null) {
       typeName = line.getApprovalLineType().name();
@@ -33,6 +38,9 @@ public class ApprovalLineResponseDTO {
         .approvalStatus(line.getApprovalLineStatus())
         .approvalComment(line.getApprovalLineComment())
         .processedAt(line.getApprovalLineProcessedAt())
+        .name(approver.getName())
+        .positionName(approver.getJobGrade().toString())
+        .deptName(approver.getDepartment().getDeptName())
         .approver(UserInfoResponseDTO.toDTO(line.getApprover()))
         .approvalType(typeName)
         .build();

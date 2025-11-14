@@ -8,6 +8,7 @@ import com.goodee.coreconnect.approval.dto.request.ApprovalApproveRequestDTO;
 import com.goodee.coreconnect.approval.dto.request.ApprovalRejectRequestDTO;
 import com.goodee.coreconnect.approval.dto.request.DocumentCreateRequestDTO;
 import com.goodee.coreconnect.approval.dto.request.DocumentDraftRequestDTO;
+import com.goodee.coreconnect.approval.dto.request.DocumentUpdateRequestDTO;
 import com.goodee.coreconnect.approval.dto.response.DocumentDetailResponseDTO;
 import com.goodee.coreconnect.approval.dto.response.DocumentSimpleResponseDTO;
 import com.goodee.coreconnect.approval.dto.response.TemplateDetailResponseDTO;
@@ -32,6 +33,26 @@ public interface ApprovalService {
    */
   Integer createDraft(DocumentDraftRequestDTO requestDTO, List<MultipartFile> files, String email);
 
+  /**
+   * 임시저장 문서를 수정합니다.
+   * @param documentId
+   * @param requestDTO
+   * @param files
+   * @param email
+   * @return
+   */
+  Integer updateDraft(Integer documentId, DocumentUpdateRequestDTO requestDTO, List<MultipartFile> files, String email);
+  
+  /**
+   * 임시저장 문서를 수정 후 상신합니다.
+   * @param documentId
+   * @param requestDTO
+   * @param files
+   * @param email
+   * @return
+   */
+  Integer updateAndSubmitDocument(Integer documentId, DocumentUpdateRequestDTO requestDTO, List<MultipartFile> files, String email);
+  
   /**
    * 임시저장함(내가 작성한 DRAFT 문서) 목록을 조회합니다.
    * @param email 현재 사용자 email

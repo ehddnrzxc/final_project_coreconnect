@@ -18,6 +18,7 @@ import com.goodee.coreconnect.approval.dto.request.ApprovalApproveRequestDTO;
 import com.goodee.coreconnect.approval.dto.request.ApprovalRejectRequestDTO;
 import com.goodee.coreconnect.approval.dto.request.DocumentCreateRequestDTO;
 import com.goodee.coreconnect.approval.dto.request.DocumentDraftRequestDTO;
+import com.goodee.coreconnect.approval.dto.request.DocumentUpdateRequestDTO;
 import com.goodee.coreconnect.approval.dto.response.DocumentDetailResponseDTO;
 import com.goodee.coreconnect.approval.dto.response.DocumentSimpleResponseDTO;
 import com.goodee.coreconnect.approval.dto.response.TemplateDetailResponseDTO;
@@ -80,6 +81,38 @@ public class ApprovalController {
 
     // 생성 성공 시 201 Created 상태와 문서 ID 반환
     return ResponseEntity.status(HttpStatus.CREATED).body(documentId);
+  }
+  
+  /**
+   * 1-2. 임시저장 문서 수정
+   * [PUT] /api/v1/approvals/drafts/{documentId}
+   * @param documentId
+   * @param requestDTO
+   * @param files
+   * @param user
+   * @return
+   */
+  public ResponseEntity<Integer> updateDraft(
+      @PathVariable("documentId") Integer documentId,
+      @Valid @RequestPart("dto") DocumentUpdateRequestDTO requestDTO,
+      @RequestPart(value = "files", required = false) List<MultipartFile> files,
+      @AuthenticationPrincipal CustomUserDetails user
+      ) {
+    String email = user.getEmail();
+    Integer updatedDocumentId = approvalService.updateDraft(documentId, requestDTO, files, email);
+    return ResponseEntity.ok(updatedDocumentId);
+    
+  }
+  
+  public ResponseEntity<Integer> updateAndSubmitDocument(
+      @PathVariable("documentId") Integer documentId,
+      @Valid @RequestPart("dto") DocumentUpdateRequestDTO requestDTO,
+      @RequestPart(value = "files", required = false) List<MultipartFile> files,
+      @AuthenticationPrincipal CustomUserDetails user
+      ) {
+    String email = user.getEmail();
+    Integer submittedDocumentId = approvalService.updateAndSubmitDocument(documentId, requestDTO, files, email);
+    return ResponseEntity.ok(submittedDocumentId);
   }
 
   /**

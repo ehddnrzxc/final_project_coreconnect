@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.approval.enums.DocumentStatus;
 
@@ -26,11 +27,17 @@ public class DocumentDetailResponseDTO {
   private LocalDateTime createdAt;
   private LocalDateTime completedAt;
   private UserInfoResponseDTO drafter;
+  private Integer templateId;
+  
+  @JsonProperty("temp_key")
+  private String templateKey;
   private String templateName;
   private String tempHtmlContent;
   private List<ApprovalLineResponseDTO> approvalLines;
   private List<FileResponseDTO> files;
   private boolean isMyTurnApprove;
+  
+  private String processedHtmlContent;
   
   public static DocumentDetailResponseDTO toDTO(Document document) {
     return DocumentDetailResponseDTO.builder()
@@ -41,6 +48,8 @@ public class DocumentDetailResponseDTO {
         .createdAt(document.getCreatedAt())
         .completedAt(document.getCompletedAt())
         .drafter(UserInfoResponseDTO.toDTO(document.getUser()))
+        .templateId(document.getTemplate().getId())
+        .templateKey(document.getTemplate().getTemplateKey())
         .templateName(document.getTemplate().getTemplateName())
         .tempHtmlContent(document.getTemplate().getTemplateHtmlContent())
         .approvalLines(

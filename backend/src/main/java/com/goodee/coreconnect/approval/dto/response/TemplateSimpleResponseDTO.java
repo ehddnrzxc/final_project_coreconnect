@@ -11,11 +11,13 @@ public class TemplateSimpleResponseDTO {
 
   private Integer templateId;
   private String templateName;
+  private String tempKey;
   
   public static TemplateSimpleResponseDTO toDTO(Template template) {
     return TemplateSimpleResponseDTO.builder()
         .templateId(template.getId())
         .templateName(template.getTemplateName())
+        .tempKey(template.getTemplateKey())
         .build();
   }
   

@@ -16,13 +16,14 @@ import org.springframework.web.multipart.MultipartFile;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 
-import com.goodee.coreconnect.approval.dto.request.ApprovalLineRequestDTO;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.goodee.coreconnect.approval.dto.request.ApprovalApproveRequestDTO;
+import com.goodee.coreconnect.approval.dto.request.ApprovalLineRequestDTO;
 import com.goodee.coreconnect.approval.dto.request.ApprovalRejectRequestDTO;
 import com.goodee.coreconnect.approval.dto.request.DocumentCreateRequestDTO;
 import com.goodee.coreconnect.approval.dto.request.DocumentDraftRequestDTO;
+import com.goodee.coreconnect.approval.dto.request.DocumentUpdateRequestDTO;
 import com.goodee.coreconnect.approval.dto.response.DocumentDetailResponseDTO;
 import com.goodee.coreconnect.approval.dto.response.DocumentSimpleResponseDTO;
 import com.goodee.coreconnect.approval.dto.response.TemplateDetailResponseDTO;
@@ -191,13 +192,8 @@ public class ApprovalServiceImpl implements ApprovalService {
     Template template = findTemplateById(requestDTO.getTemplateId());
 
     // 2. 문서 엔티티 생성 (기본 상태: DRAFT)
-    Document document = Document.createDocument(
-        template, 
-        drafter,
-        requestDTO.getDocumentTitle(),
-        requestDTO.getDocumentContent()
-        );
-
+    Document document = requestDTO.toEntity(template, drafter);
+    
     // 3. 결재선 엔티티 생성 (결재선이 DTO에 포함된 경우에만)
     // DTO에서 (ID+Type) 객체 리스트를 가져옴
     List<ApprovalLineRequestDTO> approvalLineDTOs = requestDTO.getApprovalLines(); 
@@ -245,6 +241,46 @@ public class ApprovalServiceImpl implements ApprovalService {
     // 5. 문서 저장 (DRAFT 상태로 저장됨)
     Document savedDocument = documentRepository.save(document);
 
+    return savedDocument.getId();
+  }
+  
+  /**
+   * 1-2. 임시저장 문서 수정
+   */
+  @Override
+  public Integer updateDraft(Integer documentId, DocumentUpdateRequestDTO requestDTO, List<MultipartFile> files,
+      String email) {
+    User drafter = findUserByEmail(email);
+    Document document = documentRepository.findDocumentDetailById(documentId)
+        .orElseThrow(() -> new EntityNotFoundException("문서를 찾을 수 없습니다."));
+    
+    validateDocumentUpdateAuthority(document, drafter);
+    document.updateDraftDetails(requestDTO.getDocumentTitle(), requestDTO.getDocumentDataJson());
+    updateApprovalLines(document, requestDTO.getApprovalLines());
+    addFilesToDocument(document, files);
+    Document savedDocument = documentRepository.save(document);
+    return savedDocument.getId();
+  }
+  
+  /**
+   * 1-3. 임시저장 문서 수정 후 상신
+   */
+  @Override
+  public Integer updateAndSubmitDocument(Integer documentId, DocumentUpdateRequestDTO requestDTO,
+      List<MultipartFile> files, String email) {
+    User drafter = findUserByEmail(email);
+    Document document = documentRepository.findDocumentDetailById(documentId)
+        .orElseThrow(() -> new EntityNotFoundException("문서를 찾을 수 없습니다."));
+    validateDocumentUpdateAuthority(document, drafter);
+    document.updateDraftDetails(requestDTO.getDocumentTitle(), requestDTO.getDocumentDataJson());
+    updateApprovalLines(document, requestDTO.getApprovalLines());
+    addFilesToDocument(document, files);
+    document.submit();
+    Document savedDocument = documentRepository.save(document);
+    if (isLeaveTemplate(document.getTemplate())) {
+      log.warn("휴가 신청서가 수정 후 산싱되었습니다.");
+    }
+    sendNotificationToFirstApprover(savedDocument, drafter);
     return savedDocument.getId();
   }
 
@@ -442,11 +478,11 @@ public class ApprovalServiceImpl implements ApprovalService {
         }
       }
       
-      responseDTO.setTempHtmlContent(processedHtml);
+      responseDTO.setProcessedHtmlContent(processedHtml);
       
     } catch (Exception e) {
       log.error("문서 상세 HTML 템플릿 처리 중 오류 발생. documentId: {}", documentId, e);
-      responseDTO.setTempHtmlContent(htmlTemplate);
+      responseDTO.setProcessedHtmlContent(htmlTemplate);
     }
 
     return responseDTO;
@@ -693,6 +729,68 @@ public class ApprovalServiceImpl implements ApprovalService {
       throw new EntityNotFoundException("활성화된 템플릿(양식)을 찾을 수 없습니다. ID: " + templateId);
     }
     return template;
+  }
+  
+  // 문서 수정 권한 검사 헬퍼 메소드
+  private void validateDocumentUpdateAuthority(Document document, User drafter) {
+    if (!document.getUser().getId().equals(drafter.getId())) {
+      throw new IllegalStateException("문서를 수정할 권한이 없습니다. (기안자 불일치)");
+    }
+    if (document.getDocumentStatus() != DocumentStatus.DRAFT) {
+      throw new IllegalStateException("임시저장(DRAFT) 상태의 문서만 수정할 수 있습니다.");
+    }
+  }
+  
+  private void updateApprovalLines(Document document, List<ApprovalLineRequestDTO> approvalLineDTOs) {
+    approvalLineRepository.deleteByDocumet(document);
+    
+    document.getApprovalLines().clear();
+    
+    if (approvalLineDTOs != null && !approvalLineDTOs.isEmpty()) {
+      List<Integer> approvalIds = approvalLineDTOs.stream()
+          .map(ApprovalLineRequestDTO::getUserId)
+          .collect(Collectors.toList());
+      Map<Integer, User> approverMap = userRepository.findAllById(approvalIds).stream()
+          .collect(Collectors.toMap(User::getId, Function.identity()));
+      
+      AtomicInteger order = new AtomicInteger(1);
+      
+      approvalLineDTOs.forEach(lineDTO -> {
+        User approver = approverMap.get(lineDTO.getUserId());
+        if (approver == null) {
+          throw new EntityNotFoundException("결재선에 포함된 사용자를 찾을 수 없습니다.");
+        }
+        lineDTO.toEntity(document, approver, order.getAndIncrement());
+      });
+    }
+  }
+  
+  private void addFilesToDocument(Document document, List<MultipartFile> files) {
+    if (files != null && !files.isEmpty()) {
+      try {
+        for (MultipartFile file : files) {
+          if (file == null || file.isEmpty()) continue;
+          String fileUrl = s3Service.uploadApprovalFile(file);
+          File.createFile(document, file.getName(), fileUrl, file.getSize());
+        }
+      } catch (IOException e) {
+        throw new RuntimeException("파일 업로드 중 오류가 발생했습니다.", e);
+      }
+    }
+  }
+  
+  private void sendNotificationToFirstApprover(Document savedDocument, User drafter) {
+    ApprovalLine firstLine = savedDocument.getApprovalLines().stream()
+        .filter(line -> line.getApprovalLineStatus() == ApprovalLineStatus.WAITING)
+        .min(Comparator.comparing(ApprovalLine::getApprovalLineOrder))
+        .orElse(null);
+    if (firstLine != null ) {
+      User firstApprover = firstLine.getApprover();
+      String message = drafter.getName() + "님으로부터 새로운 결재 요청이 도착했습니다";
+      NotificationPayload payload = createNotificationPayload(firstApprover.getId(), drafter.getId(), drafter.getName(), message, savedDocument.getId());
+      saveNotificationToDB(payload, firstApprover, savedDocument);
+      webSocketDeliveryService.sendToUser(firstApprover.getId(), payload);
+    }
   }
 
 
