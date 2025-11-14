@@ -116,6 +116,12 @@ export default function ScheduleDetailModal({
               일정 정보를 불러오는 중입니다...
             </Typography>
           </Stack>
+        ) : !schedule ? (
+          <Stack alignItems="center" justifyContent="center" p={4}>
+            <Typography variant="body2" color="error">
+              일정 정보를 불러올 수 없습니다.
+            </Typography>
+          </Stack>
         ) : (
           <>
             {/* 제목 + 공개여부 */}
