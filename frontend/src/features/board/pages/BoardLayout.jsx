@@ -95,29 +95,34 @@ const BoardLayout = () => {
   // - /board 전체 게시판일 경우는 선택 해제
   // ────────────────────────────────
   useEffect(() => {
-    const path = location.pathname; // 현재 URL 경로 문자열 (예: "/board/3", "/board/detail/12", "/board/new" 등)
-
-    // 카테고리 리스트 화면: URL에 categoryId가 있을 때
-    if (categoryId) {
-      setActiveCategoryId(categoryId); // 현재 URL의 categoryId를 "선택된 카테고리"로 반영
-
+    const path = location.pathname;
+    if (/^\/board\/\d+$/.test(path)) { // /board/:id → 카테고리 선택           
+      setActiveCategoryId(categoryId);                
       localStorage.setItem("lastCategoryId", categoryId);
-      // 최근 선택된 카테고리 ID를 로컬스토리지에 저장
-      // 이유: 상세/글쓰기 페이지로 이동해도 좌측 메뉴에서 어떤 카테고리가 선택 상태인지 기억하기 위함
     }
 
-    // 게시글 상세 or 글쓰기 페이지: 최근 선택 카테고리 복원
-    else if (path.includes("/board/detail") || path.includes("/board/new")) {
-      const savedId = localStorage.getItem("lastCategoryId"); // 마지막으로 저장된 카테고리 ID 가져오기 (문자열 또는 null)
+    // /board → 전체 게시판 → 선택 제거               
+    else if (path === "/board") {                     
+      setActiveCategoryId("");                        
+    }
 
+    // /board/new → 쿼리스트링 categoryId 있을 때만 유지 
+    else if (path === "/board/new") {                   
+      const params = new URLSearchParams(location.search);
+      const qCatId = params.get("categoryId");            
+
+      if (qCatId) {                                       
+        setActiveCategoryId(qCatId);                      
+        localStorage.setItem("lastCategoryId", qCatId);   
+      } else {
+        setActiveCategoryId("");                          
+      }
+    }
+
+    //  /board/detail/:id → 마지막 카테고리 복원         
+    else if (path.includes("/board/detail")) {          
+      const savedId = localStorage.getItem("lastCategoryId");
       if (savedId) setActiveCategoryId(savedId);
-      // savedId가 존재하면, 그 값을 현재 활성 카테고리로 사용
-      // 이렇게 하면 상세 페이지에서도 좌측 카테고리 음영이 유지된다.
-    }
-
-    // /board (전체 게시판): 선택 초기화
-    else {
-      setActiveCategoryId(""); // 특정 카테고리에 속하지 않는 "전체 게시판"일 때는 선택된 카테고리를 없애서 음영 제거
     }
   }, [location, categoryId]);
   // location 또는 categoryId가 변경될 때마다 위 로직을 다시 실행

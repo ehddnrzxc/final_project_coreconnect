@@ -25,3 +25,10 @@ export const downloadZipFiles = async (boardId) => {
     responseType: "blob",        // ZIP은 blob으로 받아야 함
   });
 };
+
+// 여러 파일 삭제 (1개 이상)
+export const deleteFilesBulk = (fileIds) => {
+  return http.delete(`/board-file/bulk`, {
+    data: { fileIds }, // DELETE 메서드에서 body 보낼 때는 data 사용
+  });
+};

@@ -111,7 +111,7 @@ public class BoardController {
      */
     @Operation(summary = "전체 게시글 목록 조회 (정렬 포함)", 
                description = "sortType = latest(최신순), views(조회순). 상단고정 → 공지 → 일반글 순으로 조회합니다.")
-    @GetMapping("/ordered") // 수정1
+    @GetMapping("/ordered")
     public ResponseEntity<ResponseDTO<Page<BoardResponseDTO>>> getBoards(
             @RequestParam(name = "sortType", defaultValue = "latest") String sortType, 
             @PageableDefault(size = 10) Pageable pageable 

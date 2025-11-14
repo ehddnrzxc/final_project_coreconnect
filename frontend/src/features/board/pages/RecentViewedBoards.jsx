@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from "react"; 
+import React, { useEffect, useState } from "react";
 // React 훅 불러오기
 // useEffect: 생명주기 훅 (렌더링 후 데이터 로드)
 // useState: 상태 관리 훅 (최근 본 게시글 목록 저장)
 import { useNavigate } from "react-router-dom"; // React Router 훅: 페이지 이동용
 import { getRecentViewedBoards } from "../api/boardAPI"; // 최근 본 게시글 목록 불러오기 API 함수
-import { Box, Typography, Paper, List, ListItemButton, ListItemText, Divider } from "@mui/material"; 
+import { Box, Typography, Paper, List, ListItemButton, ListItemText, Divider } from "@mui/material";
 // MUI UI 컴포넌트
 // Box: 레이아웃 컨테이너
 // Typography: 텍스트 표시
@@ -46,7 +46,7 @@ const RecentViewedBoards = () => {
 
   // 화면 렌더링
   return (
-    <Box sx={{ width: "100%", mt: 4 }}>
+    <Box sx={{ width: "100%", mt: 4, textAlign: "center" }}>
       {/* 섹션 제목 */}
       <Typography variant="h6" sx={{ mb: 1 }}>
         🔍 최근 본 게시글
@@ -59,7 +59,14 @@ const RecentViewedBoards = () => {
         </Typography>
       ) : (
         // 최근 본 게시글이 있을 때 목록 표시
-        <Paper variant="outlined" sx={{ p: 1 }}>
+        <Paper
+          variant="outlined"
+          sx={{
+            p: 1,
+            width: "80%",   // 회색 박스 폭 줄이기
+            mx: "auto",     // 가운데 정렬
+          }}
+        >
           <List>
             {/* boards 배열을 순회하며 각 게시글을 리스트로 렌더링 */}
             {boards.map((b, idx) => (

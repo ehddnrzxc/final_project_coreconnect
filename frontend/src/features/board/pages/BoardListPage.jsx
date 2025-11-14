@@ -265,99 +265,120 @@ const BoardListPage = () => {
               },
             }}
           >
-            {/* ListItemButton: 클릭 가능한 게시글 항목
-                pinned → 파란색 배경 (공지)
-                noticeYn → 회색 배경 (공지글)
-                나머지 → 흰색 배경 */}
 
-            {/* 상단: 카테고리명 + 댓글 수 + 첨부파일 수 */}
-            <Stack direction="row" alignItems="center" spacing={1}>
-              <Typography variant="body2" color="text.secondary">
-                {b.categoryName || "전체 게시판"}
-              </Typography>
+            {/* ★★★ 추가된 전체 래퍼 — 기존 코드 감싸기 ★★★ */}
+            <Box sx={{ display: "flex", width: "100%" }}>
+              {/* ★ 텍스트 본문 (80%) */}
+              <Box sx={{ flex: 4, pr: 2 }}>   {/* ★ 추가 */}
 
-              {/* 댓글 개수 */}
-              <Stack direction="row" alignItems="center" spacing={0.5}>
-                <CommentIcon sx={{ fontSize: 15, color: "#616161" }} />
-                <Typography variant="caption" color="text.secondary">
-                  {b.replyCount ?? 0}
-                </Typography>
+                {/* 기존 카테고리/댓글수/제목/내용/작성자 그대로 유지 */}
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <Typography variant="body2" color="text.secondary">
+                    {b.categoryName || "전체 게시판"}
+                  </Typography>
 
-                {/* 첨부파일 아이콘 + 파일 개수 */}
-                {b.files && b.files.length > 0 && (
-                  <Stack
-                    direction="row"
-                    alignItems="center"
-                    spacing={0.3}
-                    sx={{ ml: 1 }}
-                  >
-                    <AttachFileIcon sx={{ fontSize: 15, color: "#616161" }} />
+                  <Stack direction="row" alignItems="center" spacing={0.5}>
+                    <CommentIcon sx={{ fontSize: 15, color: "#616161" }} />
                     <Typography variant="caption" color="text.secondary">
-                      {b.files.length}
+                      {b.replyCount ?? 0}
                     </Typography>
+
+                    {b.files && b.files.length > 0 && (
+                      <Stack
+                        direction="row"
+                        alignItems="center"
+                        spacing={0.3}
+                        sx={{ ml: 1 }}
+                      >
+                        <AttachFileIcon sx={{ fontSize: 15, color: "#616161" }} />
+                        <Typography variant="caption" color="text.secondary">
+                          {b.files.length}
+                        </Typography>
+                      </Stack>
+                    )}
                   </Stack>
+                </Stack>
+
+                {/* 제목과 내용, 날짜 모두 기존 코드 그대로 */}
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ width: "100%" }}>
+                  {b.pinned && (
+                    <Typography component="span" sx={{ fontSize: 20, mr: 0.5 }}>
+                      📌
+                    </Typography>
+                  )}
+                  {b.privateYn && (
+                    <Typography component="span" sx={{ fontSize: 19, mr: 0.5 }}>
+                      🔒
+                    </Typography>
+                  )}
+                  <Typography
+                    variant="subtitle1"
+                    sx={{
+                      fontWeight: 700,
+                      flexGrow: 1,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {b.title}
+                  </Typography>
+                </Stack>
+
+                {b.content && (
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{
+                      mt: 0.5,
+                      mb: 0.5,
+                      overflow: "hidden",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 1,
+                      WebkitBoxOrient: "vertical",
+                    }}
+                  >
+                    {b.content}
+                  </Typography>
                 )}
-              </Stack>
-            </Stack>
 
-            {/* 제목 행 */}
-            < Stack direction="row" alignItems="center" spacing={1} sx={{ width: "100%" }}>
-              {b.pinned && (  // 상단고정
-                <Typography
-                  component="span"
-                  sx={{ fontSize: 20, mr: 0.5 }}
-                >
-                  📌
+                <Typography variant="caption" color="text.secondary">
+                  {b.writerName} / {formatDate(b.createdAt)} / 조회수 {b.viewCount ?? 0}
                 </Typography>
-              )}
-              {b.privateYn && (  // 비공개
-                <Typography
-                  component="span"
-                  sx={{ fontSize: 19, mr: 0.5 }}
-                >
-                  🔒
-                </Typography>
-              )}
-              <Typography
-                variant="subtitle1"
-                sx={{
-                  fontWeight: 700,
-                  flexGrow: 1,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {b.title}
-              </Typography>
-            </Stack>
+              </Box>
 
-            {/* 내용 미리보기 (한 줄만 표시) */}
-            {b.content && (
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{
-                  mt: 0.5,
-                  mb: 0.5,
-                  overflow: "hidden",
-                  display: "-webkit-box",
-                  WebkitLineClamp: 1,
-                  WebkitBoxOrient: "vertical",
-                }}
-              >
-                {b.content}
-              </Typography>
-            )}
+              {/* ★ 오른쪽 이미지 미리보기 (20%) */}
+              {b.files &&
+                b.files.length > 0 &&
+                b.files[0].fileUrl &&
+                /\.(jpg|jpeg|png|gif|webp)$/i.test(b.files[0].fileName) && (
+                  <Box
+                    sx={{
+                      flex: 1,        // 20%
+                      display: "flex",
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Box
+                      component="img"
+                      src={b.files[0].fileUrl}
+                      alt={b.files[0].fileName || "첨부 이미지"}
+                      sx={{
+                        width: "100%",
+                        maxWidth: 140,
+                        height: 80,
+                        objectFit: "cover",
+                        borderRadius: 1,
+                      }}
+                    />
+                  </Box>
+                )}
+            </Box>
+            {/* ★★★ 추가 끝 ★★★ */}
 
-            {/* 하단: 작성자, 작성일, 조회수 */}
-            <Typography variant="caption" color="text.secondary">
-              {b.writerName} / {formatDate(b.createdAt)} / 조회수{" "}
-              {b.viewCount ?? 0}
-            </Typography>
           </ListItemButton>
-        ))
-        }
+        ))}
 
         {/* 페이지네이션 영역 */}
         <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
@@ -371,7 +392,7 @@ const BoardListPage = () => {
       </Box >
 
       {/* 오른쪽 사이드 영역: 최근 본 게시글 */}
-      < Box sx={{ flex: 1.1 }}>
+      < Box sx={{ flex: 1.2 }}>
         <RecentViewedBoards />
       </Box >
     </Box >

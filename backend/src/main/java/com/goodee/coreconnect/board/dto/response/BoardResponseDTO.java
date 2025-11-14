@@ -34,10 +34,11 @@ public class BoardResponseDTO {
     private String writerName;
     private String writerEmail;
     private String categoryName;       
+    private Integer replyCount;
+    private Boolean hasImage;
 
     private List<BoardFileResponseDTO> files;    
     private List<BoardReplyResponseDTO> replies; 
-    private Integer replyCount;
 
 
     /**
@@ -59,9 +60,8 @@ public class BoardResponseDTO {
                                           .writerName(board.getUser() != null ? board.getUser().getName() : null)
                                           .writerEmail(board.getUser() != null ? board.getUser().getEmail() : null)
                                           .categoryName(board.getCategory() != null ? board.getCategory().getName() : null)
-                                          .files(board.getFiles().stream()
-                                                                 .map(file -> BoardFileResponseDTO.toDTO(file))
-                                                                 .toList())
+                                          .files(List.of())
+                                          .hasImage(false)
                                           .replies(board.getReplies().stream()
                                                                      .map(reply -> BoardReplyResponseDTO.toDTO(reply))
                                                                      .toList())

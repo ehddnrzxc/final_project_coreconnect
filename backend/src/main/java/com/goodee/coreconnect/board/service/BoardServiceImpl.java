@@ -11,11 +11,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.goodee.coreconnect.board.dto.request.BoardRequestDTO;
+import com.goodee.coreconnect.board.dto.response.BoardFileResponseDTO;
 import com.goodee.coreconnect.board.dto.response.BoardResponseDTO;
 import com.goodee.coreconnect.board.entity.Board;
 import com.goodee.coreconnect.board.entity.BoardCategory;
+import com.goodee.coreconnect.board.entity.BoardFile;
 import com.goodee.coreconnect.board.entity.BoardViewHistory;
 import com.goodee.coreconnect.board.repository.BoardCategoryRepository;
+import com.goodee.coreconnect.board.repository.BoardFileRepository;
 import com.goodee.coreconnect.board.repository.BoardRepository;
 import com.goodee.coreconnect.board.repository.BoardViewHistoryRepository;
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
@@ -37,6 +40,29 @@ public class BoardServiceImpl implements BoardService {
     private final UserRepository userRepository;
     private final NotificationService notificationService;
     private final BoardViewHistoryRepository viewHistoryRepository;
+    private final BoardFileRepository boardFileRepository;
+    private final BoardFileService boardFileService; 
+    
+    // 미리보기 적용 메소드
+    private void applyPreview(Board board, BoardResponseDTO dto) { 
+      List<BoardFile> files = boardFileRepository                   
+              .findByBoardIdAndDeletedYnFalse(board.getId());       
+
+      if (!files.isEmpty()) {                                       
+          BoardFile first = files.get(0);                           
+          String url = boardFileService.getPresignedUrlInternal(    
+                  first.getS3ObjectKey());                          
+
+          dto.setFiles(                                             
+                  List.of(BoardFileResponseDTO.toDTO(first, url))   
+          );                                                        
+          
+          dto.setHasImage(true);
+      } else {
+          dto.setFiles(List.of());                                  
+          dto.setHasImage(false); 
+      }
+  }
 
     /** 게시글 등록 (이메일 기반) */
     @Override
@@ -306,79 +332,124 @@ public class BoardServiceImpl implements BoardService {
             board.increaseViewCount();              
             viewHistoryRepository.save(BoardViewHistory.create(loginUser, board));
         }
+        
+        // 삭제되지 않은 파일만 별도로 조회하여 DTO에 반영
+        List<BoardFile> activeFiles = boardFileRepository.findByBoardIdAndDeletedYnFalse(boardId);
 
-        return BoardResponseDTO.toDTO(board);
+        // 기존 toDTO(board)를 그대로 사용하되, files만 덮어쓰기
+        BoardResponseDTO dto = BoardResponseDTO.toDTO(board);
+        
+        // 파일 DTO 리스트 변환
+        List<BoardFileResponseDTO> fileDTOs = activeFiles.stream()
+                                                         .map(file -> {
+                                                             String url = boardFileService.getPresignedUrlInternal(file.getS3ObjectKey()); // 프리사인드 URL 생성
+                                                             return BoardFileResponseDTO.toDTO(file, url);        // 새로운 toDTO 적용
+                                                         })
+                                                         .toList();  
+
+        // DTO에 파일 적용
+        dto.setFiles(fileDTOs);
+        
+        return dto;
     }
 
     /** 카테고리별 게시글 목록 조회 */
     @Override
     @Transactional(readOnly = true)
     public Page<BoardResponseDTO> getBoardsByCategory(Integer categoryId, Pageable pageable) {
-        Page<Board> boardPage = boardRepository.findByCategoryIdOrdered(categoryId, pageable);
-        List<BoardResponseDTO> dtoList = boardPage.getContent().stream()
-                                                  .map(board -> BoardResponseDTO.toDTO(board))
-                                                  .toList();
-        return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());
-    }
+      Page<Board> boardPage = boardRepository.findByCategoryIdOrdered(categoryId, pageable);
+      List<BoardResponseDTO> dtoList = boardPage.getContent().stream()
+                                                .map(board -> BoardResponseDTO.toDTO(board))
+                                                .toList();
+
+      // 미리보기 설정
+      for (int i = 0; i < boardPage.getContent().size(); i++) {    
+          applyPreview(boardPage.getContent().get(i), dtoList.get(i)); 
+      }
+
+      return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());
+  }
 
     /** 사용자 이메일 기반 게시글 목록 조회 */
     @Override
     @Transactional(readOnly = true)
     public Page<BoardResponseDTO> getBoardsByUser(String email, Pageable pageable) {
-        Page<Board> boardPage = boardRepository.findByUserEmailAndDeletedYnFalse(email, pageable);
-        List<BoardResponseDTO> dtoList = boardPage.getContent().stream()
-                                                  .map(board -> BoardResponseDTO.toDTO(board))
-                                                  .toList();
-        return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());
-    }
+      Page<Board> boardPage = boardRepository.findByUserEmailAndDeletedYnFalse(email, pageable);
+      List<BoardResponseDTO> dtoList = boardPage.getContent().stream()
+                                                .map(board -> BoardResponseDTO.toDTO(board))
+                                                .toList();
+
+      // 미리보기 설정
+      for (int i = 0; i < boardPage.getContent().size(); i++) {    
+          applyPreview(boardPage.getContent().get(i), dtoList.get(i)); 
+      }
+
+      return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());
+  }
 
     /** 공지글 목록 조회 */
     @Override
     @Transactional(readOnly = true)
     public List<BoardResponseDTO> getNoticeBoards() {
-        List<Board> boardList = boardRepository.findByNoticeYnTrueAndDeletedYnFalseOrderByPinnedDescCreatedAtDesc();
-        return boardList.stream().map(board -> BoardResponseDTO.toDTO(board))
-                                  .toList();
-    }
+      List<Board> boardList = boardRepository.findByNoticeYnTrueAndDeletedYnFalseOrderByPinnedDescCreatedAtDesc();
+      List<BoardResponseDTO> dtoList = boardList.stream()         
+                                                .map(board -> BoardResponseDTO.toDTO(board))
+                                                .toList();        
+
+      for (int i = 0; i < boardList.size(); i++) {               
+        applyPreview(boardList.get(i), dtoList.get(i));           
+      }
+
+      return dtoList;                               
+  }
     
-    /** 게시판 정렬 조회 (최신순 / 조회순 선택형) */ // 수정1
+    /** 게시판 정렬 조회 (최신순 / 조회순 선택형) */ 
     @Override
     @Transactional(readOnly = true)
     public Page<BoardResponseDTO> getBoardsSorted(String sortType, Pageable pageable) { 
-        Page<Board> boardPage;
+      Page<Board> boardPage;
 
-        if ("views".equalsIgnoreCase(sortType)) {
-            boardPage = boardRepository.findAllOrderByPinnedNoticeAndViews(pageable);
-        } else { // 기본: 최신순
-            boardPage = boardRepository.findAllOrderByPinnedNoticeAndCreated(pageable);
-        }
+      if ("views".equalsIgnoreCase(sortType)) {
+          boardPage = boardRepository.findAllOrderByPinnedNoticeAndViews(pageable);
+      } else { // 기본: 최신순
+          boardPage = boardRepository.findAllOrderByPinnedNoticeAndCreated(pageable);
+      }
 
-        List<BoardResponseDTO> dtoList = boardPage.getContent()
-                                                  .stream()
-                                                  .map(BoardResponseDTO::toDTO)
-                                                  .toList();
+      List<BoardResponseDTO> dtoList = boardPage.getContent()
+                                                .stream()
+                                                .map(board -> BoardResponseDTO.toDTO(board))
+                                                .toList();
 
-        return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());
-    }
+      for (int i = 0; i < boardPage.getContent().size(); i++) {     
+        applyPreview(boardPage.getContent().get(i), dtoList.get(i)); 
+      }
+
+      return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());
+  }
     
     /** 게시글 검색 (제목 / 내용 / 작성자명 중 선택형) */
     @Override
     @Transactional(readOnly = true)
     public Page<BoardResponseDTO> searchBoards(String type, String keyword, Pageable pageable) {
-        Page<Board> result;
+      Page<Board> result;
 
-        switch (type) {
-            case "title" -> result = boardRepository.searchByTitle(keyword, pageable);
-            case "content" -> result = boardRepository.searchByContent(keyword, pageable);
-            case "author" -> result = boardRepository.searchByAuthor(keyword, pageable);
-            default -> throw new IllegalArgumentException("유효하지 않은 검색 타입입니다: " + type);
-        }
+      switch (type) {
+          case "title" -> result = boardRepository.searchByTitle(keyword, pageable);
+          case "content" -> result = boardRepository.searchByContent(keyword, pageable);
+          case "author" -> result = boardRepository.searchByAuthor(keyword, pageable);
+          default -> throw new IllegalArgumentException("유효하지 않은 검색 타입입니다: " + type);
+      }
 
-        List<BoardResponseDTO> dtoList = result.getContent().stream()
-                                               .map(board -> BoardResponseDTO.toDTO(board))
-                                               .toList();
-        return new PageImpl<>(dtoList, pageable, result.getTotalElements());
-    }
+      List<BoardResponseDTO> dtoList = result.getContent().stream()
+                                             .map(board -> BoardResponseDTO.toDTO(board))
+                                             .toList();
+
+      for (int i = 0; i < result.getContent().size(); i++) {     
+        applyPreview(result.getContent().get(i), dtoList.get(i)); 
+      }
+
+      return new PageImpl<>(dtoList, pageable, result.getTotalElements());
+  }
     
     /** 최근 본 게시글 10개 조회 */
     @Override
@@ -397,22 +468,28 @@ public class BoardServiceImpl implements BoardService {
                          .toList();
     }
     
+    /** 카테고리별 게시글 정렬 조회 (최신순 / 조회순 지원) */
     @Override
     @Transactional(readOnly = true)
     public Page<BoardResponseDTO> getBoardsByCategorySorted(Integer categoryId, String sortType, Pageable pageable) {
-        Page<Board> boardPage;
+      Page<Board> boardPage;
 
-        if ("views".equalsIgnoreCase(sortType)) {
-            boardPage = boardRepository.findByCategoryOrderedByViews(categoryId, pageable); 
-        } else {
-            boardPage = boardRepository.findByCategoryIdOrdered(categoryId, pageable);
-        }
+      if ("views".equalsIgnoreCase(sortType)) {
+          boardPage = boardRepository.findByCategoryOrderedByViews(categoryId, pageable); 
+      } else {
+          boardPage = boardRepository.findByCategoryIdOrdered(categoryId, pageable);
+      }
 
-        List<BoardResponseDTO> dtoList = boardPage.getContent()
-                                                  .stream()
-                                                  .map(BoardResponseDTO::toDTO)
-                                                  .toList();
-        return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());
+      List<BoardResponseDTO> dtoList = boardPage.getContent()
+                                                .stream()
+                                                .map(BoardResponseDTO::toDTO)
+                                                .toList();
+
+      for (int i = 0; i < boardPage.getContent().size(); i++) {     
+        applyPreview(boardPage.getContent().get(i), dtoList.get(i)); 
+      }
+
+      return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());
     }
     
     /** 전체 게시글 최신순 조회 (공지/상단고정 구분 없음) */
@@ -426,6 +503,10 @@ public class BoardServiceImpl implements BoardService {
                                                   .map(BoardResponseDTO::toDTO)
                                                   .toList();
         
+        for (int i = 0; i < boardPage.getContent().size(); i++) {          
+          applyPreview(boardPage.getContent().get(i), dtoList.get(i));      
+        }
+
         return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());
     }
     
