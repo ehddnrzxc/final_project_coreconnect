@@ -21,7 +21,7 @@ import {
 import { format } from "date-fns";
 import ApprovalStatusChip from "../components/ApprovalStatusChip";
 
-const STATUS_OPTIONS = ["전체", "진행중", "반려", "완료"];
+const STATUS_OPTIONS = ["전체", "진행중", "반려", "승인"];
 const STATUS_MAP = {
   진행중: ["IN_PROGRESS", "DRAFT"],
   반려: ["REJECTED"],
