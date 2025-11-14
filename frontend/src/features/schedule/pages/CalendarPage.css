@@ -1,0 +1,9 @@
+/* FullCalendar 목록(list) dot 제거 */
+.fc-list-event-graphic {
+  display: none !important;
+}
+
+/* FullCalendar 월간(dayGrid) dot 제거 */
+.fc-daygrid-event-dot {
+  display: none !important;
+}
