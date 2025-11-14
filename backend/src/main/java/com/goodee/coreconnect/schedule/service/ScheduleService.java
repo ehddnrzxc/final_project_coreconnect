@@ -7,6 +7,7 @@ import java.util.Map;
 
 import com.goodee.coreconnect.schedule.dto.request.RequestScheduleDTO;
 import com.goodee.coreconnect.schedule.dto.response.ResponseScheduleDTO;
+import com.goodee.coreconnect.schedule.dto.response.ScheduleMonthlySummaryDTO;
 
 public interface ScheduleService {
 
@@ -17,6 +18,9 @@ public interface ScheduleService {
   void deleteSchedule(Integer id);
 
   ResponseScheduleDTO getScheduleById(Integer id);
+  
+  /** 대시보드용 - 월간 일정 요약 */
+  ScheduleMonthlySummaryDTO getMonthlySummary(String email, int year, int month);
   
   /** 로그인한 사용자의 이메일 기준으로 일정 조회 */
   List<ResponseScheduleDTO> getSchedulesByEmail(String email);

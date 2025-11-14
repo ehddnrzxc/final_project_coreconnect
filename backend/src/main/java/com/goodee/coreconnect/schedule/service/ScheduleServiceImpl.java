@@ -2,6 +2,8 @@ package com.goodee.coreconnect.schedule.service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +16,9 @@ import com.goodee.coreconnect.common.notification.enums.NotificationType;
 import com.goodee.coreconnect.common.notification.service.NotificationService;
 import com.goodee.coreconnect.schedule.dto.request.RequestScheduleDTO;
 import com.goodee.coreconnect.schedule.dto.response.ResponseScheduleDTO;
+import com.goodee.coreconnect.schedule.dto.response.ScheduleDailySummaryDTO;
+import com.goodee.coreconnect.schedule.dto.response.ScheduleMonthlySummaryDTO;
+import com.goodee.coreconnect.schedule.dto.response.SchedulePreviewSummaryDTO;
 import com.goodee.coreconnect.schedule.entity.MeetingRoom;
 import com.goodee.coreconnect.schedule.entity.Schedule;
 import com.goodee.coreconnect.schedule.entity.ScheduleCategory;
@@ -463,5 +468,54 @@ public class ScheduleServiceImpl implements ScheduleService {
         .stream()
         .map(ResponseScheduleDTO::toDTO)
         .collect(Collectors.toList());
+  }
+
+  /** 대시보드용 - 월별 일정 요약 조회 */
+  @Override
+  @Transactional(readOnly = true)
+  public ScheduleMonthlySummaryDTO getMonthlySummary(String email, int year, int month) {
+    userRepository.findByEmail(email)
+        .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다: " + email));
+
+    YearMonth yearMonth = YearMonth.of(year, month);
+    LocalDateTime rangeStart = yearMonth.atDay(1).atStartOfDay();
+    LocalDateTime rangeEnd = yearMonth.plusMonths(1).atDay(1).atStartOfDay();
+
+    List<Schedule> schedules = scheduleRepository.findAccessibleSchedulesInRange(email, rangeStart, rangeEnd);
+
+    Map<LocalDate, List<Schedule>> grouped = schedules.stream()
+        .collect(Collectors.groupingBy(schedule -> schedule.getStartDateTime().toLocalDate()));
+
+    List<ScheduleDailySummaryDTO> days = grouped.entrySet().stream()
+        .sorted(Map.Entry.comparingByKey())
+        .map(entry -> {
+          List<SchedulePreviewSummaryDTO> previews = entry.getValue().stream()
+              .sorted(Comparator.comparing(Schedule::getStartDateTime))
+              .map(schedule -> SchedulePreviewSummaryDTO.builder()
+                  .id(schedule.getId())
+                  .title(schedule.getTitle())
+                  .startDateTime(schedule.getStartDateTime())
+                  .endDateTime(schedule.getEndDateTime())
+                  .location(schedule.getLocation())
+                  .categoryName(schedule.getCategory() != null ? schedule.getCategory().getName() : null)
+                  .visibility(schedule.getVisibility() != null ? schedule.getVisibility().name() : null)
+                  .build())
+              .limit(5)
+              .toList();
+
+          return ScheduleDailySummaryDTO.builder()
+              .date(entry.getKey())
+              .count(entry.getValue().size())
+              .items(previews)
+              .build();
+        })
+        .toList();
+
+    return ScheduleMonthlySummaryDTO.builder()
+        .year(yearMonth.getYear())
+        .month(yearMonth.getMonthValue())
+        .totalDays(yearMonth.lengthOfMonth())
+        .days(days)
+        .build();
   }
 }

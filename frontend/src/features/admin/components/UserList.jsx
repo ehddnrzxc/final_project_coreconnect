@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { getAdminUsers } from "../../../features/user/api/userAPI";
+import { getAdminUsers } from "../../user/api/userAPI";
 import { jobGradeLabel } from "../../../utils/jobGradeUtils";
 import {
   Box,

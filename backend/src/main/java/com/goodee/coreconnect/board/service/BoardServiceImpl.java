@@ -415,5 +415,18 @@ public class BoardServiceImpl implements BoardService {
         return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());
     }
     
+    /** 전체 게시글 최신순 조회 (공지/상단고정 구분 없음) */
+    @Override
+    @Transactional(readOnly = true)
+    public Page<BoardResponseDTO> getBoardsByLatestOnly(Pageable pageable) {
+        Page<Board> boardPage = boardRepository.findAllByCreatedAtDesc(pageable);
+        
+        List<BoardResponseDTO> dtoList = boardPage.getContent()
+                                                  .stream()
+                                                  .map(BoardResponseDTO::toDTO)
+                                                  .toList();
+        
+        return new PageImpl<>(dtoList, pageable, boardPage.getTotalElements());
+    }
     
 }

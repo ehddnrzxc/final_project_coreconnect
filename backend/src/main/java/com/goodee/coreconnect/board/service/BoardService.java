@@ -42,4 +42,7 @@ public interface BoardService {
     
     /** 카테고리별 정렬 조회 */
     Page<BoardResponseDTO> getBoardsByCategorySorted(Integer categoryId, String sortType, Pageable pageable);
+    
+    /** 전체 게시글 최신순 조회 (공지/상단고정 구분 없음) */
+    Page<BoardResponseDTO> getBoardsByLatestOnly(Pageable pageable);
 }

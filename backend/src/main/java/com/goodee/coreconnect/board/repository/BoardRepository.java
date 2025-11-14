@@ -79,6 +79,18 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
     """)
     Page<Board> findAllOrderByPinnedNoticeAndViews(Pageable pageable);
 
+    /** 
+     * 전체 게시글 최신순 조회 (공지/상단고정 구분 없음)
+     * - 조건: 삭제되지 않은 게시글 (deletedYn = false)
+     * - 정렬: 작성일(createdAt) 내림차순만
+     */
+    @Query("""
+        SELECT b FROM Board b
+        WHERE b.deletedYn = false
+        ORDER BY b.createdAt DESC
+    """)
+    Page<Board> findAllByCreatedAtDesc(Pageable pageable);
+
 
     // ─────────────── 카테고리별 정렬 조회 ───────────────
 

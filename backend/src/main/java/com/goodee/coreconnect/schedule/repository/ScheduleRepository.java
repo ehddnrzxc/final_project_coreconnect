@@ -2,6 +2,7 @@ package com.goodee.coreconnect.schedule.repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -145,6 +146,27 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Integer> {
   """)
   boolean existsOverlappingSchedule(
       @Param("meetingRoom") MeetingRoom meetingRoom,
+      @Param("start") LocalDateTime start,
+      @Param("end") LocalDateTime end
+  );
+
+  /**
+   * 대시보드용 - 로그인 사용자가 볼 수 있는 일정만 월 범위로 조회
+   */
+  @Query("""
+      SELECT DISTINCT s
+      FROM Schedule s
+      LEFT JOIN s.participants sp
+      WHERE s.deletedYn = false
+        AND s.startDateTime < :end
+        AND s.endDateTime >= :start
+        AND (
+          s.user.email = :email
+          OR sp.user.email = :email
+        )
+  """)
+  List<Schedule> findAccessibleSchedulesInRange(
+      @Param("email") String email,
       @Param("start") LocalDateTime start,
       @Param("end") LocalDateTime end
   );

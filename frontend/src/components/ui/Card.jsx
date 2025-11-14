@@ -12,8 +12,9 @@ const Card = ({ title, right, children, sx }) => (
     sx={{
       borderRadius: 2,
       boxShadow: 1,
-      p: 2,
+      p: 3,
       height: "100%",
+      minWidth: 320,
       display: "flex",
       flexDirection: "column",
       ...sx,
@@ -25,7 +26,7 @@ const Card = ({ title, right, children, sx }) => (
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          mb: 1.5,
+          mb: 2,
         }}
       >
         {title && (

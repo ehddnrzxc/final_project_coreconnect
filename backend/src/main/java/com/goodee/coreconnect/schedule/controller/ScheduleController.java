@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.goodee.coreconnect.schedule.dto.request.RequestScheduleDTO;
 import com.goodee.coreconnect.schedule.dto.response.ResponseScheduleDTO;
+import com.goodee.coreconnect.schedule.dto.response.ScheduleMonthlySummaryDTO;
 import com.goodee.coreconnect.schedule.service.ScheduleService;
 import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
 
@@ -106,6 +107,7 @@ public class ScheduleController {
       String email = user.getEmail();
       return scheduleService.getTodaySchedulesByEmail(email);
   }
+
   
   /** 여러 유저의 일정 현황 조회 (하루 단위) */
   @Operation(summary = "참석자 일정 현황 조회", description = "선택된 참석자들의 하루 일정 목록을 조회합니다.")
@@ -137,6 +139,19 @@ public class ScheduleController {
     return ResponseEntity.badRequest().body(ex.getMessage());
   }
   
-  
-  
+  /** 대시보드용 - 월간 일정 요약 조회 */
+  @Operation(summary = "월간 일정 요약", description = "월간 캘린더에 필요한 일정 개수 및 요약 정보를 제공합니다.")
+  @GetMapping("/summary")
+  public ResponseEntity<ScheduleMonthlySummaryDTO> getMonthlySummary(
+      @AuthenticationPrincipal CustomUserDetails user,
+      @RequestParam(name = "year", required = false) Integer year,
+      @RequestParam(name = "month", required = false) Integer month
+      ) {
+    LocalDate today = LocalDate.now();
+    int targetYear = (year != null) ? year : today.getYear();
+    int targetMonth = (month != null) ? month : today.getMonthValue();
+    
+    ScheduleMonthlySummaryDTO summary = scheduleService.getMonthlySummary(user.getEmail(), targetYear, targetMonth);
+    return ResponseEntity.ok(summary);
+  }
 }
