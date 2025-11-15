@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import {
   Box, Typography, Paper, Table, TableHead, TableBody, TableRow, TableCell,
-  IconButton, ButtonGroup, Button, InputBase, Divider, Checkbox, Chip, Pagination, Badge, Tabs, Tab
+  IconButton, ButtonGroup, Button, InputBase, Divider, Checkbox, Chip, Pagination, Badge, Tabs, Tab,
+  Snackbar, Alert
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ReportIcon from '@mui/icons-material/Report';
@@ -16,7 +17,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import SyncIcon from '@mui/icons-material/Sync';
 import ViewListIcon from '@mui/icons-material/ViewList';
 
-import { fetchInbox, fetchUnreadCount, getUserEmailFromStorage, moveToTrash } from '../api/emailApi';
+import { fetchInbox, fetchUnreadCount, getUserEmailFromStorage, deleteMails } from '../api/emailApi';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const MailInboxPage = () => {
@@ -27,12 +28,12 @@ const MailInboxPage = () => {
   const [total, setTotal] = useState(0);
   const [mails, setMails] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [selected, setSelected] = useState(new Set()); // ★ 선택된 메일 ID 관리
+  const [selected, setSelected] = useState(new Set());
+  const [snack, setSnack] = useState({ open: false, severity: 'info', message: '' });
   const userEmail = getUserEmailFromStorage();
   const navigate = useNavigate();
-  const location = useLocation(); // <-- 쿼리 문자열 인식용
+  const location = useLocation();
 
-  // 쿼리스트링 tab 값이 있으면 탭 상태에 반영
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const tabQuery = searchParams.get('tab');
@@ -42,26 +43,31 @@ const MailInboxPage = () => {
     // eslint-disable-next-line
   }, [location.search]);
 
-  const load = () => {
+  // function to load inbox (used on mount and after delete)
+  const loadInbox = async (pageIdx = page, pageSize = size, activeTab = tab) => {
     if (!userEmail) return;
-    fetchInbox(userEmail, page - 1, size, tab === "all" ? null : tab)
-      .then(res => {
-        const boxData = res?.data?.data;
-        const mailList = Array.isArray(boxData?.content) ? boxData.content : [];
-        setMails(mailList);
-        setTotal(typeof boxData?.totalElements === "number" ? boxData.totalElements : 0);
-        // 선택 해제 (선택 유지 원할시 주석 처리)
-        setSelected(new Set());
-      })
-      .catch(() => {
-        setMails([]);
-        setTotal(0);
-        setSelected(new Set());
+    try {
+      const res = await fetchInbox(userEmail, pageIdx - 1, pageSize, activeTab === "all" ? null : activeTab);
+      const boxData = res?.data?.data;
+      const mailList = Array.isArray(boxData?.content) ? boxData.content : [];
+      setMails(mailList);
+      setTotal(typeof boxData?.totalElements === "number" ? boxData.totalElements : 0);
+      // Clear selection if items changed
+      setSelected(prev => {
+        // remove any selected ids that are no longer visible on this page
+        const idsOnPage = new Set(mailList.map(m => m.emailId));
+        const newSet = new Set([...prev].filter(id => idsOnPage.has(id)));
+        return newSet;
       });
+    } catch (err) {
+      console.error("fetchInbox error", err);
+      setMails([]);
+      setTotal(0);
+    }
   };
 
   useEffect(() => {
-    load();
+    loadInbox();
     // eslint-disable-next-line
   }, [userEmail, page, size, tab]);
 
@@ -72,32 +78,68 @@ const MailInboxPage = () => {
       .catch(() => setUnreadCount(0));
   }, [userEmail]);
 
-  // ★ 전체선택/해제
-  const allChecked = mails.length > 0 && selected.size === mails.length;
-  const isIndeterminate = selected.size > 0 && selected.size < mails.length;
-
-  // ★ 체크박스 개별 토글
-  const toggleSelect = (id) => {
+  // toggle single select
+  const toggleSelect = (mailId) => {
     setSelected(prev => {
-      const copy = new Set(prev);
-      copy.has(id) ? copy.delete(id) : copy.add(id);
-      return copy;
+      const s = new Set(prev);
+      if (s.has(mailId)) s.delete(mailId);
+      else s.add(mailId);
+      return s;
     });
   };
 
-  // ★ 삭제 버튼 이벤트
-  const handleDeleteSelected = async () => {
-    if (selected.size === 0) {
-      alert("삭제할 메일을 선택하세요.");
+  // select all on current page
+  const toggleSelectAll = () => {
+    setSelected(prev => {
+      const idsOnPage = mails.map(m => m.emailId);
+      const allSelected = idsOnPage.every(id => prev.has(id));
+      if (allSelected) {
+        // unselect all on page
+        const s = new Set(prev);
+        idsOnPage.forEach(id => s.delete(id));
+        return s;
+      } else {
+        const s = new Set(prev);
+        idsOnPage.forEach(id => s.add(id));
+        return s;
+      }
+    });
+  };
+
+  // delete selected mails for current user (calls backend DELETE /api/v1/email with { mailIds: [...] })
+  const deleteSelected = async () => {
+    const ids = Array.from(selected);
+    if (ids.length === 0) {
+      setSnack({ open: true, severity: 'warning', message: '삭제할 메일을 선택하세요.' });
       return;
     }
-    if (!window.confirm("선택한 메일을 휴지통으로 이동하시겠습니까?")) return;
+    if (!window.confirm(`선택한 ${ids.length}개의 메일을 휴지통으로 이동하시겠습니까?`)) return;
+
     try {
-      await moveToTrash(Array.from(selected));
-      load();
+      // API 모듈 사용 (deleteMails는 /api/v1/email로 요청)
+      await deleteMails(ids);
+
+      setSnack({ open: true, severity: 'success', message: `${ids.length}개의 메일을 휴지통으로 이동했습니다.` });
+      setSelected(prev => {
+        const s = new Set(prev);
+        ids.forEach(id => s.delete(id));
+        return s;
+      });
+      // reload current page
+      await loadInbox();
     } catch (err) {
-      alert("삭제 중 오류가 발생했습니다.");
-      console.error(err);
+      console.error('deleteSelected error', err);
+      setSnack({ open: true, severity: 'error', message: '메일 삭제 중 오류가 발생했습니다.' });
+    }
+  };
+
+  // helper to render sentTime nicely
+  const formatSentTime = (sentTime) => {
+    if (!sentTime) return '-';
+    try {
+      return (typeof sentTime === "string") ? new Date(sentTime).toLocaleString() : new Date(sentTime).toLocaleString();
+    } catch {
+      return '-';
     }
   };
 
@@ -131,7 +173,7 @@ const MailInboxPage = () => {
               border: '1px solid #e2e6ea',
               mr: 2
             }}
-            onSubmit={e => { e.preventDefault(); }}
+            onSubmit={e => { e.preventDefault(); /* could call search functionality */ }}
           >
             <InputBase
               sx={{ flex: 1 }}
@@ -146,9 +188,9 @@ const MailInboxPage = () => {
           <Chip label="메가커피 900원, 선착순 1,000명" sx={{ bgcolor: "#fff0dc", fontWeight: 700 }} />
         </Box>
 
-        {/* 탭 필터: 전체 / 오늘 / 안읽음 */}
+        {/* 탭 필터 */}
         <Box sx={{ mt: 2, mb: 2 }}>
-          <Tabs value={tab} onChange={(_,v) => setTab(v)}>
+          <Tabs value={tab} onChange={(_, v) => setTab(v)}>
             <Tab value="all" label="전체" />
             <Tab value="today" label="오늘의 메일" />
             <Tab
@@ -164,21 +206,17 @@ const MailInboxPage = () => {
 
         {/* 상단 툴바 */}
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-          {/* ★ 전체 체크박스 */}
           <Checkbox
             sx={{ mr: 1 }}
-            indeterminate={isIndeterminate}
-            checked={allChecked}
-            onChange={e => {
-              if (e.target.checked) setSelected(new Set(mails.map(m => m.emailId)));
-              else setSelected(new Set());
-            }}
+            edge="start"
+            checked={mails.length > 0 && selected.size === mails.length}
+            indeterminate={selected.size > 0 && selected.size < mails.length}
+            onChange={(e) => { e.stopPropagation(); toggleSelectAll(); }}
           />
           <ButtonGroup variant="text" sx={{ gap: 1 }}>
             <Button startIcon={<ReportIcon />}>스팸신고</Button>
             <Button startIcon={<ReplyIcon />}>답장</Button>
-            {/* ★ 삭제 버튼에 핸들러 연결 */}
-            <Button startIcon={<DeleteIcon />} onClick={handleDeleteSelected}>삭제</Button>
+            <Button startIcon={<DeleteIcon />} onClick={deleteSelected}>삭제</Button>
             <Button startIcon={<TagIcon />}>태그</Button>
             <Button startIcon={<ForwardIcon />}>전달</Button>
             <Button startIcon={<MarkEmailReadIcon />}>읽음</Button>
@@ -187,7 +225,7 @@ const MailInboxPage = () => {
           </ButtonGroup>
           <Box sx={{ flex: 1 }} />
           <IconButton><ViewListIcon /></IconButton>
-          <IconButton><SyncIcon onClick={load} /></IconButton>
+          <IconButton><SyncIcon onClick={() => loadInbox(1, size, tab)} /></IconButton>
           <IconButton><MoreVertIcon /></IconButton>
           <Paper sx={{ ml: 1, display: 'inline-flex', alignItems: 'center', px: 0.5 }}>
             <Typography sx={{ px: 0.5, fontWeight: 500, fontSize: 15 }}>{size}</Typography>
@@ -198,21 +236,11 @@ const MailInboxPage = () => {
         <Table sx={{ minWidth: 900 }}>
           <TableHead>
             <TableRow sx={{ bgcolor: "#f8fafd", borderBottom: '2px solid #e1e3ea' }}>
-              <TableCell padding="checkbox">
-                <Checkbox
-                  size="small"
-                  indeterminate={isIndeterminate}
-                  checked={allChecked}
-                  onChange={e => {
-                    if (e.target.checked) setSelected(new Set(mails.map(m => m.emailId)));
-                    else setSelected(new Set());
-                  }}
-                />
-              </TableCell>
+              <TableCell padding="checkbox"></TableCell>
               <TableCell sx={{ fontWeight: 700 }}>발신자</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>제목</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>일자</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>받는사람 메일주소</TableCell>
+              <TableCell sx={{ fontWeight: 700 }}>받는사람</TableCell>
               <TableCell align="right" sx={{ fontWeight: 700 }}>상태</TableCell>
               <TableCell sx={{ fontWeight: 700 }}></TableCell>
             </TableRow>
@@ -223,75 +251,73 @@ const MailInboxPage = () => {
                 <TableCell colSpan={7} align="center">받은 메일이 없습니다.</TableCell>
               </TableRow>
             ) : (
-              mails.map(mail => (
-                <TableRow
-                  key={mail.emailId}
-                  hover
-                  sx={{ cursor: "pointer" }}
-                  onClick={e => {
-                    // 체크박스에서 발생시 상세이동 X
-                    if (e.target && (e.target.type === 'checkbox' || e.target.closest('button')?.type === 'button')) return;
-                    navigate(`/email/${mail.emailId}`);
-                  }}
-                >
-                  {/* ★ 개별 체크박스(선택) 기능 */}
-                  <TableCell padding="checkbox">
-                    <Checkbox
-                      size="small"
-                      checked={selected.has(mail.emailId)}
-                      onChange={() => toggleSelect(mail.emailId)}
-                      onClick={e => e.stopPropagation()}
-                    />
-                  </TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>
-                    {mail.senderEmail || mail.senderName || '-'}
-                    {(mail.senderDept && mail.senderDept.trim() !== "") && ` / ${mail.senderDept}`}
-                  </TableCell>
-                  <TableCell>{mail.emailTitle}</TableCell>
-                  <TableCell>
-                    {mail.sentTime
-                      ? (typeof mail.sentTime === "string"
-                        ? new Date(mail.sentTime).toLocaleString()
-                        : mail.sentTime)
-                      : "-"}
-                  </TableCell>
-                  <TableCell sx={{ fontSize: 13 }}>
-                    {Array.isArray(mail.recipientAddresses) && mail.recipientAddresses.length > 0
-                      ? mail.recipientAddresses.map((email, idx) => (
-                          <span key={email + idx}>
-                            {email}
-                            {idx < mail.recipientAddresses.length - 1 ? ', ' : ''}
-                          </span>
-                        ))
-                      : '-'
-                    }
-                  </TableCell>
-                  <TableCell align="right">
-                    {(mail.emailStatus === "SENT" && "수신완료") ||
-                     (mail.emailStatus === "REJECTED" && "반려") ||
-                     (mail.emailStatus === "IN_PROGRESS" && "진행중") ||
-                     (mail.emailStatus === "DRAFT" && "임시저장") ||
-                     mail.emailStatus}
-                  </TableCell>
-                  <TableCell>
-                    <IconButton size="small" onClick={e => { e.stopPropagation(); navigate(`/email/${mail.emailId}`); }}>
-                      <VisibilityIcon fontSize="small" />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))
+              mails.map(mail => {
+                const id = mail.emailId;
+                const checked = selected.has(id);
+                return (
+                  <TableRow
+                    key={id}
+                    hover
+                    sx={{ cursor: "pointer" }}
+                    onClick={() => navigate(`/email/${id}`)}
+                  >
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        size="small"
+                        checked={checked}
+                        onClick={e => e.stopPropagation()}
+                        onChange={() => toggleSelect(id)}
+                      />
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>
+                      {mail.senderEmail || mail.senderName || '-'}
+                      {(mail.senderDept && mail.senderDept.trim() !== "") && ` / ${mail.senderDept}`}
+                    </TableCell>
+                    <TableCell>{mail.emailTitle}</TableCell>
+                    <TableCell>{formatSentTime(mail.sentTime)}</TableCell>
+                    <TableCell sx={{ fontSize: 13 }}>
+                      {Array.isArray(mail.recipientAddresses)
+                        ? mail.recipientAddresses.join(', ')
+                        : ''}
+                    </TableCell>
+                    <TableCell align="right">
+                      <Chip
+                        label={mail.emailStatus}
+                        color={mail.emailStatus === "SENT" ? "success" : (mail.emailStatus === "FAILED" ? "error" : "default")}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <IconButton size="small" onClick={e => { e.stopPropagation(); navigate(`/email/${id}`); }}>
+                        <VisibilityIcon fontSize="small" />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
         <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>
           <Pagination
-            count={Math.ceil(total / size)}
+            count={Math.max(1, Math.ceil(total / size))}
             page={page}
             onChange={(_, value) => setPage(value)}
             color="primary"
           />
         </Box>
       </Paper>
+
+      <Snackbar
+        open={snack.open}
+        autoHideDuration={4000}
+        onClose={() => setSnack(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert severity={snack.severity} onClose={() => setSnack(prev => ({ ...prev, open: false }))} sx={{ width: '100%' }}>
+          {snack.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

@@ -21,21 +21,28 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.goodee.coreconnect.common.service.S3Service;
+import com.goodee.coreconnect.email.dto.request.DeleteMailsRequest;
 import com.goodee.coreconnect.email.dto.request.EmailAttachmentRequestDTO;
 import com.goodee.coreconnect.email.dto.request.EmailSendRequestDTO;
+import com.goodee.coreconnect.email.dto.response.DeleteMailsResponse;
 import com.goodee.coreconnect.email.dto.response.EmailResponseDTO;
 import com.goodee.coreconnect.email.entity.EmailFile;
 import com.goodee.coreconnect.email.entity.EmailRecipient;
+import com.goodee.coreconnect.email.entity.MailUserVisibility;
 import com.goodee.coreconnect.email.enums.EmailStatusEnum;
 import com.goodee.coreconnect.email.repository.EmailFileRepository;
 import com.goodee.coreconnect.email.repository.EmailRecipientRepository;
 import com.goodee.coreconnect.email.repository.EmailRepository;
+import com.goodee.coreconnect.email.repository.MailRepository;
+import com.goodee.coreconnect.email.repository.MailUserVisibilityRepository;
+import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
@@ -65,9 +72,19 @@ public class EmailServiceImpl implements EmailService {
 	private final EmailRecipientRepository emailRecipientRepository;
 	private final UserRepository userRepository;
 	private final S3Service s3Service;
+	private final MailUserVisibilityRepository visibilityRepository;
+	private final MailRepository mailRepository;
 	
-	 @Autowired(required = false)
-	 private RedisTemplate<String, Object> redisTemplate; // 레디스 빈 주입, 구성 필요
+	private Long getCurrentUserId() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof CustomUserDetails) {
+            return ((CustomUserDetails) principal).getId().longValue();
+        }
+        return null;
+    }
+	
+	@Autowired(required = false)
+	private RedisTemplate<String, Object> redisTemplate; // 레디스 빈 주입, 구성 필요
 	
 	@Value("${sendgrid.api.key}")
 	private String senGridApiKey; 
@@ -846,6 +863,61 @@ public class EmailServiceImpl implements EmailService {
             log.info("emptyTrash: marked {} emails as DELETED for user {}", updated, userEmail);
         }
     }
+
+	@Override
+	public DeleteMailsResponse deleteMailsForCurrentUser(DeleteMailsRequest req) {
+		Long userId = getCurrentUserId();
+        List<Long> success = new ArrayList<>();
+        if (userId == null) {
+            // 인증 실패(권한 없음) 처리 - 빈 반환 (컨트롤러에서 401 처리도 가능)
+            return new DeleteMailsResponse(success);
+        }
+
+        for (Long mailId : req.getMailIds()) {
+            // DB에서 mail의 sender_id 조회
+            Long senderId = mailRepository.findSenderIdByMailId(mailId);
+
+            String role = "RECIPIENT";
+            if (senderId != null && senderId.equals(userId)) {
+                role = "SENDER";
+            }
+
+            Optional<MailUserVisibility> opt = visibilityRepository.findByMailIdAndUserId(mailId, userId);
+
+            MailUserVisibility toSave;
+            LocalDateTime now = LocalDateTime.now();
+
+            if (opt.isPresent()) {
+                // 기존 엔티티는 Lombok @Builder + @AllArgsConstructor 방식으로 변경되어 setter가 없을 수 있음.
+                // 따라서 기존 값을 읽어 새로운 인스턴스를 빌더로 만들어 저장(merge)하도록 처리합니다.
+                MailUserVisibility existing = opt.get();
+                toSave = MailUserVisibility.builder()
+                        .id(existing.getId())
+                        .mailId(existing.getMailId())
+                        .userId(existing.getUserId())
+                        .role(existing.getRole() != null ? existing.getRole() : role)
+                        .deleted(true) // mark deleted
+                        .deletedAt(now)
+                        .createdAt(existing.getCreatedAt())
+                        .build();
+            } else {
+                // 새로 생성
+                toSave = MailUserVisibility.builder()
+                        .mailId(mailId)
+                        .userId(userId)
+                        .role(role)
+                        .deleted(true)
+                        .deletedAt(now)
+                        .createdAt(now)
+                        .build();
+            }
+
+            visibilityRepository.save(toSave);
+            success.add(mailId);
+        }
+
+        return new DeleteMailsResponse(success);
+	}
 
 	
 	
