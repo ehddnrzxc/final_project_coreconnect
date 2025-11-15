@@ -6,7 +6,9 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.goodee.coreconnect.email.dto.request.DeleteMailsRequest;
 import com.goodee.coreconnect.email.dto.request.EmailSendRequestDTO;
+import com.goodee.coreconnect.email.dto.response.DeleteMailsResponse;
 import com.goodee.coreconnect.email.dto.response.EmailResponseDTO;
 import com.goodee.coreconnect.email.entity.Email;
 
@@ -133,4 +135,12 @@ public interface EmailService {
 	     * - 발신자이거나 수신자(EmailRecipient)에 포함된 이메일만 대상으로 함
 	     */
 	    void emptyTrash(String userEmail);
+	    
+	    /**
+	     * 현재 인증된 사용자 기준으로 전달된 mailIds를 '휴지통(삭제)' 처리
+	     *
+	     * @param req DeleteMailsRequest (mailIds)
+	     * @return DeleteMailsResponse 삭제 처리된 mailIds 목록
+	     */
+	    DeleteMailsResponse deleteMailsForCurrentUser(DeleteMailsRequest req);
 }

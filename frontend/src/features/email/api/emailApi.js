@@ -137,3 +137,13 @@ export const emptyTrash = () => {
 // 휴지통(TRASH) 메일 목록 조회
 export const fetchTrashList = (userEmail, page = 0, size = 20) => 
   http.get('/email/trash', { params: { userEmail, page, size } });
+
+
+/**
+ * 선택한 mailIds를 삭제(휴지통) 처리
+ * POST 대신 DELETE에 body를 넣는 형태(axios는 가능)
+ */
+export function deleteMails(mailIds) {
+  return http.delete('/email/trash', { data: { mailIds } })
+    .then(res => res.data);
+}

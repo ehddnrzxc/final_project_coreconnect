@@ -29,8 +29,10 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.goodee.coreconnect.common.dto.response.ResponseDTO;
+import com.goodee.coreconnect.email.dto.request.DeleteMailsRequest;
 import com.goodee.coreconnect.email.dto.request.EmailSendRequestDTO;
 import com.goodee.coreconnect.email.dto.request.MarkMailReadRequestDTO;
+import com.goodee.coreconnect.email.dto.response.DeleteMailsResponse;
 import com.goodee.coreconnect.email.dto.response.EmailResponseDTO;
 import com.goodee.coreconnect.email.entity.EmailFile;
 import com.goodee.coreconnect.email.repository.EmailFileRepository;
@@ -285,6 +287,15 @@ public class EmailController {
         return ResponseEntity.ok().build();
     }
     
-    
+
+    /**
+     * 현재 사용자가 선택한 mailIds를 '휴지통(삭제)' 처리
+     * 요청 예: DELETE /api/v1/mail  Body: { "mailIds": [1,2,3] }
+     */
+    @DeleteMapping("/trash")
+    public ResponseEntity<DeleteMailsResponse> deleteMails(@RequestBody DeleteMailsRequest req) {
+        DeleteMailsResponse res = emailService.deleteMailsForCurrentUser(req);
+        return ResponseEntity.ok(res);
+    }
     
 }
