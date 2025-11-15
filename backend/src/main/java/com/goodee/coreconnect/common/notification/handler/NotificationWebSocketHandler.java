@@ -37,25 +37,30 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
      */
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        String token = (String) session.getAttributes().get("access_token");
-        if (token == null) {
-        	 System.out.println("[NotificationWebSocketHandler] access_token 없음! 소켓 종료");
-            //session.close();
+    	String token = (String) session.getAttributes().get("access_token");
+        if (token == null || token.trim().isEmpty()) {
+            log.warn("[NotificationWebSocketHandler] access_token 없음! 소켓 종료");
+            session.close(); // 반드시 닫아주세요!
             return;
         }
         try {
-            String email = jwtProvider.getSubject(token);
+            String email = jwtProvider.getSubject(token); // JWT 파싱 - email (subject)
+            if (email == null || email.trim().isEmpty()) {
+                log.warn("[NotificationWebSocketHandler] JWT에서 이메일(subject) 추출 실패, 소켓 종료");
+                session.close();
+                return;
+            }
             User user = userRepository.findByEmail(email).orElse(null);
             if (user != null) {
                 webSocketDeliveryService.registerSession(user.getId(), session);
-                session.getAttributes().put("userId", user.getId()); // userId attribute 저장!
-                log.info("WebSocket session registered for userId={}", user.getId());
+                session.getAttributes().put("userId", user.getId());
+                log.info("[NotificationWebSocketHandler] 세션 등록 성공: userId={}, sessionId={}", user.getId(), session.getId());
             } else {
-                log.warn("WebSocket: No user found for email. Session closed.");
+                log.warn("[NotificationWebSocketHandler] email '{}'에 해당하는 사용자가 없음. 세션 종료.", email);
                 session.close();
             }
         } catch (Exception e) {
-            log.warn("WebSocket: Invalid JWT. Session closed.");
+            log.warn("[NotificationWebSocketHandler] JWT 파싱 실패: {}. 세션 종료.", e.getMessage());
             session.close();
         }
     }
