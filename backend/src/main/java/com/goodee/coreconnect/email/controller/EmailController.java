@@ -5,10 +5,17 @@ import java.io.InputStream;
 import java.net.URLEncoder;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.Part;
+import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.MediaType;
@@ -19,6 +26,7 @@ import org.springframework.http.HttpHeaders;        // 꼭 Spring용!
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.core.io.InputStreamResource;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -28,6 +36,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.goodee.coreconnect.common.dto.response.ResponseDTO;
 import com.goodee.coreconnect.email.dto.request.DeleteMailsRequest;
 import com.goodee.coreconnect.email.dto.request.EmailSendRequestDTO;
@@ -60,32 +69,76 @@ public class EmailController {
     private final EmailFileStorageService emFileStorageService;
     
     // 이메일 발송
+
+    /**
+     * 이메일 발송 (multipart/form-data, 'data' part JSON)
+     */
     @Operation(summary = "이메일 발송", description = "이메일을 발송합니다.")
-    @PostMapping( value = "/send", consumes = "multipart/form-data")
-    public ResponseEntity<ResponseDTO<EmailResponseDTO>> send( @RequestPart("data") EmailSendRequestDTO requestDTO,
-    		@RequestPart(value = "attachments", required = false) List<MultipartFile> attachments, // 다중 파일
-    		@AuthenticationPrincipal CustomUserDetails user
-    		) {
-    	// 1. 로그인 정보에서 현재 사용자 email 추출
-    	String email = user.getEmail();
-    	// 2. email로 User 조회 -> sender_id 할당
-    	Optional<User> userOptional = userRepository.findByEmail(email);
-    	log.info("user: {}", userOptional);
-    	Integer senderId = userOptional.map(User::getId)
-    			.orElseThrow(() -> new RuntimeException("사용자 정보를 찾을 수 없습니다."));
-    	requestDTO.setSenderAddress(email);
-    	
-    	
-    	// 3. DTO에 강제로 넣거나, 아래 서비스 따로 인자 전달
-    	requestDTO.setSenderId(senderId);
-    	
+    @PostMapping(value = "/send", consumes = "multipart/form-data")
+    public ResponseEntity<ResponseDTO<EmailResponseDTO>> send(
+            @RequestPart("data") EmailSendRequestDTO requestDTO,
+            @RequestPart(value = "attachments", required = false) List<MultipartFile> attachments,
+            @AuthenticationPrincipal CustomUserDetails user,
+            HttpServletRequest request
+    ) {
+        // 0) 기초정보 로그
+        log.info("[send] incoming send request. senderPrincipal={}, attachmentsCount={}",
+                user == null ? "null" : user.getEmail(), attachments == null ? 0 : attachments.size());
+
+        // 로그인 정보에서 현재 사용자 email 추출 및 senderId 할당
+        String email = user.getEmail();
+        Optional<User> userOptional = userRepository.findByEmail(email);
+        log.info("user: {}", userOptional);
+        Integer senderId = userOptional.map(User::getId)
+                .orElseThrow(() -> new RuntimeException("사용자 정보를 찾을 수 없습니다."));
+        requestDTO.setSenderAddress(email);
+
+        // DTO serialization log (for debugging)
+        try {
+            ObjectMapper om = new ObjectMapper();
+            log.info("[send] bound EmailSendRequestDTO = {}", om.writeValueAsString(requestDTO));
+        } catch (Exception ex) {
+            log.warn("[send] failed to serialize requestDTO: {}", ex.getMessage());
+        }
+
+        // If emailContent is null, dump raw multipart 'data' part to inspect what the client sent
+        if (requestDTO.getEmailContent() == null) {
+            log.warn("[send] requestDTO.emailContent == null - dumping raw multipart 'data' part");
+            try {
+                Part p = request.getPart("data");
+                if (p != null) {
+                    String raw = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+                    log.warn("[send] raw 'data' part content: {}", raw);
+                } else {
+                    log.warn("[send] request.getPart('data') == null -> listing parts");
+                    Collection<Part> parts = request.getParts();
+                    for (Part part : parts) {
+                        log.warn("[send] part name='{}', size={}", part.getName(), part.getSize());
+                    }
+                }
+            } catch (Exception ex) {
+                log.error("[send] error reading raw 'data' part: {}", ex.getMessage(), ex);
+            }
+        }
+
+        // attachments info logging
+        if (attachments != null) {
+            for (MultipartFile f : attachments) {
+                log.info("[send] attachment: name='{}', size={}, contentType={}",
+                        f.getOriginalFilename(), f.getSize(), f.getContentType());
+            }
+        }
+
+        // 3. DTO에 강제로 넣거나, 아래 서비스 따로 인자 전달
+        requestDTO.setSenderId(senderId);
+
         EmailResponseDTO result = null;
-		try {
-			result = emailService.sendEmail(requestDTO, attachments);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+        try {
+            result = emailService.sendEmail(requestDTO, attachments);
+        } catch (IOException e) {
+            log.error("[send] sendEmail failed", e);
+            throw new RuntimeException(e);
+        }
         return ResponseEntity.ok(ResponseDTO.success(result, "이메일 발송 성공"));
     }
 
@@ -296,6 +349,28 @@ public class EmailController {
     public ResponseEntity<DeleteMailsResponse> deleteMails(@RequestBody DeleteMailsRequest req) {
         DeleteMailsResponse res = emailService.deleteMailsForCurrentUser(req);
         return ResponseEntity.ok(res);
+    }
+    
+    //  휴지통 목록 (페이징)
+    @GetMapping("/trash")
+    public ResponseEntity<ResponseDTO<Page<EmailResponseDTO>>> getTrash(
+            @RequestParam("userEmail") String userEmail,
+            @RequestParam(value="page", defaultValue="0") int page,
+            @RequestParam(value="size", defaultValue="10") int size
+    ) {
+        Page<EmailResponseDTO> result = emailService.getTrashMails(userEmail, page, size);
+        return ResponseEntity.ok(ResponseDTO.success(result, "휴지통 조회 성공"));
+    }
+
+    //  예약 메일 목록 (페이징) - scheduled mails where scheduledAt > now and status = SCHEDULED
+    @GetMapping("/reserved")
+    public ResponseEntity<ResponseDTO<Page<EmailResponseDTO>>> getScheduled(
+            @RequestParam("userEmail") String userEmail,
+            @RequestParam(value="page", defaultValue="0") int page,
+            @RequestParam(value="size", defaultValue="10") int size
+    ) {
+        Page<EmailResponseDTO> result = emailService.getScheduledMails(userEmail, page, size);
+        return ResponseEntity.ok(ResponseDTO.success(result, "예약메일 조회 성공"));
     }
     
 }

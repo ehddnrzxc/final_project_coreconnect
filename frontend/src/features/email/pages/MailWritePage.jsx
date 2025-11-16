@@ -11,7 +11,9 @@ import {
   Autocomplete,
   Divider,
   Stack,
-  Tooltip
+  Tooltip,
+  Snackbar,
+  Alert
 } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
@@ -23,7 +25,12 @@ import StarOutlineIcon from "@mui/icons-material/StarOutline";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
 import dayjs from "dayjs";
-import { sendMail, saveDraftMail, getDraftDetail, getUserEmailFromStorage } from "../api/emailApi";
+import {
+  sendMail,
+  saveDraftMail,
+  getDraftDetail,
+  getUserEmailFromStorage
+} from "../api/emailApi";
 import { useLocation } from "react-router-dom";
 
 const emailSuggestions = [
@@ -43,11 +50,15 @@ function MailWritePage() {
     bccAddresses: [],
     emailTitle: "",
     emailContent: "",
-    attachments: []
+    attachments: [] // elements: { name, file } for new files OR { name, fileId } for existing draft files
   });
-  const [reservedAt, setReservedAt] = useState(null); // 예약발송 시각
+  const [reservedAt, setReservedAt] = useState(null); // 예약발송 시각 (dayjs)
   const [sending, setSending] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
+
+  const [snackOpen, setSnackOpen] = useState(false);
+  const [snackSeverity, setSnackSeverity] = useState("success");
+  const [snackMessage, setSnackMessage] = useState("");
 
   const location = useLocation();
   const draftId = new URLSearchParams(location.search).get("draftId");
@@ -64,27 +75,33 @@ function MailWritePage() {
           bccAddresses: data.bccAddresses || [],
           emailTitle: data.emailTitle || "",
           emailContent: data.emailContent || "",
+          // Draft attachments might come as objects with fileId/fileName — preserve for display
           attachments: (data.attachments || []).map(f => ({
-            name: f.fileName,
-            fileId: f.fileId
+            name: f.fileName || f.fileName,
+            fileId: f.fileId || null
           }))
         });
         // 예약 메일이면 예약시간 값도 추출 (백엔드 연동 시 reservedAt 필드를 사용)
         if (data.reservedAt) {
           setReservedAt(dayjs(data.reservedAt));
         }
+      }).catch(err => {
+        console.warn("getDraftDetail error:", err);
       });
     }
   }, [draftId, userEmail]);
 
   const handleFileChange = (e) => {
+    const files = Array.from(e.target.files || []);
     setForm((f) => ({
       ...f,
-      attachments: [...f.attachments, ...Array.from(e.target.files).map(file => ({
-        name: file.name,
-        file: file
-      }))]
+      attachments: [
+        ...f.attachments,
+        ...files.map(file => ({ name: file.name, file }))
+      ]
     }));
+    // reset input value to allow same file re-add if needed
+    e.target.value = null;
   };
 
   const handleRemoveAttachment = (idx) => {
@@ -101,8 +118,22 @@ function MailWritePage() {
     }));
   };
 
-  const plainSendMail = async (data) => {
-    return await sendMail(data);
+  const buildSendFormData = (payload) => {
+    // payload is plain object with fields that match backend DTO:
+    // recipientAddress, ccAddresses, bccAddresses, emailTitle, emailContent, emailId(optional), reservedAt(optional), existingAttachmentIds, emailType, replyToEmailId
+    const fd = new FormData();
+    // Attach JSON payload as 'data' part (server expects 'data' part as JSON)
+    fd.append('data', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+
+    // Append files that are File objects
+    form.attachments.forEach((att) => {
+      if (att.file && att.file instanceof File) {
+        fd.append('attachments', att.file, att.name);
+      }
+      // If attachment has fileId (already uploaded/draft attachment), include its id in JSON payload (handled in payload)
+    });
+
+    return fd;
   };
 
   const handleSaveDraft = async () => {
@@ -113,10 +144,39 @@ function MailWritePage() {
         setSavingDraft(false);
         return;
       }
-      const draftData = { ...form, emailFolder: "DRAFT" };
-      await saveDraftMail(draftData);
 
-      alert("임시저장되었습니다!");
+      // build draft DTO — include existing attachment fileIds but do not re-upload files
+      const draftData = {
+        emailId: form.emailId,
+        recipientAddress: form.recipientAddress,
+        ccAddresses: form.ccAddresses,
+        bccAddresses: form.bccAddresses,
+        emailTitle: form.emailTitle,
+        emailContent: form.emailContent,
+        emailFolder: "DRAFT",
+        reservedAt: reservedAt ? reservedAt.format("YYYY-MM-DDTHH:mm:ss") : null,
+        // collect fileIds of existing attachments (if any)
+        existingAttachmentIds: form.attachments
+          .filter(a => a.fileId)
+          .map(a => a.fileId)
+      };
+
+      // For drafts with new files, we need to send multipart formdata similar to sendMail.
+      // If there are new File objects, use FormData and call backend draft endpoint that accepts multipart/form-data.
+      const newFiles = form.attachments.filter(a => a.file && a.file instanceof File);
+      if (newFiles.length > 0) {
+        const fd = new FormData();
+        fd.append('data', new Blob([JSON.stringify(draftData)], { type: 'application/json' }));
+        newFiles.forEach(f => fd.append('attachments', f.file, f.name));
+        await saveDraftMail(fd); // saveDraftMail should accept FormData for multipart
+      } else {
+        await saveDraftMail(draftData); // fallback: if API accepts JSON for drafts without new files
+      }
+
+      setSnackSeverity("success");
+      setSnackMessage("임시저장되었습니다!");
+      setSnackOpen(true);
+
       setForm({
         emailId: null,
         recipientAddress: [],
@@ -128,10 +188,10 @@ function MailWritePage() {
       });
       setReservedAt(null);
     } catch (e) {
-      alert(
-        "임시저장 실패: " +
-        (e?.response?.data?.message || e.message || "알 수 없는 오류")
-      );
+      console.error("saveDraft error:", e);
+      setSnackSeverity("error");
+      setSnackMessage("임시저장 실패: " + (e?.response?.data?.message || e.message || ""));
+      setSnackOpen(true);
     } finally {
       setSavingDraft(false);
     }
@@ -150,18 +210,65 @@ function MailWritePage() {
         setSending(false);
         return;
       }
+      if (!form.emailContent) {
+        alert("본문을 입력해주세요.");
+        setSending(false);
+        return;
+      }
 
-      const mailData = { ...form };
-      // 예약 발송 선택 시 reservedAt 필드 추가
-      if (reservedAt) mailData.reservedAt = reservedAt.format("YYYY-MM-DDTHH:mm:ss");
+      // IMPORTANT:
+      // Build payload keys to exactly match backend EmailSendRequestDTO property names.
+      const payload = {
+        emailId: form.emailId,
+        recipientAddress: form.recipientAddress,           // backend expects recipientAddress (array)
+        ccAddresses: form.ccAddresses || [],               // ccAddresses (array)
+        bccAddresses: form.bccAddresses || [],             // bccAddresses (array)
+        emailTitle: form.emailTitle,                       // emailTitle (string)
+        emailContent: form.emailContent,                   // emailContent (string) <-- NOT NULL in DB
+        emailType: form.emailType || null,
+        replyToEmailId: form.replyToEmailId || null,
+        existingAttachmentIds: form.attachments
+                                 .filter(a => a.fileId)
+                                 .map(a => a.fileId),
+        reservedAt: reservedAt ? reservedAt.format("YYYY-MM-DDTHH:mm:ss") : null
+      };
 
-      await sendMail(mailData);
+      // Log payload for debug (dev only)
+      console.debug("[MailWritePage] send payload:", payload);
 
-      alert(
-        reservedAt
-          ? "예약메일이 정상적으로 등록되었습니다!"
-          : "메일이 정상적으로 발송되었습니다!"
-      );
+      const fd = buildSendFormData(payload);
+
+      // Debug FormData entries (overview)
+      const debugEntries = [...fd.entries()].map(([k, v]) => {
+        if (v instanceof File) return [k, `File:${v.name} (${v.size} bytes)`];
+        if (v instanceof Blob) return [k, "<Blob: JSON>"];
+        return [k, v];
+      });
+      console.debug("[MailWritePage] FormData entries (overview):", debugEntries);
+
+      // Debug blob JSON contents (async)
+      (async () => {
+        for (const [k, v] of fd.entries()) {
+          if (v instanceof Blob && v.type === "application/json") {
+            try {
+              const txt = await v.text();
+              console.debug(`[MailWritePage] FormData part '${k}' JSON:`, JSON.parse(txt));
+            } catch (err) {
+              console.warn("[MailWritePage] failed to parse blob JSON for part", k, err);
+            }
+          }
+        }
+      })();
+
+      // sendMail should accept multipart/form-data FormData
+      // IMPORTANT: do not set Content-Type header manually in sendMail; let browser set boundary.
+      await sendMail(fd);
+
+      setSnackSeverity("success");
+      setSnackMessage(reservedAt ? "예약메일이 정상적으로 등록되었습니다!" : "메일이 정상적으로 발송되었습니다!");
+      setSnackOpen(true);
+
+      // reset form
       setForm({
         emailId: null,
         recipientAddress: [],
@@ -173,13 +280,18 @@ function MailWritePage() {
       });
       setReservedAt(null);
     } catch (e) {
-      alert(
-        "메일 전송 실패: " +
-          (e?.response?.data?.message || e.message || "알 수 없는 오류")
-      );
+      console.error("sendMail error:", e);
+      setSnackSeverity("error");
+      setSnackMessage("메일 전송 실패: " + (e?.response?.data?.message || e.message || "알 수 없는 오류"));
+      setSnackOpen(true);
     } finally {
       setSending(false);
     }
+  };
+
+  const handleSnackClose = (event, reason) => {
+    if (reason === "clickaway") return;
+    setSnackOpen(false);
   };
 
   return (
@@ -313,7 +425,7 @@ function MailWritePage() {
             value={reservedAt}
             onChange={setReservedAt}
             minDateTime={dayjs()}
-            slotProps={{ textField: { variant: "standard", sx: { minWidth: 220 } } }}
+            slotProps={{ textField: { variant: 'standard', sx: { minWidth: 220 } } }}
           />
         </Box>
         <Divider sx={{ my: 2 }} />
@@ -370,6 +482,12 @@ function MailWritePage() {
           </Button>
         </Box>
       </Paper>
+
+      <Snackbar open={snackOpen} autoHideDuration={5000} onClose={handleSnackClose}>
+        <Alert onClose={handleSnackClose} severity={snackSeverity} sx={{ width: '100%' }}>
+          {snackMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

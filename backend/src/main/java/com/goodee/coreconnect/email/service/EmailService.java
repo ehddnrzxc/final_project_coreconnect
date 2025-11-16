@@ -143,4 +143,11 @@ public interface EmailService {
 	     * @return DeleteMailsResponse 삭제 처리된 mailIds 목록
 	     */
 	    DeleteMailsResponse deleteMailsForCurrentUser(DeleteMailsRequest req);
+	    
+	    Page<EmailResponseDTO> getTrashMails(String userEmail, int page, int size);
+	    
+	    Page<EmailResponseDTO> getScheduledMails(String userEmail, int page, int size);
+	    
+	    
+	    EmailResponseDTO sendEmailViaSendGrid(EmailSendRequestDTO requestDTO, List<MultipartFile> attachments) throws IOException;
 }

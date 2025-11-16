@@ -1,10 +1,14 @@
 package com.goodee.coreconnect.email.repository;
 
+import java.time.LocalDateTime;
+
+import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import com.goodee.coreconnect.email.entity.Email;
+import com.goodee.coreconnect.email.enums.EmailStatusEnum;
 
 import org.springframework.data.repository.query.Param;
 
@@ -26,4 +30,6 @@ public interface MailRepository extends JpaRepository<Email, Integer> {
      */
     @Query(value = "SELECT sender_id FROM email WHERE email_id = :mailId", nativeQuery = true)
     Long findSenderIdByMailId(@Param("mailId") Long mailId);
+    
+
 }

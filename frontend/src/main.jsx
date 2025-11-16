@@ -43,6 +43,7 @@ import PendingDocuments from "./features/approval/pages/PendingDocumentPage";
 import MyDocumentsPage from "./features/approval/pages/MyDocumentsPage";
 import MyDraftsPage from "./features/approval/pages/MyDraftsPage";
 import ReferDocumentPage from "./features/approval/pages/ReferDocumentPage";
+import MailReservedPage from "./features/email/pages/MailReservedPage";
 
 /* 전체 라우트 구조 */
 const router = createBrowserRouter([
@@ -84,6 +85,7 @@ const router = createBrowserRouter([
           { path: "sent", element: <MailSentBoxPage/>},
           { path: ":emailId", element: <MailDetailPage /> },
           { path: "draftbox", element: <DraftBoxPage /> }, // ★ 임시보관함 추가
+          { path: "reserved", element: <MailReservedPage /> },   // <-- add here
         ]
       },
       {
