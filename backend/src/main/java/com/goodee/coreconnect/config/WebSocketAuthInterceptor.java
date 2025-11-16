@@ -2,46 +2,88 @@ package com.goodee.coreconnect.config;
 
 import java.util.Map;
 
-import org.springframework.http.server.ServerHttpRequest;
-import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.http.server.ServletServerHttpRequest;
-import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
+import org.springframework.web.socket.server.HandshakeFailureException;
+import org.springframework.web.socket.WebSocketHandler;
 
-import jakarta.servlet.http.HttpServletRequest;
+import com.goodee.coreconnect.security.jwt.JwtProvider;
+
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+/**
+ * WebSocket handshake 시 토큰을 검사해서 session attributes 에 사용자 정보 저장
+ * - 우선순위: query param(accessToken) -> cookie(access_token)
+ * - 토큰 검증 실패 시 핸드쉐이크 거부
+ *
+ * NOTE: token in query is only fallback for tests/clients that can't use cookies.
+ */
+@Slf4j
+@RequiredArgsConstructor
 public class WebSocketAuthInterceptor implements HandshakeInterceptor {
 
-	@Override
-	public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response, WebSocketHandler wsHandler,
-			Map<String, Object> attributes) throws Exception {
-		  if (request instanceof ServletServerHttpRequest servletRequest) {
-	            HttpServletRequest req = servletRequest.getServletRequest();
-	            Cookie[] cookies = req.getCookies();
-	            if (cookies != null) {
-	                for (Cookie cookie : cookies) {
-	                    if ("access_token".equals(cookie.getName())) {
-	                        attributes.put("access_token", cookie.getValue());
-	                        // 실제 JWT 파싱해서 userId/userEmail까지 attribute로 넣어도 좋음!
-	                        System.out.println("[WebSocketAuthInterceptor] access_token 쿠키 발견 및 attribute 저장!");
-	                    }
-	                }
-	            }else {
-	                System.out.println("[WebSocketAuthInterceptor] Cookie 없음!");
-	            }
-	        } else {
-	            System.out.println("[WebSocketAuthInterceptor] 요청이 ServletServerHttpRequest 아님!");
-	        
-	        }
-	        return true;
-	}
+    private final JwtProvider jwtProvider;
 
-	@Override
-	public void afterHandshake(ServerHttpRequest request, ServerHttpResponse response, WebSocketHandler wsHandler,
-			Exception exception) {
-		// TODO Auto-generated method stub
-		
-	}
+    @Override
+    public boolean beforeHandshake(org.springframework.http.server.ServerHttpRequest request,
+                                   org.springframework.http.server.ServerHttpResponse response,
+                                   WebSocketHandler wsHandler,
+                                   Map<String, Object> attributes) throws Exception {
+        if (!(request instanceof ServletServerHttpRequest)) {
+            return true;
+        }
+        ServletServerHttpRequest servletReq = (ServletServerHttpRequest) request;
+        HttpServletRequest httpReq = servletReq.getServletRequest();
 
+        // 1) query param (fallback for tests/SDKs)
+        String token = httpReq.getParameter("accessToken");
+
+        // 2) cookie (preferred in browsers)
+        if (token == null) {
+            Cookie[] cookies = httpReq.getCookies();
+            if (cookies != null) {
+                for (Cookie c : cookies) {
+                    if ("access_token".equals(c.getName())) {
+                        token = c.getValue();
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (token == null || token.isBlank()) {
+            log.warn("[WebSocketAuthInterceptor] handshake without token - reject");
+            return false;
+        }
+
+        try {
+            // NOTE: JwtProvider has isValid(String) method (not validateToken)
+            if (!jwtProvider.isValid(token)) {
+                log.warn("[WebSocketAuthInterceptor] invalid token during websocket handshake");
+                return false;
+            }
+            String email = jwtProvider.getSubject(token);
+            if (email == null || email.isBlank()) {
+                log.warn("[WebSocketAuthInterceptor] token has no subject - reject");
+                return false;
+            }
+            // 저장: NotificationWebSocketHandler will read "wsUserEmail" (or userId if you prefer)
+            attributes.put("wsUserEmail", email);
+            attributes.put("access_token", token); // keep for fallback
+            return true;
+        } catch (Exception e) {
+            log.warn("[WebSocketAuthInterceptor] token parsing error: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    @Override
+    public void afterHandshake(org.springframework.http.server.ServerHttpRequest request,
+                               org.springframework.http.server.ServerHttpResponse response,
+                               WebSocketHandler wsHandler, Exception exception) {
+        // no-op
+    }
 }
