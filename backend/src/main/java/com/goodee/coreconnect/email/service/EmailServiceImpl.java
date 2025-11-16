@@ -400,6 +400,7 @@ public class EmailServiceImpl implements EmailService {
         log.info("[DEBUG] sendEmail: senderId={}, senderAddress={}, requestDTO.getEmailId={}, reservedAt={}",
                 requestDTO.getSenderId(), requestDTO.getSenderAddress(), requestDTO.getEmailId(), requestDTO.getReservedAt());
 
+        log.info("requestDTO: {}", requestDTO.toString());
         com.goodee.coreconnect.email.entity.Email savedEmail;
 
         // 임시저장 메일 발송 분기 (DRAFT → SENT or RESERVED)
@@ -1007,11 +1008,30 @@ public class EmailServiceImpl implements EmailService {
 /**
  * 예약 메일 목록 조회 (수신자 기준, reservedAt이 미래인 항목)
  */
-public Page<EmailResponseDTO> getScheduledMails(String userEmail, int page, int size) {
-    Pageable pageable = PageRequest.of(page, size, Sort.by("reservedAt").descending());
-    Page<com.goodee.coreconnect.email.entity.Email> pageResult = emailRepository.findScheduledByRecipientEmailAfter(userEmail, LocalDateTime.now(), pageable);
-    return pageResult.map(this::toEmailResponseDTO);
-}
+
+	// 예약 메일 조회 메서드에 debug 로그 추가 (getScheduledMails 이미 존재한다면 아래 로그를 추가)
+	@Override
+	public Page<EmailResponseDTO> getScheduledMails(String userEmail, int page, int size) {
+	    Integer senderId = userRepository.findByEmail(userEmail).map(User::getId).orElse(null);
+	    if (senderId == null) return Page.empty(PageRequest.of(page, size)).map(e -> (EmailResponseDTO) null);
+
+	    Pageable pageable = PageRequest.of(page, size, Sort.by("reservedAt").descending());
+
+	    Page<com.goodee.coreconnect.email.entity.Email> pageResult = emailRepository.findBySenderIdAndEmailStatusAndReservedAtAfter(
+	            senderId,
+	            EmailStatusEnum.RESERVED,
+	            LocalDateTime.now(),
+	            pageable
+	    );
+
+	    // Debug: 예약시간 존재 여부 확인
+	    log.info("[getScheduledMails] senderId={}, totalElements={}, currentPage={}", senderId, pageResult.getTotalElements(), pageResult.getNumber());
+	    for (com.goodee.coreconnect.email.entity.Email e : pageResult.getContent()) {
+	        log.info("[getScheduledMails] mailId={}, title={}, reservedAt={}", e.getEmailId(), e.getEmailTitle(), e.getReservedAt());
+	    }
+
+	    return pageResult.map(this::toEmailResponseDTO);
+	}
 
 /**
  * Email 엔티티 → EmailResponseDTO 변환 헬퍼
@@ -1030,7 +1050,7 @@ private EmailResponseDTO toEmailResponseDTO(com.goodee.coreconnect.email.entity.
     response.setEmailStatus(email.getEmailStatus() != null ? email.getEmailStatus().name() : null);
     response.setReplyToEmailId(email.getReplyToEmailId());
     // 고친 세터 이름: setReservedAt
-    response.setReserveredAt(email.getReservedAt());
+    response.setReservedAt(email.getReservedAt());
 
     // 발신자 이름/부서 조회
     if (email.getSenderId() != null) {

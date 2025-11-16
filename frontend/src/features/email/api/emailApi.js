@@ -16,9 +16,6 @@ export function getUserEmailFromStorage() {
 export const fetchInboxSimple = (userEmail, page, size, filter) =>
   http.get('/email/inbox', { params: { userEmail, page, size, filter } });
 
-
-
-
 /**
  * 받은메일함 조회 (정렬/추가옵션 지원)
  */
@@ -43,7 +40,7 @@ export const getEmailDetail = (emailId, userEmail) => {
   return http.get(`/email/${emailId}`, { params: { userEmail } });
 };
 
-// 메일 읽음 처리 API (PATCH) - 프론트엔드에서 이걸 불러야 사이드바 숫자 갱신이 가능!
+// 메일 읽음 처리 API (PATCH)
 export const markMailAsRead = (emailId, userEmail) =>
   http.patch(`/email/${emailId}/read`, { userEmail });
 
@@ -60,7 +57,15 @@ export const downloadAttachment = (fileId, fileName) => {
   });
 };
 
+// sendMail: accepts a FormData or an object; if object passed, it will be converted here
 export const sendMail = (mailData) => {
+  // If front passes a FormData already (e.g., MailWritePage.buildSendFormData returned it), send it directly.
+  if (mailData instanceof FormData) {
+    // Do NOT set Content-Type header; let axios set boundary automatically
+    return http.post('/email/send', mailData);
+  }
+
+  // Otherwise, convert plain object to FormData (backwards compatibility)
   const formData = new FormData();
   const { attachments, ...pureData } = mailData;
   formData.append(
@@ -88,6 +93,10 @@ export const downloadAllAttachments = (attachments = []) => {
 
 // 임시저장 메일 생성 API
 export const saveDraftMail = (mailData) => {
+  // Accepts FormData or plain object
+  if (mailData instanceof FormData) {
+    return http.post('/email/draft', mailData);
+  }
   const formData = new FormData();
   const { attachments, ...pureData } = mailData;
   formData.append(
@@ -106,11 +115,10 @@ export const saveDraftMail = (mailData) => {
 export const fetchDraftbox = (userEmail, page = 0, size = 20) =>
   http.get('/email/draftbox', { params: { userEmail, page, size } });
 
-// 임시보관함 안읽은 개수 조회 (or 전체 임시저장 메일 개수)
+// 임시보관함 안읽은 개수 (or 전체 임시저장 메일 개수)
 export const fetchDraftCount = (userEmail) =>
   http.get('/email/draftbox/count', { params: { userEmail } })
     .then(res => res.data.data);
-
 
 // 임시저장 메일 상세 보기
 export const getDraftDetail = (draftId, userEmail) =>
@@ -118,18 +126,15 @@ export const getDraftDetail = (draftId, userEmail) =>
 
 // 임시메일 삭제 API 함수 예시
 export function deleteDraftMail(draftId) {
-  // BASE_URL + /email/draft/delete/53 -> /api/v1/email/draft/delete/53
   return http.delete(`/email/draft/delete/${draftId}`);
 }
-
-// ... 기존 함수들 ...
 
 // 선택된 이메일을 휴지통(TRASH)으로 이동
 export const moveToTrash = (emailIds) => {
   return http.post('/email/move-to-trash', emailIds);
 };
 
-// 휴지통 비우기 (현재 사용자 휴지통의 모든 TRASH -> DELETED)
+// 휴지통 비우기
 export const emptyTrash = () => {
   return http.post('/email/trash/empty');
 };
@@ -138,16 +143,13 @@ export const emptyTrash = () => {
 export const fetchTrashList = (userEmail, page = 0, size = 20) => 
   http.get('/email/trash', { params: { userEmail, page, size } });
 
-
-/**
- * 선택한 mailIds를 삭제(휴지통) 처리
- * POST 대신 DELETE에 body를 넣는 형태(axios는 가능)
- */
+// 선택된 mailIds를 삭제(휴지통) 처리
 export function deleteMails(mailIds) {
   return http.delete('/email/trash', { data: { mailIds } })
     .then(res => res.data);
 }
 
+// fetchTrashMails wrapper returning axios response (older callers)
 export async function fetchTrashMails(userEmail, page = 0, size = 10) {
   const res = await http.get('/email/trash', {
     params: { userEmail, page, size },
@@ -157,7 +159,7 @@ export async function fetchTrashMails(userEmail, page = 0, size = 10) {
 }
 
 export async function fetchScheduledMails(userEmail, page = 0, size = 10) {
-  const res = await http.get('/email/scheduled', {
+  const res = await http.get('/email/reserved', {
     params: { userEmail, page, size },
     withCredentials: true
   });

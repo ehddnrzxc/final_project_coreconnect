@@ -119,7 +119,8 @@ function MailWritePage() {
   };
 
   const buildSendFormData = (payload) => {
-    // payload is plain object with fields: recipientAddress, ccAddresses, bccAddresses, emailTitle, emailContent, emailId(optional), reservedAt(optional)
+    // payload is plain object with fields that match backend DTO:
+    // recipientAddress, ccAddresses, bccAddresses, emailTitle, emailContent, emailId(optional), reservedAt(optional), existingAttachmentIds, emailType, replyToEmailId
     const fd = new FormData();
     // Attach JSON payload as 'data' part (server expects 'data' part as JSON)
     fd.append('data', new Blob([JSON.stringify(payload)], { type: 'application/json' }));
@@ -209,23 +210,58 @@ function MailWritePage() {
         setSending(false);
         return;
       }
+      if (!form.emailContent) {
+        alert("본문을 입력해주세요.");
+        setSending(false);
+        return;
+      }
 
-      // prepare payload JSON (server will get this in 'data' part)
+      // IMPORTANT:
+      // Build payload keys to exactly match backend EmailSendRequestDTO property names.
       const payload = {
         emailId: form.emailId,
-        toEmails: form.recipientAddress,
-        ccEmails: form.ccAddresses,
-        bccEmails: form.bccAddresses,
-        subject: form.emailTitle,
-        content: form.emailContent,
-        // include existing attachment ids so server can keep references for drafts
-        existingAttachmentIds: form.attachments.filter(a => a.fileId).map(a => a.fileId),
+        recipientAddress: form.recipientAddress,           // backend expects recipientAddress (array)
+        ccAddresses: form.ccAddresses || [],               // ccAddresses (array)
+        bccAddresses: form.bccAddresses || [],             // bccAddresses (array)
+        emailTitle: form.emailTitle,                       // emailTitle (string)
+        emailContent: form.emailContent,                   // emailContent (string) <-- NOT NULL in DB
+        emailType: form.emailType || null,
+        replyToEmailId: form.replyToEmailId || null,
+        existingAttachmentIds: form.attachments
+                                 .filter(a => a.fileId)
+                                 .map(a => a.fileId),
         reservedAt: reservedAt ? reservedAt.format("YYYY-MM-DDTHH:mm:ss") : null
       };
 
+      // Log payload for debug (dev only)
+      console.debug("[MailWritePage] send payload:", payload);
+
       const fd = buildSendFormData(payload);
 
+      // Debug FormData entries (overview)
+      const debugEntries = [...fd.entries()].map(([k, v]) => {
+        if (v instanceof File) return [k, `File:${v.name} (${v.size} bytes)`];
+        if (v instanceof Blob) return [k, "<Blob: JSON>"];
+        return [k, v];
+      });
+      console.debug("[MailWritePage] FormData entries (overview):", debugEntries);
+
+      // Debug blob JSON contents (async)
+      (async () => {
+        for (const [k, v] of fd.entries()) {
+          if (v instanceof Blob && v.type === "application/json") {
+            try {
+              const txt = await v.text();
+              console.debug(`[MailWritePage] FormData part '${k}' JSON:`, JSON.parse(txt));
+            } catch (err) {
+              console.warn("[MailWritePage] failed to parse blob JSON for part", k, err);
+            }
+          }
+        }
+      })();
+
       // sendMail should accept multipart/form-data FormData
+      // IMPORTANT: do not set Content-Type header manually in sendMail; let browser set boundary.
       await sendMail(fd);
 
       setSnackSeverity("success");

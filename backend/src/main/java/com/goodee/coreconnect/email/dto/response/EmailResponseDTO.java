@@ -3,6 +3,7 @@ package com.goodee.coreconnect.email.dto.response;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.goodee.coreconnect.email.entity.EmailRecipient;
 
 import lombok.AllArgsConstructor;
@@ -35,7 +36,8 @@ public class EmailResponseDTO {
 		
     private List<AttachmentDTO> attachments;
     
-    private LocalDateTime reserveredAt;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime reservedAt; // 예약시간
     
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor
     public static class AttachmentDTO {

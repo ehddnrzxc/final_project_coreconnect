@@ -103,6 +103,13 @@ public interface EmailRepository extends JpaRepository<Email, Integer> {
    nativeQuery = true
  )
  Page<Email> findTrashEmailsByUserId(@Param("userId") Integer userId, Pageable pageable);
+ 
+ // Spring Data method 이름 기반 쿼리로 간단히 추가합니다.
+ Page<Email> findBySenderIdAndEmailStatusAndReservedAtAfter(
+         Integer senderId,
+         EmailStatusEnum emailStatus,
+         LocalDateTime now,
+         Pageable pageable);
 }
 
 
