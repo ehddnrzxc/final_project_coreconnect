@@ -296,7 +296,10 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     // 2. DTO로 변환
     return documents.stream()
-        .map(DocumentSimpleResponseDTO::toDTO)
+        .map(document -> {
+          String approvalLineStr = generateApprovalLine(document.getApprovalLines());
+          return DocumentSimpleResponseDTO.toDTO(document, approvalLineStr);
+        })
         .collect(Collectors.toList());
   }
 
@@ -316,7 +319,10 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     // 2. DTO로 변환
     return documents.stream()
-        .map(DocumentSimpleResponseDTO::toDTO)
+        .map(document -> {
+          String approvalLineStr = generateApprovalLine(document.getApprovalLines());
+          return DocumentSimpleResponseDTO.toDTO(document, approvalLineStr);
+        })
         .collect(Collectors.toList());
   }
 
@@ -338,7 +344,10 @@ public class ApprovalServiceImpl implements ApprovalService {
     return currentTurnLines.stream()
         .map(ApprovalLine::getDocument) // 문서를 가져옴 (Fetch Join됨)
         .distinct() // 문서 중복 제거
-        .map(DocumentSimpleResponseDTO::toDTO)
+        .map(document -> {
+          String approvalStr = generateApprovalLine(document.getApprovalLines());
+          return DocumentSimpleResponseDTO.toDTO(document, approvalStr);
+        })
         .collect(Collectors.toList());
   }
   
@@ -364,7 +373,10 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     // 3. DTO로 변환 (목록이므로 SimpleDTO 사용)
     return documents.stream()
-        .map(DocumentSimpleResponseDTO::toDTO)
+        .map(document -> {
+          String approvalLineStr = generateApprovalLine(document.getApprovalLines());
+          return DocumentSimpleResponseDTO.toDTO(document, approvalLineStr);
+        })
         .collect(Collectors.toList());
   }
   
@@ -379,7 +391,10 @@ public class ApprovalServiceImpl implements ApprovalService {
     
     return referenceDocuments.stream()
         .distinct()
-        .map(DocumentSimpleResponseDTO::toDTO)
+        .map(document -> {
+          String approvalLineStr = generateApprovalLine(document.getApprovalLines());
+          return DocumentSimpleResponseDTO.toDTO(document, approvalLineStr);
+        })
         .collect(Collectors.toList());
   }
 
@@ -405,7 +420,10 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     // 3. DTO로 변환 (목록이므로 SimpleDTO 사용)
     return documents.stream()
-        .map(DocumentSimpleResponseDTO::toDTO)
+        .map(document -> {
+          String approvalLineStr = generateApprovalLine(document.getApprovalLines());
+          return DocumentSimpleResponseDTO.toDTO(document, approvalLineStr);
+        })
         .collect(Collectors.toList());
   }
 
@@ -729,6 +747,28 @@ public class ApprovalServiceImpl implements ApprovalService {
       throw new EntityNotFoundException("활성화된 템플릿(양식)을 찾을 수 없습니다. ID: " + templateId);
     }
     return template;
+  }
+  
+  /**
+   * 결재선 목록을 받아 "이름(상태) -> 이름(상태)" 형태의 표시용 문자열로 변환하는 헬퍼메소드
+   * @param lines
+   * @return
+   */
+  private String generateApprovalLine(List<ApprovalLine> lines) {
+    if (lines == null || lines.isEmpty()) {
+      return "-";
+    }
+    
+    String displayString = lines.stream()
+        .filter(line -> line.getApprovalLineType() != ApprovalLineType.REFER)
+        .sorted(Comparator.comparing(ApprovalLine::getApprovalLineOrder))
+        .map(line -> {
+          String approverName = (line.getApprover() != null) ? line.getApprover().getName() : "정보없음";
+          String status = line.getApprovalLineStatus().name();
+          return String.format("%s(%s)", approverName, status);
+        })
+        .collect(Collectors.joining(" -> "));
+    return displayString.isEmpty() ? "-" : displayString;
   }
   
   // 문서 수정 권한 검사 헬퍼 메소드

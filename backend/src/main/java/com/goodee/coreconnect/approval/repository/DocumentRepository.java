@@ -22,16 +22,42 @@ public interface DocumentRepository extends JpaRepository<Document, Integer>{
    * @param user
    * @return
    */
-  List<Document> findByUserAndDocDeletedYnOrderByCreatedAtDesc(User user, Boolean docDeletedYn);
+  @Query("""
+      SELECT DISTINCT d FROM Document d
+      JOIN FETCH d.user u
+      LEFT JOIN FETCH u.department
+      JOIN FETCH d.template
+      LEFT JOIN FETCH d.approvalLines al
+      LEFT JOIN FETCH al.approver
+      WHERE d.user = :user
+      AND d.docDeletedYn = :deletedYn
+      ORDER BY d.createdAt DESC
+      """)
+  List<Document> findByUserAndDocDeletedYnOrderByCreatedAtDesc(
+      @Param("user") User user,
+      @Param("deletedYn") Boolean docDeletedYn
+  );
 
   /**
    * 내가 작성한 문서 목록을 상태별로 조회 (임시저장함용)
    */
+  @Query("""
+      SELECT DISTINCT d FROM Document d
+      JOIN FETCH d.user u 
+      LEFT JOIN FETCH u.department
+      JOIN FETCH d.template
+      LEFT JOIN FETCH d.approvalLines al
+      LEFT JOIN FETCH al.approver
+      WHERE d.user = :user
+      AND d.documentStatus = :documentStatus
+      AND d.docDeletedYn = :deletedYn
+      ORDER BY d.createdAt DESC
+      """)
   List<Document> findByUserAndDocumentStatusAndDocDeletedYnOrderByCreatedAtDesc(
-      User user, 
-      DocumentStatus documentStatus, 
-      Boolean docDeletedYn
-      );
+      @Param("user") User user, 
+      @Param("documentStatus") DocumentStatus documentStatus, 
+      @Param("deletedYn") Boolean docDeletedYn
+  );
 
   /**
    * (N+1 문제 해결) 문서 상세 조회 시 필요한 모든 연관 엔티티를 fetch join
@@ -72,9 +98,12 @@ public interface DocumentRepository extends JpaRepository<Document, Integer>{
    * 내 상신함 목록을 상태별로 조회
    */
   @Query("""
-      SELECT d From Document d
+      SELECT DISTINCT d FROM Document d
       JOIN FETCH d.user u
+      LEFT JOIN FETCH u.department
       JOIN FETCH d.template t
+      LEFT JOIN FETCH d.approvalLines al
+      LEFT JOIN FETCH al.approver
       WHERE d.user = :user
       AND d.docDeletedYn = :deletedYn
       AND d.documentStatus IN :statuses
