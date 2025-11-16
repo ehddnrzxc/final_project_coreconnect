@@ -1,6 +1,6 @@
 import { Chip } from '@mui/material';
 
-function ApprovalStatusChip({ status }) {
+function DocumentStatusChip({ status }) {
   let color = "default";
   let label = status;
 
@@ -20,4 +20,4 @@ function ApprovalStatusChip({ status }) {
   return <Chip label={label} color={color} size="small" />;
 }
 
-export default ApprovalStatusChip;
+export default DocumentStatusChip;

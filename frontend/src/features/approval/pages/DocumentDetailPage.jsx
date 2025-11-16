@@ -4,9 +4,9 @@ import { approveDocument, getDocumentDetail, rejectDocument } from '../api/appro
 import { Alert, Box, Button, CircularProgress, Paper, Typography } from '@mui/material';
 import DynamicApprovalTable from '../components/DynamicApprovalTable';
 import DrafterInfoTable from '../components/DrafterInfoTable';
-import ApprovalStatusChip from '../components/ApprovalStatusChip';
 import ApprovalRejectModal from './ApprovalRejectModal';
 import EditIcon from '@mui/icons-material/Edit';
+import DocumentStatusChip from '../components/DocumentStatusChip';
 
 const getCurrentUser = () => {
   try {
@@ -119,7 +119,7 @@ function DocumentDetailPage() {
     <Box>
       <Typography variant='h5' gutterBottom sx={{ fontWeight: "bold", display: "flex", alignItems: "center", gap: 1.5 }}>
         {documentData.documentTitle}
-        <ApprovalStatusChip status={documentData.documentStatus} />
+        <DocumentStatusChip status={documentData.documentStatus} />
       </Typography>
 
       <Paper elevation={3} sx={{ p: 4}}>

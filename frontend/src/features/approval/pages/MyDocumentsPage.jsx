@@ -19,13 +19,14 @@ import {
   MenuItem,
 } from "@mui/material";
 import { format } from "date-fns";
-import ApprovalStatusChip from "../components/ApprovalStatusChip";
+import DocumentStatusChip from "../components/DocumentStatusChip";
+import ApprovalLineStatusChip from "../components/ApprovalLineStatusChip";
 
 const STATUS_OPTIONS = ["전체", "진행중", "반려", "승인"];
 const STATUS_MAP = {
   진행중: ["IN_PROGRESS", "DRAFT"],
   반려: ["REJECTED"],
-  완료: ["COMPLETED"],
+  승인: ["COMPLETED"],
 };
 
 function MyDocumentsPage() {
@@ -63,7 +64,7 @@ function MyDocumentsPage() {
   // 완료일 포맷팅 함수
   const formatCompletedDate = (doc) => {
     // 'COMPLETED' 상태이고, completedAt 값이 있을 때만 날짜 포맷
-    if (doc.documentStatus === "COMPLETED" && doc.completedAt) {
+    if ((doc.documentStatus === "COMPLETED" || doc.documentStatus === "REJECTED") && doc.completedAt) {
       return (
         <>
           <Typography variant="body2">
@@ -137,6 +138,7 @@ function MyDocumentsPage() {
                   양식명
                 </TableCell>
                 <TableCell sx={{ fontWeight: "bold" }}>제목</TableCell>
+                <TableCell sx={{ fontWeight: "bold" }}>결재선</TableCell>
                 <TableCell sx={{ fontWeight: "bold", width: "130px" }}>
                   기안부서
                 </TableCell>
@@ -176,12 +178,17 @@ function MyDocumentsPage() {
                   {/* 제목 */}
                   <TableCell>{doc.documentTitle}</TableCell>
 
+                  {/* 결재선 */}
+                  <TableCell>
+                    {doc.approvalLine}
+                  </TableCell>
+
                   {/* 기안부서 (API 응답에 drafterDeptName이 포함되어야 함) */}
                   <TableCell>{doc.deptName || "-"}</TableCell>
 
                   {/* 결재상태 */}
                   <TableCell align="center">
-                    <ApprovalStatusChip status={doc.documentStatus} />
+                    <DocumentStatusChip status={doc.documentStatus} />
                   </TableCell>
                 </TableRow>
               ))}
