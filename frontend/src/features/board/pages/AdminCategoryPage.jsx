@@ -1,21 +1,16 @@
 import { useEffect, useState } from "react";
-// React 훅
 // useEffect: 생명주기 관리 (렌더링 이후 데이터 로드 등)
 // useState: 상태 관리 (데이터 저장 및 변경 시 리렌더링)
 import { Box, Typography, Table, TableHead, TableRow, TableCell, TableBody, IconButton, TextField, Button } from "@mui/material";
-// MUI(Material UI) 기본 UI 컴포넌트
-// Box: 레이아웃 컨테이너(div 역할)
 // Typography: 텍스트 출력용
 // Table, TableHead, TableRow, TableCell, TableBody: 표 구조 렌더링
 // IconButton: 아이콘 클릭 버튼
 // TextField: 입력 필드
-// Button: 일반 버튼
 import EditIcon from "@mui/icons-material/Edit"; // 수정 아이콘 (연필 모양)
 import DeleteIcon from "@mui/icons-material/Delete"; // 삭제 아이콘 (휴지통)
 import SaveIcon from "@mui/icons-material/Save"; // 저장 아이콘 (디스크)
 import AddIcon from "@mui/icons-material/Add"; // 추가 아이콘 (플러스)
 import { getAllCategories, createCategory, updateCategory, deleteCategory } from "../api/boardCategoryAPI";
-// 게시판 카테고리 관련 API 함수
 // getAllCategories: 전체 카테고리 조회
 // createCategory: 카테고리 생성
 // updateCategory: 카테고리 수정

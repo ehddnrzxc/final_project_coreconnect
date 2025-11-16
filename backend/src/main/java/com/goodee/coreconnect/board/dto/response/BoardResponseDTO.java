@@ -36,6 +36,8 @@ public class BoardResponseDTO {
     private String categoryName;       
     private Integer replyCount;
     private Boolean hasImage;
+    private Integer fileCount;
+    private Integer categoryId;
 
     private List<BoardFileResponseDTO> files;    
     private List<BoardReplyResponseDTO> replies; 
@@ -68,6 +70,10 @@ public class BoardResponseDTO {
                                           .replyCount((int) board.getReplies().stream() 
                                                                   .filter(r -> !Boolean.TRUE.equals(r.getDeletedYn()))
                                                                   .count())
+                                          .fileCount((int) board.getFiles().stream()
+                                                                 .filter(f -> !Boolean.TRUE.equals(f.getDeletedYn()))
+                                                                 .count())
+                                          .categoryId(board.getCategory() != null ? board.getCategory().getId() : null)
                                           .build();
     }
 }

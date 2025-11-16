@@ -1,38 +1,30 @@
 import { useEffect, useState } from "react";
-// React 훅
 // useEffect → 컴포넌트 생명주기 제어 (렌더링 이후 데이터 로드 등)
 // useState → 상태 관리 (데이터를 저장하고 변경 시 리렌더링)
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-// React Router 훅
 // useParams → URL의 동적 파라미터 추출 (예: /board/:categoryId)
 // useNavigate → 페이지 이동 (navigate("/path"))
 // useSearchParams → URL 쿼리스트링 (예: ?page=1&sortType=latest) 제어
-import { Box, Typography, ListItemButton, Pagination, Stack, TextField, Button, MenuItem, Select, FormControl, InputLabel } from "@mui/material";
-// MUI(Material UI) 컴포넌트 임포트
-// Box: 레이아웃 컨테이너 (div 역할)
+import { Box, Typography, ListItemButton, Stack, TextField, Button, MenuItem,
+  Select, FormControl, InputLabel } from "@mui/material";
 // Typography: 텍스트 표현용
 // ListItemButton: 클릭 가능한 리스트 항목
-// Pagination: 페이지네이션 UI
 // Stack: 수평 또는 수직 정렬 컨테이너 (flexbox 래퍼)
 // TextField: 입력 필드
-// Button: 버튼
 // MenuItem, Select, FormControl, InputLabel: 선택 드롭다운 UI 구성 요소
 import { getBoardsByCategory, getBoardsOrdered, searchBoards } from "../api/boardAPI";
-// 게시판 관련 API 모듈 임포트
 // getBoardsByCategory → 특정 카테고리의 게시글 목록 요청
 // getBoardsOrdered → 전체 게시글 목록 (정렬 기준 포함)
 // searchBoards → 검색 조건에 따른 게시글 조회
 import CommentIcon from "@mui/icons-material/Comment"; // 댓글 개수 표시용 아이콘
 import RecentViewedBoards from "./RecentViewedBoards"; // 오른쪽 사이드 영역에서 "최근 본 게시글"을 렌더링하는 컴포넌트
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext"; // 전역 스낵바 컨텍스트
-import AttachFileIcon from "@mui/icons-material/AttachFile";  // 첨부파일 아이콘 추가
+import AttachFileIcon from "@mui/icons-material/AttachFile"; // 첨부파일 아이콘 추가
 
 
-// ──────────────────────────────────────────────
 // BoardListPage 컴포넌트
 // - 게시판 목록 페이지 전체를 담당하는 컴포넌트
 // - 정렬, 검색, 페이지네이션, 목록 렌더링, 최근 본 게시글 등을 모두 포함
-// ──────────────────────────────────────────────
 const BoardListPage = () => {
   const { categoryId } = useParams(); // URL의 /board/:categoryId 값 추출 (없으면 undefined)
   const [searchParams] = useSearchParams(); // URL 쿼리스트링 (?page=, ?sortType= 등) 제어용
@@ -51,21 +43,25 @@ const BoardListPage = () => {
 
   // URL 변경 시 검색 폼 상태를 동기화
   useEffect(() => {
-    setSearchType(urlType || "title");  // URL 쿼리(type)과 동기화
-    setKeyword(urlKeyword || "");       // URL 쿼리(keyword)와 동기화
-  }, [urlType, urlKeyword]);            // 의존성 추가
+    setSearchType(urlType || "title"); // URL 쿼리(type)과 동기화
+    setKeyword(urlKeyword || ""); // URL 쿼리(keyword)와 동기화
+  }, [urlType, urlKeyword]); // 의존성 추가
 
-  // ─────────────── 게시글 목록 불러오기 ───────────────
+  // 게시글 목록 불러오기
   useEffect(() => {
     (async () => {
       try {
         let res; // API 응답 결과 저장용 변수
-        if (isSearchPage) { // 검색 페이지인 경우
+        if (isSearchPage) {
+          // 검색 페이지인 경우
           res = await searchBoards(urlType, urlKeyword, currentPage);
-        } else { // 일반 목록 페이지인 경우
-          if (categoryId) { // 카테고리별 게시판
+        } else {
+          // 일반 목록 페이지인 경우
+          if (categoryId) {
+            // 카테고리별 게시판
             res = await getBoardsByCategory(categoryId, sortType, currentPage);
-          } else { // 전체 게시판 (정렬 기준 적용)
+          } else {
+            // 전체 게시판 (정렬 기준 적용)
             res = await getBoardsOrdered(sortType, currentPage);
           }
         }
@@ -79,7 +75,7 @@ const BoardListPage = () => {
     })();
   }, [categoryId, currentPage, isSearchPage, urlType, urlKeyword, sortType]); // 의존성 배열: 이 중 하나라도 바뀌면 다시 실행
 
-  // ─────────────── 날짜 포맷 함수 ───────────────
+  //  날짜 포맷 함수
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
     const d = new Date(dateStr); // 'MM-DD HH:mm' 형식으로 변환
@@ -90,13 +86,14 @@ const BoardListPage = () => {
     ).padStart(2, "0")}`;
   };
 
-  // ─────────────── 페이지 이동 함수 ───────────────
+  // 페이지 이동 함수
   const handlePageChange = (e, v) => {
     const newPage = v - 1; // MUI는 1부터 시작하지만 API는 0부터 시작하므로 보정
     const queryBase = categoryId ? `/board/${categoryId}` : "/board";
     const sortQuery = `sortType=${sortType}`;
 
-    if (isSearchPage) { // 검색 중인 경우: 검색 상태 유지한 채 페이지 이동
+    if (isSearchPage) {
+      // 검색 중인 경우: 검색 상태 유지한 채 페이지 이동
       navigate(
         `/board/search?type=${urlType}&keyword=${encodeURIComponent(
           urlKeyword
@@ -108,10 +105,11 @@ const BoardListPage = () => {
     navigate(`${queryBase}?${sortQuery}&page=${newPage}`); // 일반 목록: 정렬 기준과 페이지 정보 포함 이동
   };
 
-  // ─────────────── 검색 기능 ───────────────
+  // 검색 기능
   const handleSearch = () => {
     const trimmed = keyword.trim(); // 공백 제거
-    if (!trimmed) { // 검색어 없을 시 → 기본 목록으로 이동
+    if (!trimmed) {
+      // 검색어 없을 시 → 기본 목록으로 이동
       if (categoryId)
         navigate(`/board/${categoryId}?sortType=${sortType}&page=0`);
       else navigate(`/board?sortType=${sortType}&page=0`);
@@ -126,23 +124,21 @@ const BoardListPage = () => {
     );
   };
 
-  const handleKeyPress = (e) => { // Enter 키로 검색 실행
+  const handleKeyPress = (e) => {
+    // Enter 키로 검색 실행
     if (e.key === "Enter") handleSearch();
   };
 
-  // ─────────────── 정렬 변경 기능 ───────────────
+  // 정렬 변경 기능
   const handleSortChange = (e) => {
     const newSort = e.target.value; // 선택된 정렬값 (latest/views)
     setSortType(newSort); // 상태 업데이트
     // 정렬 변경 시 페이지를 0으로 초기화하여 다시 요청
-    if (categoryId)
-      navigate(`/board/${categoryId}?sortType=${newSort}&page=0`);
+    if (categoryId) navigate(`/board/${categoryId}?sortType=${newSort}&page=0`);
     else navigate(`/board?sortType=${newSort}&page=0`);
   };
 
-  // ──────────────────────────────────────────────
   // UI 렌더링
-  // ──────────────────────────────────────────────
   return (
     <Box sx={{ display: "flex", gap: 3 }}>
       {/* Box: 최상위 레이아웃 컨테이너 */}
@@ -240,13 +236,20 @@ const BoardListPage = () => {
         {boards.map((b) => (
           <ListItemButton
             key={b.id}
-            onClick={() => navigate(`/board/detail/${b.id}`)}
+            onClick={() =>
+              navigate(`/board/detail/${b.id}`, {
+                state: {
+                  // 상세페이지에 출발지 정보 전달
+                  fromAllBoard: !categoryId, // 전체 게시판이면 true, 카테고리면 false
+                },
+              })
+            }
             sx={{
               bgcolor: b.pinned
                 ? "primary.main"
                 : b.noticeYn
-                  ? "#d9d9d9"
-                  : "white",
+                ? "#d9d9d9"
+                : "white",
               border: "1px solid #e0e0e0",
               borderRadius: 1,
               mb: 1.2,
@@ -260,17 +263,16 @@ const BoardListPage = () => {
                 bgcolor: b.pinned
                   ? "primary.light"
                   : b.noticeYn
-                    ? "#e0e0e0"
-                    : "#fafafa",
+                  ? "#e0e0e0"
+                  : "#fafafa",
               },
             }}
           >
-
-            {/* ★★★ 추가된 전체 래퍼 — 기존 코드 감싸기 ★★★ */}
+            {/* 추가된 전체 래퍼 — 기존 코드 감싸기 */}
             <Box sx={{ display: "flex", width: "100%" }}>
-              {/* ★ 텍스트 본문 (80%) */}
-              <Box sx={{ flex: 4, pr: 2 }}>   {/* ★ 추가 */}
-
+              {/* 텍스트 본문 (80%) */}
+              <Box sx={{ flex: 4, pr: 2 }}>
+                {" "}
                 {/* 기존 카테고리/댓글수/제목/내용/작성자 그대로 유지 */}
                 <Stack direction="row" alignItems="center" spacing={1}>
                   <Typography variant="body2" color="text.secondary">
@@ -290,17 +292,23 @@ const BoardListPage = () => {
                         spacing={0.3}
                         sx={{ ml: 1 }}
                       >
-                        <AttachFileIcon sx={{ fontSize: 15, color: "#616161" }} />
+                        <AttachFileIcon
+                          sx={{ fontSize: 15, color: "#616161" }}
+                        />
                         <Typography variant="caption" color="text.secondary">
-                          {b.files.length}
+                          {b.fileCount}
                         </Typography>
                       </Stack>
                     )}
                   </Stack>
                 </Stack>
-
                 {/* 제목과 내용, 날짜 모두 기존 코드 그대로 */}
-                <Stack direction="row" alignItems="center" spacing={1} sx={{ width: "100%" }}>
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  spacing={1}
+                  sx={{ width: "100%" }}
+                >
                   {b.pinned && (
                     <Typography component="span" sx={{ fontSize: 20, mr: 0.5 }}>
                       📌
@@ -324,7 +332,6 @@ const BoardListPage = () => {
                     {b.title}
                   </Typography>
                 </Stack>
-
                 {b.content && (
                   <Typography
                     variant="body2"
@@ -341,20 +348,20 @@ const BoardListPage = () => {
                     {b.content}
                   </Typography>
                 )}
-
                 <Typography variant="caption" color="text.secondary">
-                  {b.writerName} / {formatDate(b.createdAt)} / 조회수 {b.viewCount ?? 0}
+                  {b.writerName} / {formatDate(b.createdAt)} / 조회수{" "}
+                  {b.viewCount ?? 0}
                 </Typography>
               </Box>
 
-              {/* ★ 오른쪽 이미지 미리보기 (20%) */}
+              {/* 오른쪽 이미지 미리보기 (20%) */}
               {b.files &&
                 b.files.length > 0 &&
                 b.files[0].fileUrl &&
                 /\.(jpg|jpeg|png|gif|webp)$/i.test(b.files[0].fileName) && (
                   <Box
                     sx={{
-                      flex: 1,        // 20%
+                      flex: 1, // 20%
                       display: "flex",
                       justifyContent: "center",
                       alignItems: "center",
@@ -375,27 +382,118 @@ const BoardListPage = () => {
                   </Box>
                 )}
             </Box>
-            {/* ★★★ 추가 끝 ★★★ */}
-
           </ListItemButton>
         ))}
 
         {/* 페이지네이션 영역 */}
-        <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
-          {/* Pagination을 가운데 정렬 */}
-          <Pagination
-            count={Math.max(pageInfo.totalPages, 1)} // 전체 페이지 수
-            page={currentPage + 1} // 현재 페이지 (API는 0부터, MUI는 1부터)
-            onChange={handlePageChange} // 페이지 변경 이벤트
-          />
+        <Box sx={{ display: "flex", justifyContent: "center",  mt: 1 }}>
+          {(() => {
+            const totalPages = pageInfo.totalPages || 1;
+            const page = currentPage + 1;
+
+            const blockSize = 10;
+            const currentBlock = Math.floor((page - 1) / blockSize);
+            const blockStart = currentBlock * blockSize + 1;
+            const blockEnd = Math.min(blockStart + blockSize - 1, totalPages);
+
+            const goPage = (p) => handlePageChange(null, p);
+
+            const btnStyle = {
+              minWidth: 26,
+              height: 30,
+              fontSize: "0.8rem",
+              borderRadius: "6px",
+              color: "#0a8aa0",
+              backgroundColor: "transparent",
+              padding: "0 6px",
+              boxShadow: "none",
+              "&:hover": {
+                backgroundColor: "#e9f8fa",
+              },
+            };
+
+            const activeStyle = {
+              ...btnStyle,
+              backgroundColor: "#0aa2b4",
+              color: "white",
+              fontWeight: 700,
+              "&:hover": {
+                backgroundColor: "#0895a5",
+              },
+            };
+
+            const disabledStyle = {
+              ...btnStyle,
+              color: "#bfbfbf",
+              cursor: "default",
+              "&:hover": {
+                backgroundColor: "transparent",
+              },
+            };
+
+            return (
+              <Stack direction="row" spacing={1} alignItems="center">
+                {/* << 처음으로 */}
+                <Button
+                  sx={blockStart === 1 ? disabledStyle : btnStyle}
+                  disabled={blockStart === 1}
+                  onClick={() => goPage(1)}
+                >
+                  {"<<"}
+                </Button>
+
+                {/* < 이전 블록 */}
+                <Button
+                  sx={blockStart === 1 ? disabledStyle : btnStyle}
+                  disabled={blockStart === 1}
+                  onClick={() => goPage(blockStart - blockSize)}
+                >
+                  {"<"}
+                </Button>
+
+                {/* 숫자 페이지 */}
+                {[...Array(blockEnd - blockStart + 1)].map((_, idx) => {
+                  const pageNumber = blockStart + idx;
+
+                  return (
+                    <Button
+                      key={pageNumber}
+                      sx={pageNumber === page ? activeStyle : btnStyle}
+                      onClick={() => goPage(pageNumber)}
+                    >
+                      {pageNumber}
+                    </Button>
+                  );
+                })}
+
+                {/* > 다음 블록 */}
+                <Button
+                  sx={blockEnd === totalPages ? disabledStyle : btnStyle}
+                  disabled={blockEnd === totalPages}
+                  onClick={() => goPage(blockEnd + 1)}
+                >
+                  {">"}
+                </Button>
+
+                {/* >> 마지막 블록 */}
+                <Button
+                  sx={blockEnd === totalPages ? disabledStyle : btnStyle}
+                  disabled={blockEnd === totalPages}
+                  onClick={() => goPage(totalPages)}
+                >
+                  {">>"}
+                </Button>
+              </Stack>
+            );
+          })()}
         </Box>
-      </Box >
+      </Box>
 
       {/* 오른쪽 사이드 영역: 최근 본 게시글 */}
-      < Box sx={{ flex: 1.2 }}>
+      <Box sx={{ flex: 1.2 }}>
         <RecentViewedBoards />
-      </Box >
-    </Box >
+      </Box>
+    </Box>
   );
 };
 

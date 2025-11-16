@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
-import {
-  Box, Button, TextField, Typography, Checkbox, FormControlLabel, Select, MenuItem, InputLabel,
-  FormControl, Modal, Card, CardMedia, CardContent, IconButton
-} from "@mui/material";
+import { Box, Button, TextField, Typography, Checkbox, FormControlLabel, Select, MenuItem, InputLabel,
+  FormControl, Modal, Card, CardMedia, CardContent, IconButton } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import DownloadIcon from "@mui/icons-material/Download";
 import DescriptionIcon from "@mui/icons-material/Description";
@@ -23,29 +21,25 @@ const BoardWritePage = () => {
     title: "",
     content: "",
     categoryId: "",
-    categoryName: "",
     noticeYn: false,
     privateYn: false,
     pinned: false,
   });
   const [categories, setCategories] = useState([]);
-  // ---------------------------
+
   //  파일 관련 상태 
-  // ---------------------------
   const [files, setFiles] = useState([]);
   const [deletedExistingFiles, setDeletedExistingFiles] = useState([]);  // 기존 파일 삭제목록
   const [previewFile, setPreviewFile] = useState(null);  // 모달용
   const [openModal, setOpenModal] = useState(false);     // 모달 열기/닫기
-  //--------------------------------------------------
+
+
   // 파일 확장자 체크 → 이미지인지 비이미지인지 구분용
-  //--------------------------------------------------
   const isImage = (name) => {
     return /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(name);
   };
 
-  // ---------------------------
   // 신규 작성 시 카테고리 조회
-  // ---------------------------
   useEffect(() => {
     if (!boardId) {
       (async () => {
@@ -65,9 +59,7 @@ const BoardWritePage = () => {
     }
   }, [boardId]);
 
-  // ---------------------------
   // 수정 모드 → 기존 정보 불러오기
-  // ---------------------------
   useEffect(() => {
     if (!boardId) return;
 
@@ -78,11 +70,9 @@ const BoardWritePage = () => {
         const data = res.data.data;
 
         setForm({
-          id: data.id,
           title: data.title,
           content: data.content,
           categoryId: data.categoryId,
-          categoryName: data.categoryName,
           noticeYn: data.noticeYn,
           privateYn: data.privateYn,
           pinned: data.pinned,
@@ -110,15 +100,11 @@ const BoardWritePage = () => {
     })();
   }, [boardId]);
 
-  // ---------------------------
   // 입력 핸들러
-  // ---------------------------
   const handleChange = (e) => {
     const { name, checked, value, type } = e.target;
 
-    // ===============================
     // 상단 고정 선택 시 → 공지 자동 ON / 비공개 자동 OFF
-    // ===============================
     if (name === "pinned") {
       if (checked) {
         setForm((f) => ({
@@ -133,9 +119,7 @@ const BoardWritePage = () => {
       return;
     }
 
-    // ===============================
     // 공지글 선택 시 → 비공개 자동 OFF
-    // ===============================
     if (name === "noticeYn") {
       if (checked) {
         setForm((f) => ({
@@ -149,9 +133,7 @@ const BoardWritePage = () => {
       return;
     }
 
-    // ===============================
     // 비공개 선택 시 → 공지/상단고정 자동 OFF
-    // ===============================
     if (name === "privateYn") {
       if (checked) {
         setForm((f) => ({
@@ -173,9 +155,7 @@ const BoardWritePage = () => {
     }));
   };
 
-  // ---------------------------
   // 파일 선택 (append 방식)
-  // ---------------------------
   const handleFileSelect = (e) => {
     const newFiles = Array.from(e.target.files).filter(f => !!f);;
 
@@ -191,9 +171,7 @@ const BoardWritePage = () => {
     setFiles((prev) => [...prev, ...wrapped]);
   };
 
-  // ---------------------------
   // 개별 파일 취소
-  // ---------------------------
   const removeFile = (idx) => {
     setFiles((prev) => {
       const target = prev[idx];
@@ -207,9 +185,7 @@ const BoardWritePage = () => {
     });
   };
 
-  // ---------------------------
   // 전체 ZIP 다운로드
-  // ---------------------------
   const handleDownloadAll = async () => {
     if (files.length < 2) return;
 
@@ -221,9 +197,7 @@ const BoardWritePage = () => {
     }
   };
 
-  // ---------------------------
   // 등록/수정 처리
-  // ---------------------------
   const handleSubmit = async () => {
     if (!boardId && !form.categoryId) {
       showSnack("카테고리를 선택해주세요.", "error");
@@ -231,9 +205,7 @@ const BoardWritePage = () => {
     }
 
     try {
-      // -----------------------------
       // 수정 모드
-      // -----------------------------
       if (boardId) {
         await updateBoard(boardId, form); // 게시글 기본 정보 업데이트
 
@@ -255,9 +227,7 @@ const BoardWritePage = () => {
         return;
       }
 
-      // -----------------------------
       // 신규 작성 모드
-      // -----------------------------
       const res = await createBoard(form);
       const newId = res.data.data.id;
 
@@ -276,25 +246,19 @@ const BoardWritePage = () => {
     }
   };
 
-  // ---------------------------
   // 모달 열기
-  // ---------------------------
   const openPreview = (file) => {
     setPreviewFile(file);   // file 객체 그대로 저장 (type/new,existing 포함)
     setOpenModal(true);
   };
 
-  // ---------------------------
   // 모달 닫기
-  // ---------------------------
   const closePreview = () => {
     setOpenModal(false);
     setPreviewFile(null);
   };
 
-  // ======================================================
-  //                     UI 렌더링
-  // ======================================================
+  // UI 렌더링
   return (
     <Box sx={{ px: "5%", pt: 2, maxWidth: 1000 }}>
       <Typography variant="h6" sx={{ mb: 2 }}>
