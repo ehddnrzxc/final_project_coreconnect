@@ -15,7 +15,7 @@ import {
   Alert,
 } from '@mui/material';
 import { format } from 'date-fns'; 
-import ApprovalStatusChip from '../components/ApprovalStatusChip';
+import DocumentStatusChip from '../components/DocumentStatusChip';
 
 function MyDraftsPage() {
   const [drafts, setDrafts] = useState([]);
@@ -85,7 +85,7 @@ function MyDraftsPage() {
                   sx={{ cursor: 'pointer' }}
                 >
                   <TableCell align="center">
-                    <ApprovalStatusChip status={doc.documentStatus} />
+                    <DocumentStatusChip status={doc.documentStatus} />
                   </TableCell>
                   <TableCell>{doc.documentTitle}</TableCell>
                   <TableCell>{doc.templateName}</TableCell>

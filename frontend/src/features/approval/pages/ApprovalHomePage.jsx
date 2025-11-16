@@ -28,7 +28,7 @@ import {
   getMyTasks,
 } from "../api/approvalApi";
 
-import ApprovalStatusChip from "../components/ApprovalStatusChip";
+import DocumentStatusChip from "../components/DocumentStatusChip";
 
 const ITEMS_PER_PAGE = 4;
 
@@ -79,6 +79,9 @@ function ApprovalHomePage() {
     (page + 1) * ITEMS_PER_PAGE
   );
 
+  const displayPendingDocs = pendingDocs.slice(0, 5);
+  const displayCompletedDocs = completedDocs.slice(0, 5);
+
   if (loading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
@@ -125,7 +128,7 @@ function ApprovalHomePage() {
                   variant="outlined"
                 >
                   <CardContent sx={{ pb: 1 }}>
-                    <ApprovalStatusChip status={doc.documentStatus} />
+                    <DocumentStatusChip status={doc.documentStatus} />
 
                     <Typography
                       variant="h6"
@@ -207,7 +210,7 @@ function ApprovalHomePage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {pendingDocs.map((doc) => (
+              {displayPendingDocs.map((doc) => (
                 <TableRow
                   key={doc.documentId}
                   hover
@@ -225,7 +228,7 @@ function ApprovalHomePage() {
                     {new Date(doc.createdAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
-                    <ApprovalStatusChip status={doc.documentStatus} />
+                    <DocumentStatusChip status={doc.documentStatus} />
                   </TableCell>
                 </TableRow>
               ))}
@@ -252,7 +255,7 @@ function ApprovalHomePage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {completedDocs.map(doc => (
+              {displayCompletedDocs.map(doc => (
                 <TableRow
                   key={doc.documentId}
                   hover
@@ -270,7 +273,7 @@ function ApprovalHomePage() {
                     {new Date(doc.completedAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
-                    <ApprovalStatusChip status={doc.documentStatus} />
+                    <DocumentStatusChip status={doc.documentStatus} />
                   </TableCell>
                 </TableRow>
               ))}

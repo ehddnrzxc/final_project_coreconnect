@@ -24,8 +24,9 @@ public class DocumentSimpleResponseDTO {
   private LocalDateTime completedAt;
   private String templateName;
   private Integer templateId;
+  private String approvalLine;
   
-  public static DocumentSimpleResponseDTO toDTO(Document document) {
+  public static DocumentSimpleResponseDTO toDTO(Document document, String approvalLine) {
     return DocumentSimpleResponseDTO.builder()
         .documentId(document.getId())
         .documentTitle(document.getDocumentTitle())
@@ -38,6 +39,7 @@ public class DocumentSimpleResponseDTO {
         .completedAt(document.getCompletedAt())
         .templateName(document.getTemplate().getTemplateName())
         .templateId(document.getTemplate().getId())
+        .approvalLine(approvalLine)
         .build();
   }
   
