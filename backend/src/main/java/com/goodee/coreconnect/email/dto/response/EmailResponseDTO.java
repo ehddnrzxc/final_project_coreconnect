@@ -35,6 +35,8 @@ public class EmailResponseDTO {
 		
     private List<AttachmentDTO> attachments;
     
+    private LocalDateTime reserveredAt;
+    
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor
     public static class AttachmentDTO {
         private Integer fileId;

@@ -5,14 +5,29 @@ import java.nio.file.Files;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.Optional;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Comparator;
+import java.util.stream.Collectors;
+import com.sendgrid.*;
+import java.util.stream.Collectors;
+import java.time.LocalDateTime;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,6 +35,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -33,6 +49,7 @@ import com.goodee.coreconnect.email.dto.request.EmailAttachmentRequestDTO;
 import com.goodee.coreconnect.email.dto.request.EmailSendRequestDTO;
 import com.goodee.coreconnect.email.dto.response.DeleteMailsResponse;
 import com.goodee.coreconnect.email.dto.response.EmailResponseDTO;
+import com.goodee.coreconnect.email.dto.response.EmailResponseDTO.AttachmentDTO;
 import com.goodee.coreconnect.email.entity.EmailFile;
 import com.goodee.coreconnect.email.entity.EmailRecipient;
 import com.goodee.coreconnect.email.entity.MailUserVisibility;
@@ -67,6 +84,10 @@ import com.sendgrid.helpers.mail.objects.Attachments;
 @RequiredArgsConstructor
 public class EmailServiceImpl implements EmailService {
 
+	@Value("${sendgrid.api.key:}")
+	private String sendGridApiKey;
+	
+	
 	private final EmailRepository emailRepository;
 	private final EmailFileRepository emailFileRepository;
 	private final EmailRecipientRepository emailRecipientRepository;
@@ -919,7 +940,155 @@ public class EmailServiceImpl implements EmailService {
         return new DeleteMailsResponse(success);
 	}
 
-	
+
+	/**
+	 * 휴지통 목록 조회 (수신자 기준 -> 내부적으로 mail_user_visibility를 참조)
+	 */
+
+	@Override
+	public Page<EmailResponseDTO> getTrashMails(String userEmail, int page, int size) {
+	    // 1) userEmail -> userId 변환
+	    Integer userId = userRepository.findByEmail(userEmail).map(User::getId).orElse(null);
+	    log.info("[getTrashMails] 요청 userEmail={}, userId={}, page={}, size={}", userEmail, userId, page, size);
+	    if (userId == null) {
+	        Pageable emptyPageable = PageRequest.of(page, size);
+	        log.info("[getTrashMails] userId not found for email={}, return empty page", userEmail);
+	        return Page.empty(emptyPageable).map(e -> (EmailResponseDTO) null);
+	    }
+
+	    // 2) Pageable 설정
+	    Pageable pageable = PageRequest.of(page, size);
+
+	    // 3) repository에서 조회 (mail_user_visibility join 기반 nativeQuery를 사용)
+	    Page<com.goodee.coreconnect.email.entity.Email> pageResult;
+	    try {
+	        pageResult = emailRepository.findTrashEmailsByUserId(userId, pageable);
+	    } catch (Exception ex) {
+	        log.error("[getTrashMails] repository 조회 중 예외 발생", ex);
+	        Pageable emptyPageable = PageRequest.of(page, size);
+	        return Page.empty(emptyPageable).map(e -> (EmailResponseDTO) null);
+	    }
+
+	    // 4) 상세 로그: total, 페이지 인덱스, 각 Email의 id/제목/발신자 등
+	    log.info("[getTrashMails] 휴지통: totalElements={}, totalPages={}, currentPage={}",
+	            pageResult.getTotalElements(), pageResult.getTotalPages(), pageResult.getNumber());
+
+	    List<com.goodee.coreconnect.email.entity.Email> emailEntities = pageResult.getContent();
+	    if (emailEntities == null || emailEntities.isEmpty()) {
+	        log.info("[getTrashMails] 조회된 Email 엔티티가 없습니다. (page size={}, totalElements={})",
+	                pageResult.getSize(), pageResult.getTotalElements());
+	    } else {
+	        // 상세 항목 로그
+	        for (com.goodee.coreconnect.email.entity.Email e : emailEntities) {
+	            try {
+	                log.info("[getTrashMails] Email id={}, title='{}', senderId={}, senderEmail='{}', emailStatus={}, reservedAt={}",
+	                        e.getEmailId(),
+	                        e.getEmailTitle(),
+	                        e.getSenderId(),
+	                        e.getSenderEmail(),
+	                        e.getEmailStatus(),
+	                        e.getReservedAt());
+	            } catch (Exception inner) {
+	                log.warn("[getTrashMails] Email 엔티티 필드 접근 중 예외: {}", inner.getMessage());
+	            }
+	        }
+	    }
+
+	    // 5) DTO 변환 및 반환
+	    Page<EmailResponseDTO> dtoPage = pageResult.map(this::toEmailResponseDTO);
+	    // 6) DTO 상세 로그 (선택) - 최대 10개만
+	    List<EmailResponseDTO> dtoSample = dtoPage.getContent().stream().limit(10).collect(Collectors.toList());
+	    log.info("[getTrashMails] 반환할 DTO 샘플 (최대10): {}", dtoSample.stream()
+	            .map(d -> String.format("id=%s,title=%s", d.getEmailId(), d.getEmailTitle()))
+	            .collect(Collectors.joining("; ")));
+
+	    return dtoPage;
+	}
+/**
+ * 예약 메일 목록 조회 (수신자 기준, reservedAt이 미래인 항목)
+ */
+public Page<EmailResponseDTO> getScheduledMails(String userEmail, int page, int size) {
+    Pageable pageable = PageRequest.of(page, size, Sort.by("reservedAt").descending());
+    Page<com.goodee.coreconnect.email.entity.Email> pageResult = emailRepository.findScheduledByRecipientEmailAfter(userEmail, LocalDateTime.now(), pageable);
+    return pageResult.map(this::toEmailResponseDTO);
+}
+
+/**
+ * Email 엔티티 → EmailResponseDTO 변환 헬퍼
+ */
+private EmailResponseDTO toEmailResponseDTO(com.goodee.coreconnect.email.entity.Email email) {
+    if (email == null) return null;
+
+    EmailResponseDTO response = new EmailResponseDTO();
+
+    response.setEmailId(email.getEmailId());
+    response.setEmailTitle(email.getEmailTitle());
+    response.setEmailContent(email.getEmailContent());
+    response.setSenderId(email.getSenderId());
+    response.setSenderEmail(email.getSenderEmail());
+    response.setSentTime(email.getEmailSentTime());
+    response.setEmailStatus(email.getEmailStatus() != null ? email.getEmailStatus().name() : null);
+    response.setReplyToEmailId(email.getReplyToEmailId());
+    // 고친 세터 이름: setReservedAt
+    response.setReserveredAt(email.getReservedAt());
+
+    // 발신자 이름/부서 조회
+    if (email.getSenderId() != null) {
+        userRepository.findById(email.getSenderId())
+            .ifPresent(u -> {
+                response.setSenderName(u.getName());
+                response.setSenderDept(u.getDepartment() != null ? u.getDepartment().getDeptName() : null);
+            });
+    }
+
+    // 수신자 목록 조회
+    List<EmailRecipient> recipients = Collections.emptyList();
+    try {
+        recipients = emailRecipientRepository.findByEmail(email);
+    } catch (Exception ex) {
+        log.warn("[toEmailResponseDTO] recipients 조회 실패: {}", ex.getMessage());
+    }
+
+    List<EmailRecipient> toRecipients = recipients.stream()
+            .filter(r -> "TO".equalsIgnoreCase(r.getEmailRecipientType()))
+            .collect(Collectors.toList());
+    List<EmailRecipient> ccRecipients = recipients.stream()
+            .filter(r -> "CC".equalsIgnoreCase(r.getEmailRecipientType()))
+            .collect(Collectors.toList());
+    List<EmailRecipient> bccRecipients = recipients.stream()
+            .filter(r -> "BCC".equalsIgnoreCase(r.getEmailRecipientType()))
+            .collect(Collectors.toList());
+
+    response.setToRecipients(toRecipients);
+    response.setCcRecipients(ccRecipients);
+    response.setBccRecipients(bccRecipients);
+
+    response.setRecipientAddresses(
+            toRecipients.stream().map(EmailRecipient::getEmailRecipientAddress).filter(Objects::nonNull).collect(Collectors.toList())
+    );
+    response.setCcAddresses(
+            ccRecipients.stream().map(EmailRecipient::getEmailRecipientAddress).filter(Objects::nonNull).collect(Collectors.toList())
+    );
+    response.setBccAddresses(
+            bccRecipients.stream().map(EmailRecipient::getEmailRecipientAddress).filter(Objects::nonNull).collect(Collectors.toList())
+    );
+
+    // 첨부파일 조회
+    List<EmailFile> files = Collections.emptyList();
+    try {
+        files = emailFileRepository.findByEmail(email);
+    } catch (Exception ex) {
+        log.warn("[toEmailResponseDTO] attachments 조회 실패: {}", ex.getMessage());
+    }
+    List<AttachmentDTO> attachments = files.stream()
+            .map(f -> new AttachmentDTO(f.getEmailFileId(), f.getEmailFileName(), f.getEmailFileSize()))
+            .collect(Collectors.toList());
+    response.setAttachments(attachments);
+
+    response.setFileIds(files.stream().map(EmailFile::getEmailFileId).collect(Collectors.toList()));
+
+    return response;
+}
 	
 	
 }

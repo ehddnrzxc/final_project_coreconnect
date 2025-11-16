@@ -39,4 +39,70 @@ public interface EmailRepository extends JpaRepository<Email, Integer> {
     @Query("UPDATE Email e SET e.emailStatus = :status WHERE e.emailId IN :ids")
     int updateEmailStatusByIds(@Param("ids") List<Integer> ids, @Param
     		("status") EmailStatusEnum status);
+    
+
+    /*
+     * 기존 JPQL 방식(수신자 주소 기준)도 유지되어 있으면 괜찮지만,
+     * 실제 "사용자별 휴지통 여부"는 mail_user_visibility 테이블을 참조해야 합니다.
+     *
+     * 아래는 mail_user_visibility 테이블을 직접 조인하는 native query입니다.
+     * - userId: 사용자 ID (정수)
+     * - deleted: DB에 1/0 또는 true/false 로 저장되는 형태에 따라 조건을 맞춰주세요 (아래는 deleted = 1 기준)
+     *
+     * NOTE:
+     * - nativeQuery 사용 시 컬럼/테이블 명을 DB 실제 이름으로 맞춰야 합니다.
+     * - countQuery는 페이징을 위해 필요합니다.
+     */
+
+    @Query(value = "SELECT m.mail_id FROM mail_user_visibility m WHERE m.user_id = :userId AND m.deleted = 1 ORDER BY m.deleted_at DESC", nativeQuery = true)
+    List<Integer> findDeletedMailIdsByUserId(@Param("userId") Integer userId);
+
+    /*
+     * NEW: 예약메일 목록 조회 (예약시간(reservedAt) 이후/미래의 예약된 메일을 조회)
+     * - 수신자 기준(EmailRecipient)으로 조회
+     */
+    @Query(value = "SELECT e FROM Email e, EmailRecipient r " +
+                   "WHERE r.email = e " +
+                   "  AND r.emailRecipientAddress = :userEmail " +
+                   "  AND e.reservedAt IS NOT NULL " +
+                   "  AND e.reservedAt > :now",
+           countQuery = "SELECT count(e) FROM Email e, EmailRecipient r " +
+                        "WHERE r.email = e " +
+                        "  AND r.emailRecipientAddress = :userEmail " +
+                        "  AND e.reservedAt IS NOT NULL " +
+                        "  AND e.reservedAt > :now")
+    Page<Email> findScheduledByRecipientEmailAfter(@Param("userEmail") String userEmail,
+                                                  @Param("now") LocalDateTime now,
+                                                  Pageable pageable);
+
+    /*
+     * Optional: 수신자의 모든 메일(휴지통 포함) 조회 (별도 필요 시)
+     */
+    @Query(value = "SELECT e FROM Email e, EmailRecipient r " +
+                   "WHERE r.email = e " +
+                   "  AND r.emailRecipientAddress = :userEmail",
+           countQuery = "SELECT count(e) FROM Email e, EmailRecipient r " +
+                        "WHERE r.email = e " +
+                        "  AND r.emailRecipientAddress = :userEmail")
+    Page<Email> findByRecipientEmail(@Param("userEmail") String userEmail, Pageable pageable);
+    
+ // id 리스트로 Email 조회 (정렬/페이징은 서비스에서 처리)
+    List<Email> findByEmailIdIn(List<Integer> ids);
+    
+ // 아래 메서드를 EmailRepository 인터페이스에 추가하세요.
+ // 주의: nativeQuery에서 사용한 테이블/컬럼명(email, email_id, mail_user_visibility, mail_id, user_id, deleted, deleted_at)
+ // 은 현재 DB 스키마와 일치해야 합니다. (스크린샷과 일치하면 그대로 사용)
+ @Query(
+   value = "SELECT e.* FROM email e " +
+           "JOIN mail_user_visibility v ON v.mail_id = e.email_id " +
+           "WHERE v.user_id = :userId AND v.deleted = 1 " +
+           "ORDER BY v.deleted_at DESC",
+   countQuery = "SELECT count(*) FROM email e " +
+                "JOIN mail_user_visibility v ON v.mail_id = e.email_id " +
+                "WHERE v.user_id = :userId AND v.deleted = 1",
+   nativeQuery = true
+ )
+ Page<Email> findTrashEmailsByUserId(@Param("userId") Integer userId, Pageable pageable);
 }
+
+

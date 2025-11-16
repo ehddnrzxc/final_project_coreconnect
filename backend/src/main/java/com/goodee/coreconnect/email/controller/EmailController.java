@@ -298,4 +298,26 @@ public class EmailController {
         return ResponseEntity.ok(res);
     }
     
+    //  휴지통 목록 (페이징)
+    @GetMapping("/trash")
+    public ResponseEntity<ResponseDTO<Page<EmailResponseDTO>>> getTrash(
+            @RequestParam("userEmail") String userEmail,
+            @RequestParam(value="page", defaultValue="0") int page,
+            @RequestParam(value="size", defaultValue="10") int size
+    ) {
+        Page<EmailResponseDTO> result = emailService.getTrashMails(userEmail, page, size);
+        return ResponseEntity.ok(ResponseDTO.success(result, "휴지통 조회 성공"));
+    }
+
+    //  예약 메일 목록 (페이징) - scheduled mails where scheduledAt > now and status = SCHEDULED
+    @GetMapping("/scheduled")
+    public ResponseEntity<ResponseDTO<Page<EmailResponseDTO>>> getScheduled(
+            @RequestParam("userEmail") String userEmail,
+            @RequestParam(value="page", defaultValue="0") int page,
+            @RequestParam(value="size", defaultValue="10") int size
+    ) {
+        Page<EmailResponseDTO> result = emailService.getScheduledMails(userEmail, page, size);
+        return ResponseEntity.ok(ResponseDTO.success(result, "예약메일 조회 성공"));
+    }
+    
 }

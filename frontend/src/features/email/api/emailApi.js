@@ -147,3 +147,19 @@ export function deleteMails(mailIds) {
   return http.delete('/email/trash', { data: { mailIds } })
     .then(res => res.data);
 }
+
+export async function fetchTrashMails(userEmail, page = 0, size = 10) {
+  const res = await http.get('/email/trash', {
+    params: { userEmail, page, size },
+    withCredentials: true
+  });
+  return res.data;
+}
+
+export async function fetchScheduledMails(userEmail, page = 0, size = 10) {
+  const res = await http.get('/email/scheduled', {
+    params: { userEmail, page, size },
+    withCredentials: true
+  });
+  return res.data;
+}

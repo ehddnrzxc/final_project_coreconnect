@@ -37,14 +37,14 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
      */
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-    	String token = (String) session.getAttributes().get("access_token");
+        String token = (String) session.getAttributes().get("access_token");
         if (token == null || token.trim().isEmpty()) {
             log.warn("[NotificationWebSocketHandler] access_token 없음! 소켓 종료");
-            session.close(); // 반드시 닫아주세요!
+            session.close();
             return;
         }
         try {
-            String email = jwtProvider.getSubject(token); // JWT 파싱 - email (subject)
+            String email = jwtProvider.getSubject(token);
             if (email == null || email.trim().isEmpty()) {
                 log.warn("[NotificationWebSocketHandler] JWT에서 이메일(subject) 추출 실패, 소켓 종료");
                 session.close();
