@@ -1,5 +1,6 @@
 package com.goodee.coreconnect.email.service;
 
+import com.goodee.coreconnect.email.sendGrid.SendGridEmailSender;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.time.LocalDate;
@@ -95,6 +96,8 @@ public class EmailServiceImpl implements EmailService {
 	private final S3Service s3Service;
 	private final MailUserVisibilityRepository visibilityRepository;
 	private final MailRepository mailRepository;
+	// SendGridEmailSender bean 주입 (생성자 주입 위해 final)
+	private final SendGridEmailSender sendGridEmailSender;
 	
 	private Long getCurrentUserId() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -521,6 +524,43 @@ public class EmailServiceImpl implements EmailService {
         resultDTO.setEmailContent(savedEmail.getEmailContent());
         return resultDTO;
     }
+    
+
+    /**
+     * New: SendGrid를 사용하여 즉시 발송(외부 전송)하는 메서드.
+     * - 방법: DB에 저장(신규 또는 DRAFT -> SENT), 그 후 SendGrid로 실제 전송.
+     * - 기존 sendEmail() 로직을 재사용하여 DB 저장을 수행한 뒤 SendGrid API를 호출합니다.
+     */
+    /**
+     * SendGrid 전송 메서드
+     */
+    @Override
+    @Transactional
+    public EmailResponseDTO sendEmailViaSendGrid(EmailSendRequestDTO requestDTO, List<MultipartFile> attachments) throws IOException {
+        // 1) DB에 저장(reuse)
+        EmailResponseDTO savedDto = sendEmail(requestDTO, attachments);
+
+        // 2) SendGrid 외부 전송 (동기 호출)
+        try {
+            if (senGridApiKey == null || senGridApiKey.isBlank()) {
+                log.warn("[sendEmailViaSendGrid] SendGrid API key not configured - skipping external send");
+            } else {
+                com.sendgrid.Response sgResp = sendGridEmailSender.send(requestDTO, attachments);
+                log.info("[sendEmailViaSendGrid] sendgrid status={}, body={}", sgResp.getStatusCode(), sgResp.getBody());
+            }
+        } catch (Exception e) {
+            log.error("[sendEmailViaSendGrid] SendGrid send failed", e);
+            // 실패는 로깅 후 흘려보내기(요구사항에 따라 예외 처리/재시도 구현)
+        }
+
+        return savedDto;
+    }
+
+    
+    
+    
+    
+    
 
     /**
      * 예약 시간이 도래한 예약 메일 row를 SENT 상태로 변경하고 발송시각을 업데이트합니다.

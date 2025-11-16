@@ -147,4 +147,7 @@ public interface EmailService {
 	    Page<EmailResponseDTO> getTrashMails(String userEmail, int page, int size);
 	    
 	    Page<EmailResponseDTO> getScheduledMails(String userEmail, int page, int size);
+	    
+	    
+	    EmailResponseDTO sendEmailViaSendGrid(EmailSendRequestDTO requestDTO, List<MultipartFile> attachments) throws IOException;
 }
