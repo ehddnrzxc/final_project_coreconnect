@@ -44,6 +44,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.goodee.coreconnect.common.notification.enums.NotificationType;
+import com.goodee.coreconnect.common.notification.service.NotificationService;
 import com.goodee.coreconnect.common.service.S3Service;
 import com.goodee.coreconnect.email.dto.request.DeleteMailsRequest;
 import com.goodee.coreconnect.email.dto.request.EmailAttachmentRequestDTO;
@@ -98,6 +100,7 @@ public class EmailServiceImpl implements EmailService {
 	private final MailRepository mailRepository;
 	// SendGridEmailSender bean 주입 (생성자 주입 위해 final)
 	private final SendGridEmailSender sendGridEmailSender;
+	private final NotificationService notificationService;
 	
 	private Long getCurrentUserId() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -398,12 +401,12 @@ public class EmailServiceImpl implements EmailService {
     /**
      * 이메일을 DB에 저장(즉시메일/예약메일)합니다.
      */
-    @Override
+	@Override
+    @Transactional
     public EmailResponseDTO sendEmail(EmailSendRequestDTO requestDTO, List<MultipartFile> attachments) throws IOException {
         log.info("[DEBUG] sendEmail: senderId={}, senderAddress={}, requestDTO.getEmailId={}, reservedAt={}",
                 requestDTO.getSenderId(), requestDTO.getSenderAddress(), requestDTO.getEmailId(), requestDTO.getReservedAt());
 
-        log.info("requestDTO: {}", requestDTO.toString());
         com.goodee.coreconnect.email.entity.Email savedEmail;
 
         // 임시저장 메일 발송 분기 (DRAFT → SENT or RESERVED)
@@ -434,9 +437,9 @@ public class EmailServiceImpl implements EmailService {
                     .emailTitle(requestDTO.getEmailTitle())
                     .emailContent(requestDTO.getEmailContent())
                     .emailStatus(requestDTO.getReservedAt() != null && requestDTO.getReservedAt().isAfter(LocalDateTime.now())
-                        ? EmailStatusEnum.RESERVED : EmailStatusEnum.SENT)
+                            ? EmailStatusEnum.RESERVED : EmailStatusEnum.SENT)
                     .emailSentTime(requestDTO.getReservedAt() == null || !requestDTO.getReservedAt().isAfter(LocalDateTime.now())
-                        ? LocalDateTime.now() : null)
+                            ? LocalDateTime.now() : null)
                     .senderId(requestDTO.getSenderId())
                     .senderEmail(requestDTO.getSenderAddress())
                     .favoriteStatus(false)
@@ -445,22 +448,19 @@ public class EmailServiceImpl implements EmailService {
                     .emailType(requestDTO.getEmailType())
                     .reservedAt(requestDTO.getReservedAt())
                     .emailFolder(requestDTO.getReservedAt() != null && requestDTO.getReservedAt().isAfter(LocalDateTime.now())
-                        ? "RESERVED" : "SENT")
+                            ? "RESERVED" : "SENT")
                     .replyToEmailId(requestDTO.getReplyToEmailId())
                     .build();
             savedEmail = emailRepository.save(entity);
         }
 
-        // 첨부파일 저장 (첨부가 있을 경우만)
+        // 첨부파일 저장 (S3 업로드)
         if (attachments != null && !attachments.isEmpty()) {
             for (MultipartFile file : attachments) {
-                String fileName = file.getOriginalFilename();
-                long fileSize = file.getSize();
-                String mimeType = file.getContentType();
                 String s3key = s3Service.uploadApprovalFile(file);
                 EmailFile emailFile = EmailFile.builder()
-                        .emailFileName(fileName)
-                        .emailFileSize(fileSize)
+                        .emailFileName(file.getOriginalFilename())
+                        .emailFileSize(file.getSize())
                         .emailFileS3ObjectKey(s3key)
                         .emailFielDeletedYn(false)
                         .email(savedEmail)
@@ -469,21 +469,26 @@ public class EmailServiceImpl implements EmailService {
             }
         }
 
-        // 수신자 정보 저장 (TO)
-        for (String to : requestDTO.getRecipientAddress()) {
-            Optional<User> userOptional = userRepository.findByEmail(to);
-            Integer userId = userOptional.map(User::getId).orElse(null);
-            EmailRecipient recipient = EmailRecipient.builder()
-                    .emailRecipientType("TO")
-                    .emailRecipientAddress(to)
-                    .userId(userId)
-                    .emailReadYn(false)
-                    .emailIsAlarmSent(false)
-                    .email(savedEmail)
-                    .build();
-            emailRecipientRepository.save(recipient);
+        // 수신자 정보 저장 (TO/CC/BCC) — 저장된 수신자 목록 수집
+        List<EmailRecipient> savedRecipients = new ArrayList<>();
+
+        if (requestDTO.getRecipientAddress() != null) {
+            for (String to : requestDTO.getRecipientAddress()) {
+                Optional<User> userOptional = userRepository.findByEmail(to);
+                Integer userId = userOptional.map(User::getId).orElse(null);
+                EmailRecipient recipient = EmailRecipient.builder()
+                        .emailRecipientType("TO")
+                        .emailRecipientAddress(to)
+                        .userId(userId)
+                        .emailReadYn(false)
+                        .emailIsAlarmSent(false)
+                        .email(savedEmail)
+                        .build();
+                EmailRecipient saved = emailRecipientRepository.save(recipient);
+                savedRecipients.add(saved);
+            }
         }
-        // 참조 (CC)
+
         if (requestDTO.getCcAddresses() != null) {
             for (String cc : requestDTO.getCcAddresses()) {
                 Optional<User> userOptional = userRepository.findByEmail(cc);
@@ -496,10 +501,11 @@ public class EmailServiceImpl implements EmailService {
                         .emailIsAlarmSent(false)
                         .email(savedEmail)
                         .build();
-                emailRecipientRepository.save(ccRecipient);
+                EmailRecipient saved = emailRecipientRepository.save(ccRecipient);
+                savedRecipients.add(saved);
             }
         }
-        // 숨은참조 (BCC)
+
         if (requestDTO.getBccAddresses() != null) {
             for (String bcc : requestDTO.getBccAddresses()) {
                 Optional<User> userOptional = userRepository.findByEmail(bcc);
@@ -512,14 +518,73 @@ public class EmailServiceImpl implements EmailService {
                         .emailIsAlarmSent(false)
                         .email(savedEmail)
                         .build();
-                emailRecipientRepository.save(bccRecipient);
+                EmailRecipient saved = emailRecipientRepository.save(bccRecipient);
+                savedRecipients.add(saved);
             }
         }
 
-        // 결과 DTO 세팅
+        // 알림 발송 로직: 저장된 메일이 SENT 상태인 경우에만 알림 전송
+        if (savedEmail.getEmailStatus() == EmailStatusEnum.SENT) {
+            // 발신자 이름 조회
+            String senderName = Optional.ofNullable(savedEmail.getSenderId())
+                    .flatMap(id -> userRepository.findById(id))
+                    .map(User::getName)
+                    .orElse(savedEmail.getSenderEmail());
+
+            // 수신자(사용자 레코드가 연결된 경우)에게 알림 발송
+            for (EmailRecipient rec : savedRecipients) {
+                if (rec.getUserId() != null) {
+                    try {
+                        String title = savedEmail.getEmailTitle() != null ? savedEmail.getEmailTitle() : "(제목 없음)";
+                        String message = "[메일 도착] '" + title + "' 메일이 도착했습니다.";
+                        notificationService.sendNotification(
+                                rec.getUserId(),
+                                NotificationType.EMAIL,
+                                message,
+                                null,
+                                null,
+                                savedEmail.getSenderId(),
+                                senderName
+                        );
+
+                        // mark emailIsAlarmSent true to avoid duplicate alarms
+                        rec.setEmailIsAlarmSent(true);
+                        emailRecipientRepository.save(rec);
+                    } catch (Exception ex) {
+                        log.warn("[sendEmail] notification failed for recipient={}, emailId={}, err={}", rec.getEmailRecipientAddress(), savedEmail.getEmailId(), ex.getMessage(), ex);
+                        // continue sending to others
+                    }
+                } else {
+                    // 수신자가 비회원(유저 id 없음)일 경우 알림은 스킵
+                    log.debug("[sendEmail] recipient {} has no userId, skip notification", rec.getEmailRecipientAddress());
+                }
+            }
+
+            // 발신자에게도 발송 완료 알림 (발신자가 회원인 경우)
+            if (savedEmail.getSenderId() != null) {
+                try {
+                    String title = savedEmail.getEmailTitle() != null ? savedEmail.getEmailTitle() : "(제목 없음)";
+                    String senderMsg = "[이메일 발송 완료] '" + title + "' 이메일이 발송되었습니다.";
+                    notificationService.sendNotification(
+                            savedEmail.getSenderId(),
+                            NotificationType.EMAIL,
+                            senderMsg,
+                            null,
+                            null,
+                            savedEmail.getSenderId(),
+                            senderName
+                    );
+                } catch (Exception ex) {
+                    log.warn("[sendEmail] failed to notify sender id={}, err={}", savedEmail.getSenderId(), ex.getMessage(), ex);
+                }
+            }
+        } else {
+            log.debug("[sendEmail] saved as RESERVED (no immediate notifications). emailId={}", savedEmail.getEmailId());
+        }
+
         EmailResponseDTO resultDTO = new EmailResponseDTO();
         resultDTO.setEmailId(savedEmail.getEmailId());
-        resultDTO.setEmailStatus(savedEmail.getEmailStatus().name());
+        resultDTO.setEmailStatus(savedEmail.getEmailStatus() != null ? savedEmail.getEmailStatus().name() : null);
         resultDTO.setEmailTitle(savedEmail.getEmailTitle());
         resultDTO.setEmailContent(savedEmail.getEmailContent());
         return resultDTO;
