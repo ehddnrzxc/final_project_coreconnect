@@ -144,7 +144,7 @@ public class EmailController {
 
     // 이메일 상세조회
     @Operation(summary = "발송된 이메일 상세조회", description = "발송된 이메일을 상세조회 합니다.")
-    @GetMapping("/{emailId:\\\\d+}")
+    @GetMapping("/{emailId}")
     public ResponseEntity<ResponseDTO<EmailResponseDTO>> getEmailDetail(@PathVariable("emailId") Integer emailId,  @RequestParam("userEmail") String userEmail ) {
         EmailResponseDTO result = emailService.getEmailDetail(emailId, userEmail);
         return ResponseEntity.ok(ResponseDTO.success(result, "이메일 상세조회 성공"));
