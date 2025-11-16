@@ -152,7 +152,7 @@ const Sidebar = () => {
       <Divider />
       <Box sx={{ py: 1.5, textAlign: "center" }}>
         <Typography variant="caption" color="text.secondary">
-          v0.1
+          v1.0
         </Typography>
       </Box>
     </Box>
