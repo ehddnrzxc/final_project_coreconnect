@@ -8,66 +8,49 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import jakarta.annotation.PostConstruct;
+//import jakarta.annotation.PostConstruct;
 
-import org.springframework.data.redis.connection.Message;
-import org.springframework.data.redis.connection.MessageListener;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.listener.PatternTopic;
-import org.springframework.data.redis.listener.RedisMessageListenerContainer;
+//import org.springframework.data.redis.connection.Message;
+//import org.springframework.data.redis.connection.MessageListener;
+//import org.springframework.data.redis.core.StringRedisTemplate;
+//import org.springframework.data.redis.listener.PatternTopic;
+//import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.goodee.coreconnect.common.notification.dto.NotificationPayload;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * WebSocketDeliveryService (멀티 인스턴스/클러스터용 Redis pub/sub 연동)
+ * WebSocketDeliveryService (단일 인스턴스/로컬 세션용, Redis pub/sub 주석처리)
  * 
- * 변경 요약:
  * - userId별로 여러 WebSocketSession을 관리(동시 다중 접속 지원)
- * - Redis pub/sub를 구독(MessageListener)하여 타 인스턴스에서 publish된 알림도 수신함.
+ * - Redis pub/sub 연동/구독/메시지 리스너 기능은 현재 주석처리됨
  * - sendToUser는 local 세션에 비동기로 메시지를 전송
- * - Redis 채널 등록/구독은 @PostConstruct로 initialization
- * 
- * 반드시 NotificationService(등)에서 afterCommit에서 redisTemplate.convertAndSend(...)를 호출해줘야 멀티노드에서 전파됨
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class WebSocketDeliveryService implements MessageListener {
+//public class WebSocketDeliveryService implements MessageListener {
+public class WebSocketDeliveryService {
 
-    // ------------------------ 필드 선언부 ------------------------
-
-    /** userId별로 여러 세션 동시 관리 (멀티탭/멀티장치 지원) */
+    /** userId별로 여러 세션 동시 관리 */
     private final Map<Integer, CopyOnWriteArraySet<WebSocketSession>> sessions = new ConcurrentHashMap<>();
 
     /** Jackson ObjectMapper (JSR310 모듈등록, 직렬화 오류 방지) */
     private final ObjectMapper objectMapper;
 
-    /** Redis publish/publish 기능 (StringRedisTemplate) */
-    private final StringRedisTemplate redisTemplate;
-
-    /** RedisListenerContainer - Redis pub/sub 구독 채널 관리 */
-    private final RedisMessageListenerContainer redisListenerContainer;
+    // Redis 관련 의존성 주석처리
+    //private final StringRedisTemplate redisTemplate;
+    //private final RedisMessageListenerContainer redisListenerContainer;
+    //private final String CHANNEL = "notifications";
 
     /** 비동기 전송용 작업 스레드풀 (I/O blocking 방지) */
     private final ExecutorService sendExecutor = Executors.newFixedThreadPool(Math.max(4, Runtime.getRuntime().availableProcessors() * 2));
 
-    /** Redis pub/sub 전파용 채널명 */
-    private final String CHANNEL = "notifications";
-
-    // ------------------------ 초기화 (구독 등록) ------------------------
-
-    /**
-     * @PostConstruct
-     * 애플리케이션이 스프링 컨테이너에 의해 생성될 때 Redis pub/sub 채널 구독을 등록한다.
-     * (이 메서드가 실행되어야 여러 인스턴스에서 동기화가 보장됨)
-     */
+    /*
     @PostConstruct
     public void init() {
         if (redisListenerContainer != null) {
@@ -75,14 +58,9 @@ public class WebSocketDeliveryService implements MessageListener {
             log.info("[WebSocketDeliveryService] Redis pub/sub '{}' 구독 등록 완료", CHANNEL);
         }
     }
+    */
 
-    // ------------------------ 세션 등록/해제 ------------------------
-
-    /**
-     * 특정 사용자(userId)의 세션을 등록. (탭/장치 추가 지원)
-     * @param userId int
-     * @param session WebSocketSession
-     */
+    /** 특정 사용자(userId)의 세션을 등록. (탭/장치 추가 지원) */
     public void registerSession(Integer userId, WebSocketSession session) {
         if (userId != null && session != null) {
             sessions.computeIfAbsent(userId, k -> new CopyOnWriteArraySet<>()).add(session);
@@ -90,11 +68,7 @@ public class WebSocketDeliveryService implements MessageListener {
         }
     }
 
-    /**
-     * 특정 사용자(userId)의 세션을 해제. (단일 세션 종료시 호출, 모두 해제되면 map에서 userId 제거)
-     * @param userId int
-     * @param session WebSocketSession
-     */
+    /** 특정 사용자(userId)의 세션을 해제. */
     public void unregisterSession(Integer userId, WebSocketSession session) {
         if (userId != null && session != null) {
             Set<WebSocketSession> set = sessions.get(userId);
@@ -108,28 +82,19 @@ public class WebSocketDeliveryService implements MessageListener {
         }
     }
 
-    // ------------------------ 메시지 전송 (local 세션) ------------------------
-
-    /**
-     * 단일 사용자(userId)의 모든 세션에 실시간 메시지 전송 (각 세션에 비동기로 전송, I/O blocking 최소화)
-     * @param userId int
-     * @param payload 직렬화 가능 객체 (예: NotificationPayload)
-     * @return 적어도 1개의 실제 세션에 전송되었는지 여부
-     */
+    /** 단일 사용자(userId)의 모든 세션에 실시간 메시지 비동기 전송 */
     public boolean sendToUser(Integer userId, Object payload) {
         Set<WebSocketSession> set = sessions.get(userId);
         boolean atLeastOne = false;
         if (set != null && !set.isEmpty()) {
             final String text;
             try {
-                // 객체 직렬화 (LocalDateTime 등)
                 text = objectMapper.writeValueAsString(payload);
             } catch (IOException e) {
                 log.warn("[WebSocketDeliveryService] 메시지 직렬화 오류: userId={}, error={}", userId, e.getMessage());
                 return false;
             }
             TextMessage msg = new TextMessage(text);
-            // 각 세션(멀티탭/멀티장치)에 비동기로 전송
             for (WebSocketSession s : set) {
                 sendExecutor.execute(() -> {
                     if (s.isOpen()) {
@@ -154,11 +119,7 @@ public class WebSocketDeliveryService implements MessageListener {
         return false;
     }
 
-    /**
-     * 여러 사용자에게 동일 payload 실시간 전송 (각 유저의 모든 세션)
-     * @param userIds List<Integer>
-     * @param payload Object
-     */
+    /** 여러 사용자(userId 리스트)의 모든 세션에 동일 payload 실시간 전송 */
     public void sendToUsers(List<Integer> userIds, Object payload) {
         if (userIds == null || userIds.isEmpty() || payload == null) return;
         final String text;
@@ -189,15 +150,7 @@ public class WebSocketDeliveryService implements MessageListener {
         }
     }
 
-    // ------------------------ Redis pub/sub 수신 핸들러 ------------------------
-
-    /**
-     * onMessage (Redis pub/sub)
-     * - 타 인스턴스에서 publish된 메시지를 수신했을 때 호출됨.
-     * - 수신한 알림 payload를 해당 user의 로컬 세션에 전송함.
-     * @param message Redis Message 객체
-     * @param pattern 채널 패턴(byte[])
-     */
+    /*
     @Override
     public void onMessage(Message message, byte[] pattern) {
         try {
@@ -211,13 +164,9 @@ public class WebSocketDeliveryService implements MessageListener {
             log.warn("[WebSocketDeliveryService] Redis 메시지 처리 오류: {}", e.getMessage());
         }
     }
+    */
 
-    // ------------------------ 전체 세션 종료 ------------------------
-
-    /**
-     * 강제로 모든 세션 close
-     * (Optional: 테스트 혹은 서버 shutdown시 모든 연결 해제)
-     */
+    /** 모든 세션 강제 종료 (테스트/서버 다운시) */
     public void closeAll() {
         for (Map.Entry<Integer, CopyOnWriteArraySet<WebSocketSession>> entry : sessions.entrySet()) {
             for (WebSocketSession s : entry.getValue()) {
