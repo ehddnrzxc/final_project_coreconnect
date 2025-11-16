@@ -1,18 +1,14 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
-// React 훅
 // useEffect: 생명주기 제어
 // useState: 상태 관리
 // useMemo: 렌더링 최적화 (계산 결과 캐싱)
 // useRef: DOM 요소나 값 저장 (리렌더링과 무관)
-import { useParams, useNavigate } from "react-router-dom";
-// React Router 훅
+import { useParams, useNavigate, useLocation  } from "react-router-dom";
 // useParams: URL 파라미터 추출 (예: /board/:id)
 // useNavigate: 페이지 이동 함수
 import { Box, Typography, TextField, Button, Stack, Paper } from "@mui/material";
-// MUI 컴포넌트
 // Box: 레이아웃 컨테이너
 // Typography: 텍스트 표시
-// Divider: 구분선
 // TextField: 입력 필드
 // Button: 버튼
 // Stack: Flexbox 정렬 컨테이너
@@ -21,12 +17,10 @@ import ReplyIcon from "@mui/icons-material/Reply"; // 답글 아이콘 (화살�
 import EditIcon from "@mui/icons-material/Edit"; // 수정 아이콘
 import DeleteIcon from "@mui/icons-material/Delete"; // 삭제 아이콘
 import { getBoardDetail, deleteBoard } from "../api/boardAPI";
-// 게시글 API
 // getBoardDetail: 게시글 상세 조회
 // deleteBoard: 게시글 삭제
-import { getFilesByBoard, getFile, downloadZipFiles } from "../api/boardFileAPI"; // 파일 API: 특정 게시글의 첨부파일 목록 조회
+import { getFilesByBoard, getFile, downloadZipFiles } from "../api/boardFileAPI"; // 특정 게시글의 첨부파일 목록 조회
 import { getRepliesByBoard, createReply, updateReply, deleteReply } from "../api/boardReplyAPI";
-// 댓글 API
 // getRepliesByBoard: 게시글 댓글 목록 조회
 // createReply: 댓글 등록
 // updateReply: 댓글 수정
@@ -39,8 +33,8 @@ import { Modal, Card, CardMedia, CardContent, IconButton } from "@mui/material";
 // CardMedia: 카드 안 이미지
 // CardContent: 카드 하단 텍스트 영역
 // IconButton: 카드 우측 상단 X 버튼
-import CloseIcon from "@mui/icons-material/Close";             // 카드 X 버튼
-import DownloadIcon from "@mui/icons-material/Download";       // 다운로드 버튼
+import CloseIcon from "@mui/icons-material/Close"; // 카드 X 버튼
+import DownloadIcon from "@mui/icons-material/Download"; // 다운로드 버튼
 import DescriptionIcon from "@mui/icons-material/Description"; // 비이미지 파일 아이콘
 
 
@@ -54,6 +48,8 @@ const isImage = (name) => {
 const BoardDetailPage = () => {
   const { boardId } = useParams(); // URL 경로에서 /board/:boardId 의 boardId 값을 문자열로 가져옴
   const navigate = useNavigate(); // 다른 페이지로 이동(뒤로가기, 특정 경로 이동 등)에 사용하는 함수
+  const location = useLocation();
+  const fromAllBoard = location.state?.fromAllBoard ?? false;
   const { showSnack } = useSnackbarContext(); // 스낵바 훅 사용
 
   // 로그인 사용자 정보 로드
@@ -68,7 +64,7 @@ const BoardDetailPage = () => {
 
   // 첨부파일 미리보기 모달용 상태
   const [previewFile, setPreviewFile] = useState(null); // 현재 모달에서 보고 있는 파일 정보
-  const [openModal, setOpenModal] = useState(false);    // 모달 열림 여부
+  const [openModal, setOpenModal] = useState(false); // 모달 열림 여부
 
   // 댓글 입력/수정 상태
   const [replyText, setReplyText] = useState(""); // 일반 댓글 입력창의 내용
@@ -87,9 +83,9 @@ const BoardDetailPage = () => {
     if (!str) return ""; // 값이 없으면 빈 문자열 반환 (표시 안 함)
     const d = new Date(str); // 문자열을 Date 객체로 변환 (ISO 날짜 문자열 가정)
     const pad = (n) => String(n).padStart(2, "0"); // 숫자를 항상 2자리 문자열로 만들기 위해 0을 앞에 채움
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(
-      d.getHours()
-    )}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; // "YYYY-MM-DD HH:mm:ss" 형식으로 문자열 반환
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
+      d.getDate()
+    )} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; // "YYYY-MM-DD HH:mm:ss" 형식으로 문자열 반환
   };
 
   const alertShownRef = useRef(false); // 알럿 중복 방지용 ref
@@ -162,7 +158,14 @@ const BoardDetailPage = () => {
     try {
       await deleteBoard(boardId);
       showSnack("게시글이 삭제되었습니다.", "success");
-      navigate(-1);
+      // 전체 게시판에서 온 경우
+      if (fromAllBoard) {
+        navigate("/board");
+      }
+      // 특정 카테고리에서 온 경우
+      else {
+        navigate(`/board/${board.categoryId}`);
+      }
     } catch (err) {
       showSnack("게시글 삭제 중 오류가 발생했습니다.", "error");
     }
@@ -229,7 +232,7 @@ const BoardDetailPage = () => {
   const handleReplyDelete = async (replyId) => {
     showSnack("댓글 삭제 중입니다...", "info");
     try {
-      await deleteReply(replyId); // 댓글 삭제 API 호출 
+      await deleteReply(replyId); // 댓글 삭제 API 호출
       await loadAll(); // 삭제 후 댓글 목록 재조회
       showSnack("댓글이 삭제되었습니다.", "success");
     } catch (err) {
@@ -265,15 +268,15 @@ const BoardDetailPage = () => {
 
   // 단일 파일 Blob 다운로드 방식으로 완전 교체
   const handleSingleDownload = async (file) => {
-  const res = await getFile(file.id);
-  const data = res.data.data;
+    const res = await getFile(file.id);
+    const data = res.data.data;
 
-  const link = document.createElement("a");
-  link.href = data.fileUrl;  // presigned URL 직접 사용
-  link.download = data.fileName; // 다운로드 이름
-  link.target = "_self";
-  link.click();
-};
+    const link = document.createElement("a");
+    link.href = data.fileUrl; // presigned URL 직접 사용
+    link.download = data.fileName; // 다운로드 이름
+    link.target = "_self";
+    link.click();
+  };
 
   // ZIP 다운로드는 fileNames만 전달
   const handleDownloadAll = async () => {
@@ -285,7 +288,6 @@ const BoardDetailPage = () => {
       link.href = URL.createObjectURL(blob);
       link.download = `attachments_${boardId}.zip`;
       link.click();
-
     } catch (err) {
       showSnack("ZIP 다운로드 실패", "error");
     }
@@ -386,11 +388,7 @@ const BoardDetailPage = () => {
           >
             <Typography variant="h6">
               첨부파일{" "}
-              <Typography
-                component="span"
-                variant="h6"
-                color="primary"
-              >
+              <Typography component="span" variant="h6" color="primary">
                 ({files.length}개)
               </Typography>
             </Typography>
@@ -545,7 +543,10 @@ const BoardDetailPage = () => {
 
       {/* 댓글이 없을 경우 안내문 */}
       {rootReplies.length === 0 && (
-        <Typography color="text.secondary" sx={{ ml: 0.5, mb: 2, width: "80%" }}>
+        <Typography
+          color="text.secondary"
+          sx={{ ml: 0.5, mb: 2, width: "80%" }}
+        >
           아직 댓글이 없습니다.
         </Typography>
       )}
@@ -566,7 +567,11 @@ const BoardDetailPage = () => {
                 {/* 부모 댓글 카드 */}
                 <Paper
                   variant="outlined"
-                  sx={{ p: 1.5, bgcolor: "#fff", opacity: r.deletedYn ? 0.6 : 1 }}
+                  sx={{
+                    p: 1.5,
+                    bgcolor: "#fff",
+                    opacity: r.deletedYn ? 0.6 : 1,
+                  }}
                 >
                   {/* 댓글 상단 영역 */}
                   <Stack
@@ -674,8 +679,9 @@ const BoardDetailPage = () => {
                         display: "inline-flex",
                         alignItems: "center",
                       }}
-                      onClick={() =>
-                        setReplyParentId(replyParentId === r.id ? null : r.id)
+                      onClick={
+                        () =>
+                          setReplyParentId(replyParentId === r.id ? null : r.id)
                         // 이미 같은 부모에 대한 답글 입력창이 열려 있으면 닫고, 아니면 해당 댓글에 대한 입력창 열기
                       }
                     >
@@ -731,10 +737,10 @@ const BoardDetailPage = () => {
                     variant="outlined"
                     sx={{
                       ml: 4,
-                      mt: idx === 0 ? "2px" : "4px",  // 첫 대댓글은 완전 붙이기 
+                      mt: idx === 0 ? "2px" : "4px", // 첫 대댓글은 완전 붙이기
                       mb: idx === children.length - 1 ? "16px" : "2px", // 마지막만 띄움
                       p: 1.5,
-                      bgcolor: "#fcfcfc"
+                      bgcolor: "#fcfcfc",
                     }}
                   >
                     {/* 대댓글 상단: 작성자, 작성일, 수정/삭제 */}
@@ -756,53 +762,53 @@ const BoardDetailPage = () => {
 
                       {(loginRole === "ADMIN" ||
                         child.writerName === loginName) && (
-                          <Stack direction="row" spacing={1}>
-                            {editReplyId !== child.id ? (
-                              <>
-                                {/* 대댓글이 수정 모드가 아닐 때: 수정 / 삭제 */}
-                                <Typography
-                                  variant="caption"
-                                  color="text.secondary"
-                                  sx={{ cursor: "pointer" }}
-                                  onClick={() => {
-                                    setEditReplyId(child.id); // 이 대댓글을 수정 대상으로 설정
-                                    setEditReplyText(child.content); // 기존 내용 채우기
-                                  }}
-                                >
-                                  수정
-                                </Typography>
-                                <Typography
-                                  variant="caption"
-                                  color="text.secondary"
-                                  sx={{ cursor: "pointer" }}
-                                  onClick={() => handleOpenReplyConfirm(child.id)}
-                                >
-                                  삭제
-                                </Typography>
-                              </>
-                            ) : (
-                              <>
-                                {/* 대댓글이 수정 모드일 때: 저장 / 취소 */}
-                                <Typography
-                                  variant="caption"
-                                  color="primary"
-                                  sx={{ cursor: "pointer" }}
-                                  onClick={() => handleReplyUpdate(child.id)}
-                                >
-                                  저장
-                                </Typography>
-                                <Typography
-                                  variant="caption"
-                                  color="text.secondary"
-                                  sx={{ cursor: "pointer" }}
-                                  onClick={() => setEditReplyId(null)}
-                                >
-                                  취소
-                                </Typography>
-                              </>
-                            )}
-                          </Stack>
-                        )}
+                        <Stack direction="row" spacing={1}>
+                          {editReplyId !== child.id ? (
+                            <>
+                              {/* 대댓글이 수정 모드가 아닐 때: 수정 / 삭제 */}
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{ cursor: "pointer" }}
+                                onClick={() => {
+                                  setEditReplyId(child.id); // 이 대댓글을 수정 대상으로 설정
+                                  setEditReplyText(child.content); // 기존 내용 채우기
+                                }}
+                              >
+                                수정
+                              </Typography>
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{ cursor: "pointer" }}
+                                onClick={() => handleOpenReplyConfirm(child.id)}
+                              >
+                                삭제
+                              </Typography>
+                            </>
+                          ) : (
+                            <>
+                              {/* 대댓글이 수정 모드일 때: 저장 / 취소 */}
+                              <Typography
+                                variant="caption"
+                                color="primary"
+                                sx={{ cursor: "pointer" }}
+                                onClick={() => handleReplyUpdate(child.id)}
+                              >
+                                저장
+                              </Typography>
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{ cursor: "pointer" }}
+                                onClick={() => setEditReplyId(null)}
+                              >
+                                취소
+                              </Typography>
+                            </>
+                          )}
+                        </Stack>
+                      )}
                     </Stack>
 
                     {/* 대댓글 내용 */}
@@ -819,9 +825,7 @@ const BoardDetailPage = () => {
                     ) : (
                       // 일반 모드일 때 텍스트 출력
                       <Typography variant="body2" sx={{ mt: 0.5 }}>
-                        {child.content?.trim()
-                          ? child.content
-                          : "내용 없음"}
+                        {child.content?.trim() ? child.content : "내용 없음"}
                       </Typography>
                     )}
                   </Paper>

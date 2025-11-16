@@ -50,12 +50,9 @@ public class BoardServiceImpl implements BoardService {
 
       if (!files.isEmpty()) {                                       
           BoardFile first = files.get(0);                           
-          String url = boardFileService.getPresignedUrlInternal(    
-                  first.getS3ObjectKey());                          
+          String url = boardFileService.getPresignedUrlInternal(first.getS3ObjectKey());                          
 
-          dto.setFiles(                                             
-                  List.of(BoardFileResponseDTO.toDTO(first, url))   
-          );                                                        
+          dto.setFiles(List.of(BoardFileResponseDTO.toDTO(first, url)));                                                        
           
           dto.setHasImage(true);
       } else {
