@@ -15,10 +15,12 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "email_recipient")
 @Getter
+@Setter
 @NoArgsConstructor(access = lombok.AccessLevel.PROTECTED) // 기본 생성자 protected
 @AllArgsConstructor
 @Builder
@@ -124,6 +126,8 @@ parent → child → parent → child... 라는 무한직렬화에 빠집니다.
 	@ManyToOne
 	@JoinColumn(name = "email_id2", referencedColumnName = "emailId")
 	private Email extendedEmail; // 확장용(참조, 답신)
+
+	
 	
 	
 	
