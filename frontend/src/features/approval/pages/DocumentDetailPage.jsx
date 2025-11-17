@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { approveDocument, getDocumentDetail, rejectDocument } from '../api/approvalApi';
 import { Alert, Box, Button, CircularProgress, Paper, Typography } from '@mui/material';
@@ -8,10 +8,11 @@ import ApprovalRejectModal from './ApprovalRejectModal';
 import EditIcon from '@mui/icons-material/Edit';
 import DocumentStatusChip from '../components/DocumentStatusChip';
 import { useSnackbarContext } from '../../../components/utils/SnackbarContext';
+import { UserProfileContext } from '../../../App';
 
 const getCurrentUser = () => {
   try {
-    const userStr = localStorage.getItem('user');
+    const userStr = useContext(UserProfileContext);
     if (userStr) {
       return JSON.parse(userStr);
     }

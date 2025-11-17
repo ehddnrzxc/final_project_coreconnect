@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useContext } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getTemplateDetail, submitDocument, saveDraft, getDocumentDetail, updateDraft, updateDocument } from '../api/approvalApi';
 import { Button, Alert, Box, CircularProgress, Paper, TextField, Typography, List, ListItem, ListItemText, TableContainer, Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
@@ -13,6 +13,7 @@ import BusinessTripForm from './BusinessTripForm';
 import ExpenseForm from './ExpenseForm';
 import { getJobGradeLabel } from '../../../components/utils/labelUtils';
 import { useSnackbarContext } from '../../../components/utils/SnackbarContext';
+import { UserProfileContext } from '../../../App';
 
 // --- 헬퍼 함수들 ---
 const getTodayDate = () => {
@@ -36,7 +37,7 @@ export const calculateDuration = (startDate, endDate) => {
 
 const getCurrentUser = () => {
   try {
-    const userStr = localStorage.getItem('user');
+    const userStr = useContext(UserProfileContext);
     if (userStr) {
       return JSON.parse(userStr);
     }
