@@ -23,6 +23,7 @@ public class BoardReplyResponseDTO {
     private String writerName; 
     private String writerEmail; 
     private Integer parentReplyId;    // 부모 댓글 ID (대댓글일 경우)
+    private String writerJobGrade;
 
     /**
      * Entity -> DTO 변환
@@ -38,6 +39,9 @@ public class BoardReplyResponseDTO {
                                                .writerName(reply.getUser() != null ? reply.getUser().getName() : null)
                                                .writerEmail(reply.getUser() != null ? reply.getUser().getEmail() : null)
                                                .parentReplyId(reply.getParentReply() != null ? reply.getParentReply().getId() : null)
+                                               .writerJobGrade(reply.getUser().getJobGrade() != null ? reply.getUser()
+                                                                                                            .getJobGrade()
+                                                                                                            .label() : null)
                                                .build();
     }
 }

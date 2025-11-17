@@ -60,7 +60,7 @@ const RecentViewedBoards = () => {
           variant="outlined"
           sx={{
             p: 1,
-            width: "80%",   // 회색 박스 폭 줄이기
+            width: "90%",   // 박스 폭
             mx: "auto",     // 가운데 정렬
           }}
         >
@@ -74,10 +74,10 @@ const RecentViewedBoards = () => {
                   sx={{ py: 1, "&:hover": { bgcolor: "#f5f5f5" } }} // hover 시 배경색 살짝 변경
                 >
                   <ListItemText
-                    primary={b.title} // 게시글 제목 표시
-                    secondary={`${b.writerName} · ${formatDate(
+                    primary={b.title}
+                    secondary={`${b.writerName}${b.writerJobGrade ? ` ${b.writerJobGrade}` : ""} · ${formatDate(
                       b.createdAt
-                    )} · 조회수 ${b.viewCount}`} // 작성자명, 작성일시, 조회수 표시
+                    )} · 조회수 ${b.viewCount}`}
                   />
                 </ListItemButton>
                 {/* 마지막 항목이 아닐 경우 Divider(구분선) 추가 */}

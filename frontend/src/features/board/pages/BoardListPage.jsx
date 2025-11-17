@@ -5,8 +5,10 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 // useParams → URL의 동적 파라미터 추출 (예: /board/:categoryId)
 // useNavigate → 페이지 이동 (navigate("/path"))
 // useSearchParams → URL 쿼리스트링 (예: ?page=1&sortType=latest) 제어
-import { Box, Typography, ListItemButton, Stack, TextField, Button, MenuItem,
-  Select, FormControl, InputLabel } from "@mui/material";
+import {
+  Box, Typography, ListItemButton, Stack, TextField, Button, MenuItem,
+  Select, FormControl, InputLabel
+} from "@mui/material";
 // Typography: 텍스트 표현용
 // ListItemButton: 클릭 가능한 리스트 항목
 // Stack: 수평 또는 수직 정렬 컨테이너 (flexbox 래퍼)
@@ -248,8 +250,8 @@ const BoardListPage = () => {
               bgcolor: b.pinned
                 ? "primary.main"
                 : b.noticeYn
-                ? "#d9d9d9"
-                : "white",
+                  ? "#d9d9d9"
+                  : "white",
               border: "1px solid #e0e0e0",
               borderRadius: 1,
               mb: 1.2,
@@ -263,38 +265,38 @@ const BoardListPage = () => {
                 bgcolor: b.pinned
                   ? "primary.light"
                   : b.noticeYn
-                  ? "#e0e0e0"
-                  : "#fafafa",
+                    ? "#e0e0e0"
+                    : "#fafafa",
               },
             }}
           >
-            {/* 추가된 전체 래퍼 — 기존 코드 감싸기 */}
             <Box sx={{ display: "flex", width: "100%" }}>
               {/* 텍스트 본문 (80%) */}
               <Box sx={{ flex: 4, pr: 2 }}>
                 {" "}
                 {/* 기존 카테고리/댓글수/제목/내용/작성자 그대로 유지 */}
                 <Stack direction="row" alignItems="center" spacing={1}>
+                  {/* 게시판 카테고리명 */}
                   <Typography variant="body2" color="text.secondary">
                     {b.categoryName || "전체 게시판"}
                   </Typography>
 
                   <Stack direction="row" alignItems="center" spacing={0.5}>
+                    {/* 댓글 아이콘 + 개수 */}
                     <CommentIcon sx={{ fontSize: 15, color: "#616161" }} />
                     <Typography variant="caption" color="text.secondary">
                       {b.replyCount ?? 0}
                     </Typography>
 
-                    {b.files && b.files.length > 0 && (
+                    {/* 첨부파일 → 이미지 유무 상관없이 표시 */}
+                    {b.fileCount > 0 && (
                       <Stack
                         direction="row"
                         alignItems="center"
                         spacing={0.3}
                         sx={{ ml: 1 }}
                       >
-                        <AttachFileIcon
-                          sx={{ fontSize: 15, color: "#616161" }}
-                        />
+                        <AttachFileIcon sx={{ fontSize: 15, color: "#616161" }} />
                         <Typography variant="caption" color="text.secondary">
                           {b.fileCount}
                         </Typography>
@@ -349,7 +351,11 @@ const BoardListPage = () => {
                   </Typography>
                 )}
                 <Typography variant="caption" color="text.secondary">
-                  {b.writerName} / {formatDate(b.createdAt)} / 조회수{" "}
+                  {b.writerName}
+                  {b.writerJobGrade ? ` ${b.writerJobGrade}` : ""}
+                  {" / "}
+                  {formatDate(b.createdAt)}
+                  {" / 조회수 "}
                   {b.viewCount ?? 0}
                 </Typography>
               </Box>
@@ -386,7 +392,7 @@ const BoardListPage = () => {
         ))}
 
         {/* 페이지네이션 영역 */}
-        <Box sx={{ display: "flex", justifyContent: "center",  mt: 1 }}>
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 1 }}>
           {(() => {
             const totalPages = pageInfo.totalPages || 1;
             const page = currentPage + 1;
