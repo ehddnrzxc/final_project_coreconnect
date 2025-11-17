@@ -1,25 +1,15 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { approveDocument, getDocumentDetail, rejectDocument } from '../api/approvalApi';
-import { Alert, Box, Button, CircularProgress, Paper, Typography } from '@mui/material';
+import { approveDocument, downloadFile, getDocumentDetail, rejectDocument } from '../api/approvalApi';
+import { Alert, Box, Button, Chip, CircularProgress, Paper, Typography } from '@mui/material';
 import DynamicApprovalTable from '../components/DynamicApprovalTable';
 import DrafterInfoTable from '../components/DrafterInfoTable';
-import ApprovalRejectModal from './ApprovalRejectModal';
+import ApprovalRejectModal from '../components/ApprovalRejectModal';
 import EditIcon from '@mui/icons-material/Edit';
 import DocumentStatusChip from '../components/DocumentStatusChip';
 import { useSnackbarContext } from '../../../components/utils/SnackbarContext';
-
-const getCurrentUser = () => {
-  try {
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      return JSON.parse(userStr);
-    }
-  } catch (error) {
-    console.error("로컬 스토리지 사용자 정보 파싱 실패:", error);
-  }
-  return null;
-};
+import { UserProfileContext } from '../../../App';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
 
 function DocumentDetailPage() {
   const { documentId } = useParams();
@@ -32,7 +22,11 @@ function DocumentDetailPage() {
 
   const navigate = useNavigate();
 
-  const currentUser = useMemo(() => getCurrentUser(), []);
+  const currentUser = useContext(UserProfileContext);
+
+  const handleDownload = (fileId, fileName) => {
+    downloadFile(fileId, fileName);
+  };
 
   useEffect(() => {
     const fetchDocument = async () => {
@@ -153,10 +147,23 @@ function DocumentDetailPage() {
           {documentData.files && documentData.files.length > 0 ? (
             <ul>
               {documentData.files.map(file => (
-                <li key={file.fileId}>
-                  <a href={file.fileUrl} target='_blank' rel='noopener noreferrer'>
-                    {file.fileName}
-                  </a>
+                <li key={file.fileId} >
+                  <Chip
+                  icon={<AttachFileIcon />}
+                  label={`${file.fileName}`}
+                  onClick={() => handleDownload(file.fileId, file.fileName)}
+                  clickable
+                  key={file.fileId}
+                  sx={{
+                    mr: 1,
+                    px: 1.8,
+                    py: 1.1,
+                    fontWeight: 500,
+                    bgcolor: "#f4f6fa",
+                    borderRadius: "6px",
+                    fontSize: "15px"
+                  }}
+                />
                 </li>
               ))}
             </ul>

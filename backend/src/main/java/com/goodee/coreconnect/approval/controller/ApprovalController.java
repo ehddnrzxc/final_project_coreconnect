@@ -1,8 +1,14 @@
 package com.goodee.coreconnect.approval.controller;
 
+import java.io.InputStream;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,12 +29,18 @@ import com.goodee.coreconnect.approval.dto.response.DocumentDetailResponseDTO;
 import com.goodee.coreconnect.approval.dto.response.DocumentSimpleResponseDTO;
 import com.goodee.coreconnect.approval.dto.response.TemplateDetailResponseDTO;
 import com.goodee.coreconnect.approval.dto.response.TemplateSimpleResponseDTO;
+import com.goodee.coreconnect.approval.entity.File;
+import com.goodee.coreconnect.approval.repository.FileRepository;
 import com.goodee.coreconnect.approval.service.ApprovalService;
+import com.goodee.coreconnect.approval.service.FileStorageService;
+import com.goodee.coreconnect.email.entity.EmailFile;
+import com.goodee.coreconnect.email.service.EmailFileStorageService;
 import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -40,6 +52,8 @@ import lombok.RequiredArgsConstructor;
 public class ApprovalController {
 
   private final ApprovalService approvalService;
+  private final FileRepository fileRepository;
+  private final FileStorageService fileStorageService;
 
   /**
    * 1. 새 결재 문서 상신 (파일 첨부 포함)
@@ -273,5 +287,30 @@ public class ApprovalController {
       ) {
     TemplateDetailResponseDTO templateDetail = approvalService.getTemplateDetail(templateId);
     return ResponseEntity.ok(templateDetail);
+  }
+  
+  @GetMapping("/file/download/{fileId}")
+  public ResponseEntity<InputStreamResource> downloadAttachment(@PathVariable("fileId") Integer fileId, HttpServletResponse response) {
+      // 1. DB에서 첨부파일 엔티티 조회
+      File file = fileRepository.findById(fileId)
+          .orElseThrow(() -> new RuntimeException("첨부파일 정보를 찾을 수 없습니다."));
+
+      // 2. 실파일(InputStream 등) 읽기 (S3스토리지/로컬 구현에 따라 분기)
+      InputStream inputStream = fileStorageService.loadFileAsInputStream(file);
+
+      // 3. Content-Disposition 헤더(filename 인코딩 주의)
+      String encodedFilename = URLEncoder.encode(file.getFileName(), StandardCharsets.UTF_8)
+                                         .replaceAll("\\+", "%20");
+      HttpHeaders headers = new HttpHeaders();
+      headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFilename);
+
+      // 4. Content-Type (기본 바이너리, 혹은 확장자별 지정)
+      MediaType contentType = MediaType.APPLICATION_OCTET_STREAM;
+
+      return ResponseEntity.ok()
+              .headers(headers)
+              .contentLength(file.getFileSize())
+              .contentType(contentType)
+              .body(new InputStreamResource(inputStream));
   }
 }
