@@ -62,7 +62,7 @@ export default function ChatLayout() {
   const [toastRooms, setToastRooms] = useState([]); // 토스트 알림 Rooms
   const [createOpen, setCreateOpen] = useState(false); // 방 생성 다이얼로그 열림 여부
 
-  const userName = getUserName(); // 유저명
+  const userName = GetUserName(); // 유저명
   const accessToken = localStorage.getItem("accessToken"); // 엑세스토큰
   const inputRef = useRef(); // 입력창 관리 ref
 

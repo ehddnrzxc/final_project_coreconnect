@@ -161,7 +161,6 @@ const MailSentBoxPage = () => {
               <SearchIcon fontSize="small" />
             </IconButton>
           </Paper>
-          <Chip label="메가커피 900원, 선착순 1,000명" sx={{ bgcolor: "#fff0dc", fontWeight: 700 }} />
         </Box>
         {/* 상단 툴바 */}
         <Box sx={{ display: 'flex', alignItems: 'center', mt: 2, mb: 2 }}>
