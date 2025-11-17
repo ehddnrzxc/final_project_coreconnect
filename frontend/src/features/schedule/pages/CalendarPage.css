@@ -7,6 +7,8 @@
 .fc-daygrid-event-dot {
   display: none !important;
 }
+/*
+
 
 /* 주간/일간 뷰에서 일정이 시간에 맞게 높이 자동 조정 */
 .fc-timeGrid-event {
