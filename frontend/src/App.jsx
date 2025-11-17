@@ -6,7 +6,7 @@ import { getMyProfileInfo } from "./features/user/api/userAPI";
 import {
   fetchUnreadCount,
   fetchDraftbox,
-  getUserEmailFromStorage
+  GetUserEmailFromStorage
 } from "./features/email/api/emailApi";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import { Box, CssBaseline } from "@mui/material";
@@ -116,7 +116,7 @@ function App() {
 
   // 받은메일함(안읽은)
   const refreshUnreadCount = async () => {
-    const userEmail = getUserEmailFromStorage();
+    const userEmail = GetUserEmailFromStorage();
     if (!userEmail) return;
     const count = await fetchUnreadCount(userEmail);
     setUnreadCount(count || 0);
@@ -124,7 +124,7 @@ function App() {
 
   // 임시보관함(임시저장 개수)
   const refreshDraftCount = async () => {
-    const userEmail = getUserEmailFromStorage();
+    const userEmail = GetUserEmailFromStorage();
     if (!userEmail) return setDraftCount(0);
 
     // 임시보관함 '목록' 조회를 통해 개수 얻음!

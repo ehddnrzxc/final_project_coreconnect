@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useParams } from "react-router-dom";
 import ChatRoomContainer from "../components/Chat/ChatRoomContainer";
+import { UserProfileContext } from "../../../App";
 
-function getUserName() {
+function GetUserName() {
   try {
-    const user = JSON.parse(localStorage.getItem("user"));
+    const user = useContext(UserProfileContext);
     return user?.name || "";
   } catch {
     return "";
@@ -18,7 +19,7 @@ export default function ChatRoomPage() {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
   const [socket, setSocket] = useState(null);
-  const userName = getUserName();
+  const userName = GetUserName();
   const accessToken = localStorage.getItem("accessToken");
 
   // WebSocket 연결 및 메시지 수신

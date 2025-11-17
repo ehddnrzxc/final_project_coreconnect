@@ -5,7 +5,7 @@ import {
   IconButton, Pagination, Chip
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { fetchDraftbox, deleteDraftMail, getUserEmailFromStorage } from "../api/emailApi";
+import { fetchDraftbox, deleteDraftMail, GetUserEmailFromStorage } from "../api/emailApi";
 import { useNavigate } from "react-router-dom";
 
 const DraftBoxPage = () => {
@@ -15,7 +15,7 @@ const DraftBoxPage = () => {
   const [size] = useState(20);
   const [loading, setLoading] = useState(false);
 
-  const userEmail = getUserEmailFromStorage();
+  const userEmail = GetUserEmailFromStorage();
   const navigate = useNavigate();
 
   // 임시보관함 목록 조회 및 상태값 세팅

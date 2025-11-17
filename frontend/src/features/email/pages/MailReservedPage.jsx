@@ -22,7 +22,7 @@ import {
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import CancelIcon from "@mui/icons-material/Cancel";
 import { useNavigate } from "react-router-dom";
-import { getUserEmailFromStorage, fetchScheduledMails } from "../api/emailApi";
+import { GetUserEmailFromStorage, fetchScheduledMails } from "../api/emailApi";
 
 /**
  * 예약메일함 페이지 (테이블형)
@@ -39,7 +39,7 @@ const MailReservedPage = () => {
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState(new Set());
 
-  const userEmail = getUserEmailFromStorage();
+  const userEmail = GetUserEmailFromStorage();
   const navigate = useNavigate();
 
   const safe = (fn, def) => {

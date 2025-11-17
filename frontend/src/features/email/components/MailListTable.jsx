@@ -15,7 +15,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import SyncIcon from '@mui/icons-material/Sync';
 import ViewListIcon from '@mui/icons-material/ViewList';
 
-import { fetchInbox, fetchUnreadCount, getUserEmailFromStorage } from '../api/emailApi';
+import { fetchInbox, fetchUnreadCount, GetUserEmailFromStorage } from '../api/emailApi';
 import { useNavigate, useLocation } from 'react-router-dom'; // <-- useLocation 추가
 
 const MailInboxPage = () => {
@@ -26,7 +26,7 @@ const MailInboxPage = () => {
   const [total, setTotal] = useState(0);
   const [mails, setMails] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const userEmail = getUserEmailFromStorage();
+  const userEmail = GetUserEmailFromStorage();
   const navigate = useNavigate();
   const location = useLocation(); // <-- 쿼리 문자열 인식용
 

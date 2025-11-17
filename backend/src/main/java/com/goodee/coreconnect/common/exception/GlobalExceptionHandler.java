@@ -1,5 +1,6 @@
 package com.goodee.coreconnect.common.exception;
 
+import java.util.Collections;
 import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
@@ -127,4 +128,10 @@ public class GlobalExceptionHandler {
                 .body("서버 내부 오류가 발생했습니다. 관리자에게 문의하세요.");
     }
     
+    
+    @ExceptionHandler(ChatNotFoundException.class)
+    public ResponseEntity<?> handleChatNotFound(ChatNotFoundException ex) {
+        // 빈 배열+200으로 강제 처리
+        return ResponseEntity.ok(ResponseDTO.success(Collections.emptyList(), "채팅 메시지 없음"));
+    }
 }

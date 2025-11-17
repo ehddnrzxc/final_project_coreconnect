@@ -85,4 +85,6 @@ public interface ChatRoomService {
     // user 참여 chatRoom 목록 가져오기
     List<ChatRoomListDTO> getChatRoomListWithUnreadCount(Integer userId);
 
+	boolean existsByRoomId(Integer roomId);
+
 }
