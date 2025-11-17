@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, { useEffect, useMemo, useState, useRef, useContext  } from "react";
 // useEffect: 생명주기 제어
 // useState: 상태 관리
 // useMemo: 렌더링 최적화 (계산 결과 캐싱)
@@ -36,6 +36,7 @@ import { Modal, Card, CardMedia, CardContent, IconButton } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close"; // 카드 X 버튼
 import DownloadIcon from "@mui/icons-material/Download"; // 다운로드 버튼
 import DescriptionIcon from "@mui/icons-material/Description"; // 비이미지 파일 아이콘
+import { UserProfileContext } from "../../../App";
 
 
 // 파일이 이미지인지 판단하는 헬퍼 함수 (확장자 기준)
@@ -53,9 +54,9 @@ const BoardDetailPage = () => {
   const { showSnack } = useSnackbarContext(); // 스낵바 훅 사용
 
   // 로그인 사용자 정보 로드
-  const user = JSON.parse(localStorage.getItem("user") || "{}"); // localStorage에 "user" 키로 저장된 JSON 문자열을 읽고 객체로 변환, 없으면 {} 사용
-  const loginName = user?.name || "익명"; // 로그인 이름 (user.name 이 없거나 undefined면 "익명"으로 대체)
-  const loginRole = user?.role; // 사용자 역할(권한). 예: "ADMIN", "USER" 등
+  const userProfile = useContext(UserProfileContext);
+  const loginName = userProfile?.name || "익명"; // 로그인 이름 (user.name 이 없거나 undefined면 "익명"으로 대체)
+  const loginRole = userProfile?.role; // 사용자 역할(권한). 예: "ADMIN", "USER" 등
 
   // 상태 정의
   const [board, setBoard] = useState(null); // 게시글 상세 데이터 상태 (초기값 null → 아직 로딩 전이라는 의미)
@@ -420,8 +421,8 @@ const BoardDetailPage = () => {
               <Card
                 key={file.id}
                 sx={{
-                  width: 150, // 작성 페이지와 동일
-                  p: 1,
+                  width: 150, // 작성 페이지와 
+                  height: 160,
                   borderRadius: 2,
                   boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
                   position: "relative",
@@ -442,7 +443,7 @@ const BoardDetailPage = () => {
                 ) : (
                   <Box
                     sx={{
-                      height: 120,
+                      height: 100,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -504,7 +505,7 @@ const BoardDetailPage = () => {
           </IconButton>
 
           <Typography variant="h6" sx={{ mb: 2 }}>
-            파일 미리보기
+            {previewFile?.fileName || "파일 미리보기"}
           </Typography>
 
           {previewFile && isImage(previewFile.fileName) ? (
