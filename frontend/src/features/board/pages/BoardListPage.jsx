@@ -270,33 +270,33 @@ const BoardListPage = () => {
               },
             }}
           >
-            {/* 추가된 전체 래퍼 — 기존 코드 감싸기 */}
             <Box sx={{ display: "flex", width: "100%" }}>
               {/* 텍스트 본문 (80%) */}
               <Box sx={{ flex: 4, pr: 2 }}>
                 {" "}
                 {/* 기존 카테고리/댓글수/제목/내용/작성자 그대로 유지 */}
                 <Stack direction="row" alignItems="center" spacing={1}>
+                  {/* 게시판 카테고리명 */}
                   <Typography variant="body2" color="text.secondary">
                     {b.categoryName || "전체 게시판"}
                   </Typography>
 
                   <Stack direction="row" alignItems="center" spacing={0.5}>
+                    {/* 댓글 아이콘 + 개수 */}
                     <CommentIcon sx={{ fontSize: 15, color: "#616161" }} />
                     <Typography variant="caption" color="text.secondary">
                       {b.replyCount ?? 0}
                     </Typography>
 
-                    {b.files && b.files.length > 0 && (
+                    {/* 첨부파일 → 이미지 유무 상관없이 표시 */}
+                    {b.fileCount > 0 && (
                       <Stack
                         direction="row"
                         alignItems="center"
                         spacing={0.3}
                         sx={{ ml: 1 }}
                       >
-                        <AttachFileIcon
-                          sx={{ fontSize: 15, color: "#616161" }}
-                        />
+                        <AttachFileIcon sx={{ fontSize: 15, color: "#616161" }} />
                         <Typography variant="caption" color="text.secondary">
                           {b.fileCount}
                         </Typography>

@@ -44,25 +44,48 @@ public class BoardServiceImpl implements BoardService {
     private final BoardFileService boardFileService; 
     
     // 미리보기 적용 메소드
-    private void applyPreview(Board board, BoardResponseDTO dto) { 
-      List<BoardFile> files = boardFileRepository                   
-              .findByBoardIdAndDeletedYnFalse(board.getId());       
+    private void applyPreview(Board board, BoardResponseDTO dto) {
 
-      if (!files.isEmpty()) {                                       
-          BoardFile first = files.get(0);                           
-          String url = boardFileService.getPresignedUrlWithFilename(
-              first.getS3ObjectKey(),
-              first.getFileName()
-          );                          
+        // 게시글의 전체 파일(삭제 제외)
+        List<BoardFile> files = boardFileRepository.findByBoardIdAndDeletedYnFalse(board.getId());
 
-          dto.setFiles(List.of(BoardFileResponseDTO.toDTO(first, url)));                                                        
-          
-          dto.setHasImage(true);
-      } else {
-          dto.setFiles(List.of());                                  
-          dto.setHasImage(false); 
-      }
-  }
+        // 전체 파일 중 이미지 확장자를 가진 첫 번째 파일 찾기
+        BoardFile firstImage = files.stream()
+                                    .filter(f -> {
+                                        if (f.getFileName() == null) return false;
+                                        String name = f.getFileName().toLowerCase();
+                    
+                                        return name.endsWith(".jpg") ||
+                                               name.endsWith(".jpeg") ||
+                                               name.endsWith(".png") ||
+                                               name.endsWith(".gif") ||
+                                               name.endsWith(".bmp") ||
+                                               name.endsWith(".webp");
+                                    })
+                                    .findFirst()
+                                    .orElse(null);
+
+        // 이미지가 있으면 해당 이미지만 미리보기로 설정
+        if (firstImage != null) {
+            String url = boardFileService.getPresignedUrlWithFilename(firstImage.getS3ObjectKey(), firstImage.getFileName());
+
+            dto.setFiles(List.of(BoardFileResponseDTO.builder()
+                                                     .id(firstImage.getId())
+                                                     .fileName(firstImage.getFileName())
+                                                     .fileSize(firstImage.getFileSize())
+                                                     .s3ObjectKey(firstImage.getS3ObjectKey())
+                                                     .fileUrl(url)
+                                                     .deletedYn(firstImage.getDeletedYn())
+                                                     .build()));
+            dto.setHasImage(true);
+
+        } else {
+            // 이미지 파일이 없다면 미리보기 없음
+            dto.setFiles(List.of());
+            dto.setHasImage(false);
+        }
+    }
+
 
     /** 게시글 등록 (이메일 기반) */
     @Override
