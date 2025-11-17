@@ -20,7 +20,7 @@ import {
   Divider,
 } from "@mui/material";
 
-function UserListPage() {
+export default function UserList() {
   const [users, setUsers] = useState([]);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
@@ -186,5 +186,3 @@ function UserListPage() {
     </Box>
   );
 }
-
-export default UserListPage;

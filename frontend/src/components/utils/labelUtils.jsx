@@ -20,5 +20,13 @@ export const LEAVE_REQUEST_LABELS = {
   CANCELED: "취소",
 };
 
+export const NOTIFICATION_TYPE_LABELS = {
+  EMAIL: "메일",
+  NOTICE: "공지",
+  APPROVAL: "결재",
+  SCHEDULE: "일정",
+};
+
 export const getJobGradeLabel = key => JOB_GRADE_LABELS[key] || key;
 export const getLeaveRequestLabel = key => LEAVE_REQUEST_LABELS[key] || key;
+export const getNotificationTypeLabel = type => NOTIFICATION_TYPE_LABELS[type] || "알림";

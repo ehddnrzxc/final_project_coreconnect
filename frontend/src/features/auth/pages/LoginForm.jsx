@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { login } from "../../auth/api/authAPI";
-import { getMyProfileImage } from "../../user/api/userAPI";
 import { createPasswordResetRequest } from "../../user/api/passwordResetAPI";
+import { clearAuthCache } from "../utils/authUtils";
 import {
   Box, TextField, Button, IconButton, InputAdornment,
   Alert, Stack, Checkbox, FormControlLabel, Link,
-  Dialog, DialogTitle, DialogContent, DialogActions
 } from "@mui/material";
 import { Visibility, VisibilityOff, Close as CloseIcon } from "@mui/icons-material";
 import PasswordResetDialog from "../components/PasswordResetDialog";
@@ -40,15 +39,10 @@ export default function LoginForm({ onLoginSuccess }) {
     }
     
     try {
+      // 로그인 성공 시 이전 사용자 정보 캐시 초기화
+      clearAuthCache();
+      
       const data = await login(email, pw);
-      const user = {
-        email: data.email,
-        name: data.name,
-        role: data.role,
-        departmentName: data.departmentName,
-        jobGrade: data.jobGrade,
-      }
-      localStorage.setItem("user", JSON.stringify(user));
 
       if(remember) {
         localStorage.setItem("savedEmail", email);
@@ -56,16 +50,7 @@ export default function LoginForm({ onLoginSuccess }) {
         localStorage.removeItem("savedEmail");
       }
 
-      // 프로필 이미지 동기화 - 실패해도 로그인은 유지
-      try {
-        const imageUrl = await getMyProfileImage();
-        const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
-        const nextUser = { ...storedUser, imageUrl: imageUrl || "" };
-        localStorage.setItem("user", JSON.stringify(nextUser));
-      } catch (err) {
-        console.warn("프로필 이미지 불러오기 실패:", err);
-      }
-      
+      // onLoginSuccess가 존재할 경우에만 호출
       onLoginSuccess?.();
     } catch (e) {
       console.error("에러:", e);

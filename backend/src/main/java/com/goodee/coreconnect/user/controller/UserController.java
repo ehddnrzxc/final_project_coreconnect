@@ -8,12 +8,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
+import com.goodee.coreconnect.user.dto.request.ChangePasswordRequestDTO;
 import com.goodee.coreconnect.user.dto.response.OrganizationUserResponseDTO;
 import com.goodee.coreconnect.user.dto.response.UserDTO;
 import com.goodee.coreconnect.user.service.UserService;
@@ -71,6 +74,23 @@ public class UserController {
       String email = user.getEmail();
       UserDTO dto = userService.getProfile(email);
       return ResponseEntity.ok(dto);
+    }
+    
+    /** 비밀번호 변경 */
+    @PutMapping("/password")
+    public ResponseEntity<Void> changePassword(
+      @AuthenticationPrincipal CustomUserDetails user,
+      @RequestBody ChangePasswordRequestDTO request
+    ) {
+      String email = user.getEmail();
+      
+      // 새 비밀번호와 확인 비밀번호 일치 확인
+      if (!request.newPassword().equals(request.confirmPassword())) {
+        return ResponseEntity.badRequest().build();
+      }
+      
+      userService.changePassword(email, request.currentPassword(), request.newPassword());
+      return ResponseEntity.ok().build();
     }
     
     

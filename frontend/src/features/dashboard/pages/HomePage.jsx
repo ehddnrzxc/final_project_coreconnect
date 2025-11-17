@@ -8,7 +8,7 @@ import RecentBoardsCard from "../components/RecentBoardsCard";
 import CalendarCard from "../components/CalendarCard";
 import RecentNotificationsCard from "../components/RecentNotificationsCard";
 
-export default function Home() {
+export default function HomePage() {
   return (
     <Container maxWidth={false} sx={{ py: 3, px: 3 }}>
       <Grid container spacing={3}>
