@@ -20,10 +20,11 @@ import {
   connectStomp,
   disconnectStomp,
   sendStompMessage
-} from "../api/chatSocket"; // STOMP 기반 채팅 소켓 유틸 import
+} from "../api/chatSocket";
 
 // ===================== 시간 및 유저명 유틸 함수 =====================
-function formatTime(sendAt) { // 메시지 송신 시간을 보기 좋게 포맷팅
+// 시간 포맷팅 유틸
+function formatTime(sendAt) {
   if (!sendAt) return "";
   const d = new Date(sendAt);
   const today = new Date();
@@ -44,7 +45,8 @@ function formatTime(sendAt) { // 메시지 송신 시간을 보기 좋게 포맷
   }
 }
 
-function GetUserName() { // 유저명 얻는 유틸 함수
+// 유저이름 얻기 유틸
+function getUserName() {
   try {
     const user = useContext(UserProfileContext);
     return user?.name || "";
@@ -62,7 +64,7 @@ export default function ChatLayout() {
   const [toastRooms, setToastRooms] = useState([]); // 토스트 알림 Rooms
   const [createOpen, setCreateOpen] = useState(false); // 방 생성 다이얼로그 열림 여부
 
-  const userName = GetUserName(); // 유저명
+  const userName = getUserName(); // 유저명
   const accessToken = localStorage.getItem("accessToken"); // 엑세스토큰
   const inputRef = useRef(); // 입력창 관리 ref
 
@@ -76,11 +78,11 @@ export default function ChatLayout() {
   // ---------- 채팅방 생성 ----------
   const handleCreateRoom = async (data) => {
     try {
-      const room = await createChatRoom(data); // 방 생성 API 호출
+      const room = await createChatRoom(data);
       if (!room || !room.roomId) throw new Error("응답 데이터 없음");
-      setRoomList(prev => [...prev, room]); // 방목록 추가
-      setSelectedRoomId(room.roomId); // 새로만든 방으로 이동
-      setCreateOpen(false); // 방 생성창 닫기
+      setRoomList(prev => [...prev, room]);
+      setSelectedRoomId(room.roomId); // 방 생성시에만 바로 진입
+      setCreateOpen(false);
     } catch (error) {
       alert("채팅방 생성 에러: " + (error.message || "err"));
     }
@@ -88,9 +90,9 @@ export default function ChatLayout() {
 
   // ---------- 새 메시지 도착 처리 (+ 토스트 알림) ----------
   const handleNewMessage = (msg) => {
-    if (msg.senderName === userName) { // 내가 보낸 메시지
+    if (msg.senderName === userName) {
       if (Number(msg.roomId) === Number(selectedRoomId)) {
-        setMessages((prev) => [...prev, msg]); // 선택방이면 바로 추가
+        setMessages((prev) => [...prev, msg]);
       }
       return;
     }
@@ -151,7 +153,7 @@ export default function ChatLayout() {
       if (!res.ok) throw new Error("파일 업로드 실패");
       const result = await res.json();
       const chatMessage = result.data;
-      setMessages((prev) => [...prev, chatMessage]); // 파일 메시지 추가
+      setMessages((prev) => [...prev, chatMessage]);
     } catch (err) {
       alert("파일 업로드에 실패했습니다: " + err.message);
     }
@@ -161,8 +163,8 @@ export default function ChatLayout() {
   // ---------- 메시지 보내기 ----------
   const handleSend = () => {
     const message = inputRef.current.value;
-    if (socketConnected && message.trim()) { // 소켓 연결상태/입력값 확인
-      sendStompMessage({ roomId: selectedRoomId, content: message }); // STOMP 메시지 전송
+    if (socketConnected && message.trim()) {
+      sendStompMessage({ roomId: selectedRoomId, content: message });
       inputRef.current.value = "";
     } else {
       alert("채팅 서버와 연결되어 있지 않습니다. 잠시 후 다시 시도해 주세요.");
@@ -178,13 +180,16 @@ export default function ChatLayout() {
   };
 
   // ---------- 채팅방 목록 새로고침 (최신화) ----------
+  // 이 함수에서 방 목록을 받아와도 setSelectedRoomId(null)로 설정하여
+  // 첫 진입시 아무 방도 선택하지 않게 한다
   const loadRooms = async () => {
     const res = await fetchChatRoomsLatest();
     if (res && Array.isArray(res.data)) {
       setRoomList(res.data);
-      setSelectedRoomId(res.data[0]?.roomId ?? null);
+      setSelectedRoomId(null); // ★ 첫 진입시 아무 방도 자동 선택 안 함
     } else {
       setRoomList([]);
+      setSelectedRoomId(null);
     }
   };
 
@@ -212,15 +217,13 @@ export default function ChatLayout() {
   useEffect(() => {
     if (!selectedRoomId) return;
 
-    // 채팅방 입장시 STOMP로 서버 연결 및 구독
     connectStomp(
       selectedRoomId,
       msg => handleNewMessage(msg),
-      () => setSocketConnected(true),   // 연결 성공시 활성화
-      () => setSocketConnected(false)   // 에러/종료시 비활성화
+      () => setSocketConnected(true),
+      () => setSocketConnected(false)
     );
 
-    // 언마운트 및 방 변경 시 연결 해제
     return () => {
       setSocketConnected(false);
       disconnectStomp();
@@ -273,7 +276,6 @@ export default function ChatLayout() {
             inputRef={inputRef}
             onSend={handleSend}
             onFileUpload={handleFileUpload}
-            // 소켓 연결상태에 따라 입력창 및 버튼 disabled를 위해 전달
             socketConnected={socketConnected}
           />
         </Box>
