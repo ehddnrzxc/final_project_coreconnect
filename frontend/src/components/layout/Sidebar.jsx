@@ -1,4 +1,4 @@
-import React from "react";
+import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import {
   Box,
@@ -9,7 +9,6 @@ import {
   Divider,
   Typography,
 } from "@mui/material";
-
 import HomeIcon from "@mui/icons-material/Home";
 import MailIcon from "@mui/icons-material/Mail";
 import DescriptionIcon from "@mui/icons-material/Description";
@@ -17,6 +16,7 @@ import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import PushPinIcon from "@mui/icons-material/PushPin";
 import BeachAccessIcon from "@mui/icons-material/BeachAccess";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
+import OrgChartDrawer from "../../features/organization/components/OrgChartDrawer";
 
 const items = [
   { to: "/home", label: "홈", icon: <HomeIcon fontSize="small" /> },
@@ -36,11 +36,13 @@ const items = [
 ];
 
 const Sidebar = () => {
+  const [orgOpen, setOrgOpen] = useState(false);
+
   return (
     <Box
       component="aside"
       sx={{
-        width: 80,                       
+        width: 80,
         bgcolor: "background.paper",
         borderRight: "1px solid",
         borderColor: "divider",
@@ -64,7 +66,7 @@ const Sidebar = () => {
                   sx={{
                     my: 0.5,
                     borderRadius: 2,
-                    flexDirection: "column",       
+                    flexDirection: "column",
                     justifyContent: "center",
                     alignItems: "center",
                     py: 1.5,
@@ -104,49 +106,36 @@ const Sidebar = () => {
         </List>
 
         <Box sx={{ mt: "auto", px: 1, pb: 1 }}>
-          <NavLink
-            to="/organization"
-            style={{ textDecoration: "none", color: "inherit" }}
+          <ListItemButton
+            onClick={() => setOrgOpen(true)}
+            sx={{
+              borderRadius: 2,
+              flexDirection: "column",
+              justifyContent: "center",
+              alignItems: "center",
+              py: 1.5,
+              "& .MuiListItemIcon-root": {
+                minWidth: "auto",
+                mb: 0.5,
+              },
+              "& .MuiListItemText-root": {
+                m: 0,
+              },
+              "& .MuiListItemText-primary": {
+                fontSize: "0.75rem",
+              },
+            }}
           >
-            {({ isActive }) => (
-              <ListItemButton
-                selected={isActive}
-                sx={{
-                  borderRadius: 2,
-                  flexDirection: "column",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  py: 1.5,
-                  "& .MuiListItemIcon-root": {
-                    minWidth: "auto",
-                    mb: 0.5,
-                  },
-                  "& .MuiListItemText-root": {
-                    m: 0,
-                  },
-                  "& .MuiListItemText-primary": {
-                    fontSize: "0.75rem",
-                  },
-                  "&.Mui-selected": {
-                    bgcolor: "transparent",
-                    color: "primary.main",
-                    "&:hover": {
-                      bgcolor: "transparent",
-                    },
-                  },
-                }}
-              >
-                <ListItemIcon sx={{ color: "inherit" }}>
-                  <AccountTreeIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText
-                  primary="조직도"
-                  primaryTypographyProps={{ variant: "caption", align: "center", sx: { whiteSpace: "nowrap" } }}
-                />
-              </ListItemButton>
-            )}
-          </NavLink>
+            <ListItemIcon sx={{ color: "inherit" }}>
+              <AccountTreeIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText
+              primary="조직도"
+              primaryTypographyProps={{ variant: "caption", align: "center", sx: { whiteSpace: "nowrap" } }}
+            />
+          </ListItemButton>
         </Box>
+
       </Box>
 
       <Divider />
@@ -155,6 +144,11 @@ const Sidebar = () => {
           v1.0
         </Typography>
       </Box>
+
+      <OrgChartDrawer
+        open={orgOpen}
+        onClose={() => setOrgOpen(false)}
+      />
     </Box>
   );
 };
