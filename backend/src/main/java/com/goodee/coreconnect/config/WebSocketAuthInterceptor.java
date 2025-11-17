@@ -38,16 +38,28 @@ public class WebSocketAuthInterceptor implements HandshakeInterceptor {
         ServletServerHttpRequest servletReq = (ServletServerHttpRequest) request;
         HttpServletRequest httpReq = servletReq.getServletRequest();
 
-        // 🌟 [변경] 쿠키에서 access_token 찾기 (브라우저 환경 기준)
+     // (1) 쿠키 우선 조회
         String token = null;
-        Cookie[] cookies = httpReq.getCookies();
-        if (cookies != null) {
-            for (Cookie c : cookies) {
+        if (httpReq.getCookies() != null) {
+            for (Cookie c : httpReq.getCookies()) {
                 if ("access_token".equals(c.getName())) {
                     token = c.getValue();
                     break;
                 }
             }
+        }
+
+        // (2) 쿼리 파라미터(fallback) - 이름 다 받아주기
+        if (token == null || token.isBlank()) {
+            token = httpReq.getParameter("access_token");
+        }
+        if (token == null || token.isBlank()) {
+            token = httpReq.getParameter("accessToken");
+        }
+
+        if (token == null || token.isBlank()) {
+            log.warn("[WebSocketAuthInterceptor] handshake without token (쿠키/쿼리 모두 없음) - reject");
+            return false;
         }
 
         // ↓ 테스트 편의 또는 SDK 용만 허용하려면 fallback (선택)
