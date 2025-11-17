@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useContext } from "react";
 // useEffect: 컴포넌트가 마운트/업데이트/언마운트될 때 부수 효과(side effect)를 실행하는 훅
 // useRef: DOM 요소나 변경 가능한 값을 기억하기 위한 훅 (값이 바뀌어도 리렌더링을 발생시키지 않음)
 import { Box, Button, List, ListItemButton, ListItemText, Typography } from "@mui/material";
@@ -14,6 +14,7 @@ import { Outlet, useNavigate, useLocation, useParams } from "react-router-dom";
 import { getAllCategories } from "../api/boardCategoryAPI";
 // getAllCategories(): 백엔드에서 삭제되지 않은 카테고리 목록을 가져오는 함수
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext"; // 전역 Snackbar 컨텍스트 임포트
+import { UserProfileContext } from "../../../App";
 
 
 // BoardLayout 컴포넌트
@@ -37,11 +38,8 @@ const BoardLayout = () => {
   // 현재는 window.scrollTo를 사용하고 있어 직접 사용되지는 않지만,
   // 필요시 contentRef.current.scrollTo(...) 방식으로 영역 내부 스크롤 제어 가능
   const { showSnack } = useSnackbarContext(); // 스낵바 표시 함수 (success, error 등 상태별 호출)
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
-  // 로컬 스토리지에 저장된 로그인 사용자 정보 가져오기
-  // "user" 키로 저장된 JSON 문자열을 파싱하여 객체로 변환
-  // 존재하지 않으면 "{}"를 파싱하므로, user는 항상 객체 형태를 가짐
-  const isAdmin = user?.role === "ADMIN";
+  const userProfile = useContext(UserProfileContext);
+  const isAdmin = userProfile?.role === "ADMIN";
   // 사용자 권한이 ADMIN인지 확인 → 관리자 여부 판별
   // ADMIN이면 카테고리 관리 버튼을 보여줌
 

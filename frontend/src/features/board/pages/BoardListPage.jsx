@@ -379,8 +379,7 @@ const BoardListPage = () => {
                       alt={b.files[0].fileName || "첨부 이미지"}
                       sx={{
                         width: "100%",
-                        maxWidth: 140,
-                        height: 80,
+                        height: 100,
                         objectFit: "cover",
                         borderRadius: 1,
                       }}

@@ -414,7 +414,7 @@ const BoardWritePage = () => {
             key={idx}
             sx={{
               width: 150,
-              p: 1,
+              height: 160,
               borderRadius: 2,
               boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
               position: "relative",
