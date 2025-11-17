@@ -97,10 +97,10 @@ public class ChatMessageController {
             @RequestBody CreateRoomRequestDTO request
     		
     		) {  // 2. 방 이름, 초대할 ID 목록
-		
+		log.info("채팅방 정보: {}", request.toString());
         String creatorEmail = principal.getName();
         // 서비스를 호출할 때 로그인한 사용자 정보(creatorEmail)를 넘겨줍니다.
-        ChatRoom newChatRoom = chatRoomService.createChatRoom(creatorEmail, request.getUserIds(), creatorEmail);
+        ChatRoom newChatRoom = chatRoomService.createChatRoom(request.getRoomName(), request.getUserIds(), creatorEmail);
         
         return ResponseEntity.status(HttpStatus.CREATED).body(ChatRoomResponseDTO.fromEntity(newChatRoom));
     }

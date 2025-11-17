@@ -1,0 +1,152 @@
+import React from 'react';
+import { Box, Tabs, Tab, List, ListItem, ListItemAvatar, ListItemText, Badge, Avatar, Typography } from "@mui/material";
+
+// 채팅방 목록(좌측) & 탭
+function ChatRoomListPane({
+  tabIdx, setTabIdx, roomList, selectedRoomId, setSelectedRoomId, unreadRoomCount, formatTime
+}) {
+  // "전체" 또는 "안읽음" 탭 필터링
+  const filteredRooms = tabIdx === 0 ? roomList : roomList.filter(r => r.unreadCount > 0);
+
+  return (
+    <Box sx={{
+      flex: "0 0 420px", minWidth: 350, maxWidth: 470,
+      height: "calc(100vh - 56px - 32px)", background: "#fff",
+      borderRight: "1px solid #e3e8ef", borderRadius: 0,
+      display: "flex", flexDirection: "column", p: 0,
+    }}>
+      {/* 탭 영역 */}
+      <Box sx={{ px: 0, pt: 0, pb: 1 }}>
+        <Tabs
+          value={tabIdx}
+          onChange={(_, v) => setTabIdx(v)}
+          variant="fullWidth"
+          sx={{
+            borderBottom: "1px solid #e3e8ef",
+            background: "#f9fafb",
+            mb: 0,
+            minHeight: 44
+          }}
+        >
+          <Tab label="전체" sx={{ fontWeight: 700, fontSize: 17, minHeight: 44 }} />
+          <Tab label="안읽음" sx={{ fontWeight: 700, fontSize: 17, minHeight: 44 }} />
+        </Tabs>
+      </Box>
+      {/* 방 목록 */}
+      <List
+        sx={{
+          overflowY: "auto",
+          flex: 1,
+          px: 2,
+          bgcolor: "#fff",
+          scrollbarWidth: "thin",
+          "&::-webkit-scrollbar": { width: 8 },
+          "&::-webkit-scrollbar-thumb": {
+            background: "#e4eaf3",
+            borderRadius: "7px"
+          },
+          "&::-webkit-scrollbar-track": { background: "#fff" }
+        }}
+      >
+        {filteredRooms.length === 0 ? (
+          <ListItem>
+            <ListItemText
+              primary={
+                <Box sx={{ width: "100%", textAlign: "center", color: 'text.disabled', fontSize: 15 }}>
+                  채팅방을 생성해서 대화를 시작해보세요
+                </Box>
+              }
+            />
+          </ListItem>
+        ) : (
+          filteredRooms.map(room => (
+            <ListItem
+              key={room.roomId}
+              selected={selectedRoomId === room.roomId}
+              button
+              alignItems="flex-start"
+              onClick={() => setSelectedRoomId(room.roomId)}
+              sx={{
+                borderRadius: 0,
+                mb: 1,
+                background: selectedRoomId === room.roomId ? "#f3f6fa" : "#fff",
+                borderBottom: "1px solid #e9eaeb",
+                py: 2.4,
+                px: 1.2,
+                minHeight: "64px",
+                cursor: "pointer"
+              }}
+            >
+              <ListItemAvatar>
+                <Avatar sx={{ bgcolor: "#10c16d", mr: 1 }}>
+                  {room.roomName?.[0]?.toUpperCase()}
+                </Avatar>
+              </ListItemAvatar>
+              <ListItemText
+                primary={
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Typography sx={{ fontWeight: 700, fontSize: 18, flexGrow: 1 }}>
+                      {room.roomName}
+                    </Typography>
+                    {room.unreadCount > 0 && (
+                      <Badge
+                        badgeContent={room.unreadCount}
+                        sx={{
+                          "& .MuiBadge-badge": {
+                            background: "#ff7f1a",
+                            color: "#fff",
+                            fontWeight: 700,
+                            fontSize: "13px",
+                            borderRadius: "10px",
+                            py: 1, px: 1.2,
+                          }
+                        }}
+                      />
+                    )}
+                  </Box>
+                }
+                secondary={
+                  <Box>
+                    <Typography
+                      sx={{
+                        fontSize: 14,
+                        color: "#555",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis"
+                      }}
+                    >
+                      {room.lastMessageContent ? room.lastMessageContent : ""}
+                    </Typography>
+                    <Box sx={{ display: "flex", alignItems: "center", mt: 0.5 }}>
+                      <Typography
+                        sx={{
+                          fontSize: 13,
+                          color: "#9495a0",
+                          mr: 2
+                        }}
+                      >
+                        {room.lasMessageTime ? formatTime(room.lasMessageTime) : ""}
+                      </Typography>
+                      {room.lastSenderName && (
+                        <Typography
+                          sx={{
+                            fontSize: 13,
+                            color: "#9495a0"
+                          }}
+                        >
+                          {room.lastSenderName}
+                        </Typography>
+                      )}
+                    </Box>
+                  </Box>
+                }
+              />
+            </ListItem>
+          ))
+        )}
+      </List>
+    </Box>
+  );
+}
+export default ChatRoomListPane;

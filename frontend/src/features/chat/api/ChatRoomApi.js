@@ -31,3 +31,12 @@ export const markRoomMessagesAsRead = async (roomId, accessToken) => {
   );
   return res.data;
 }
+
+// 채팅방 생성 API (POST)
+// body: { roomName, roomType, userIds }, accessToken(optional)
+// ★ 채팅방 생성 (반드시 http 인스턴스 사용, fetch X)
+export async function createChatRoom(data) {
+  const res = await http.post("chat", data);
+  // res.data가 바로 ChatRoomResponseDTO이므로 바로 반환!
+  return res.data; // { roomId, roomName, ... }
+}

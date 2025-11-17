@@ -80,13 +80,13 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	}
 
 	@Transactional
-	public ChatRoom createChatRoom(String name, List<Integer> userIds,  String email ) {
+	public ChatRoom createChatRoom(String roomName, List<Integer> userIds,  String email ) {
 		User drafter = findUserByEmail(email);
 		
 	    String roomType = (userIds.size() == 1) ? "alone" : "group";
 	    Boolean favoriteStatus = false;
 		
-	    ChatRoom chatRoom = ChatRoom.createChatRoom(name, roomType, favoriteStatus, drafter);
+	    ChatRoom chatRoom = ChatRoom.createChatRoom(roomName, roomType, favoriteStatus, drafter);
 
 		chatRoomRepository.save(chatRoom);
 		

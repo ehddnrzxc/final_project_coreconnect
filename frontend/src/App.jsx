@@ -14,6 +14,10 @@ import useAuth from "./hooks/useAuth";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { SnackbarProvider } from "./components/utils/SnackbarContext";
+// ----------- 채팅 컴포넌트 import 추가 -----------
+import ChatHeaderIcon from "../src/features/chat/components/ChatHeaderIcon";
+import ChatMain from "../src/features/chat/components/ChatMain";
+// -----------------------------------------------
 
 export const MailCountContext = createContext();
 export const UserProfileContext = createContext(null);
@@ -80,6 +84,10 @@ function App() {
   const [draftCount, setDraftCount] = useState(0);
   const navigate = useNavigate();
 
+  // ------------ 채팅 오픈 상태 추가 -------------
+  const [chatOpen, setChatOpen] = useState(false);
+  // --------------------------------------------
+
   const [themeMode, setThemeMode] = useState(() => {
     const saved = localStorage.getItem("themeMode");
     return saved && themeOptions[saved] ? saved : "light";
@@ -141,7 +149,6 @@ function App() {
       try {
         const profileData = await getMyProfileInfo();
         setUserProfile(profileData);
-        console.log("profileData:", profileData);
         setAvatarUrl(profileData.profileImageUrl || DEFAULT_AVATAR);
       } catch (e) {
         console.warn("프로필 정보 불러오기 실패:", e);
@@ -176,15 +183,20 @@ function App() {
                 bgcolor: "background.default",
               }}
             >
+              {/* ----------- Topbar(채팅아이콘 추가) ------------ */}
               <Topbar 
-                onLogout={handleLogout} 
+                onLogout={handleLogout}
                 themeMode={themeMode}
                 themeOptions={themeOptions}
                 onThemeChange={handleThemeChange}
+                rightExtra={
+                  <ChatHeaderIcon onClick={() => setChatOpen(true)} />
+                }
               />
+              {/* ----------------------------------------------- */}
+              {/* MailCountContext Provider */}
               <MailCountContext.Provider value={mailCountContextValue}>
                 <Box sx={{ display: "flex", flex: 1, minHeight: 0 }}>
-                  {/* Sidebar는 Provider 내부에서 context 사용, undefined 안전 처리됨 */}
                   <Sidebar />
                   <Box
                     component="main"
@@ -200,6 +212,12 @@ function App() {
                   </Box>
                 </Box>
               </MailCountContext.Provider>
+
+              {/* ---------- 채팅 패널(오버레이) ---------- */}
+              {chatOpen && (
+                <ChatMain onClose={() => setChatOpen(false)} />
+              )}
+              {/* ---------------------------------------- */}
             </Box>
           </UserProfileContext.Provider>
         </SnackbarProvider>
