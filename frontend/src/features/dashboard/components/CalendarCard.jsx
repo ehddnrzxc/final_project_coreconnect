@@ -219,7 +219,7 @@ export default function CalendarCard() {
                           minWidth: 14,
                           height: 14,
                           borderRadius: "50%",
-                          bgcolor: "primary.main",
+                          bgcolor: "error.main",
                           color: "#fff",
                           fontSize: "0.65rem",
                           display: "flex",

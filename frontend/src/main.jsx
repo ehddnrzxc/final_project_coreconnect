@@ -22,20 +22,20 @@ import BoardLayout from "./features/board/pages/BoardLayout";
 import BoardListPage from "./features/board/pages/BoardListPage";
 import BoardDetailPage from "./features/board/pages/BoardDetailPage";
 import BoardWritePage from "./features/board/pages/BoardWritePage";
-import ProtectedRoute from "./features/auth/ProtectedRoute";
+import ProtectedRoute from "./features/auth/components/ProtectedRoute";
 import CalendarPage from "./features/schedule/pages/CalendarPage";
 import AdminCategoryPage from "./features/board/pages/AdminCategoryPage";
 import MailInboxPage from "./features/email/pages/MailInboxPage";
 import MailWritePage from "./features/email/pages/MailWritePage";
 import MailTrashPage from "./features/email/pages/MailTrashPage";
-import PasswordResetPage from "./features/admin/components/PasswordReset";
+import PasswordReset from "./features/admin/components/PasswordReset";
 import NewDocumentPage from "./features/approval/pages/NewDocumentPage";
 import MailSentBoxPage from "./features/email/pages/MailSentBoxPage";
 import MailDetailPage from "./features/email/pages/MailDetailPage";
 import DocumentDetailPage from "./features/approval/pages/DocumentDetailPage";
 import DraftBoxPage from "./features/email/pages/DraftBoxPage";
 import LeavePage from "./features/leave/pages/LeavePage";
-import LeaveRequestsPage from "./features/admin/components/LeaveRequests";
+import LeaveRequests from "./features/admin/components/LeaveRequests";
 import DepartmentManagementPage from "./features/admin/pages/DepartmentManagementPage";
 import { RealtimeNotificationProvider } from "./features/notification/RealtimeNotificationProvider";
 import PendingDocuments from "./features/approval/pages/PendingDocumentPage";
@@ -43,6 +43,7 @@ import MyDocumentsPage from "./features/approval/pages/MyDocumentsPage";
 import MyDraftsPage from "./features/approval/pages/MyDraftsPage";
 import ReferDocumentPage from "./features/approval/pages/ReferDocumentPage";
 import MailReservedPage from "./features/email/pages/MailReservedPage";
+import AttendanceLayout from "./features/attendance/pages/AttendanceLayout";
 
 /* 전체 라우트 구조 */
 const router = createBrowserRouter([
@@ -122,6 +123,14 @@ const router = createBrowserRouter([
         ),
       },
       {
+        path: "attendance",
+        element: (
+          <ProtectedRoute>
+            <AttendanceLayout />
+          </ProtectedRoute>
+        ),
+      },
+      {
         path: "board",
         element: (
           <ProtectedRoute>
@@ -139,21 +148,25 @@ const router = createBrowserRouter([
       },
       {
         path: "admin",
-        element: <AdminRoute />,
+        element: (
+          <ProtectedRoute>
+            <AdminRoute />
+          </ProtectedRoute>
+        ),
         children: [
-          { path: "", element: <AdminHomePage /> },
+          { index: true, element: <AdminHomePage /> },
           { path: "users/create", element: <UserCreateForm /> },
           { path: "users", element: <UserList /> },
           { path: "templates/create", element: <TemplateAdminCreate /> },
           { path: "board/category", element: <AdminCategoryPage /> },
-          { path: "password-reset-requests", element: <PasswordResetPage /> },
-          { path: "leave-requests", element: <LeaveRequestsPage /> },
+          { path: "password-reset-requests", element: <PasswordReset /> },
+          { path: "leave-requests", element: <LeaveRequests /> },
           { path: "departments", element: <DepartmentManagementPage /> }
         ],
       },
       {
         index: true,
-        element: <Navigate to="/home" replace />,
+        element: <Navigate to="/home" replace />, // 루트 경로일 때는 /home으로 이동
       },
     ],
   },

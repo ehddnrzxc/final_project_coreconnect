@@ -93,9 +93,27 @@ export const toISO = (input) => {
  * 타임존 오프셋과 초를 제거하여 datetime-local input에 맞게 변환
  */
 export const toDateTimeLocal = (input) => {
-  if (!input) return "";
+  if (!input) {
+    // 빈 값일 때 오늘 날짜 + 현재 시간을 기본값으로 반환
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = pad(now.getMonth() + 1);
+    const day = pad(now.getDate());
+    const hours = pad(now.getHours());
+    const minutes = pad(now.getMinutes());
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  }
   const iso = toISO(input);
-  if (!iso) return "";
+  if (!iso) {
+    // toISO 변환 실패 시에도 기본값 반환
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = pad(now.getMonth() + 1);
+    const day = pad(now.getDate());
+    const hours = pad(now.getHours());
+    const minutes = pad(now.getMinutes());
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  }
   
   // 타임존 오프셋 제거 (+09:00, -05:00 등)
   let result = iso.replace(/[+-]\d{2}:\d{2}$/, "");

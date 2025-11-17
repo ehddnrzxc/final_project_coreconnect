@@ -1,24 +1,33 @@
 /** 로그인 상태를 관리하고 로그아웃 기능을 제공하기 위한 커스텀 훅
- *  로그인 여부를 토큰 유무로 판단하고, 그 결과를 isLoggedIn 상태로 관리하는 훅 
+ *  로그인 여부를 서버 API 호출로 판단하고, 그 결과를 isLoggedIn 상태로 관리하는 훅 
  */
 
 import { useState, useEffect } from "react";
-import { logout as logoutApi } from "../features/auth/api/authAPI"
+import { logout as logoutApi } from "../features/auth/api/authAPI";
+import { getMyProfileInfo } from "../features/user/api/userAPI";
+import { clearAuthCache } from "../features/auth/utils/authUtils";
 
 export default function useAuth() {
-  // 처음 로드 시 localStorage에 user가 있으면 로그인 상태로 간주
-  const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    try {
-      const stored = localStorage.getItem("user");
-      return !!stored;
-    } catch {
-      return false;
-    }
-  });
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isChecking, setIsChecking] = useState(true); // 초기 인증 확인 중인지 여부
 
+  // 서버 API로 인증 상태 확인
   useEffect(() => {
-    const stored = localStorage.getItem("user");
-    setIsLoggedIn(!!stored);
+    const checkAuth = async () => {
+      try {
+        setIsChecking(true);
+        // 인증이 필요한 API 호출로 로그인 상태 확인
+        await getMyProfileInfo();
+        setIsLoggedIn(true);
+      } catch (error) {
+        // 401 또는 기타 에러 시 비로그인 상태
+        setIsLoggedIn(false);
+      } finally {
+        setIsChecking(false);
+      }
+    };
+
+    checkAuth();
   }, []);
 
   const logout = async () => {
@@ -28,9 +37,10 @@ export default function useAuth() {
     } catch (e) {
       console.error("로그아웃 API 호출 실패:", e);
     }
-    localStorage.removeItem("user");
+    // 사용자 정보 캐시 초기화
+    clearAuthCache();
     setIsLoggedIn(false);
   };
 
-  return { isLoggedIn, setIsLoggedIn, logout };
+  return { isLoggedIn, setIsLoggedIn, logout, isChecking };
 }

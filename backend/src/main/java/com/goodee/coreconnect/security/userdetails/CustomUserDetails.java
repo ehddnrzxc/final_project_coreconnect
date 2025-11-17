@@ -23,6 +23,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class CustomUserDetails implements UserDetails {
 
+    private static final long serialVersionUID = 1L;
+    
     private final Integer id;
     private final String email;
     private final String password;

@@ -17,7 +17,7 @@ import {
 import BeachAccessIcon from "@mui/icons-material/BeachAccess";
 import { getAdminLeaveRequests } from "../api/adminAPI";
 
-export default function LeaveRequestsPage() {
+export default function LeaveRequests() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");

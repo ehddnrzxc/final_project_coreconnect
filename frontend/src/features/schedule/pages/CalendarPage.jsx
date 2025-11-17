@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useContext } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -10,15 +10,17 @@ import { Box,
   Stack
 } from "@mui/material";
 import { getMySchedules, createSchedule, updateSchedule, deleteSchedule } from "../api/scheduleAPI";
-import { addParticipant, deleteParticipant, getParticipantsBySchedule } from "../api/scheduleParticipantAPI";
+import { getParticipantsBySchedule } from "../api/scheduleParticipantAPI";
 import { toISO, toLocalDate } from "../../../utils/dateFormat";
 import ScheduleCategoryPanel from "../components/ScheduleCategoryPanel";
 import ScheduleModal from "../components/ScheduleModal";
 import ScheduleDetailModal from "../components/ScheduleDetailModal";
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
+import { UserProfileContext } from "../../../App";
 import "./CalendarPage.css";
 
 export default function CalendarPage() {
+  
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -29,11 +31,113 @@ export default function CalendarPage() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailId, setDetailId] = useState(null);
   const calendarRef = useRef(null);
-  const [currentView, setCurrentView] = useState("dayGridMonth");
+  const [initialView] = useState(() => {
+    try {
+      const saved = localStorage.getItem("calendarView");
+      const validViews = ["dayGridMonth", "timeGridWeek", "timeGridDay", "list15days"];
+      if (saved && validViews.includes(saved)) {
+        return saved;
+      }
+      return "dayGridMonth";
+    } catch {
+      return "dayGridMonth";
+    }
+  });
+  const [initialDate] = useState(() => {
+    try {
+      const savedView = localStorage.getItem("calendarView");
+      const validViews = ["dayGridMonth", "timeGridWeek", "timeGridDay", "list15days"];
+      const view = savedView && validViews.includes(savedView) ? savedView : "dayGridMonth";
+      
+      let dateToUse = null;
+      
+      if (view === "timeGridWeek") {
+        const weekDate = localStorage.getItem("weekViewDate");
+        if (weekDate) {
+          const [year, month, day] = weekDate.split('-').map(Number);
+          const date = new Date(year, month - 1, day);
+          if (!isNaN(date.getTime())) {
+            dateToUse = date;
+          }
+        }
+        if (!dateToUse) {
+          dateToUse = new Date();
+        }
+      } else if (view === "timeGridDay") {
+        const dayDate = localStorage.getItem("dayViewDate");
+        if (dayDate) {
+          const [year, month, day] = dayDate.split('-').map(Number);
+          const date = new Date(year, month - 1, day);
+          if (!isNaN(date.getTime())) {
+            dateToUse = date;
+          }
+        }
+        if (!dateToUse) {
+          dateToUse = new Date();
+        }
+      } else if (view === "dayGridMonth") {
+        const monthDate = localStorage.getItem("monthViewDate");
+        if (monthDate) {
+          const [year, month] = monthDate.split('-').map(Number);
+          const dayDate = localStorage.getItem("dayViewDate");
+          const weekDate = localStorage.getItem("weekViewDate");
+          if (dayDate || weekDate) {
+            const baseDate = dayDate || weekDate;
+            const [baseYear, baseMonth, baseDay] = baseDate.split('-').map(Number);
+            const date = new Date(year, month - 1, baseDay);
+            if (!isNaN(date.getTime())) {
+              dateToUse = date;
+            }
+          }
+          if (!dateToUse) {
+            const date = new Date(year, month - 1, 1);
+            if (!isNaN(date.getTime())) {
+              dateToUse = date;
+            }
+          }
+        }
+        if (!dateToUse) {
+          const dayDate = localStorage.getItem("dayViewDate");
+          const weekDate = localStorage.getItem("weekViewDate");
+          const baseDate = dayDate || weekDate;
+          if (baseDate) {
+            const [year, month] = baseDate.split('-').map(Number);
+            dateToUse = new Date(year, month - 1, 1);
+          } else {
+            dateToUse = new Date();
+          }
+        }
+      } else if (view === "list15days") {
+        const listDate = localStorage.getItem("listViewDate");
+        if (listDate) {
+          const [year, month, day] = listDate.split('-').map(Number);
+          const date = new Date(year, month - 1, day);
+          if (!isNaN(date.getTime())) {
+            dateToUse = date;
+          }
+        }
+        if (!dateToUse) {
+          const dayDate = localStorage.getItem("dayViewDate");
+          const weekDate = localStorage.getItem("weekViewDate");
+          const baseDate = dayDate || weekDate;
+          if (baseDate) {
+            const [year, month] = baseDate.split('-').map(Number);
+            dateToUse = new Date(year, month - 1, 1);
+          } else {
+            dateToUse = new Date();
+          }
+        }
+      }
+      
+      return dateToUse || undefined;
+    } catch {
+      return undefined;
+    }
+  });
   const [visibleEnd, setVisibleEnd] = useState(null);
   const { showSnack } = useSnackbarContext();  // 전역 Snackbar 훅 사용
-  const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
-  const currentUserEmail = storedUser?.email;
+  const userProfile = useContext(UserProfileContext);
+  const currentUserEmail = userProfile?.email;
   const [drawerOpen, setDrawerOpen] = useState(true);
   const toggleDrawer = () => {
     const updated = !drawerOpen;
@@ -136,6 +240,14 @@ export default function CalendarPage() {
     }
   };
 
+  useEffect(() => {
+    if (calendarRef.current) {
+      const api = calendarRef.current.getApi();
+      const currentView = api.view.type;
+      prevViewRef.current = currentView;
+    }
+  }, [initialView]);
+  
   // localStorage 데이터 로드 후 fetchSchedules 실행
   useEffect(() => {
     const init = async () => {
@@ -153,7 +265,7 @@ export default function CalendarPage() {
     };
 
     init();
-  }, []); // 로컬스토리지 로드 → 일정 로드 순서 보장
+  }, []);
 
 
   /** 카테고리 선택 토글 */
@@ -206,12 +318,6 @@ export default function CalendarPage() {
     setModalOpen(true);
   };
 
-  // popover 닫기 + 상세 모달 열기
-  const handleEventClickWrapper = (info) => {
-    // handleEventClick 내부에서 팝오버 제거를 처리하므로 여기서는 바로 호출
-    handleEventClick(info);
-  };
-
   /** 일정 클릭 → 상세보기 모달 열기 */
   const handleEventClick = async (info) => {
     // 팝오버 즉시 제거 (모달 열기 전에)
@@ -228,12 +334,11 @@ export default function CalendarPage() {
       const clicked = events.find((e) => String(e.id) === eventId);
       
       if (!clicked) {
-        console.warn("일정을 찾을 수 없습니다. eventId:", eventId, "events:", events);
         return;
       }
 
       const isOwnerEmail = clicked.userEmail === currentUserEmail;
-      const currentUserRole = JSON.parse(localStorage.getItem("user"))?.role;
+      const currentUserRole = userProfile?.role;
 
       // 공개 일정은 누구나 접근 가능
       if (clicked.visibility !== "PRIVATE") {
@@ -277,9 +382,28 @@ export default function CalendarPage() {
         showSnack("비공개 일정은 본인 또는 참여자만 열람할 수 있습니다.", "warning");
       }
     } catch (err) {
-      console.warn("참여자 조회 실패:", err);
       showSnack("일정 정보를 불러오는 중 오류가 발생했습니다.", "error");
     }
+  };
+
+  /** allDay 이벤트 날짜 형식 변환 공통 함수 */
+  const formatEventDates = (startDateTime, endDateTime) => {
+    const startDateStr = toLocalDate(startDateTime);
+    const endDateStr = toLocalDate(endDateTime);
+    const isMultiDay = startDateStr !== endDateStr;
+    const isAllDayEvent = isFullDayEvent(startDateTime, endDateTime) || isMultiDay;
+    
+    let eventStart = toISO(startDateTime);
+    let eventEnd = toISO(endDateTime);
+    
+    if (isAllDayEvent) {
+      eventStart = startDateStr;
+      const endDateObj = new Date(endDateTime);
+      endDateObj.setDate(endDateObj.getDate() + 1);
+      eventEnd = toLocalDate(endDateObj);
+    }
+    
+    return { eventStart, eventEnd, isAllDayEvent };
   };
 
   /** 일정 등록 or 수정 */
@@ -287,23 +411,10 @@ export default function CalendarPage() {
     try {
       if (isEdit && selectedEvent) {
         const updated = await updateSchedule(selectedEvent.id, formData);
-
-        // allDay 이벤트인지 확인 (수정 후에도 동일한 로직 적용)
-        const startDateStr = toLocalDate(updated.startDateTime);
-        const endDateStr = toLocalDate(updated.endDateTime);
-        const isMultiDay = startDateStr !== endDateStr;
-        const isAllDayEvent = isFullDayEvent(updated.startDateTime, updated.endDateTime) || isMultiDay;
-        
-        // start/end 형식 결정 (allDay는 YYYY-MM-DD, 일반은 ISO)
-        let eventStart = toISO(updated.startDateTime);
-        let eventEnd = toISO(updated.endDateTime);
-        
-        if (isAllDayEvent) {
-          eventStart = startDateStr;
-          const endDateObj = new Date(updated.endDateTime);
-          endDateObj.setDate(endDateObj.getDate() + 1);
-          eventEnd = toLocalDate(endDateObj);
-        }
+        const { eventStart, eventEnd, isAllDayEvent } = formatEventDates(
+          updated.startDateTime, 
+          updated.endDateTime
+        );
 
         setEvents((prev) =>
           prev.map((e) => {
@@ -336,24 +447,11 @@ export default function CalendarPage() {
         showSnack("일정이 수정되었습니다", "success");
       } else {
         const created = await createSchedule(formData);
-        
-        // allDay 이벤트인지 확인 (등록 시에도 동일한 로직 적용)
-        const startDateStr = toLocalDate(created.startDateTime);
-        const endDateStr = toLocalDate(created.endDateTime);
-        const isMultiDay = startDateStr !== endDateStr;
-        const isAllDayEvent = isFullDayEvent(created.startDateTime, created.endDateTime) || isMultiDay;
-        
-        // start/end 형식 결정 (allDay는 YYYY-MM-DD, 일반은 ISO)
-        let eventStart = toISO(created.startDateTime);
-        let eventEnd = toISO(created.endDateTime);
-        
-        if (isAllDayEvent) {
-          eventStart = startDateStr;
-          const endDateObj = new Date(created.endDateTime);
-          endDateObj.setDate(endDateObj.getDate() + 1);
-          eventEnd = toLocalDate(endDateObj);
-        }
-        
+        const { eventStart, eventEnd, isAllDayEvent } = formatEventDates(
+          created.startDateTime, 
+          created.endDateTime
+        );
+
         const newEvent = {
           id: String(created.id), // 문자열로 변환하여 일관성 유지
           title: created.visibility === "PRIVATE" ? `${created.title}` : created.title,
@@ -396,11 +494,73 @@ export default function CalendarPage() {
     }
   };
 
-  // FullCalendar가 현재 화면에 어떤 날짜 범위를 표시 중인지 콜백으로 전달
-  // - list15days(목록 15일) 뷰 전환/prev/next/today 때마다 자동 호출
+  const prevViewRef = useRef(null);
+  
   const handleDatesSet = (info) => {
-    setCurrentView(info.view.type); // (dayGridMonth | timeGridWeek | timeGridDay | list15days)
-    setVisibleEnd(info.end);        // 표시 끝일(Date)  ※ list 뷰에서는 15일 경계
+    try {
+      const newView = info.view.type;
+      const validViews = ["dayGridMonth", "timeGridWeek", "timeGridDay", "list15days"];
+      if (validViews.includes(newView)) {
+        const prevView = prevViewRef.current;
+        prevViewRef.current = newView;
+        
+        if (calendarRef.current) {
+          const api = calendarRef.current.getApi();
+          const currentDate = api.getDate();
+          
+          if (currentDate instanceof Date && !isNaN(currentDate.getTime())) {
+            if (newView === "timeGridWeek") {
+              if (prevView !== "dayGridMonth") {
+                const weekStart = info.view.currentStart;
+                if (weekStart instanceof Date && !isNaN(weekStart.getTime())) {
+                  localStorage.setItem("weekViewDate", toLocalDate(weekStart));
+                }
+              }
+            } else if (newView === "timeGridDay") {
+              if (prevView !== "dayGridMonth") {
+                const dateStr = toLocalDate(currentDate);
+                if (dateStr) {
+                  localStorage.setItem("dayViewDate", dateStr);
+                }
+              }
+            } else if (newView === "dayGridMonth") {
+              const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+              localStorage.setItem("monthViewDate", toLocalDate(monthStart));
+            } else if (newView === "list15days") {
+              const monthDate = localStorage.getItem("monthViewDate");
+              let listStart = null;
+              
+              if (monthDate) {
+                const [year, month] = monthDate.split('-').map(Number);
+                listStart = new Date(year, month - 1, 1);
+              } else {
+                const dayDate = localStorage.getItem("dayViewDate");
+                const weekDate = localStorage.getItem("weekViewDate");
+                const baseDate = dayDate || weekDate;
+                if (baseDate) {
+                  const [year, month] = baseDate.split('-').map(Number);
+                  listStart = new Date(year, month - 1, 1);
+                } else {
+                  listStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+                }
+              }
+              
+              if (listStart) {
+                localStorage.setItem("listViewDate", toLocalDate(listStart));
+              }
+            }
+          }
+        }
+        
+        localStorage.setItem("calendarView", newView);
+      }
+      
+      setVisibleEnd(info.end);
+    } catch (err) {
+      if (info && info.end) {
+        setVisibleEnd(info.end);
+      }
+    }
   };
 
   /** 일정 표시 */
@@ -410,19 +570,13 @@ export default function CalendarPage() {
     const color = event.dotColor;  
 
     const view = arg.view.type;               // 뷰 타입 체크
-    const isAllDay = arg.event.allDay;        // 종일 일정 여부
     const isTimeView = view === "timeGridWeek" || view === "timeGridDay";
     
     // multi-day event인지 확인 (원래 시작/종료 날짜로 판단)
     const originalStart = event.originalStartDateTime ? new Date(event.originalStartDateTime) : null;
     const originalEnd = event.originalEndDateTime ? new Date(event.originalEndDateTime) : null;
-    const getDateStr = (date) => {
-      if (!date) return null;
-      const d = date instanceof Date ? date : new Date(date);
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    };
-    const originalStartDate = originalStart ? getDateStr(originalStart) : null;
-    const originalEndDate = originalEnd ? getDateStr(originalEnd) : null;
+    const originalStartDate = originalStart ? toLocalDate(originalStart) : null;
+    const originalEndDate = originalEnd ? toLocalDate(originalEnd) : null;
     const isMultiDay = originalStartDate && originalEndDate && originalStartDate !== originalEndDate; 
 
     const privateStyle = isPrivate ? { opacity: 0.55 } : {};
@@ -481,79 +635,22 @@ export default function CalendarPage() {
       return "";
     };
 
-    /** 주간/일간 뷰 → left border 스타일 */
-    if (isTimeView) {
-
-      const timeDisplayText = getTimeDisplayText();
-      
-      // isMultiDay는 이미 위에서 계산됨 (원래 시작/종료 날짜로 판단)
-      
-      // multi-day event도 하루 이내 일정과 동일한 스타일로 표시 (left border 스타일)
-      // 하루 이내 일정과 동일한 스타일
-      return (
-        <div
-          onMouseEnter={handleEnter}   
-          onMouseLeave={handleLeave}  
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "flex-start",
-            gap: "4px",
-            height: "100%",
-            minHeight: "100%",
-            borderLeft: `4px solid ${color}`, 
-            backgroundColor: hexToRgba(color, 0.15),
-            paddingLeft: 6,
-            paddingTop: 4,
-            paddingBottom: 4,
-            borderRadius: 4,
-            boxSizing: "border-box",
-            fontSize: "0.95em",
-            lineHeight: "1.4",
-          }}
-        >
-          {/* 시간 + 제목을 세로로 배치 */}
-          <div style={{ display: "flex", alignItems: "center", gap: "4px", width: "100%", minWidth: 0 }}>
-            {timeDisplayText && (
-              <span style={{ flexShrink: 0, color: "#555", fontSize: "0.85em", lineHeight: "1.4" }}>{timeDisplayText}</span>
-            )}
-            <span
-              style={{
-                fontWeight: 600,
-                color: "#000",
-                fontSize: "0.95em",
-                lineHeight: "1.4",
-                minWidth: 0,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                flex: 1,
-                ...privateStyle,
-              }}
-            >
-              {isPrivate && "🔒 "}
-              {arg.event.title}
-            </span>
-          </div>
-        </div>
-      );
-    }
-
-    
-    /** 월간(dayGridMonth) / 목록(list) 스타일 */
-    // 주간/일간 뷰와 동일한 스타일로 통일
+    // 공통 변수 선언 (중복 제거)
     const timeDisplayText = getTimeDisplayText();
-    
-    return (
+    const shouldShowBorder = !isMultiDay || arg.isStart;
+
+    // 공통 JSX 컴포넌트 함수
+    const renderEventBox = (isTimeView = false) => (
       <div
         onMouseEnter={handleEnter}   
-        onMouseLeave={handleLeave}   
+        onMouseLeave={handleLeave}  
         style={{
           display: "flex",
           flexDirection: "column",
           alignItems: "flex-start",
           gap: "4px",
-          borderLeft: `4px solid ${color}`, 
+          ...(isTimeView && { height: "100%", minHeight: "100%" }),
+          borderLeft: shouldShowBorder ? `4px solid ${color}` : "none", 
           backgroundColor: hexToRgba(color, 0.15),
           paddingLeft: 6,
           paddingTop: 4,
@@ -562,13 +659,15 @@ export default function CalendarPage() {
           boxSizing: "border-box",
           fontSize: "0.95em",
           lineHeight: "1.4",
-          ...privateStyle,
+          ...(isTimeView ? {} : privateStyle), // 주간/일간: div에 없음, 월간/목록: div에 적용 (span은 모든 뷰에서 적용)
         }}
       >
         {/* 시간 + 제목을 세로로 배치 */}
         <div style={{ display: "flex", alignItems: "center", gap: "4px", width: "100%", minWidth: 0 }}>
           {timeDisplayText && (
-            <span style={{ flexShrink: 0, color: "#555", fontSize: "0.85em", lineHeight: "1.4" }}>{timeDisplayText}</span>
+            <span style={{ flexShrink: 0, color: "#555", fontSize: "0.85em", lineHeight: "1.4" }}>
+              {timeDisplayText}
+            </span>
           )}
           <span
             style={{
@@ -581,7 +680,7 @@ export default function CalendarPage() {
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
               flex: 1,
-              ...privateStyle,
+              ...privateStyle, // 모든 뷰에서 span에 적용
             }}
           >
             {isPrivate && "🔒 "}
@@ -590,6 +689,14 @@ export default function CalendarPage() {
         </div>
       </div>
     );
+
+    // 주간/일간 뷰
+    if (isTimeView) {
+      return renderEventBox(true);
+    }
+
+    // 월간/목록 뷰
+    return renderEventBox(false);
   };
 
   /** 로딩 중 */
@@ -630,9 +737,11 @@ export default function CalendarPage() {
       {/* 캘린더 영역 */}
       <Box sx={{ flexGrow: 1, p: 3, overflowY: "auto" }}>
         <FullCalendar
-          ref={calendarRef} // 캘린더 API 제어를 위해 ref 바인딩
+          fixedWeekCount={true}
+          ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
-          initialView="dayGridMonth" // 기본은 월간
+          initialView={initialView}
+          initialDate={initialDate}
           headerToolbar={{
             left: "toggleCategoryButton,dayGridMonth,timeGridWeek,timeGridDay,list15days",
             center: "title",
@@ -680,8 +789,191 @@ export default function CalendarPage() {
           events={filteredEvents}
           eventContent={renderEventContent}
           dateClick={handleDateClick}
-          eventClick={handleEventClickWrapper}
-          datesSet={handleDatesSet} // 표시 범위 변경 시 호출되어 visibleStart/visibleEnd 갱신
+          eventClick={handleEventClick}
+          datesSet={(info) => {
+            const prevView = prevViewRef.current;
+            handleDatesSet(info);
+            
+            const currentView = info.view.type;
+            const api = calendarRef.current?.getApi();
+            if (!api) return;
+            
+            const currentDate = api.getDate();
+            if (!(currentDate instanceof Date) || isNaN(currentDate.getTime())) return;
+            
+            const isViewChanged = prevView !== currentView;
+            
+            if (currentView === "timeGridWeek") {
+              if (isViewChanged) {
+                const monthDate = localStorage.getItem("monthViewDate");
+                const savedWeekDate = localStorage.getItem("weekViewDate");
+                
+                if (monthDate && savedWeekDate) {
+                  const [monthYear, monthMonth] = monthDate.split('-').map(Number);
+                  const [savedYear, savedMonth, savedDay] = savedWeekDate.split('-').map(Number);
+                  const targetDate = new Date(monthYear, monthMonth - 1, savedDay);
+                  const targetWeekStart = new Date(targetDate);
+                  targetWeekStart.setDate(targetWeekStart.getDate() - targetWeekStart.getDay() + 1);
+                  const currentWeekStart = info.view.currentStart;
+                  if (currentWeekStart && toLocalDate(currentWeekStart) !== toLocalDate(targetWeekStart)) {
+                    api.gotoDate(targetWeekStart);
+                    const adjustedWeekStart = new Date(targetWeekStart);
+                    if (adjustedWeekStart instanceof Date && !isNaN(adjustedWeekStart.getTime())) {
+                      localStorage.setItem("weekViewDate", toLocalDate(adjustedWeekStart));
+                    }
+                    return;
+                  }
+                } else if (savedWeekDate) {
+                  const [year, month, day] = savedWeekDate.split('-').map(Number);
+                  const savedDate = new Date(year, month - 1, day);
+                  if (!isNaN(savedDate.getTime())) {
+                    const currentWeekStart = info.view.currentStart;
+                    if (currentWeekStart && toLocalDate(currentWeekStart) !== toLocalDate(savedDate)) {
+                      api.gotoDate(savedDate);
+                      return;
+                    }
+                  }
+                }
+              } else {
+                const weekStart = info.view.currentStart;
+                if (weekStart instanceof Date && !isNaN(weekStart.getTime())) {
+                  localStorage.setItem("weekViewDate", toLocalDate(weekStart));
+                }
+              }
+            } else if (currentView === "timeGridDay") {
+              if (isViewChanged) {
+                const monthDate = localStorage.getItem("monthViewDate");
+                const savedDayDate = localStorage.getItem("dayViewDate");
+                
+                if (monthDate && savedDayDate) {
+                  const [monthYear, monthMonth] = monthDate.split('-').map(Number);
+                  const [savedYear, savedMonth, savedDay] = savedDayDate.split('-').map(Number);
+                  const targetDate = new Date(monthYear, monthMonth - 1, savedDay);
+                  const targetDateStr = toLocalDate(targetDate);
+                  const currentDateStr = toLocalDate(currentDate);
+                  if (targetDateStr && targetDateStr !== currentDateStr) {
+                    api.gotoDate(targetDate);
+                    const adjustedDate = api.getDate();
+                    if (adjustedDate instanceof Date && !isNaN(adjustedDate.getTime())) {
+                      const adjustedDateStr = toLocalDate(adjustedDate);
+                      if (adjustedDateStr) {
+                        localStorage.setItem("dayViewDate", adjustedDateStr);
+                      }
+                    }
+                    return;
+                  }
+                } else if (savedDayDate) {
+                  const [year, month, day] = savedDayDate.split('-').map(Number);
+                  const savedDate = new Date(year, month - 1, day);
+                  if (!isNaN(savedDate.getTime())) {
+                    const currentDateStr = toLocalDate(currentDate);
+                    if (currentDateStr !== savedDayDate) {
+                      api.gotoDate(savedDate);
+                      return;
+                    }
+                  }
+                }
+              } else {
+                const dateStr = toLocalDate(currentDate);
+                if (dateStr) {
+                  localStorage.setItem("dayViewDate", dateStr);
+                }
+              }
+            } else if (currentView === "dayGridMonth") {
+              if (isViewChanged) {
+                const monthDate = localStorage.getItem("monthViewDate");
+                const dayDate = localStorage.getItem("dayViewDate");
+                const weekDate = localStorage.getItem("weekViewDate");
+                
+                if (monthDate) {
+                  const [year, month] = monthDate.split('-').map(Number);
+                  const savedMonth = new Date(year, month - 1, 1);
+                  if (!isNaN(savedMonth.getTime())) {
+                    const currentMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+                    if (toLocalDate(currentMonth) !== toLocalDate(savedMonth)) {
+                      if (dayDate || weekDate) {
+                        const baseDate = dayDate || weekDate;
+                        const [baseYear, baseMonth, baseDay] = baseDate.split('-').map(Number);
+                        const targetDate = new Date(year, month - 1, baseDay);
+                        api.gotoDate(targetDate);
+                        return;
+                      } else {
+                        api.gotoDate(savedMonth);
+                        return;
+                      }
+                    }
+                  }
+                } else if (dayDate || weekDate) {
+                  const baseDate = dayDate || weekDate;
+                  const [baseYear, baseMonth, baseDay] = baseDate.split('-').map(Number);
+                  const targetDate = new Date(new Date().getFullYear(), new Date().getMonth(), baseDay);
+                  api.gotoDate(targetDate);
+                  return;
+                }
+              }
+            } else if (currentView === "list15days") {
+              if (isViewChanged) {
+                const monthDate = localStorage.getItem("monthViewDate");
+                let targetListStart = null;
+                
+                if (monthDate) {
+                  const [year, month] = monthDate.split('-').map(Number);
+                  targetListStart = new Date(year, month - 1, 1);
+                } else {
+                  const listDate = localStorage.getItem("listViewDate");
+                  if (listDate) {
+                    const [year, month, day] = listDate.split('-').map(Number);
+                    targetListStart = new Date(year, month - 1, 1);
+                  } else {
+                    const dayDate = localStorage.getItem("dayViewDate");
+                    const weekDate = localStorage.getItem("weekViewDate");
+                    if (dayDate || weekDate) {
+                      const baseDate = dayDate || weekDate;
+                      const [year, month] = baseDate.split('-').map(Number);
+                      targetListStart = new Date(year, month - 1, 1);
+                    }
+                  }
+                }
+                
+                if (targetListStart) {
+                  const currentMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+                  const targetMonth = new Date(targetListStart.getFullYear(), targetListStart.getMonth(), 1);
+                  if (toLocalDate(currentMonth) !== toLocalDate(targetMonth)) {
+                    api.gotoDate(targetListStart);
+                    return;
+                  }
+                }
+              }
+            }
+          }}
+          eventOrder={(event1, event2) => {
+            // originalStartDateTime 우선 사용 (멀티데이/allDay 이벤트의 실제 시작 시간 반영)
+            const getStartTime = (event) => {
+              const original = event.extendedProps?.originalStartDateTime;
+              if (original) {
+                const date = new Date(original);
+                return isNaN(date.getTime()) ? 0 : date.getTime();
+              }
+              // originalStartDateTime이 없으면 start 사용
+              if (event.start) {
+                const date = typeof event.start === 'string' 
+                  ? new Date(event.start) 
+                  : event.start;
+                return isNaN(date.getTime()) ? 0 : date.getTime();
+              }
+              return 0;
+            };
+            
+            const time1 = getStartTime(event1);
+            const time2 = getStartTime(event2);
+            
+            // 시작 시간이 같으면 제목으로 정렬 (선택사항)
+            if (time1 === time2) {
+              return (event1.title || '').localeCompare(event2.title || '');
+            }
+            
+            return time1 - time2; // 오름차순 (시간이 빠른 것부터)
+          }}
           slotMinTime="08:00:00"
           slotMaxTime="21:00:00"
           eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
@@ -721,7 +1013,7 @@ export default function CalendarPage() {
         />
 
         {/* 목록(15일) 뷰 전용 보조 UI: "~까지 표시 중" */} 
-        {currentView === "list15days" && visibleEnd && (
+        {initialView === "list15days" && visibleEnd && (
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 2 }}>
             <Typography variant="body2" color="text.secondary">
               {visibleEnd.toISOString().slice(0, 10)} 까지 표시 중

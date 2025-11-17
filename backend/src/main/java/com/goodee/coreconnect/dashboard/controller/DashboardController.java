@@ -86,17 +86,11 @@ public class DashboardController {
 
 	    MyInboxResponseDTO body = MyInboxResponseDTO.builder()
 	        .consents(consentsPageResult.getContent().stream()
-	                  .map(document -> {
-	                    String approvalLineStr = generateApprovalLine(document.getApprovalLines());
-	                    return DocumentSimpleResponseDTO.toDTO(document, approvalLineStr);
-	                  })
+	                  .map(DocumentSimpleResponseDTO::toDTO)
 	                  .collect(Collectors.toList()))
 	        .consentsTotal(consentsPageResult.getTotalElements())
 	        .references(referencesPageResult.getContent().stream()
-	                  .map(document -> {
-	                    String approvalLineStr = generateApprovalLine(document.getApprovalLines());
-	                    return DocumentSimpleResponseDTO.toDTO(document, approvalLineStr);
-	                  })
+	                  .map(DocumentSimpleResponseDTO::toDTO)
 	                  .collect(Collectors.toList()))
 	        .referencesTotal(referencesPageResult.getTotalElements())
 	        .build();

@@ -38,20 +38,21 @@ public class WebSocketAuthInterceptor implements HandshakeInterceptor {
         ServletServerHttpRequest servletReq = (ServletServerHttpRequest) request;
         HttpServletRequest httpReq = servletReq.getServletRequest();
 
-        // 1) query param (fallback for tests/SDKs)
-        String token = httpReq.getParameter("accessToken");
-
-        // 2) cookie (preferred in browsers)
-        if (token == null) {
-            Cookie[] cookies = httpReq.getCookies();
-            if (cookies != null) {
-                for (Cookie c : cookies) {
-                    if ("access_token".equals(c.getName())) {
-                        token = c.getValue();
-                        break;
-                    }
+        // 🌟 [변경] 쿠키에서 access_token 찾기 (브라우저 환경 기준)
+        String token = null;
+        Cookie[] cookies = httpReq.getCookies();
+        if (cookies != null) {
+            for (Cookie c : cookies) {
+                if ("access_token".equals(c.getName())) {
+                    token = c.getValue();
+                    break;
                 }
             }
+        }
+
+        // ↓ 테스트 편의 또는 SDK 용만 허용하려면 fallback (선택)
+        if (token == null) {
+            token = httpReq.getParameter("accessToken");
         }
 
         if (token == null || token.isBlank()) {
@@ -60,7 +61,6 @@ public class WebSocketAuthInterceptor implements HandshakeInterceptor {
         }
 
         try {
-            // NOTE: JwtProvider has isValid(String) method (not validateToken)
             if (!jwtProvider.isValid(token)) {
                 log.warn("[WebSocketAuthInterceptor] invalid token during websocket handshake");
                 return false;
@@ -72,7 +72,7 @@ public class WebSocketAuthInterceptor implements HandshakeInterceptor {
             }
             // 저장: NotificationWebSocketHandler will read "wsUserEmail" (or userId if you prefer)
             attributes.put("wsUserEmail", email);
-            attributes.put("access_token", token); // keep for fallback
+            attributes.put("access_token", token);
             return true;
         } catch (Exception e) {
             log.warn("[WebSocketAuthInterceptor] token parsing error: {}", e.getMessage());

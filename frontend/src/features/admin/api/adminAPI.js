@@ -26,7 +26,7 @@ export async function approvePasswordResetRequest(id) {
 export async function rejectPasswordResetRequest(id, rejectReason) {
   const res = await http.put(
     `/admin/users/password-reset/requests/${id}/reject`,
-    { rejectReason, }
+    { reason: rejectReason }
   );
   return res.data; 
 }

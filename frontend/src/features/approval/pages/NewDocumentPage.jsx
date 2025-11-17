@@ -1,18 +1,19 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useContext } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getTemplateDetail, submitDocument, saveDraft, getDocumentDetail, updateDraft, updateDocument } from '../api/approvalApi';
 import { Button, Alert, Box, CircularProgress, Paper, TextField, Typography, List, ListItem, ListItemText, TableContainer, Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import SendIcon from '@mui/icons-material/Send';
 import PeopleIcon from '@mui/icons-material/People';
-import ApprovalLineModal from './ApprovalLineModal';
+import ApprovalLineModal from '../components/ApprovalLineModal';
 import ApprovalTypeChip from '../components/ApprovalTypeChip';
-import VacationForm from './VacationForm';
+import VacationForm from '../forms/VacationForm';
 import DynamicApprovalTable from '../components/DynamicApprovalTable';
-import BusinessTripForm from './BusinessTripForm';
-import ExpenseForm from './ExpenseForm';
+import BusinessTripForm from '../forms/BusinessTripForm';
+import ExpenseForm from '../forms/ExpenseForm';
 import { getJobGradeLabel } from '../../../components/utils/labelUtils';
 import { useSnackbarContext } from '../../../components/utils/SnackbarContext';
+import { UserProfileContext } from '../../../App';
 
 // --- 헬퍼 함수들 ---
 const getTodayDate = () => {
@@ -32,18 +33,6 @@ export const calculateDuration = (startDate, endDate) => {
   if (diffTime < 0) return 0;
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
   return diffDays;
-};
-
-const getCurrentUser = () => {
-  try {
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      return JSON.parse(userStr);
-    }
-  } catch (error) {
-    console.error("로컬 스토리지 사용자 정보 파싱 실패:", error);
-  }
-  return null;
 };
 
 // 템플릿 키에 따라 적절한 폼 컴포넌트를 반환하는 헬퍼 컴포넌트
@@ -123,7 +112,7 @@ function NewDocumentPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const currentUser = useMemo(() => getCurrentUser(), []);
+  const currentUser = useContext(UserProfileContext);
 
   // formData의 초기값을 공통 값으로만 설정
   const [formData, setFormData] = useState({
@@ -383,7 +372,7 @@ function NewDocumentPage() {
                   </tr>
                   <tr>
                     <td style={{ border: '1px solid #ccc', backgroundColor: '#f8f8f8', padding: '10px', textAlign: 'center', fontWeight: 'bold' }}>소속</td>
-                    <td style={{ border: '1px solid #ccc', padding: '10px' }}>{currentUser?.departmentName}</td>
+                    <td style={{ border: '1px solid #ccc', padding: '10px' }}>{currentUser?.deptName}</td>
                   </tr>
                   <tr>
                     <td style={{ border: '1px solid #ccc', backgroundColor: '#f8f8f8', padding: '10px', textAlign: 'center', fontWeight: 'bold' }}>기안일</td>

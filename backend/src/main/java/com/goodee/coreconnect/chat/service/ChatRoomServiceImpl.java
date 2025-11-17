@@ -635,6 +635,15 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	    }
 	    return dtos;
 	}
+
+	@Override
+	public boolean existsByRoomId(Integer roomId) {
+	    // JPA를 사용한다면 repository의 existsById를 활용
+	    return chatRoomRepository.existsById(roomId);
+
+	    // 만약 MyBatis나 직접 쿼리라면 아래처럼 작성! (주석 해제 후 사용)
+	    // return chatRoomMapper.countByRoomId(roomId) > 0;
+	}
 	
 	
 

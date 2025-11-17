@@ -20,6 +20,8 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -61,6 +63,7 @@ import com.goodee.coreconnect.chat.repository.NotificationRepository;
 import com.goodee.coreconnect.chat.service.ChatRoomService;
 import com.goodee.coreconnect.common.dto.response.ResponseDTO;
 import com.goodee.coreconnect.common.entity.Notification;
+import com.goodee.coreconnect.common.exception.ChatNotFoundException;
 import com.goodee.coreconnect.common.notification.dto.NotificationDTO;
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
 import com.goodee.coreconnect.common.notification.service.NotificationService;
@@ -90,6 +93,7 @@ public class ChatMessageController {
     private final NotificationService notificationService;
     private final WebSocketDeliveryService webSocketDeliveryService;
     private final S3Service s3Service;
+    private final SimpMessagingTemplate messagingTemplate;
 	
 	@Operation(summary = "채팅방 생성", description = "새로운 채팅방을 생성합니다.")
 	@PostMapping
@@ -108,58 +112,42 @@ public class ChatMessageController {
 	/**
 	 * 메시지 전송
 	 */
-    @Operation(summary = "채팅 메시지 전송", description = "채팅 메시지를 전송하고 알림을 생성합니다.")
-    @PostMapping("/messages")
-    public ResponseEntity<ResponseDTO<ChatResponseDTO>> sendMessage(
-            @RequestBody SendMessageRequestDTO req,
-            @AuthenticationPrincipal CustomUserDetails user)
-    {
-        String email = user.getEmail();
-        // 1. 인증 사용자 체크
-        User authUser = userRepository.findByEmail(email).orElse(null);
-        if (authUser == null) {
-            ResponseDTO<ChatResponseDTO> bad = ResponseDTO.<ChatResponseDTO>builder()
-                    .status(HttpStatus.UNAUTHORIZED.value())
-                    .message("로그인이 필요합니다.")
-                    .data(null)
-                    .build();
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(bad);
-        }
+	@Operation(summary = "채팅 메시지 전송", description = "채팅 메시지를 전송하고 알림을 생성합니다.")
+	@MessageMapping("/chat.sendMessage") // 프론트에서 /app/chat.sendMessage로 메시지 전송 (STOMP)
+	public void sendMessage(
+	        @Payload SendMessageRequestDTO req,
+	        @AuthenticationPrincipal CustomUserDetails user
+	) {
+	    String email = user.getEmail();
 
-        // 2. 유효성 체크 (roomId, content)
-        if (req == null || req.getRoomId() == null || req.getContent() == null || req.getContent().trim().isEmpty()) {
-            ResponseDTO<ChatResponseDTO> bad = ResponseDTO.<ChatResponseDTO>builder()
-                    .status(HttpStatus.BAD_REQUEST.value())
-                    .message("채팅방ID와 메시지 내용은 필수값입니다.")
-                    .data(null)
-                    .build();
-            return ResponseEntity.badRequest().body(bad);
-        }
+	    // 1. 인증 사용자 체크 (프론트에서 senderId가 아닌, 인증 객체에서 반드시 가져오기)
+	    User authUser = userRepository.findByEmail(email).orElse(null);
+	    if (authUser == null) {
+	        // 에러 핸들: 로그인 필요하면 메시지 또는 별도 알림
+	        // 실시간 시스템에서는 프론트에 Error 메시지 브로드캐스트하거나 로그로 대체
+	        return;
+	    }
 
-        // 3. 채팅 저장 ★ senderId는 인증에서 가져오기!
-        Chat savedChat = chatRoomService.sendChatMessage(req.getRoomId(), authUser.getId(), req.getContent());
-        chatRoomService.updateUnreadCountForMessages(req.getRoomId());
+	    // 2. 유효성 체크 (roomId, content)
+	    if (req == null || req.getRoomId() == null || req.getContent() == null || req.getContent().trim().isEmpty()) {
+	        // 에러 핸들: 필수 데이터 누락
+	        // 역시 실시간에서는 Fronend로 임의 알림/로그 가능
+	        return;
+	    }
 
-        if (savedChat == null) {
-            ResponseDTO<ChatResponseDTO> err = ResponseDTO.<ChatResponseDTO>builder()
-                    .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                    .message("채팅 메시지가 올바르지 않습니다.")
-                    .data(null)
-                    .build();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(err);
-        }
+	    // ⭐️ 3. DB 저장 - 반드시 인증 정보에서 senderId 사용!
+	    //    (보안상 프론트에서 senderId를 보내지 않음, 무조건 서버 측에서 로그인 사용자의 id 사용)
+	    Chat saved = chatRoomService.sendChatMessage(
+	        req.getRoomId(),
+	        authUser.getId(),    // <-- ★ authUser.getId()로 senderId 대체!
+	        req.getContent()
+	    );
 
-        // 4. 응답 DTO 변환 (시간/필드 일관)
-        ChatResponseDTO response = ChatResponseDTO.fromEntity(savedChat); // 반드시 변환 메서드!
-
-        ResponseDTO<ChatResponseDTO> success = ResponseDTO.<ChatResponseDTO>builder()
-                .status(HttpStatus.CREATED.value())
-                .message("Message sent")
-                .data(response)
-                .build();
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(success);
-    }
+	    // 4. 해당 채널 구독자에게 push (프론트에서 /topic/chat.room.{roomId} 구독 중)
+	    messagingTemplate.convertAndSend("/topic/chat.room." + req.getRoomId(), ChatResponseDTO.fromEntity(saved));
+	    // 보통 REST ResponseEntity를 반환하지 않고 void로 처리 (비동기 WebSocket용)
+	    // 필요하다면 별도의 Error 메시지를 특정 유저에게만 전송하도록 커스텀도 가능
+	}
 
 	/**
 	 * 3. 채팅방 참여자 목록 조회
@@ -228,13 +216,19 @@ public class ChatMessageController {
 	        User user = userRepository.findByEmail(email).orElseThrow();
 	        Integer userId = user.getId();
 
+	        // === 방 존재 체크 (없으면 Exception!)
+	        boolean exists = chatRoomService.existsByRoomId(roomId);
+	        if (!exists) {
+	            throw new ChatNotFoundException("roomId: " + roomId + " 채팅방이 없습니다.");
+	        }
+
 	        chatRoomService.updateUnreadCountForMessages(roomId);
 
 	        List<Chat> messages = chatRoomService.getChatsWithFilesByRoomId(roomId);
 
 	        List<ChatMessageResponseDTO> dtoMessages;
 	        if (messages == null || messages.isEmpty()) {
-	            dtoMessages = Collections.emptyList();
+	            dtoMessages = Collections.emptyList(); // 메시지 없으면 200 OK + 빈 배열
 	        } else {
 	            dtoMessages = messages.stream()
 	                .map(chat -> {
