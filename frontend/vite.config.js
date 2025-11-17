@@ -5,9 +5,18 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api/v1': { target: 'http://localhost:8080', 
-                changeOrigin: true,
-                secure: false }
-    }
-  }
+      '/api/v1': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        secure: false,
+      },
+      // 웹소켓 핸드셰이크 등 프록시 (반드시 ws: true 추가!)
+      '/ws': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        ws: true,
+        secure: false,
+      },
+    },
+  },
 })

@@ -72,9 +72,9 @@ public class AuthController {
       
       // Access Token 쿠키 (HttpOnly)
       ResponseCookie accessCookie = ResponseCookie.from("access_token", access)
-          .httpOnly(true)
+          .httpOnly(false)
           .secure(false) // 로컬 개발 시 false, HTTPS 환경에서는 true
-          .sameSite("Lax")
+          .sameSite("None")
           .path("/")
           .maxAge(Duration.ofMinutes(JwtConstants.ACCESS_TOKEN_MINUTES))
           .build();
@@ -83,7 +83,7 @@ public class AuthController {
       ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", refresh)
           .httpOnly(true)
           .secure(false)       
-          .sameSite("Lax")     
+          .sameSite("None")     
           .path("/")
           .maxAge(Duration.ofDays(JwtConstants.REFRESH_TOKEN_DAYS))
           .build();
@@ -121,9 +121,9 @@ public class AuthController {
       
       // 새 Access Token 쿠키 재발급
       ResponseCookie newAccessCookie = ResponseCookie.from("access_token", newAccess)
-          .httpOnly(true)
+          .httpOnly(false)
           .secure(false)
-          .sameSite("Lax")
+          .sameSite("None")
           .path("/")
           .maxAge(Duration.ofMinutes(JwtConstants.ACCESS_TOKEN_MINUTES))
           .build();
@@ -141,25 +141,26 @@ public class AuthController {
   @Operation(summary = "로그아웃", description = "Access/Refresh Token 쿠키를 제거하고 로그아웃 기능을 수행합니다.")
   @PostMapping("/logout")
   public ResponseEntity<Void> logout(HttpServletResponse res) {
+    // access_token (HttpOnly=false, Secure=true, SameSite=None, Path=/)
     ResponseCookie deleteAccess = ResponseCookie.from("access_token", "")
-        .httpOnly(true)
+        .httpOnly(false)
         .secure(false)
-        .sameSite("Lax")
+        .sameSite("None")
         .path("/")
         .maxAge(0)
         .build();
-    
+    res.addHeader(HttpHeaders.SET_COOKIE, deleteAccess.toString());
+
+    // refresh_token (HttpOnly=true, Secure=true, SameSite=None, Path=/)
     ResponseCookie deleteRefresh = ResponseCookie.from("refresh_token", "")
         .httpOnly(true)
         .secure(false)
-        .sameSite("Lax")
+        .sameSite("None")
         .path("/")
         .maxAge(0)
         .build();
-    
-    res.addHeader(HttpHeaders.SET_COOKIE, deleteAccess.toString());
     res.addHeader(HttpHeaders.SET_COOKIE, deleteRefresh.toString());
-    
+
     return ResponseEntity.noContent().build();
   }
 }
