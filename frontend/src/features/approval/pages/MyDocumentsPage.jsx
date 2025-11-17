@@ -64,7 +64,11 @@ function MyDocumentsPage() {
   // 완료일 포맷팅 함수
   const formatCompletedDate = (doc) => {
     // 'COMPLETED' 상태이고, completedAt 값이 있을 때만 날짜 포맷
-    if ((doc.documentStatus === "COMPLETED" || doc.documentStatus === "REJECTED") && doc.completedAt) {
+    if (
+      (doc.documentStatus === "COMPLETED" ||
+        doc.documentStatus === "REJECTED") &&
+      doc.completedAt
+    ) {
       return (
         <>
           <Typography variant="body2">
@@ -158,7 +162,6 @@ function MyDocumentsPage() {
                   onClick={() => handleRowClick(doc.documentId)}
                   sx={{ cursor: "pointer" }}
                 >
-
                   {/* 기안일 */}
                   <TableCell>
                     <Typography variant="body2">
@@ -180,7 +183,55 @@ function MyDocumentsPage() {
 
                   {/* 결재선 */}
                   <TableCell>
-                    {doc.approvalLine}
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                        gap: 0.5,
+                      }}
+                    >
+                      {doc.approvalLines &&
+                        doc.approvalLines
+                          .filter((line) => line.approvalType !== "REFER")
+                          .sort((a, b) => a.approvalOrder - b.approvalOrder)
+                          .map((line, index, arr) => (
+                            <React.Fragment
+                              key={line.lineId || `line-${index}`}
+                            >
+                              {/* 이름과 칩을 묶음 */}
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 0.5,
+                                }}
+                              >
+                                {/* 백엔드 DTO의 필드명('name')을 사용합니다. */}
+                                <Typography variant="body2">
+                                  {line.name}
+                                </Typography>
+
+                                {/* 백엔드 DTO의 필드명('approvalStatus')을 사용합니다. */}
+                                <ApprovalLineStatusChip
+                                  status={line.approvalStatus}
+                                />
+                              </Box>
+
+                              {/* 마지막 항목이 아니면(index < arr.length - 1) "->" 화살표 표시 */}
+                              {index < arr.length - 1 && (
+                                <Typography variant="body2" sx={{ mx: 0.5 }}>
+                                  {"->"}
+                                </Typography>
+                              )}
+                            </React.Fragment>
+                          ))}
+                      {(!doc.approvalLines ||
+                        doc.approvalLines.filter(
+                          (line) => line.approvalType !== "REFER"
+                        ).length === 0) &&
+                        "-"}
+                    </Box>
                   </TableCell>
 
                   {/* 기안부서 (API 응답에 drafterDeptName이 포함되어야 함) */}
