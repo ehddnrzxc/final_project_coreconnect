@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -24,6 +25,7 @@ public class UserServiceImpl implements UserService {
 
   private final UserRepository userRepository;
   private final S3Service s3Service;
+  private final PasswordEncoder passwordEncoder;
   
 
   /** 프로필 이미지를 업로드 */
@@ -119,5 +121,22 @@ public class UserServiceImpl implements UserService {
     );
   }
   
+  /** 비밀번호 변경 */
+  @Override
+  @Transactional
+  public void changePassword(String email, String currentPassword, String newPassword) {
+    User user = userRepository.findByEmail(email)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
+    
+    // 현재 비밀번호 확인
+    if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "현재 비밀번호가 일치하지 않습니다.");
+    }
+    
+    // 새 비밀번호 암호화
+    String encodedNewPassword = passwordEncoder.encode(newPassword);
+    user.changePassword(encodedNewPassword);
+    userRepository.save(user);
+  }
   
 }

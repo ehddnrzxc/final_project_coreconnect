@@ -56,7 +56,12 @@ const PasswordResetDialog = ({ open, email, onClose }) => {
       setResetSuccess("비밀번호 초기화 요청이 전송되었습니다. 관리자의 승인을 기다려주세요.");
     } catch (err) {
       console.error("비밀번호 초기화 요청 에러:", err);
-      setResetError("요청 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
+      // 백엔드에서 보낸 에러 메시지 표시
+      const errorMessage = err.response?.data?.message || 
+                          err.response?.data || 
+                          err.message || 
+                          "요청 처리 중 오류가 발생했습니다. 다시 시도해주세요.";
+      setResetError(errorMessage);
     } finally {
       setResetLoading(false);
     }

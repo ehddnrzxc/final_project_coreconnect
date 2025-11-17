@@ -17,6 +17,7 @@ import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import PushPinIcon from "@mui/icons-material/PushPin";
 import BeachAccessIcon from "@mui/icons-material/BeachAccess";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
 
 const items = [
   { to: "/home", label: "홈", icon: <HomeIcon fontSize="small" /> },
@@ -33,6 +34,7 @@ const items = [
     icon: <CalendarMonthIcon fontSize="small" />,
   },
   { to: "/board", label: "게시판", icon: <PushPinIcon fontSize="small" /> },
+  { to: "/attendance", label: "근태", icon: <AccessTimeIcon fontSize="small" /> },
 ];
 
 const Sidebar = () => {

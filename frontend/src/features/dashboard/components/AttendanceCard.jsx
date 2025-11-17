@@ -1,12 +1,12 @@
 import { Box, Button, Chip, LinearProgress, Typography, useTheme } from "@mui/material";
-import { checkIn, checkOut, getTodayAttendance } from "../api/attendanceAPI";
+import { checkIn, checkOut, getTodayAttendance } from "../../attendance/api/attendanceAPI";
 import { formatKoreanDate, formatKoreanTime, formatTime } from "../../../utils/TimeUtils";
 import { useState, useEffect } from "react";
 import Card from "../../../components/ui/Card";
 import { formatHM } from "../../../utils/TimeUtils";
 import http from "../../../api/http";
 
-function AttendancePage() {
+function AttendanceCard() {
   const theme = useTheme();
   const [now, setNow] = useState(new Date());
   const [attendance, setAttendance] = useState(null);
@@ -19,15 +19,14 @@ function AttendancePage() {
   const dateString = formatKoreanDate(now);
   const timeString = formatKoreanTime(now);
   
-  // 데이터가 없을 때 기본값 처리
   const checkInTime = formatTime(attendance?.checkIn) || "-";
   const checkOutTime = formatTime(attendance?.checkOut) || "-";
   const status = attendance?.status || "ABSENT";
-  const canCheckIn = status === "ABSENT"; // 미출근일 때만 출근 가능
-  const canCheckOut = status === "PRESENT" || status === "LATE"; // 근무중/지각일 때만 퇴근 가능
+  const canCheckIn = status === "ABSENT"; 
+  const canCheckOut = status === "PRESENT" || status === "LATE"; 
 
-  const TARGET_WEEKLY_MINUTES = 40 * 60; // 40시간
-  const MAX_WEEKLY_MINUTES = 52 * 60 // 52시간(진행바 최대 기준)
+  const TARGET_WEEKLY_MINUTES = 40 * 60; 
+  const MAX_WEEKLY_MINUTES = 52 * 60 
   
   useEffect(() => {
     const timer = setInterval(() => {
@@ -59,7 +58,7 @@ function AttendancePage() {
         setLoadingWeekly(true);
         setWeeklyError("");
 
-        const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+        const today = new Date().toISOString().slice(0, 10); 
         const res = await http.get("/attendance/me/weekly", {
           params: {date: today},
         });
@@ -299,4 +298,4 @@ function AttendancePage() {
     </Card>
   );
 }
-export default AttendancePage;
+export default AttendanceCard;

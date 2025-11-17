@@ -30,4 +30,7 @@ public interface UserService {
   
   /** 이메일로 프로필 카드 표시용 사용자의 정보를 조회 */
   UserDTO getProfile(String email);
+  
+  /** 비밀번호 변경 */
+  void changePassword(String email, String currentPassword, String newPassword);
 }

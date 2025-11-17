@@ -3,7 +3,6 @@ import { Link as RouterLink } from "react-router-dom";
 import { getAdminStats } from "../api/adminAPI";
 import {
   Box,
-  Grid,
   Typography,
   Button,
   Card,
@@ -15,11 +14,8 @@ import ShieldIcon from "@mui/icons-material/Shield";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import PeopleIcon from "@mui/icons-material/People";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
-import DescriptionIcon from "@mui/icons-material/Description";
-import SettingsIcon from "@mui/icons-material/Settings";
 import LockResetIcon from "@mui/icons-material/LockReset";
 import BeachAccessIcon from "@mui/icons-material/BeachAccess";
-import ArticleIcon from "@mui/icons-material/Article";
 import { UserProfileContext } from "../../../App";
 
 export default function AdminHomePage() {
@@ -47,26 +43,6 @@ export default function AdminHomePage() {
     fetchStats();
   }, []);
 
-  const statCards = [
-    {
-      icon: <PeopleIcon fontSize="large" />,
-      label: "전체 사용자",
-      value: `${stats.totalUsers} 명`,
-      color: "primary.main",
-    },
-    {
-      icon: <ShieldIcon fontSize="large" />,
-      label: "활성 사용자",
-      value: `${stats.activeUsers} 명`,
-      color: "success.main",
-    },
-    {
-      icon: <AccountTreeIcon fontSize="large" />,
-      label: "부서 수",
-      value: `${stats.departments} 개`,
-      color: "warning.main",
-    },
-  ];
 
   const quickActions = [
     {
@@ -85,11 +61,6 @@ export default function AdminHomePage() {
       icon: <AccountTreeIcon fontSize="small" />,
     },
     {
-      label: "양식 관리",
-      to: "/admin/templates",
-      icon: <DescriptionIcon fontSize="small" />,
-    },
-    {
       label: "비밀번호 초기화 요청",
       to: "/admin/password-reset-requests",
       icon: <LockResetIcon fontSize="small" />,
@@ -98,16 +69,6 @@ export default function AdminHomePage() {
       label: "휴가 요청 관리",
       to: "/admin/leave-requests",
       icon: <BeachAccessIcon fontSize="small" />,
-    },
-    {
-      label: "시스템 설정",
-      to: "/admin/settings",
-      icon: <SettingsIcon fontSize="small" />,
-    },
-    {
-      label: "감사 로그",
-      to: "/admin/logs",
-      icon: <ArticleIcon fontSize="small" />,
     },
   ];
 
@@ -125,37 +86,43 @@ export default function AdminHomePage() {
         </Typography>
       </Box>
 
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        {statCards.map((card, idx) => (
-          <Grid item xs={12} sm={4} key={idx}>
-            <Card sx={{ borderRadius: 3, boxShadow: "0 12px 24px rgba(15,23,42,0.06)" }}>
-              <CardContent sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                <Box
-                  sx={{
-                    width: 56,
-                    height: 56,
-                    borderRadius: 2,
-                    bgcolor: card.color,
-                    color: "#fff",
-                    display: "grid",
-                    placeItems: "center",
-                  }}
-                >
-                  {card.icon}
-                </Box>
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    {card.label}
-                  </Typography>
-                  <Typography variant="h5" fontWeight={700}>
-                    {loading ? "-" : card.value}
-                  </Typography>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+      <Card sx={{ borderRadius: 3, boxShadow: "0 12px 24px rgba(15,23,42,0.05)", mb: 4 }}>
+        <CardContent sx={{ p: 3 }}>
+          <Typography variant="h6" fontWeight={700} sx={{ mb: 1.5 }}>
+            주요 현황
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            시스템의 주요 통계 정보입니다.
+          </Typography>
+          <Divider sx={{ mb: 2 }} />
+          <Box sx={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+            <Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                전체 사용자
+              </Typography>
+              <Typography variant="h6" fontWeight={600}>
+                {loading ? "-" : `${stats.totalUsers} 명`}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                활성 사용자
+              </Typography>
+              <Typography variant="h6" fontWeight={600}>
+                {loading ? "-" : `${stats.activeUsers} 명`}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                부서 수
+              </Typography>
+              <Typography variant="h6" fontWeight={600}>
+                {loading ? "-" : `${stats.departments} 개`}
+              </Typography>
+            </Box>
+          </Box>
+        </CardContent>
+      </Card>
 
       <Card sx={{ borderRadius: 3, boxShadow: "0 12px 24px rgba(15,23,42,0.05)" }}>
         <CardContent sx={{ p: 3 }}>

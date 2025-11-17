@@ -23,7 +23,7 @@ import {
 import { UserProfileContext } from "../../../App";
 import { jobGradeLabel } from "../../../utils/jobGradeUtils";
 
-const ProfilePage = () => {
+export default function ProfileCard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [scheduleError, setScheduleError] = useState(null);
@@ -340,5 +340,3 @@ const ProfilePage = () => {
     </Card>
   );
 };
-
-export default ProfilePage;

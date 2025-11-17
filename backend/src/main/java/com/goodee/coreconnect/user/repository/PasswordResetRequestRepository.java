@@ -6,7 +6,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.goodee.coreconnect.user.entity.PasswordResetRequest;
 import com.goodee.coreconnect.user.entity.ResetStatus;
+import com.goodee.coreconnect.user.entity.User;
 
 public interface PasswordResetRequestRepository extends JpaRepository<PasswordResetRequest, Long> {
-  List<PasswordResetRequest> findByStatus(ResetStatus status);
+  List<PasswordResetRequest> findByStatusOrderByCreatedAtDesc(ResetStatus status);
+  
+  List<PasswordResetRequest> findAllByOrderByCreatedAtDesc();
+  
+  List<PasswordResetRequest> findByUserAndStatus(User user, ResetStatus status);
 }

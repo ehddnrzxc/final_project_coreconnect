@@ -13,6 +13,11 @@ import {
   Chip,
   Stack,
   CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
 } from "@mui/material";
 import LockResetIcon from "@mui/icons-material/LockReset";
 
@@ -21,13 +26,31 @@ import {
   approvePasswordResetRequest,
   rejectPasswordResetRequest
 } from "../api/adminAPI";
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 
-export default function PasswordResetPage() {
+export default function PasswordReset() {
+  const { showSnack } = useSnackbarContext();
   const [requests, setRequests] = useState([]);
   const [statusFilter, setStatusFilter] = useState("PENDING"); 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [actioningId, setActioningId] = useState(null); // 진행 중인 행 ID
+  
+  // 승인 확인 Dialog
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [approveDialogId, setApproveDialogId] = useState(null);
+  const [approveProcessing, setApproveProcessing] = useState(false);
+  
+  // 거절 사유 입력 Dialog
+  const [rejectReasonDialogOpen, setRejectReasonDialogOpen] = useState(false);
+  const [rejectReasonDialogId, setRejectReasonDialogId] = useState(null);
+  const [rejectReason, setRejectReason] = useState("");
+  
+  // 거절 확인 Dialog
+  const [rejectConfirmDialogOpen, setRejectConfirmDialogOpen] = useState(false);
+  const [rejectConfirmId, setRejectConfirmId] = useState(null);
+  const [rejectConfirmReason, setRejectConfirmReason] = useState("");
+  const [rejectProcessing, setRejectProcessing] = useState(false);
 
 
   const loadRequests = async (status) => {
@@ -48,50 +71,67 @@ export default function PasswordResetPage() {
     loadRequests(statusFilter);
   }, [statusFilter]);
 
-  const handleApprove = async (id) => {
-    const ok = window.confirm(
-      "이 비밀번호 초기화 요청을 승인하시겠습니까?\n\n임시 비밀번호가 해당 사용자 이메일로 발송됩니다."
-    );
-    if (!ok) return;
+  const handleApproveClick = (id) => {
+    setApproveDialogId(id);
+    setApproveDialogOpen(true);
+  };
 
+  const handleApprove = async () => {
+    const id = approveDialogId;
+    setApproveProcessing(true);
+    
     try {
       setActioningId(id);
       await approvePasswordResetRequest(id);
-      alert("승인되었습니다. 임시 비밀번호가 사용자 이메일로 발송되었습니다.");
+      setApproveDialogOpen(false);
+      showSnack("승인되었습니다. 임시 비밀번호가 사용자 이메일로 발송되었습니다.", "success");
       loadRequests(statusFilter); // 현재 필터 기준으로 목록 새로 불러오기
     } catch (e) {
       console.error("승인 실패:", e);
-      alert("승인 처리 중 오류가 발생했습니다.");
+      showSnack("승인 처리 중 오류가 발생했습니다.", "error");
     } finally {
+      setApproveProcessing(false);
       setActioningId(null);
+      setApproveDialogId(null);
     }
   };
 
-  const handleReject = async (id) => {
-    const reason = window.prompt("거절 사유를 입력해주세요.");
-    if(reason === null) {
-      return; // 취소 눌렀을 때
-    }
-    if(!reason.trim()) {
-      alert("거절 사유를 입력해야 합니다.");
-      return;
-    }
+  const handleRejectClick = (id) => {
+    setRejectReasonDialogId(id);
+    setRejectReason("");
+    setRejectReasonDialogOpen(true);
+  };
 
-    const ok = window.confirm("정말 이 비밀번호 초기화 요청을 거절하시겠습니까?");
-    if(!ok) {
+  const handleRejectReasonSubmit = () => {
+    if (!rejectReason.trim()) {
+      showSnack("거절 사유를 입력해야 합니다.", "warning");
       return;
     }
+    setRejectConfirmId(rejectReasonDialogId);
+    setRejectConfirmReason(rejectReason.trim());
+    setRejectReasonDialogOpen(false);
+    setRejectConfirmDialogOpen(true);
+  };
+
+  const handleReject = async () => {
+    const id = rejectConfirmId;
+    const reason = rejectConfirmReason;
+    setRejectProcessing(true);
 
     try {
       setActioningId(id);
-      await rejectPasswordResetRequest(id, reason.trim());
-      alert("요청이 거절되었습니다.");
+      await rejectPasswordResetRequest(id, reason);
+      setRejectConfirmDialogOpen(false);
+      showSnack("요청이 거절되었습니다.", "success");
       loadRequests(statusFilter); 
     } catch (e) {
       console.error("거절 실패:", e);
-      alert("거절 처리 중 오류가 발생했습니다.");
+      showSnack("거절 처리 중 오류가 발생했습니다.", "error");
     } finally {
+      setRejectProcessing(false);
       setActioningId(null);
+      setRejectConfirmId(null);
+      setRejectConfirmReason("");
     }
   };
 
@@ -205,13 +245,14 @@ export default function PasswordResetPage() {
                 <TableCell align="center">상태</TableCell>
                 <TableCell>요청일시</TableCell>
                 <TableCell>처리일시</TableCell>
+                <TableCell>거절 사유</TableCell>
                 <TableCell align="center">액션</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {requests.length === 0 && !loading && (
                 <TableRow>
-                  <TableCell colSpan={7} align="center">
+                  <TableCell colSpan={8} align="center">
                     <Typography variant="body2" color="text.secondary">
                       표시할 비밀번호 초기화 요청이 없습니다.
                     </Typography>
@@ -255,6 +296,21 @@ export default function PasswordResetPage() {
                       ? req.processedAt.replace("T", " ").slice(0, 16)
                       : "-"}
                   </TableCell>
+                  <TableCell>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        maxWidth: 200,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        color: req.status === "REJECTED" ? "error.main" : "text.primary",
+                      }}
+                      title={req.rejectReason || ""}
+                    >
+                      {req.rejectReason || "-"}
+                    </Typography>
+                  </TableCell>
                   <TableCell align="center">
                     {req.status === "PENDING" ? (
                     <Stack direction="row" spacing={1} justifyContent="center">
@@ -263,7 +319,7 @@ export default function PasswordResetPage() {
                         variant="outlined"
                         color="success"
                         disabled={actioningId === req.id}
-                        onClick={() => handleApprove(req.id)}
+                        onClick={() => handleApproveClick(req.id)}
                       >
                         승인
                       </Button>
@@ -272,7 +328,7 @@ export default function PasswordResetPage() {
                         variant="outlined"
                         color="error"
                         disabled={actioningId === req.id}
-                        onClick={() => handleReject(req.id)}
+                        onClick={() => handleRejectClick(req.id)}
                       >
                         거절
                       </Button>
@@ -289,6 +345,135 @@ export default function PasswordResetPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* 승인 확인 Dialog */}
+      <Dialog
+        open={approveDialogOpen}
+        onClose={approveProcessing ? undefined : () => setApproveDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>비밀번호 초기화 요청 승인</DialogTitle>
+        <DialogContent>
+          {approveProcessing ? (
+            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", py: 3 }}>
+              <CircularProgress sx={{ mb: 2 }} />
+              <Typography variant="body2" color="text.secondary">
+                승인 처리 중입니다...
+              </Typography>
+            </Box>
+          ) : (
+            <>
+              <Typography>
+                이 비밀번호 초기화 요청을 승인하시겠습니까?
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                임시 비밀번호가 해당 사용자 이메일로 발송됩니다.
+              </Typography>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => setApproveDialogOpen(false)} 
+            disabled={approveProcessing}
+          >
+            취소
+          </Button>
+          <Button 
+            onClick={handleApprove} 
+            variant="contained" 
+            color="success"
+            disabled={approveProcessing}
+            startIcon={approveProcessing ? <CircularProgress size={16} /> : null}
+          >
+            승인
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 거절 사유 입력 Dialog */}
+      <Dialog
+        open={rejectReasonDialogOpen}
+        onClose={() => setRejectReasonDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>거절 사유 입력</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="거절 사유"
+            fullWidth
+            multiline
+            rows={4}
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder="거절 사유를 입력해주세요"
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRejectReasonDialogOpen(false)}>취소</Button>
+          <Button onClick={handleRejectReasonSubmit} variant="contained" color="error">
+            다음
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 거절 확인 Dialog */}
+      <Dialog
+        open={rejectConfirmDialogOpen}
+        onClose={rejectProcessing ? undefined : () => setRejectConfirmDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>거절 확인</DialogTitle>
+        <DialogContent>
+          {rejectProcessing ? (
+            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", py: 3 }}>
+              <CircularProgress sx={{ mb: 2 }} />
+              <Typography variant="body2" color="text.secondary">
+                거절 처리 중입니다...
+              </Typography>
+            </Box>
+          ) : (
+            <>
+              <Typography>
+                정말 이 비밀번호 초기화 요청을 거절하시겠습니까?
+              </Typography>
+              {rejectConfirmReason && (
+                <Box sx={{ mt: 2, p: 2, bgcolor: "action.hover", borderRadius: 1 }}>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                    거절 사유:
+                  </Typography>
+                  <Typography variant="body2">
+                    {rejectConfirmReason}
+                  </Typography>
+                </Box>
+              )}
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => setRejectConfirmDialogOpen(false)} 
+            disabled={rejectProcessing}
+          >
+            취소
+          </Button>
+          <Button 
+            onClick={handleReject} 
+            variant="contained" 
+            color="error"
+            disabled={rejectProcessing}
+            startIcon={rejectProcessing ? <CircularProgress size={16} /> : null}
+          >
+            거절
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

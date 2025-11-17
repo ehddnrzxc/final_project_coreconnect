@@ -5,12 +5,6 @@
 
 import http from "../../../api/http";
 
-// 현재 사용자 프로필 이미지 URL 조회
-export async function getMyProfileImage() {
-  const { data } = await http.get("/user/profile-image");
-  return data?.imageUrl || "";
-}
-
 // 현재 사용자 프로필 이미지 업로드 (FormData)
 export async function uploadMyProfileImage(file) {
   // FormData: HTML <form> 데이터를 자바스크립트에서 직접 만드는 객체
@@ -39,4 +33,14 @@ export async function getUserDeptId() {
 export async function getMyProfileInfo() {
   const res = await http.get("/user/profile-info");
   return res.data; // ResponseEntity.ok(dto)로 반환하므로 res.data가 UserDTO
+}
+
+// 비밀번호 변경
+export async function changePassword(currentPassword, newPassword, confirmPassword) {
+  const res = await http.put("/user/password", {
+    currentPassword,
+    newPassword,
+    confirmPassword,
+  });
+  return res.data;
 }
