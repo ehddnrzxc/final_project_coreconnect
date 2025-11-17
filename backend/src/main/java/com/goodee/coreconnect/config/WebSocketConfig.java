@@ -1,55 +1,25 @@
 package com.goodee.coreconnect.config;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.socket.config.annotation.EnableWebSocket;
-import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
-import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
+import org.springframework.messaging.simp.config.MessageBrokerRegistry;
+import org.springframework.web.socket.config.annotation.*;
 
-import com.goodee.coreconnect.chat.handler.ChatWebSocketHandler;
-import com.goodee.coreconnect.common.notification.handler.NotificationWebSocketHandler;
-import com.goodee.coreconnect.security.jwt.JwtProvider;
-
-import lombok.RequiredArgsConstructor;
-
-/**
- * WebSocket 설정: 핸들러 등록 + 인증 인터셉터 주입
- * - allowed origins 는 app.websocket.allowed-origins 프로퍼티로 관리
- * - 프로덕션에서는 정확한 https://your-frontend 도메인을 넣으세요.
- */
 @Configuration
-@EnableWebSocket
-@RequiredArgsConstructor
-public class WebSocketConfig implements WebSocketConfigurer {
-
-    private final ChatWebSocketHandler chatWebSocketHandler;
-    private final NotificationWebSocketHandler notificationWebSocketHandler;
-    private final JwtProvider jwtProvider;
-
-    /**
-     * app.websocket.allowed-origins 에는 쉼표(,)로 구분한 origin 목록을 넣으세요.
-     * 예: https://app.example.com,https://admin.example.com
-     * 개발시 여러 origin을 허용하려면 http://localhost:5173,http://localhost:3000 등
-     */
-    @Value("${app.websocket.allowed-origins:http://localhost:5173}")
-    private String allowedOrigins; // comma separated
-
+@EnableWebSocketMessageBroker
+public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
-    public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        // split and trim
-        String[] origins = java.util.Arrays.stream(allowedOrigins.split(","))
-                                .map(String::trim)
-                                .filter(s -> !s.isEmpty())
-                                .toArray(String[]::new);
-
-        // Chat (예시)
-        registry.addHandler(chatWebSocketHandler, "/ws/chat")
-                // setAllowedOriginPatterns 허용: 패턴 또는 정확한 도메인 지정 가능
-                .setAllowedOriginPatterns(origins);
-
-        // Notification 핸들러: interceptor에 jwtProvider 전달
-        registry.addHandler(notificationWebSocketHandler, "/ws/notification")
-                .addInterceptors(new WebSocketAuthInterceptor(jwtProvider))
-                .setAllowedOriginPatterns(origins);
+    public void registerStompEndpoints(StompEndpointRegistry registry) {
+        // 엔드포인트 경로, allow origins 등 설정
+        registry.addEndpoint("/ws/chat")
+                .setAllowedOrigins("http://localhost:5173") // 또는 필요한 경우 allowedOrigins 파라미터 넣기
+                .withSockJS(); // 필요하다면 SockJS 지원도 추가
+        // registry.addEndpoint("/ws/notification") ... 도 가능
+    }
+    @Override
+    public void configureMessageBroker(MessageBrokerRegistry registry) {
+        // /topic/* 으로 publish 될 메시지는 내부 메시지 브로커에서 관리 (방송)
+        registry.enableSimpleBroker("/topic");
+        // 클라이언트가 /app으로 시작하는 주소로 send한 메시지는 @MessageMapping 대상으로 전달
+        registry.setApplicationDestinationPrefixes("/app");
     }
 }

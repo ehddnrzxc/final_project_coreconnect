@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState,  useContext } from 'react';
 import { 
   Box, Typography, Paper, Table, TableHead, TableBody, TableRow, TableCell, 
   IconButton, ButtonGroup, Button, InputBase, Divider, Checkbox, Chip, Pagination 
@@ -18,16 +18,22 @@ import DraftsIcon from '@mui/icons-material/Drafts';
 
 import { fetchSentbox, moveToTrash } from '../api/emailApi';
 import { useNavigate } from 'react-router-dom';
+import { UserProfileContext } from '../../../App';
 
-function getUserEmailFromStorage() {
-  const userString = localStorage.getItem("user");
-  if (!userString) return null;
-  try {
-    const userObj = JSON.parse(userString);
-    return userObj.email || null;
-  } catch {
-    return null;
+function GetUserEmailFromStorage() {
+  const user = useContext(UserProfileContext);
+  if (!user) return null;
+  if (typeof user === "string") {
+    try {
+      const userObj = JSON.parse(user);
+      return userObj.email || null;
+    } catch {
+      return null;
+    }
+  } else if (typeof user === "object" && user !== null) {
+    return user.email || null;
   }
+  return null;
 }
 
 // 상태에 따라 라벨 한글 변환 함수
@@ -48,7 +54,25 @@ function getStatusColor(emailStatus) {
   return "default";
 }
 
+function useUserEmailFromContext() {
+  const user = useContext(UserProfileContext);
+  if (!user) return null;
+  if (typeof user === "string") {
+    try {
+      const userObj = JSON.parse(user);
+      return userObj.email || null;
+    } catch {
+      return null;
+    }
+  } else if (typeof user === "object" && user !== null) {
+    return user.email || null;
+  }
+  return null;
+}
+
 const MailSentBoxPage = () => {
+ const userEmail = useUserEmailFromContext();
+
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(9);
@@ -57,8 +81,9 @@ const MailSentBoxPage = () => {
   const [selected, setSelected] = useState(new Set());
   const navigate = useNavigate();
 
-  const load = () => {
-    fetchSentbox(page - 1, size)
+ const load = () => {
+    if (!userEmail) return; // 👈 userEmail이 없으면 API 호출하지 마세요
+    fetchSentbox(userEmail, page - 1, size)
       .then(res => {
         const boxData = res?.data?.data;
         const mailList = Array.isArray(boxData?.content) ? boxData.content : [];

@@ -7,7 +7,7 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
 import { useNavigate } from "react-router-dom";
 import {
-  getUserEmailFromStorage,
+  GetUserEmailFromStorage,
   fetchTrashMails, // backend 호출 함수
   deleteMails,      // 선택 삭제(영구 삭제) 호출
   emptyTrash        // 휴지통 비우기
@@ -20,7 +20,7 @@ const MailTrashPage = () => {
   const [mails, setMails] = useState([]);
   const [selected, setSelected] = useState(new Set());
   const [loading, setLoading] = useState(false);
-  const userEmail = getUserEmailFromStorage();
+  const userEmail = GetUserEmailFromStorage();
   const navigate = useNavigate();
 
   // robust parser for many possible response shapes

@@ -17,7 +17,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import SyncIcon from '@mui/icons-material/Sync';
 import ViewListIcon from '@mui/icons-material/ViewList';
 
-import { fetchInbox, fetchUnreadCount, getUserEmailFromStorage, deleteMails } from '../api/emailApi';
+import { fetchInbox, fetchUnreadCount, GetUserEmailFromStorage, deleteMails } from '../api/emailApi';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const MailInboxPage = () => {
@@ -30,7 +30,7 @@ const MailInboxPage = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [selected, setSelected] = useState(new Set());
   const [snack, setSnack] = useState({ open: false, severity: 'info', message: '' });
-  const userEmail = getUserEmailFromStorage();
+  const userEmail = GetUserEmailFromStorage();
   const navigate = useNavigate();
   const location = useLocation();
 

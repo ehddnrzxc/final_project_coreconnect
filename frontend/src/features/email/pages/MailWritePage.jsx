@@ -29,7 +29,7 @@ import {
   sendMail,
   saveDraftMail,
   getDraftDetail,
-  getUserEmailFromStorage
+  GetUserEmailFromStorage
 } from "../api/emailApi";
 import { useLocation } from "react-router-dom";
 
@@ -62,7 +62,7 @@ function MailWritePage() {
 
   const location = useLocation();
   const draftId = new URLSearchParams(location.search).get("draftId");
-  const userEmail = getUserEmailFromStorage();
+  const userEmail = GetUserEmailFromStorage();
 
   useEffect(() => {
     if (draftId && userEmail) {

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getEmailDetail, downloadAttachment, getUserEmailFromStorage, markMailAsRead } from '../api/emailApi';
+import { getEmailDetail, downloadAttachment, GetUserEmailFromStorage, markMailAsRead } from '../api/emailApi';
 import {
   Box, Typography, Divider, Paper, IconButton, Chip, Tooltip, Button
 } from '@mui/material';
@@ -26,7 +26,7 @@ function MailDetailPage() {
   const navigate = useNavigate();
   const [mailDetail, setMailDetail] = useState(null);
   const { refreshUnreadCount } = useOutletContext();
-  const userEmail = getUserEmailFromStorage();
+  const userEmail = GetUserEmailFromStorage();
 
   
   useEffect(() => {

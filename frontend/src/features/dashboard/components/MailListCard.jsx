@@ -8,7 +8,7 @@ import {
   ListItem,
   ListItemText,
 } from "@mui/material";
-import { fetchInbox, getUserEmailFromStorage } from "../../email/api/emailApi";
+import { fetchInbox, GetUserEmailFromStorage } from "../../email/api/emailApi";
 
 export default function MailListCard() {
   const navigate = useNavigate();
@@ -18,7 +18,7 @@ export default function MailListCard() {
   // 받은메일함 최근 메일 가져오기
   useEffect(() => {
     (async () => {
-      const userEmail = getUserEmailFromStorage();
+      const userEmail = GetUserEmailFromStorage();
       if (!userEmail) {
         setMailLoading(false);
         return;
