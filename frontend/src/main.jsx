@@ -10,7 +10,6 @@ import LoginPage from "./features/auth/pages/LoginPage";
 import HomePage from "./features/dashboard/pages/HomePage";
 import UserCreateForm from "./features/admin/components/UserCreateForm";
 import AdminRoute from "./features/admin/utils/AdminRoute";
-import "@fortawesome/fontawesome-free/css/all.min.css";
 import ApprovalHomePage from "./features/approval/pages/ApprovalHomePage";
 import ApprovalLayout from "./features/approval/pages/ApprovalLayout";
 import AdminHomePage from "./features/admin/pages/AdminHomePage";
