@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState, useRef } from "react";
 // useState: 상태 관리
 // useMemo: 렌더링 최적화 (계산 결과 캐싱)
 // useRef: DOM 요소나 값 저장 (리렌더링과 무관)
-import { useParams, useNavigate, useLocation  } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 // useParams: URL 파라미터 추출 (예: /board/:id)
 // useNavigate: 페이지 이동 함수
 import { Box, Typography, TextField, Button, Stack, Paper } from "@mui/material";
@@ -317,8 +317,12 @@ const BoardDetailPage = () => {
         {board.title} {/* 게시글 제목 */}
       </Typography>
       <Typography variant="body2" sx={{ mb: 2, color: "text.secondary" }}>
-        {board.writerName} | {formatDateTime(board.createdAt)} | 조회수{" "}
-        {board.viewCount ?? 0} {/* 조회수가 null/undefined일 경우 0으로 대체 */}
+        {board.writerName}
+        {board.writerJobGrade ? ` ${board.writerJobGrade}` : ""}
+        {" | "}
+        {formatDateTime(board.createdAt)}
+        {" | 조회수 "}
+        {board.viewCount ?? 0}
       </Typography>
 
       {/* 게시글 작성자 or 관리자만 수정/삭제 버튼 표시 */}
@@ -580,12 +584,9 @@ const BoardDetailPage = () => {
                     alignItems="center"
                   >
                     <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                      {r.writerName || "익명"}{" "}
-                      <Typography
-                        component="span"
-                        variant="caption"
-                        sx={{ color: "text.secondary" }}
-                      >
+                      {r.writerName || "익명"}
+                      {r.writerJobGrade ? ` ${r.writerJobGrade}` : ""}
+                      <Typography component="span" variant="caption" sx={{ color: "text.secondary" }}>
                         ({formatDateTime(r.createdAt)})
                       </Typography>
                     </Typography>
@@ -750,65 +751,62 @@ const BoardDetailPage = () => {
                       alignItems="center"
                     >
                       <Typography variant="subtitle2">
-                        ↳ {child.writerName}{" "}
-                        <Typography
-                          component="span"
-                          variant="caption"
-                          sx={{ color: "text.secondary" }}
-                        >
+                        ↳ {child.writerName}
+                        {child.writerJobGrade ? ` ${child.writerJobGrade}` : ""}
+                        <Typography component="span" variant="caption" sx={{ color: "text.secondary" }}>
                           ({formatDateTime(child.createdAt)})
                         </Typography>
                       </Typography>
 
                       {(loginRole === "ADMIN" ||
                         child.writerName === loginName) && (
-                        <Stack direction="row" spacing={1}>
-                          {editReplyId !== child.id ? (
-                            <>
-                              {/* 대댓글이 수정 모드가 아닐 때: 수정 / 삭제 */}
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                                sx={{ cursor: "pointer" }}
-                                onClick={() => {
-                                  setEditReplyId(child.id); // 이 대댓글을 수정 대상으로 설정
-                                  setEditReplyText(child.content); // 기존 내용 채우기
-                                }}
-                              >
-                                수정
-                              </Typography>
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                                sx={{ cursor: "pointer" }}
-                                onClick={() => handleOpenReplyConfirm(child.id)}
-                              >
-                                삭제
-                              </Typography>
-                            </>
-                          ) : (
-                            <>
-                              {/* 대댓글이 수정 모드일 때: 저장 / 취소 */}
-                              <Typography
-                                variant="caption"
-                                color="primary"
-                                sx={{ cursor: "pointer" }}
-                                onClick={() => handleReplyUpdate(child.id)}
-                              >
-                                저장
-                              </Typography>
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                                sx={{ cursor: "pointer" }}
-                                onClick={() => setEditReplyId(null)}
-                              >
-                                취소
-                              </Typography>
-                            </>
-                          )}
-                        </Stack>
-                      )}
+                          <Stack direction="row" spacing={1}>
+                            {editReplyId !== child.id ? (
+                              <>
+                                {/* 대댓글이 수정 모드가 아닐 때: 수정 / 삭제 */}
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                  sx={{ cursor: "pointer" }}
+                                  onClick={() => {
+                                    setEditReplyId(child.id); // 이 대댓글을 수정 대상으로 설정
+                                    setEditReplyText(child.content); // 기존 내용 채우기
+                                  }}
+                                >
+                                  수정
+                                </Typography>
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                  sx={{ cursor: "pointer" }}
+                                  onClick={() => handleOpenReplyConfirm(child.id)}
+                                >
+                                  삭제
+                                </Typography>
+                              </>
+                            ) : (
+                              <>
+                                {/* 대댓글이 수정 모드일 때: 저장 / 취소 */}
+                                <Typography
+                                  variant="caption"
+                                  color="primary"
+                                  sx={{ cursor: "pointer" }}
+                                  onClick={() => handleReplyUpdate(child.id)}
+                                >
+                                  저장
+                                </Typography>
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                  sx={{ cursor: "pointer" }}
+                                  onClick={() => setEditReplyId(null)}
+                                >
+                                  취소
+                                </Typography>
+                              </>
+                            )}
+                          </Stack>
+                        )}
                     </Stack>
 
                     {/* 대댓글 내용 */}

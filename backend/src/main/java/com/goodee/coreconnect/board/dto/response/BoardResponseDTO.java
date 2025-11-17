@@ -38,6 +38,7 @@ public class BoardResponseDTO {
     private Boolean hasImage;
     private Integer fileCount;
     private Integer categoryId;
+    private String writerJobGrade;
 
     private List<BoardFileResponseDTO> files;    
     private List<BoardReplyResponseDTO> replies; 
@@ -74,6 +75,9 @@ public class BoardResponseDTO {
                                                                  .filter(f -> !Boolean.TRUE.equals(f.getDeletedYn()))
                                                                  .count())
                                           .categoryId(board.getCategory() != null ? board.getCategory().getId() : null)
+                                          .writerJobGrade(board.getUser().getJobGrade() != null ? board.getUser()
+                                                                                                       .getJobGrade()
+                                                                                                       .label() : null)
                                           .build();
     }
 }

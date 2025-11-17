@@ -5,8 +5,10 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 // useParams → URL의 동적 파라미터 추출 (예: /board/:categoryId)
 // useNavigate → 페이지 이동 (navigate("/path"))
 // useSearchParams → URL 쿼리스트링 (예: ?page=1&sortType=latest) 제어
-import { Box, Typography, ListItemButton, Stack, TextField, Button, MenuItem,
-  Select, FormControl, InputLabel } from "@mui/material";
+import {
+  Box, Typography, ListItemButton, Stack, TextField, Button, MenuItem,
+  Select, FormControl, InputLabel
+} from "@mui/material";
 // Typography: 텍스트 표현용
 // ListItemButton: 클릭 가능한 리스트 항목
 // Stack: 수평 또는 수직 정렬 컨테이너 (flexbox 래퍼)
@@ -248,8 +250,8 @@ const BoardListPage = () => {
               bgcolor: b.pinned
                 ? "primary.main"
                 : b.noticeYn
-                ? "#d9d9d9"
-                : "white",
+                  ? "#d9d9d9"
+                  : "white",
               border: "1px solid #e0e0e0",
               borderRadius: 1,
               mb: 1.2,
@@ -263,8 +265,8 @@ const BoardListPage = () => {
                 bgcolor: b.pinned
                   ? "primary.light"
                   : b.noticeYn
-                  ? "#e0e0e0"
-                  : "#fafafa",
+                    ? "#e0e0e0"
+                    : "#fafafa",
               },
             }}
           >
@@ -349,7 +351,11 @@ const BoardListPage = () => {
                   </Typography>
                 )}
                 <Typography variant="caption" color="text.secondary">
-                  {b.writerName} / {formatDate(b.createdAt)} / 조회수{" "}
+                  {b.writerName}
+                  {b.writerJobGrade ? ` ${b.writerJobGrade}` : ""}
+                  {" / "}
+                  {formatDate(b.createdAt)}
+                  {" / 조회수 "}
                   {b.viewCount ?? 0}
                 </Typography>
               </Box>
@@ -386,7 +392,7 @@ const BoardListPage = () => {
         ))}
 
         {/* 페이지네이션 영역 */}
-        <Box sx={{ display: "flex", justifyContent: "center",  mt: 1 }}>
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 1 }}>
           {(() => {
             const totalPages = pageInfo.totalPages || 1;
             const page = currentPage + 1;
