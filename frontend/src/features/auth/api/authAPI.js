@@ -8,18 +8,27 @@ import http from "../../../api/http";
 
 // 로그인
 export async function login(email, password) {
-  const { data } = await http.post("/auth/login", { email, password });
-  return data; 
+  const { data } = await http.post(
+    "/auth/login",
+    { email, password },
+    { withCredentials: true } // ★ 추가
+  );
+  return data;
 }
 
 // 로그아웃
 export async function logout() {
-  await http.post("/auth/logout");
+  await http.post("/auth/logout", {}, { withCredentials: true }); // ★ 추가
 }
+
 
 // 액세스 재발급
 export async function refreshAccessToken() {
-  const { data } = await http.post("/auth/refresh", {}); 
-  return data; 
+  const { data } = await http.post(
+    "/auth/refresh",
+    {},
+    { withCredentials: true } // ★ 추가
+  );
+  return data;
 }
 
