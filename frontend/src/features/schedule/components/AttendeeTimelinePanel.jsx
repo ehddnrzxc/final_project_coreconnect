@@ -4,8 +4,8 @@ import { toDate } from "../../../utils/dateFormat";
 
 /**
  * 참석자 일정표 (그룹웨어 스타일)
- * - 시간대: 08:00 ~ 17:00
- * - 1시간 단위 표시, 30분 블록 단위로 시각화
+ * - startDateTime과 endDateTime을 받아 동적으로 시간대 생성
+ * - 30분 블록 단위로 시각화 (각 블록은 30분 간격)
  */
 export default function AttendeeTimelinePanel({
   users = [],
@@ -139,7 +139,7 @@ export default function AttendeeTimelinePanel({
         variant="caption"
         sx={{ mt: 1, color: "#999", display: "block", textAlign: "right" }}
       >
-        ※ 최대 50명의 참석자까지 표시됩니다.
+        ※ 참석자 수 제한 없이 모든 참석자의 일정을 표시합니다.
       </Typography>
     </Box>
   );

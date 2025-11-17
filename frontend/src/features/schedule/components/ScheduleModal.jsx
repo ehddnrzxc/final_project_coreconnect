@@ -115,6 +115,15 @@ export default function ScheduleModal({
         startDateTime: `${date} 09:00:00`,
         endDateTime: `${date} 10:00:00`,
       }));
+    } else {
+      // date가 없을 때 오늘 날짜로 기본값 설정
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+      setForm((prev) => ({
+        ...prev,
+        startDateTime: `${todayStr} 09:00:00`,
+        endDateTime: `${todayStr} 10:00:00`,
+      }));
     }
   }, [open, initialData, isEdit, date]);
 
@@ -311,6 +320,7 @@ export default function ScheduleModal({
                 const formatted = fromDateTimeLocal(e.target.value);
                 setForm((prev) => ({ ...prev, startDateTime: formatted }));
               }}
+              InputLabelProps={{ shrink: true }}
               fullWidth
             />
             <TextField
@@ -322,6 +332,7 @@ export default function ScheduleModal({
                 const formatted = fromDateTimeLocal(e.target.value);
                 setForm((prev) => ({ ...prev, endDateTime: formatted }));
               }}
+              InputLabelProps={{ shrink: true }}
               fullWidth
             />
 
