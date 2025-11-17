@@ -29,7 +29,7 @@ export const saveDraft = formData => http.post("/approvals/drafts", formData);
 export const updateDraft = (documentId, formData) => http.put(`/approvals/drafts/${documentId}`, formData);
 
 // 임시저장 문서 수정 후 상신
-export const updateDocument = (docuemtnId, formData) => http.put(`/approvals/${documentId}`, formData);
+export const updateDocument = (documentId, formData) => http.put(`/approvals/${documentId}`, formData);
 
 // 내 상신함 (내가 작성한 모든 문서)
 export const getMyDocuments = () => http.get("/approvals/my-documents");
@@ -48,3 +48,15 @@ export const approveDocument = (documentId, requestDTO) => http.post(`/approvals
 
 // 문서 반려
 export const rejectDocument = (documentId, requestDTO) => http.post(`/approvals/${documentId}/reject`, requestDTO);
+
+// 파일 다운로드 (첨부파일)
+export const downloadFile = async (fileId, fileName) => {
+  const res = await http.get(`/approvals/file/download/${fileId}`);
+  const url_2 = window.URL.createObjectURL(new Blob([res.data]));
+  const link = document.createElement('a');
+  link.href = url_2;
+  link.setAttribute('download', fileName || `attachment_${fileId}`);
+  document.body.appendChild(link);
+  link.click();
+  link.parentNode.removeChild(link);
+};
