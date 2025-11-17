@@ -14,15 +14,18 @@ export default function MailListCard() {
   const navigate = useNavigate();
   const [recentMails, setRecentMails] = useState([]);
   const [mailLoading, setMailLoading] = useState(true);
+  
+  // Hook은 컴포넌트 최상위에서 호출해야 함
+  const userEmail = GetUserEmailFromStorage();
 
   // 받은메일함 최근 메일 가져오기
   useEffect(() => {
+    if (!userEmail) {
+      setMailLoading(false);
+      return;
+    }
+    
     (async () => {
-      const userEmail = GetUserEmailFromStorage();
-      if (!userEmail) {
-        setMailLoading(false);
-        return;
-      }
       try {
         const res = await fetchInbox(userEmail, 0, 5, "all"); // 최근 5개만
         setRecentMails(res.data.data.content || []);
@@ -33,7 +36,7 @@ export default function MailListCard() {
         setMailLoading(false);
       }
     })();
-  }, []);
+  }, [userEmail]);
 
   const formatMailTime = (sentTime) => {
     if (!sentTime) return "";
