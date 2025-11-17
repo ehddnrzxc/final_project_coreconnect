@@ -35,18 +35,6 @@ export const calculateDuration = (startDate, endDate) => {
   return diffDays;
 };
 
-const getCurrentUser = () => {
-  try {
-    const userStr = useContext(UserProfileContext);
-    if (userStr) {
-      return JSON.parse(userStr);
-    }
-  } catch (error) {
-    console.error("로컬 스토리지 사용자 정보 파싱 실패:", error);
-  }
-  return null;
-};
-
 // 템플릿 키에 따라 적절한 폼 컴포넌트를 반환하는 헬퍼 컴포넌트
 const DynamicFormRenderer = ({ templateKey, formData, onFormChange }) => {
   switch (templateKey) {
@@ -124,7 +112,7 @@ function NewDocumentPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const currentUser = useMemo(() => getCurrentUser(), []);
+  const currentUser = useContext(UserProfileContext);
 
   // formData의 초기값을 공통 값으로만 설정
   const [formData, setFormData] = useState({
@@ -384,7 +372,7 @@ function NewDocumentPage() {
                   </tr>
                   <tr>
                     <td style={{ border: '1px solid #ccc', backgroundColor: '#f8f8f8', padding: '10px', textAlign: 'center', fontWeight: 'bold' }}>소속</td>
-                    <td style={{ border: '1px solid #ccc', padding: '10px' }}>{currentUser?.departmentName}</td>
+                    <td style={{ border: '1px solid #ccc', padding: '10px' }}>{currentUser?.deptName}</td>
                   </tr>
                   <tr>
                     <td style={{ border: '1px solid #ccc', backgroundColor: '#f8f8f8', padding: '10px', textAlign: 'center', fontWeight: 'bold' }}>기안일</td>

@@ -10,7 +10,7 @@ import {
   Divider,
   ListSubheader,
 } from "@mui/material";
-import TemplateSelectModal from "./TemplateSelectModal";
+import TemplateSelectModal from "../components/TemplateSelectModal";
 
 const navSections = [
   {

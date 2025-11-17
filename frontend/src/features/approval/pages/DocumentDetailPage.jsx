@@ -10,18 +10,6 @@ import DocumentStatusChip from '../components/DocumentStatusChip';
 import { useSnackbarContext } from '../../../components/utils/SnackbarContext';
 import { UserProfileContext } from '../../../App';
 
-const getCurrentUser = () => {
-  try {
-    const userStr = useContext(UserProfileContext);
-    if (userStr) {
-      return JSON.parse(userStr);
-    }
-  } catch (error) {
-    console.error("로컬 스토리지 사용자 정보 파싱 실패:", error);
-  }
-  return null;
-};
-
 function DocumentDetailPage() {
   const { documentId } = useParams();
   const [loading, setLoading] = useState(true);
@@ -33,7 +21,8 @@ function DocumentDetailPage() {
 
   const navigate = useNavigate();
 
-  const currentUser = useMemo(() => getCurrentUser(), []);
+  const currentUser = useContext(UserProfileContext);
+  console.log("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", currentUser);
 
   useEffect(() => {
     const fetchDocument = async () => {
