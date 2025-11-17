@@ -50,7 +50,10 @@ public class BoardServiceImpl implements BoardService {
 
       if (!files.isEmpty()) {                                       
           BoardFile first = files.get(0);                           
-          String url = boardFileService.getPresignedUrlInternal(first.getS3ObjectKey());                          
+          String url = boardFileService.getPresignedUrlWithFilename(
+              first.getS3ObjectKey(),
+              first.getFileName()
+          );                          
 
           dto.setFiles(List.of(BoardFileResponseDTO.toDTO(first, url)));                                                        
           
@@ -339,8 +342,8 @@ public class BoardServiceImpl implements BoardService {
         // 파일 DTO 리스트 변환
         List<BoardFileResponseDTO> fileDTOs = activeFiles.stream()
                                                          .map(file -> {
-                                                             String url = boardFileService.getPresignedUrlInternal(file.getS3ObjectKey()); // 프리사인드 URL 생성
-                                                             return BoardFileResponseDTO.toDTO(file, url);        // 새로운 toDTO 적용
+                                                             String url = boardFileService.getPresignedUrlWithFilename(file.getS3ObjectKey(), file.getFileName());
+                                                             return BoardFileResponseDTO.toDTO(file, url);
                                                          })
                                                          .toList();  
 
