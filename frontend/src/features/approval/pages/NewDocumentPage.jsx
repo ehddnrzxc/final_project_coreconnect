@@ -12,6 +12,7 @@ import DynamicApprovalTable from '../components/DynamicApprovalTable';
 import BusinessTripForm from './BusinessTripForm';
 import ExpenseForm from './ExpenseForm';
 import { getJobGradeLabel } from '../../../components/utils/labelUtils';
+import { useSnackbarContext } from '../../../components/utils/SnackbarContext';
 
 // --- 헬퍼 함수들 ---
 const getTodayDate = () => {
@@ -111,6 +112,8 @@ function NewDocumentPage() {
   const navigate = useNavigate();
   const { templateId, documentId } = useParams();
   const isEditMode = !!documentId;  // 수정 모드인지 확인하는 플래그
+
+  const { showSnack } = useSnackbarContext();
 
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [documentTitle, setDocumentTitle] = useState("");
@@ -242,17 +245,17 @@ function NewDocumentPage() {
 
   const handleSubmit = async isDraft => {
     if (!selectedTemplate) {
-      alert("템플릿 정보가 로드되지 않았습니다.");
+      showSnack("템플릿 정보가 로드되지 않았습니다.", "error");
       return;
     }
 
     if (!documentTitle.trim()) {
-      alert("문서 제목을 입력해주세요.");
+      showSnackt("문서 제목을 입력해주세요.", "warning");
       return;
     }
   
     if (!isDraft && approvalLine.length === 0) {
-      alert("결재선을 1명 이상 지정해야 합니다.");
+      showSnack("결재선을 1명 이상 지정해야 합니다.", "warning");
       setModalOpen(true);
       return;
     }
@@ -282,10 +285,10 @@ function NewDocumentPage() {
 
         if (isDraft) {
           res = await updateDraft(documentId, formDataToSend);
-          alert(`문서가 수정되어 임시저장되었습니다.`);
+          showSnack(`문서가 수정되어 임시저장되었습니다.`, "success");
         } else {
           res = await updateDocument(documentId, formDataToSend);
-          alert(`문서가 수정되어 상신되었습니다.`);
+          showSnack(`문서가 수정되어 상신되었습니다.`, "success");
         }
         navigate(`/e-approval/doc/${documentId}`);
       } else {
@@ -303,10 +306,10 @@ function NewDocumentPage() {
 
         if (isDraft) {
           res = await saveDraft(formDataToSend);
-          alert(`문서가 임시저장되었습니다.`);
+          showSnack(`문서가 임시저장되었습니다.`, "success");
         } else {
           res = await submitDocument(formDataToSend);
-          alert(`문서가 성공적으로 상신되었습니다.`);
+          showSnack(`문서가 성공적으로 상신되었습니다.`, "success");
         }
 
         if (res && res.data) {
@@ -319,8 +322,7 @@ function NewDocumentPage() {
     } catch (error) {
       console.error("문서 처리 실패:", error);
       const errorMsg = error.response?.data?.message || `문서 ${isDraft ? '저장' : '상신'}에 실패했습니다.`;
-      setError(errorMsg)
-      alert(errorMsg);
+      showSnack(errorMsg, "error");
     } finally {
       setLoading(false);
     }
@@ -329,11 +331,21 @@ function NewDocumentPage() {
 
 
   if (loading) return <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}><CircularProgress /></Box>;
-  if (error) return <Alert severity='error'>{error}</Alert>;
+  if (error && selectedTemplate) return <Alert severity='error'>{error}</Alert>;
   if (!selectedTemplate) return <Alert severity='warning'>선택된 양식 정보를 찾을 수 없습니다.</Alert>;
 
   return (
     <Box>
+      {error && (
+        <Alert
+          severity='error'
+          onClose={() => setError(null)}
+          sx={{ mb: 2 }}
+        >
+          {error}
+        </Alert>
+      )}
+
       <Typography variant='h5' gutterBottom sx={{ fontWeight: "bold" }}>
         {isEditMode ? "결재 문서 수정" : "새 결재 문서 작성"}
       </Typography>

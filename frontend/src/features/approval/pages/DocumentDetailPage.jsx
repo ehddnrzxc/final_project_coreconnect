@@ -7,6 +7,7 @@ import DrafterInfoTable from '../components/DrafterInfoTable';
 import ApprovalRejectModal from './ApprovalRejectModal';
 import EditIcon from '@mui/icons-material/Edit';
 import DocumentStatusChip from '../components/DocumentStatusChip';
+import { useSnackbarContext } from '../../../components/utils/SnackbarContext';
 
 const getCurrentUser = () => {
   try {
@@ -26,6 +27,8 @@ function DocumentDetailPage() {
   const [error, setError] = useState(null);
   const [documentData, setDocumentData] = useState(null);
   const [openRejectModal, setOpenRejectModal] = useState(false);
+
+  const { showSnack } = useSnackbarContext();
 
   const navigate = useNavigate();
 
@@ -57,11 +60,11 @@ function DocumentDetailPage() {
     try {
       const requestDTO = { approvalComment: comment || ""};
       await approveDocument(documentId, requestDTO);
-      alert("결재가 승인되었습니다.");
+      showSnack("결재가 승인되었습니다.", "success");
       navigate("/e-approval");
     } catch (error) {
       console.error("승인 처리 실패:", error);
-      alert(error.response?.data?.message || "승인 처리에 실패했습니다.");
+      showSnack(error.response?.data?.message || "승인 처리에 실패했습니다.", "error");
     }
   };
 
@@ -74,12 +77,12 @@ function DocumentDetailPage() {
       const requestDTO = { approvalComment: reason };
       await rejectDocument(documentId, requestDTO);
 
-      alert("결재가 반려되었습니다.");
+      showSnack("결재가 반려되었습니다.", "warning");
       handleCloseRejectModal();
       navigate("/e-approval");
     } catch (error) {
       console.error("반려 처리 실패:", error);
-      alert(error.response?.data?.message || "반려 처리에 실패했습니다.");
+      showSnack(error.response?.data?.message || "반려 처리에 실패했습니다.", "error");
     }
   };
 
