@@ -3,6 +3,7 @@ package com.goodee.coreconnect.chat.controller;
 import java.security.Principal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -107,57 +108,58 @@ public class ChatMessageController {
 	/**
 	 * 메시지 전송
 	 */
-	@Operation(summary = "채팅 메시지 전송", description = "채팅 메시지를 전송하고 알림을 생성합니다.")
-	@PostMapping("/messages")
-	public ResponseEntity<ResponseDTO<ChatResponseDTO>> sendMessage(@RequestBody SendMessageRequestDTO req, @AuthenticationPrincipal CustomUserDetails user) {
-	  
-	  String email = user.getEmail();
-	    // 1. 인증 사용자 체크
-	    User authUser = userRepository.findByEmail(email).orElse(null);
-	    if (authUser == null) {
-	        ResponseDTO<ChatResponseDTO> bad = ResponseDTO.<ChatResponseDTO>builder()
-	            .status(HttpStatus.UNAUTHORIZED.value())
-	            .message("로그인이 필요합니다.")
-	            .data(null)
-	            .build();
-	        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(bad);
-	    }
+    @Operation(summary = "채팅 메시지 전송", description = "채팅 메시지를 전송하고 알림을 생성합니다.")
+    @PostMapping("/messages")
+    public ResponseEntity<ResponseDTO<ChatResponseDTO>> sendMessage(
+            @RequestBody SendMessageRequestDTO req,
+            @AuthenticationPrincipal CustomUserDetails user)
+    {
+        String email = user.getEmail();
+        // 1. 인증 사용자 체크
+        User authUser = userRepository.findByEmail(email).orElse(null);
+        if (authUser == null) {
+            ResponseDTO<ChatResponseDTO> bad = ResponseDTO.<ChatResponseDTO>builder()
+                    .status(HttpStatus.UNAUTHORIZED.value())
+                    .message("로그인이 필요합니다.")
+                    .data(null)
+                    .build();
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(bad);
+        }
 
-	    // 2. 유효성 체크 (roomId, content)
-	    if (req == null || req.getRoomId() == null || req.getContent() == null || req.getContent().trim().isEmpty()) {
-	        ResponseDTO<ChatResponseDTO> bad = ResponseDTO.<ChatResponseDTO>builder()
-	            .status(HttpStatus.BAD_REQUEST.value())
-	            .message("채팅방ID와 메시지 내용은 필수값입니다.")
-	            .data(null)
-	            .build();
-	        return ResponseEntity.badRequest().body(bad);
-	    }
+        // 2. 유효성 체크 (roomId, content)
+        if (req == null || req.getRoomId() == null || req.getContent() == null || req.getContent().trim().isEmpty()) {
+            ResponseDTO<ChatResponseDTO> bad = ResponseDTO.<ChatResponseDTO>builder()
+                    .status(HttpStatus.BAD_REQUEST.value())
+                    .message("채팅방ID와 메시지 내용은 필수값입니다.")
+                    .data(null)
+                    .build();
+            return ResponseEntity.badRequest().body(bad);
+        }
 
-	    // 3. 채팅 저장 ★ senderId는 인증에서 가져오기!
-	    Chat savedChat = chatRoomService.sendChatMessage(req.getRoomId(), authUser.getId(), req.getContent());
-	    chatRoomService.updateUnreadCountForMessages(req.getRoomId());
+        // 3. 채팅 저장 ★ senderId는 인증에서 가져오기!
+        Chat savedChat = chatRoomService.sendChatMessage(req.getRoomId(), authUser.getId(), req.getContent());
+        chatRoomService.updateUnreadCountForMessages(req.getRoomId());
 
-	    if (savedChat == null) {
-	        ResponseDTO<ChatResponseDTO> err = ResponseDTO.<ChatResponseDTO>builder()
-	            .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-	            .message("채팅 메시지가 올바르지 않습니다.")
-	            .data(null)
-	            .build();
-	        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(err);
-	    }
+        if (savedChat == null) {
+            ResponseDTO<ChatResponseDTO> err = ResponseDTO.<ChatResponseDTO>builder()
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                    .message("채팅 메시지가 올바르지 않습니다.")
+                    .data(null)
+                    .build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(err);
+        }
 
-	    // 4. 응답 DTO 변환 (시간/필드 일관)
-	    ChatResponseDTO response = ChatResponseDTO.fromEntity(savedChat); // 반드시 변환 메서드!
-	    // -- 위에서 sendAt은 ISO8601 형식 String!
+        // 4. 응답 DTO 변환 (시간/필드 일관)
+        ChatResponseDTO response = ChatResponseDTO.fromEntity(savedChat); // 반드시 변환 메서드!
 
-	    ResponseDTO<ChatResponseDTO> success = ResponseDTO.<ChatResponseDTO>builder()
-	        .status(HttpStatus.CREATED.value())
-	        .message("Message sent")
-	        .data(response)
-	        .build();
+        ResponseDTO<ChatResponseDTO> success = ResponseDTO.<ChatResponseDTO>builder()
+                .status(HttpStatus.CREATED.value())
+                .message("Message sent")
+                .data(response)
+                .build();
 
-	    return ResponseEntity.status(HttpStatus.CREATED).body(success);
-	}
+        return ResponseEntity.status(HttpStatus.CREATED).body(success);
+    }
 
 	/**
 	 * 3. 채팅방 참여자 목록 조회
@@ -216,40 +218,42 @@ public class ChatMessageController {
 	 * 5. 내가 접속한 채팅방에 모든 메시지 날짜 오름차순 조회
 	 * 
 	 * */
-	@Operation(summary = "채팅방의 메시지 조회(오름차순)", description = "선택한 채팅방의 메시지를 날짜 기준 오름차순으로 정렬해 조회합니다.")
 	@GetMapping("/{roomId}/messages")
-	public ResponseEntity<ResponseDTO<List<ChatMessageResponseDTO>>> getChatRoomMessagesByChatRoomId(@PathVariable("roomId") Integer roomId, @AuthenticationPrincipal CustomUserDetails customUserDetails) {
-	  
-	  String email = customUserDetails.getEmail();
-		// 사용자 정보 확보
-		User user = userRepository.findByEmail(email).orElseThrow();
-		Integer userId = user.getId();
-		
-		// 메시지별 미읽은 인원수 DB 최신화
-		chatRoomService.updateUnreadCountForMessages(roomId);
-		// 채팅방 메시지 조회
-		List<Chat> messages = chatRoomService.getChatsWithFilesByRoomId(roomId);
-		
-		List<ChatMessageResponseDTO> dtoList = messages.stream()
-			    // messages: 조회된 Chat 엔티티 리스트(채팅방의 전체 메시지)
-			    .map(chat -> {
-			        // 1. 각 메시지(chat)에 대해
-			        // 2. 현재 로그인 사용자(userId) 기준으로 해당 메시지의 ChatMessageReadStatus(읽음상태) 엔티티 조회
-			        Optional<ChatMessageReadStatus> readStatusOpt =
-			            chatMessageReadStatusRepository.findByChatIdAndUserId(chat.getId(), userId);
-			            // - chat.getId(): 메시지의 고유 ID
-			            // - userId: 현재 로그인 사용자 ID
-			            // - 결과: Optional로 반환, 없을 경우 아직 읽지 않은 상태임
+	public ResponseEntity<ResponseDTO<List<ChatMessageResponseDTO>>> getChatRoomMessagesByChatRoomId(
+	    @PathVariable("roomId") Integer roomId,
+	    @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+	    System.out.println("여기 들어옴=============================");
+	    try {
+	        String email = customUserDetails.getEmail();
+	        User user = userRepository.findByEmail(email).orElseThrow();
+	        Integer userId = user.getId();
 
-			        // 3. 읽음 엔티티가 있다면 readYn 값을 가져오고, 없으면 false(아직 안 읽음)
-			        boolean readYn = readStatusOpt.map(ChatMessageReadStatus::getReadYn).orElse(false);
+	        chatRoomService.updateUnreadCountForMessages(roomId);
 
-			        // 4. DTO 변환 시 readYn(내가 읽었는지 여부)를 포함해 ChatMessageResponseDTO 생성
-			        return ChatMessageResponseDTO.fromEntity(chat, readYn);
-			    })
-			    .collect(Collectors.toList()); // 5. 전체 메시지에 대해 DTO 리스트로 변환 완료
-		
-		return ResponseEntity.ok(ResponseDTO.success(dtoList, "채팅방 메시지 오름차순 조회 성공"));		
+	        List<Chat> messages = chatRoomService.getChatsWithFilesByRoomId(roomId);
+
+	        List<ChatMessageResponseDTO> dtoMessages;
+	        if (messages == null || messages.isEmpty()) {
+	            dtoMessages = Collections.emptyList();
+	        } else {
+	            dtoMessages = messages.stream()
+	                .map(chat -> {
+	                    Optional<ChatMessageReadStatus> readStatusOpt =
+	                        chatMessageReadStatusRepository.findByChatIdAndUserId(chat.getId(), userId);
+	                    boolean readYn = readStatusOpt.map(ChatMessageReadStatus::getReadYn).orElse(false);
+	                    return ChatMessageResponseDTO.fromEntity(chat, readYn);
+	                })
+	                .collect(Collectors.toList());
+	        }
+
+	        System.out.println("messages: " + messages);
+	        System.out.println("dtoMessages: " + dtoMessages);
+
+	        return ResponseEntity.ok(ResponseDTO.success(dtoMessages, "채팅방 메시지 오름차순 조회 성공"));
+	    } catch (Exception e) {
+	        e.printStackTrace();  // 실제 서버 콘솔에서 이 라인으로 에러 내용 확인
+	        throw e; // 예외를 다시 던짐(원래 응답 흐름 보존)
+	    }
 	}
 	
 	/**

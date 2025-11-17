@@ -14,7 +14,7 @@ import {
   createChatRoom
 } from "../api/ChatRoomApi";
 
-// 시간 및 유저명 유틸
+// ===================== 시간 및 유저명 유틸 함수 =====================
 function formatTime(sendAt) {
   if (!sendAt) return "";
   const d = new Date(sendAt);
@@ -45,26 +45,30 @@ function getUserName() {
   }
 }
 
+// 채팅방 소켓 기본 주소 (방마다 인자로 roomId 사용)
 const WEBSOCKET_BASE = "ws://localhost:8080/ws/chat";
 
+// ===================== Main 컴포넌트 =====================
 export default function ChatLayout() {
+  // ---------- 상태 변수 ----------
   const [roomList, setRoomList] = useState([]);
   const [selectedRoomId, setSelectedRoomId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [tabIdx, setTabIdx] = useState(0);
   const [toastRooms, setToastRooms] = useState([]);
-  const [createOpen, setCreateOpen] = useState(false); // 방 생성 다이얼로그
+  const [createOpen, setCreateOpen] = useState(false);
+
   const userName = getUserName();
   const accessToken = localStorage.getItem("accessToken");
   const inputRef = useRef();
   const socketRef = useRef(null);
 
-  // 방 목록에서 unreadCount가 0보다 큰 방의 개수 (사이드바 뱃지용)
+  // ---------- 읽지 않은 채팅방 개수 계산 ----------
   const unreadRoomCount = Array.isArray(roomList)
     ? roomList.filter((room) => room && room.unreadCount > 0).length
     : 0;
 
-  // 채팅방 생성 핸들러 (반드시 http/axios 사용)
+  // ---------- 채팅방 생성 ----------
   const handleCreateRoom = async (data) => {
     try {
       const room = await createChatRoom(data); // 서버는 방 객체 반환
@@ -77,9 +81,10 @@ export default function ChatLayout() {
     }
   };
 
-  // 새 메시지 도착시 최신화, 읽음, 토스트 처리
+  // ---------- 소켓 메시지 수신/토스트 ----------
   const handleNewMessage = (msg) => {
     if (msg.senderName === userName) {
+      // 내가 보낸 메시지는 내가 선택한 방이면 바로 state 적용
       if (Number(msg.roomId) === Number(selectedRoomId)) {
         setMessages((prev) => [...prev, msg]);
       }
@@ -90,7 +95,7 @@ export default function ChatLayout() {
       ? roomList.find(r => r && Number(r.roomId) === roomIdNum)
       : null;
 
-    if (!foundRoom) return; // 알림만 해당
+    if (!foundRoom) return;
     if (roomIdNum === Number(selectedRoomId)) {
       setMessages((prev) => [...prev, msg]);
     } else {
@@ -123,7 +128,8 @@ export default function ChatLayout() {
     );
   };
 
-  // 파일 업로드
+  // ---------- 파일 업로드 ----------
+  // (참고: fetch 직접 사용, API 통일하려면 axios로 migration 필요)
   const handleFileUpload = async (e) => {
     const files = e.target.files;
     if (!files || files.length === 0 || !selectedRoomId) return;
@@ -148,11 +154,13 @@ export default function ChatLayout() {
     e.target.value = "";
   };
 
-  // 메시지 보내기
+  // ---------- 메시지 보내기 ----------
+  // 반드시 socketRef.current가 연결된 후(readyState===1) 전송해야 한다.
   const handleSend = () => {
     const message = inputRef.current.value;
     const currSocket = socketRef.current;
     if (currSocket && currSocket.readyState === 1 && message.trim()) {
+      // 채팅 서버는 방에 따라 소켓이 다름. selectedRoomId 주의
       const payload = JSON.stringify({
         roomId: selectedRoomId,
         content: message,
@@ -162,11 +170,12 @@ export default function ChatLayout() {
       currSocket.send(payload);
       inputRef.current.value = "";
     } else {
+      alert("채팅 서버와 연결되어 있지 않습니다. 잠시 후 다시 시도해 주세요.");
       console.log("[소켓 미연결 혹은 메시지 없음]", currSocket?.readyState);
     }
   };
 
-  // 채팅방 스크롤로 읽음 처리
+  // ---------- 스크롤로 읽음 처리 ----------
   const handleScrollRead = async () => {
     if (selectedRoomId && messages.length > 0) {
       await markRoomMessagesAsRead(selectedRoomId, accessToken);
@@ -174,7 +183,7 @@ export default function ChatLayout() {
     }
   };
 
-  // 채팅방 목록 새로고침
+  // ---------- 채팅방 목록 새로고침 ----------
   const loadRooms = async () => {
     const res = await fetchChatRoomsLatest();
     if (res && Array.isArray(res.data)) {
@@ -185,9 +194,12 @@ export default function ChatLayout() {
     }
   };
 
-  useEffect(() => { loadRooms(); }, []);
+  // ---------- 채팅방 목록 최초 로드 ----------
+  useEffect(() => {
+    loadRooms();
+  }, []);
 
-  // 채팅방 별 메시지 새로고침
+  // ---------- 채팅방 선택 시 메시지 가져오기 ----------
   useEffect(() => {
     async function loadMessages() {
       if (selectedRoomId) {
@@ -202,14 +214,20 @@ export default function ChatLayout() {
     loadMessages();
   }, [selectedRoomId]);
 
-  // ws 연결 관리
+  // ---------- WebSocket 연결 관리 ----------
   useEffect(() => {
     if (!selectedRoomId || !accessToken) return;
+
     let shouldReconnect = true;
+
     function connect() {
       const wsUrl = `${WEBSOCKET_BASE}?roomId=${selectedRoomId}&accessToken=${accessToken}`;
       const ws = new window.WebSocket(wsUrl);
-      ws.onopen = () => {};
+
+      ws.onopen = () => {
+        // 연결 성공하면 socketRef에 등록
+        socketRef.current = ws;
+      };
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
@@ -217,30 +235,54 @@ export default function ChatLayout() {
         } catch (err) {}
       };
       ws.onclose = () => {
+        // 연결 종료시 재접속(사용자가 방 바꿀 때도 실행됨)
+        socketRef.current = null;
         if (shouldReconnect) setTimeout(() => { connect(); }, 1000);
       };
-      ws.onerror = () => {};
+      ws.onerror = () => {
+        // 에러발생시 close에서 재시도
+        socketRef.current = null;
+      };
+      // (중요) 최초 연결시 현재 소켓 ref에 등록
       socketRef.current = ws;
     }
+
     connect();
-    return () => { shouldReconnect = false; if (socketRef.current) socketRef.current.close(); };
+
+    // 언마운트/방 변경 시 ws 연결 해제
+    return () => {
+      shouldReconnect = false;
+      if (socketRef.current) socketRef.current.close();
+      socketRef.current = null;
+    };
   }, [selectedRoomId, accessToken]);
 
+  // ---------- 채팅 메시지 박스 끝으로 스크롤 ----------
   const messagesEndRef = useRef(null);
   useEffect(() => {
     if (messagesEndRef.current) messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // ---------- 읽지 않은 메시지 계산 ----------
   const unreadCount = messages.reduce((cnt, msg) => cnt + (msg.readYn === false ? 1 : 0), 0);
   const firstUnreadIdx = unreadCount > 0 ? messages.findIndex(msg => msg.readYn === false) : -1;
 
+  // ---------- 렌더링 ----------
   return (
-    <Box className="chat-layout" sx={{ background: "#fafbfc", minHeight: "100vh", display: "flex", flexDirection: "row" }}>
+    <Box className="chat-layout" sx={{
+      background: "#fafbfc", minHeight: "100vh",
+      display: "flex", flexDirection: "row"
+    }}>
+      {/* 우측 하단 토스트 알림 */}
       <ToastList rooms={toastRooms} formatTime={formatTime} anchorOrigin={{ vertical: "bottom", horizontal: "right" }} />
+      {/* 왼쪽 사이드바 + 방 생성 */}
       <ChatSidebar unreadRoomCount={unreadRoomCount} onCreateRoom={() => setCreateOpen(true)} />
       <Box sx={{ flex: 1, display: "flex", flexDirection: "column", minHeight: "100vh", background: "#fafbfc" }}>
         <ChatHeader />
-        <Box sx={{ flex: 1, display: "flex", flexDirection: "row", px: 5, pt: 2, gap: 2, minHeight: 0 }}>
+        <Box sx={{
+          flex: 1, display: "flex", flexDirection: "row",
+          px: 5, pt: 2, gap: 2, minHeight: 0
+        }}>
           <ChatRoomListPane
             tabIdx={tabIdx}
             setTabIdx={setTabIdx}
@@ -251,7 +293,8 @@ export default function ChatLayout() {
             formatTime={formatTime}
           />
           <ChatDetailPane
-            selectedRoom={Array.isArray(roomList) ? roomList.find(r => r && r.roomId === selectedRoomId) : null}
+            selectedRoom={Array.isArray(roomList)
+              ? roomList.find(r => r && r.roomId === selectedRoomId) : null}
             messages={messages}
             userName={userName}
             unreadCount={unreadCount}
@@ -260,10 +303,12 @@ export default function ChatLayout() {
             inputRef={inputRef}
             onSend={handleSend}
             onFileUpload={handleFileUpload}
+            // 연결상태에 따라 입력창 및 버튼 disabled를 위해 전달
             socketConnected={!!socketRef.current && socketRef.current.readyState === 1}
           />
         </Box>
       </Box>
+      {/* 채팅방 생성 다이얼로그 */}
       <ChatRoomCreateDialog open={createOpen} onClose={() => setCreateOpen(false)} onCreate={handleCreateRoom} />
     </Box>
   );

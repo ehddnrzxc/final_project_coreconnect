@@ -1,12 +1,48 @@
-import React from 'react';
-import { Box, Tabs, Tab, List, ListItem, ListItemAvatar, ListItemText, Badge, Avatar, Typography } from "@mui/material";
+import React, { useState, useEffect } from 'react';
+import { Box, Tabs, Tab, List, ListItem, ListItemAvatar, ListItemText, Badge, Avatar, Typography, Chip } from "@mui/material";
+import http from "../../../api/http"; // axios 인스턴스 불러오기
 
 // 채팅방 목록(좌측) & 탭
 function ChatRoomListPane({
   tabIdx, setTabIdx, roomList, selectedRoomId, setSelectedRoomId, unreadRoomCount, formatTime
 }) {
-  // "전체" 또는 "안읽음" 탭 필터링
+  // 참여자 수 정보를 저장할 state: { [roomId]: 참여자수 }
+  const [roomMemberCounts, setRoomMemberCounts] = useState({});
+
+  // roomList가 바뀔 때마다 각 방의 참여자 수 API 호출
+  useEffect(() => {
+    async function fetchAllMemberCounts() {
+      const obj = {};
+      await Promise.all(
+        roomList.map(async (room) => {
+          try {
+            // GET /chat/{roomId}/users → 응답 data.data에 사용자 배열
+            const res = await http.get(`/chat/${room.roomId}/users`);
+            obj[room.roomId] = Array.isArray(res.data.data) ? res.data.data.length : 0;
+          } catch (err) {
+            obj[room.roomId] = 0;
+          }
+        })
+      );
+      setRoomMemberCounts(obj);
+    }
+    if (Array.isArray(roomList) && roomList.length > 0) {
+      fetchAllMemberCounts();
+    }
+  }, [roomList]);
+
+  // "전체"(0) 또는 "안읽음"(1) 탭 필터링
   const filteredRooms = tabIdx === 0 ? roomList : roomList.filter(r => r.unreadCount > 0);
+
+  // 참여자 수 기준 채팅방 유형 뱃지(1:1, Group) 반환용
+  function TypeBadge({ count }) {
+    if (!count) return null; // 참여자 데이터 없음
+    if (count === 2)
+      return <Chip label="1:1" size="small" color="primary" sx={{ fontWeight: 700, ml: 0.5 }} />;
+    if (count > 2)
+      return <Chip label="Group" size="small" color="success" sx={{ fontWeight: 700, ml: 0.5 }} />;
+    return null;
+  }
 
   return (
     <Box sx={{
@@ -88,6 +124,8 @@ function ChatRoomListPane({
                     <Typography sx={{ fontWeight: 700, fontSize: 18, flexGrow: 1 }}>
                       {room.roomName}
                     </Typography>
+                    {/* 참여자수에 따라 1:1 또는 Group 뱃지 표시 */}
+                    <TypeBadge count={roomMemberCounts[room.roomId]} />
                     {room.unreadCount > 0 && (
                       <Badge
                         badgeContent={room.unreadCount}
@@ -149,4 +187,5 @@ function ChatRoomListPane({
     </Box>
   );
 }
+
 export default ChatRoomListPane;
