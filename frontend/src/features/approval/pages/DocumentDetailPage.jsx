@@ -4,7 +4,7 @@ import { approveDocument, getDocumentDetail, rejectDocument } from '../api/appro
 import { Alert, Box, Button, CircularProgress, Paper, Typography } from '@mui/material';
 import DynamicApprovalTable from '../components/DynamicApprovalTable';
 import DrafterInfoTable from '../components/DrafterInfoTable';
-import ApprovalRejectModal from './ApprovalRejectModal';
+import ApprovalRejectModal from '../components/ApprovalRejectModal';
 import EditIcon from '@mui/icons-material/Edit';
 import DocumentStatusChip from '../components/DocumentStatusChip';
 import { useSnackbarContext } from '../../../components/utils/SnackbarContext';

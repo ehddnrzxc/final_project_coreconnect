@@ -5,12 +5,12 @@ import { Button, Alert, Box, CircularProgress, Paper, TextField, Typography, Lis
 import SaveIcon from '@mui/icons-material/Save';
 import SendIcon from '@mui/icons-material/Send';
 import PeopleIcon from '@mui/icons-material/People';
-import ApprovalLineModal from './ApprovalLineModal';
+import ApprovalLineModal from '../components/ApprovalLineModal';
 import ApprovalTypeChip from '../components/ApprovalTypeChip';
-import VacationForm from './VacationForm';
+import VacationForm from '../forms/VacationForm';
 import DynamicApprovalTable from '../components/DynamicApprovalTable';
-import BusinessTripForm from './BusinessTripForm';
-import ExpenseForm from './ExpenseForm';
+import BusinessTripForm from '../forms/BusinessTripForm';
+import ExpenseForm from '../forms/ExpenseForm';
 import { getJobGradeLabel } from '../../../components/utils/labelUtils';
 import { useSnackbarContext } from '../../../components/utils/SnackbarContext';
 import { UserProfileContext } from '../../../App';
