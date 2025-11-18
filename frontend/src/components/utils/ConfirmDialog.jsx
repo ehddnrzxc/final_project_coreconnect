@@ -6,7 +6,7 @@ import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, B
  * - open: 다이얼로그 열림 여부
  * - title: 제목 텍스트
  * - message: 본문 메시지
- * - onConfirm: 확인 클릭 시 실행
+ * - onConfirm: 확인 클릭 시 실행 실험
  * - onCancel: 취소 클릭 시 실행
  */
 const ConfirmDialog = ({ open, title, message, onConfirm, onCancel }) => {
