@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box } from "@mui/material";
-import MailSidebar from "../components/MailSidebar";
+import MailSidebar from "../../email/components/MailSideBar";
 import { Outlet, useOutletContext } from "react-router-dom";
 
 const EmailLayout = () => {

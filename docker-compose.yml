@@ -14,11 +14,16 @@ services:
       - "8080"
     # 5) docker-compose를 사용하면 Dockerfile를 통하지 않아도 환경 변수를 직접 컨테이너(boot-container)로 전달 가능
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-container:3306/${MYSQL_DATABASE}
+      SPRING_DATASOURCE_URL: jdbc:mysql://${MYSQL_DATABASE}:3306/db_coreconnect
       SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       ALLOWED_ORIGIN: ${ALLOWED_ORIGIN}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: ${AWS_REGION}
+      AWS_BUCKET_NAME: ${AWS_BUCKET_NAME}
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY}
   
   # 2. frontend 서비스 생성
   frontend:
