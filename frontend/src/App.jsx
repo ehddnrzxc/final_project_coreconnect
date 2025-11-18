@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext } from "react";
+import React, { useState, useMemo, useEffect, createContext } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import Topbar from "./components/layout/Topbar";
 import Sidebar from "./components/layout/Sidebar";
@@ -6,7 +6,6 @@ import { getMyProfileInfo } from "./features/user/api/userAPI";
 import {
   fetchUnreadCount,
   fetchDraftbox,
-  GetUserEmailFromStorage
 } from "./features/email/api/emailApi";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import { Box, CssBaseline } from "@mui/material";
@@ -93,7 +92,7 @@ function App() {
     return saved && themeOptions[saved] ? saved : "light";
   });
 
-  const theme = React.useMemo(() => {
+  const theme = useMemo(() => {
     const selectedTheme = themeOptions[themeMode];
     return createTheme({
       palette: {
@@ -116,7 +115,7 @@ function App() {
 
   // 받은메일함(안읽은)
   const refreshUnreadCount = async () => {
-    const userEmail = GetUserEmailFromStorage();
+    const userEmail = userProfile?.email;
     if (!userEmail) return;
     const count = await fetchUnreadCount(userEmail);
     setUnreadCount(count || 0);
@@ -124,7 +123,7 @@ function App() {
 
   // 임시보관함(임시저장 개수)
   const refreshDraftCount = async () => {
-    const userEmail = GetUserEmailFromStorage();
+    const userEmail = userProfile?.email;
     if (!userEmail) return setDraftCount(0);
 
     // 임시보관함 '목록' 조회를 통해 개수 얻음!
@@ -174,7 +173,7 @@ function App() {
       <LocalizationProvider dateAdapter={AdapterDayjs}>
         <SnackbarProvider>
           <CssBaseline />
-          <UserProfileContext.Provider value={userProfile}>
+          <UserProfileContext.Provider value={{ userProfile, setUserProfile }}>
             <Box
               sx={{
                 display: "flex",
