@@ -1,4 +1,4 @@
-import http from "../../../api/http";
+import http from "../../../api/http"; 
 
 
 // 전체 게시글 목록 (페이징)
