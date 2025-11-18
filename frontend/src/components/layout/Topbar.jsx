@@ -50,7 +50,7 @@ import logoImage from "../../assets/coreconnect-logo.png";
 const Topbar = ({ onLogout, themeMode, themeOptions, onThemeChange }) => {
   const navigate = useNavigate();
   const theme = useTheme();
-  const userProfile = useContext(UserProfileContext);
+  const { userProfile } = useContext(UserProfileContext) || {};
   const isAdmin = userProfile?.role === "ADMIN";
   
   const DEFAULT_AVATAR = "https://i.pravatar.cc/80?img=12";

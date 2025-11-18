@@ -72,7 +72,7 @@ public class AuthController {
       
       // Access Token 쿠키 (HttpOnly)
       ResponseCookie accessCookie = ResponseCookie.from("access_token", access)
-          .httpOnly(false)
+          .httpOnly(true)
           .secure(false) // 로컬 개발 시 false, HTTPS 환경에서는 true
           .sameSite("Lax")
           .path("/")
@@ -121,7 +121,7 @@ public class AuthController {
       
       // 새 Access Token 쿠키 재발급
       ResponseCookie newAccessCookie = ResponseCookie.from("access_token", newAccess)
-          .httpOnly(false)
+          .httpOnly(true)
           .secure(false)
           .sameSite("Lax")
           .path("/")
@@ -143,7 +143,7 @@ public class AuthController {
   public ResponseEntity<Void> logout(HttpServletResponse res) {
     // access_token (HttpOnly=false, Secure=false, SameSite=None, Path=/)
     ResponseCookie deleteAccess = ResponseCookie.from("access_token", "")
-        .httpOnly(false)
+        .httpOnly(true)
         .secure(false)
         .sameSite("Lax")
         .path("/")

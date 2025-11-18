@@ -19,7 +19,7 @@ import BeachAccessIcon from "@mui/icons-material/BeachAccess";
 import { UserProfileContext } from "../../../App";
 
 export default function AdminHomePage() {
-  const userProfile = useContext(UserProfileContext);
+  const { userProfile } = useContext(UserProfileContext) || {};
   const displayName = userProfile?.name || "관리자";
 
   const [stats, setStats] = useState({
