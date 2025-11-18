@@ -74,7 +74,7 @@ public class AuthController {
       ResponseCookie accessCookie = ResponseCookie.from("access_token", access)
           .httpOnly(false)
           .secure(false) // 로컬 개발 시 false, HTTPS 환경에서는 true
-          .sameSite("None")
+          .sameSite("Lax")
           .path("/")
           .maxAge(Duration.ofMinutes(JwtConstants.ACCESS_TOKEN_MINUTES))
           .build();
@@ -83,7 +83,7 @@ public class AuthController {
       ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", refresh)
           .httpOnly(true)
           .secure(false)       
-          .sameSite("None")     
+          .sameSite("Lax")     
           .path("/")
           .maxAge(Duration.ofDays(JwtConstants.REFRESH_TOKEN_DAYS))
           .build();
@@ -123,7 +123,7 @@ public class AuthController {
       ResponseCookie newAccessCookie = ResponseCookie.from("access_token", newAccess)
           .httpOnly(false)
           .secure(false)
-          .sameSite("None")
+          .sameSite("Lax")
           .path("/")
           .maxAge(Duration.ofMinutes(JwtConstants.ACCESS_TOKEN_MINUTES))
           .build();
@@ -141,21 +141,21 @@ public class AuthController {
   @Operation(summary = "로그아웃", description = "Access/Refresh Token 쿠키를 제거하고 로그아웃 기능을 수행합니다.")
   @PostMapping("/logout")
   public ResponseEntity<Void> logout(HttpServletResponse res) {
-    // access_token (HttpOnly=false, Secure=true, SameSite=None, Path=/)
+    // access_token (HttpOnly=false, Secure=false, SameSite=None, Path=/)
     ResponseCookie deleteAccess = ResponseCookie.from("access_token", "")
         .httpOnly(false)
         .secure(false)
-        .sameSite("None")
+        .sameSite("Lax")
         .path("/")
         .maxAge(0)
         .build();
     res.addHeader(HttpHeaders.SET_COOKIE, deleteAccess.toString());
 
-    // refresh_token (HttpOnly=true, Secure=true, SameSite=None, Path=/)
+    // refresh_token (HttpOnly=true, Secure=false, SameSite=Lax, Path=/)
     ResponseCookie deleteRefresh = ResponseCookie.from("refresh_token", "")
         .httpOnly(true)
         .secure(false)
-        .sameSite("None")
+        .sameSite("Lax")
         .path("/")
         .maxAge(0)
         .build();
