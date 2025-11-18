@@ -26,11 +26,14 @@ import com.goodee.coreconnect.approval.dto.request.ApprovalRejectRequestDTO;
 import com.goodee.coreconnect.approval.dto.request.DocumentCreateRequestDTO;
 import com.goodee.coreconnect.approval.dto.request.DocumentDraftRequestDTO;
 import com.goodee.coreconnect.approval.dto.request.DocumentUpdateRequestDTO;
+import com.goodee.coreconnect.approval.dto.response.ApprovalLineResponseDTO;
 import com.goodee.coreconnect.approval.dto.response.DocumentDetailResponseDTO;
 import com.goodee.coreconnect.approval.dto.response.DocumentSimpleResponseDTO;
 import com.goodee.coreconnect.approval.dto.response.TemplateDetailResponseDTO;
 import com.goodee.coreconnect.approval.dto.response.TemplateSimpleResponseDTO;
+import com.goodee.coreconnect.approval.dto.response.UserInfoResponseDTO;
 import com.goodee.coreconnect.approval.entity.File;
+import com.goodee.coreconnect.approval.enums.ApprovalLineStatus;
 import com.goodee.coreconnect.approval.repository.FileRepository;
 import com.goodee.coreconnect.approval.service.ApprovalService;
 import com.goodee.coreconnect.approval.service.FileStorageService;
@@ -237,76 +240,199 @@ public class ApprovalController {
   }
   
   /**
-   * 
-   * @param documentId
-   * @param user
-   * @return
+   * 4-1. 문서 PDF 다운로드 (최종 수정: 기안자 직급 한글화, 오른쪽 여백 조정)
+   * [GET] /api/v1/approvals/{documentId}/download-pdf
    */
   @Operation(summary = "문서 PDF 다운로드", description = "문서 상세 내용을 PDF 파일로 다운로드합니다.")
   @GetMapping("/{documentId}/download-pdf")
   public ResponseEntity<byte[]> downloadDocumentAsPdf(
       @PathVariable("documentId") Integer documentId,
       @AuthenticationPrincipal CustomUserDetails user
-      ) {
-    
-    try {
+  ) {
       
-      String email = user.getEmail();
-      DocumentDetailResponseDTO documentDetail = approvalService.getDocumentDetail(documentId, email);
-      
-      String bodyContent = documentDetail.getProcessedHtmlContent();
-      String documentTitle = documentDetail.getDocumentTitle();
-      
-      if (bodyContent == null || bodyContent.isBlank()) {
-        throw new IllegalStateException("PDF로 변환할 처리된 HTML 내용이 없습니다.");
+      try {
+          // 1. 데이터 조회
+          String email = user.getEmail();
+          DocumentDetailResponseDTO dto = approvalService.getDocumentDetail(documentId, email);
+
+          String documentTitle = dto.getDocumentTitle(); 
+          String templateName = dto.getTemplateName(); 
+          String mainContentHtml = dto.getProcessedHtmlContent();
+          
+          UserInfoResponseDTO drafter = dto.getDrafter();
+          List<ApprovalLineResponseDTO> approvalLines = dto.getApprovalLines();
+
+          if (mainContentHtml == null || mainContentHtml.isBlank()) {
+              throw new IllegalStateException("PDF로 변환할 처리된 HTML 내용이 없습니다.");
+          }
+
+          // 2. 스타일 정의
+          // width: 99%로 설정하여 미세한 잘림 방지
+          String tableStyle = "border-collapse: collapse; border: 1px solid #ccc; font-size: 14px; width: 99%;";
+          String thStyle = "border: 1px solid #ccc; background-color: #f8f8f8; padding: 6px; text-align: center; font-weight: bold;";
+          String tdStyle = "border: 1px solid #ccc; padding: 6px;";
+          
+          // 결재선 스타일 (float 대신 width 100%로 채우기)
+          String appTableStyle = "border-collapse: collapse; border: 1px solid #ccc; font-size: 12px; text-align: center; width: 100%;";
+          String appThStyle = "border: 1px solid #ccc; background-color: #f8f8f8; padding: 2px; width: 60px; height: 25px;";
+          String appTdStyle = "border: 1px solid #ccc; padding: 2px; width: 60px; height: 40px;";
+          String verticalThStyle = "border: 1px solid #ccc; background-color: #f2f2f2; padding: 2px; width: 25px; writing-mode: vertical-rl; letter-spacing: 5px;";
+
+          StringBuilder bodyBuilder = new StringBuilder();
+
+          // 3. HTML 조립
+          
+          // 3-1. 제목
+          bodyBuilder.append("<h1 style=\"font-size: 28px; margin: 30px 0; text-align: center;\">")
+                     .append(templateName)
+                     .append("</h1>");
+
+          // 3-2. 상단 정보 래퍼 테이블 (기안자 + 결재선)
+          // 전체 너비를 100%로 잡고, 셀 비율을 45% : 5% : 50%로 배분하여 오른쪽 잘림 방지
+          bodyBuilder.append("<table style=\"width: 100%; border: none; margin-bottom: 30px;\"><tbody><tr>");
+
+          // [왼쪽] 기안자 정보 (45%)
+          bodyBuilder.append("<td style=\"vertical-align: top; border: none; padding: 0; width: 45%;\">");
+          {
+              bodyBuilder.append("<table style=\"").append(tableStyle).append("\"><tbody>");
+              bodyBuilder.append("<tr><td style=\"").append(thStyle).append("width: 80px;\">기안자</td>")
+                         .append("<td style=\"").append(tdStyle).append("\">").append(drafter.getUserName()).append("</td></tr>");
+              bodyBuilder.append("<tr><td style=\"").append(thStyle).append("\">소속</td>")
+                         .append("<td style=\"").append(tdStyle).append("\">").append(drafter.getDeptName()).append("</td></tr>");
+              bodyBuilder.append("<tr><td style=\"").append(thStyle).append("\">기안일</td>")
+                         .append("<td style=\"").append(tdStyle).append("\">").append(dto.getCreatedAt().toLocalDate().toString()).append("</td></tr>");
+              bodyBuilder.append("<tr><td style=\"").append(thStyle).append("\">문서번호</td>")
+                         .append("<td style=\"").append(tdStyle).append("\">").append(dto.getDocumentId()).append("</td></tr>");
+              bodyBuilder.append("</tbody></table>");
+          }
+          bodyBuilder.append("</td>");
+
+          // [중간] 여백 (5%)
+          bodyBuilder.append("<td style=\"border: none; width: 5%;\"></td>");
+
+          // [오른쪽] 결재선 (50% - 오른쪽 정렬)
+          bodyBuilder.append("<td style=\"vertical-align: top; border: none; padding: 0; width: 50%; text-align: right;\">");
+          {
+              // 결재선 테이블을 오른쪽 정렬하기 위해 div로 감싸거나 table 자체를 align right
+              bodyBuilder.append("<table style=\"").append(appTableStyle).append("\">");
+              
+              // === [1행] 직급 ===
+              bodyBuilder.append("<thead><tr>");
+              // 1. 신청(세로)
+              bodyBuilder.append("<th rowspan=\"3\" style=\"").append(verticalThStyle).append("\">신청</th>");
+              
+              // 2. 기안자 직급 (▼▼▼ 중요: 여기서 .label() 호출 수정함 ▼▼▼)
+              bodyBuilder.append("<th style=\"").append(appThStyle).append("\">")
+                         .append(drafter.getPositionName().label()) // UserInfoResponseDTO는 Enum을 반환하므로 .label() 필수!
+                         .append("</th>");
+              
+              // 3. 승인(세로) - 결재자가 있을 때만
+              if (!approvalLines.isEmpty()) {
+                   bodyBuilder.append("<th rowspan=\"3\" style=\"").append(verticalThStyle).append("\">승인</th>");
+              }
+              
+              // 4. 결재자 직급들
+              for (ApprovalLineResponseDTO approver : approvalLines) {
+                  bodyBuilder.append("<th style=\"").append(appThStyle).append("\">")
+                             .append(approver.getPositionName()) // ApprovalLineResponseDTO는 이미 String으로 변환했으므로 그대로 사용
+                             .append("</th>");
+              }
+              bodyBuilder.append("</tr>");
+
+              // === [2행] 이름 ===
+              bodyBuilder.append("<tr>");
+              // 1. 기안자 이름
+              bodyBuilder.append("<td style=\"").append(appThStyle).append("\">") 
+                         .append(drafter.getUserName())
+                         .append("</td>");
+              // 2. 결재자 이름들
+              for (ApprovalLineResponseDTO approver : approvalLines) {
+                  bodyBuilder.append("<td style=\"").append(appThStyle).append("\">")
+                             .append(approver.getName())
+                             .append("</td>");
+              }
+              bodyBuilder.append("</tr>");
+
+              // === [3행] 상태/서명 (상신, 승인, 반려) ===
+              bodyBuilder.append("<tr>");
+              // 1. 기안자는 항상 '상신'
+              bodyBuilder.append("<td style=\"").append(appTdStyle).append("\">상신</td>");
+              // 2. 결재자 상태
+              for (ApprovalLineResponseDTO approver : approvalLines) {
+                  bodyBuilder.append("<td style=\"").append(appTdStyle).append("\">");
+                  
+                  if (ApprovalLineStatus.APPROVED.equals(approver.getApprovalStatus()) || 
+                      ApprovalLineStatus.APPROVED.equals(approver.getApprovalStatus())) {
+                      bodyBuilder.append("승인");
+                  } else if (ApprovalLineStatus.REJECTED.equals(approver.getApprovalStatus())) {
+                      bodyBuilder.append("<span style='color:red'>반려</span>");
+                  } else {
+                      bodyBuilder.append(""); 
+                  }
+                  bodyBuilder.append("</td>");
+              }
+              bodyBuilder.append("</tr></thead>"); 
+              bodyBuilder.append("</table>");
+          }
+          bodyBuilder.append("</td>"); // 오른쪽 셀 끝
+          bodyBuilder.append("</tr></tbody></table>"); 
+
+          // 3-3. 신청 내용
+          bodyBuilder.append("<div style=\"width: 100%;\">").append(mainContentHtml).append("</div>");
+
+          String bodyContent = bodyBuilder.toString();
+
+          // 5. HTML 래퍼 (여백 조정)
+          String htmlWrapper = """
+              <!DOCTYPE html>
+              <html>
+              <head>
+                  <meta charset="UTF-8" />
+                  <style>
+                      @font-face {
+                          font-family: 'NanumGothic';
+                          src: url('fonts/NanumGothic.ttf');
+                          -fs-pdf-font-embed: embed;
+                          -fs-pdf-font-encoding: Identity-H;
+                      }
+                      @page {
+                          size: A4;
+                          margin: 15mm; /* 여백을 15mm로 조정하여 잘림 방지 */
+                      }
+                      body {
+                          font-family: 'NanumGothic', sans-serif;
+                          width: 100%;
+                      }
+                      table { width: 100%; }
+                  </style>
+              </head>
+              <body>
+                  %s 
+              </body>
+              </html>
+              """;
+
+          // replace 사용
+          String finalHtml = htmlWrapper.replace("%s", bodyContent);
+
+          byte[] pdfBytes = pdfService.generatePdfFromHtmlString(finalHtml);
+
+          HttpHeaders headers = new HttpHeaders();
+          headers.setContentType(MediaType.APPLICATION_PDF);
+          
+          String fileName = documentTitle + ".pdf"; 
+          String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8)
+                                           .replaceAll("\\+", "%20");
+          headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFileName);
+          
+          return ResponseEntity.ok()
+                  .headers(headers)
+                  .body(pdfBytes);
+
+      } catch (Exception e) {
+          e.printStackTrace(); 
+          return ResponseEntity.internalServerError().build();
       }
-      
-      String htmlWrapper = """
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="UTF-8">
-            <style>
-              @font-face {
-                font-family: 'NanumGothic';
-                src: url('/fonts/NanumGothic.ttf');
-                -fs-pdf-font-embed: embed;
-                -fs-pdf-font-encoding: Identity-H;
-              }
-              body, table, th, td, div, p, h3 {
-                font-family: 'NanumGothic', sans-serif;
-                font-size: 14px;
-              }
-            </style>
-          </head>
-          <body>
-            %s
-          </body>
-          </html>
-          """;
-      
-      String finalHtml = String.format(htmlWrapper, bodyContent);
-      
-      byte[] pdfBytes = pdfService.generatePdfFromHtmlString(finalHtml);
-      
-      HttpHeaders headers = new HttpHeaders();
-      headers.setContentType(MediaType.APPLICATION_PDF);
-      
-      String fileName = documentTitle + ".pdf";
-      
-      String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8)
-          .replaceAll("\\+", "%20");
-      headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFileName);
-      
-      return ResponseEntity.ok()
-          .headers(headers)
-          .body(pdfBytes);
-      
-    } catch (Exception e) {
-      e.printStackTrace();
-      return ResponseEntity.internalServerError().build();
-    }
-    
   }
 
   /**
