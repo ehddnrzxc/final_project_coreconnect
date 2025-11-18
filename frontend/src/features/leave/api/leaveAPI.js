@@ -17,3 +17,32 @@ export async function getMyLeaveSummary() {
   const res = await http.get("/leave/summary");
   return res.data;
 }
+
+/** 주 단위 휴가자 수 조회 */
+export async function getCompanyLeaveWeekly(startDate, endDate) {
+  const res = await http.get("/leave/company/weekly", {
+    params: {
+      startDate: startDate,
+      endDate: endDate,
+    },
+  });
+  return res.data;
+}
+
+/** 전사 휴가 상세 목록 조회 */
+export async function getCompanyLeaveDetails(startDate, endDate, leaveType, searchTerm, page = 0, size = 50) {
+  const params = {
+    startDate: startDate,
+    endDate: endDate,
+    page: page,
+    size: size,
+  };
+  if (leaveType) {
+    params.leaveType = leaveType;
+  }
+  if (searchTerm) {
+    params.searchTerm = searchTerm;
+  }
+  const res = await http.get("/leave/company/details", { params });
+  return res.data;
+}
