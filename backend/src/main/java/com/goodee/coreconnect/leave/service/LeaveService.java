@@ -2,8 +2,9 @@ package com.goodee.coreconnect.leave.service;
 
 import java.util.List;
 
+import java.time.LocalDate;
+
 import com.goodee.coreconnect.approval.entity.Document;
-import com.goodee.coreconnect.leave.dto.request.CreateLeaveRequestDTO;
 import com.goodee.coreconnect.leave.dto.response.LeaveRequestResponseDTO;
 import com.goodee.coreconnect.leave.dto.response.LeaveSummaryDTO;
 import com.goodee.coreconnect.user.entity.User;
@@ -17,7 +18,7 @@ public interface LeaveService {
   public List<LeaveRequestResponseDTO> getMyLeaveRequests(String email);
   
   /** 전자결재 연동 휴가 생성 */
-  public void createLeaveFromApproval(Document document, User drafter, CreateLeaveRequestDTO dto);
+  public void createLeaveFromApproval(Document document, User drafter, LocalDate startDate, LocalDate endDate, String type, String reason);
   
   /** 승인된 휴가 처리 */
   public void handleApprovedLeave(Document document, String approvalComment);

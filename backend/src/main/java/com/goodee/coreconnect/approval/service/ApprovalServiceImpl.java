@@ -1,6 +1,7 @@
 package com.goodee.coreconnect.approval.service;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -44,7 +45,6 @@ import com.goodee.coreconnect.common.notification.dto.NotificationPayload;
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
 import com.goodee.coreconnect.common.notification.service.WebSocketDeliveryService;
 import com.goodee.coreconnect.common.service.S3Service;
-import com.goodee.coreconnect.leave.dto.request.CreateLeaveRequestDTO;
 import com.goodee.coreconnect.leave.service.LeaveService;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
@@ -144,8 +144,23 @@ public class ApprovalServiceImpl implements ApprovalService {
     
     // 휴가 템플릿이면 휴가 DB에 저장하는 로직
     if(isLeaveTemplate(template)) {
-      CreateLeaveRequestDTO leaveDTO = CreateLeaveRequestDTO.toCreateLeaveRequestDTO(requestDTO, savedDocument.getId(), objectMapper);
-      leaveService.createLeaveFromApproval(savedDocument, drafter, leaveDTO);
+      try {
+        // documentDataJson 파싱
+        TypeReference<Map<String, Object>> typeRef = new TypeReference<>() {};
+        Map<String, Object> data = objectMapper.readValue(requestDTO.getDocumentDataJson(), typeRef);
+
+        String type = (String) data.get("vacationType");
+        String reason = (String) data.get("reason");
+        String start = (String) data.get("startDate");
+        String end = (String) data.get("endDate");
+
+        LocalDate startDate = LocalDate.parse(start);
+        LocalDate endDate = LocalDate.parse(end);
+
+        leaveService.createLeaveFromApproval(savedDocument, drafter, startDate, endDate, type, reason);
+      } catch (Exception e) {
+        throw new IllegalStateException("휴가 데이터 파싱 중 오류 발생", e);
+      }
     }
 
 

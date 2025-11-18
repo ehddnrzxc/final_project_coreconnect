@@ -19,7 +19,8 @@ import ViewListIcon from '@mui/icons-material/ViewList';
 
 import { fetchInbox, fetchUnreadCount,deleteMails } from '../api/emailApi';
 import { useNavigate, useLocation } from 'react-router-dom';
-import useUserEmail from '../../email/hook/useUserEmail'; // ⭐️ 여기 추가
+import { useContext } from "react";
+import { UserProfileContext } from "../../../App";
 
 
 const MailInboxPage = () => {
@@ -32,7 +33,8 @@ const MailInboxPage = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [selected, setSelected] = useState(new Set());
   const [snack, setSnack] = useState({ open: false, severity: 'info', message: '' });
-   const userEmail = useUserEmail(); // ⭐️ 훅으로 교체!
+  const { userProfile } = useContext(UserProfileContext) || {};
+  const userEmail = userProfile?.email;
   const navigate = useNavigate();
   const location = useLocation();
 

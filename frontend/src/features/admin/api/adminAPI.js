@@ -52,3 +52,12 @@ export async function approveLeaveRequest(id) {
 export async function rejectLeaveRequest(id, reason) {
   await http.post(`/admin/leave/${id}/reject`, { reason });
 }
+
+/** 로그인 이력 조회 */
+export async function getAccountLogs(page = 0, size = 20, email = null, actionType = null) {
+  const params = { page, size };
+  if (email) params.email = email;
+  if (actionType) params.actionType = actionType;
+  const res = await http.get("/admin/account-logs", { params });
+  return res.data;
+}

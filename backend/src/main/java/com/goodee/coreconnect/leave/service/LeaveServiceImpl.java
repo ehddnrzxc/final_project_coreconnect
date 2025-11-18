@@ -8,7 +8,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.goodee.coreconnect.approval.entity.Document;
-import com.goodee.coreconnect.leave.dto.request.CreateLeaveRequestDTO;
 import com.goodee.coreconnect.leave.dto.response.LeaveRequestResponseDTO;
 import com.goodee.coreconnect.leave.dto.response.LeaveSummaryDTO;
 import com.goodee.coreconnect.leave.entity.LeaveRequest;
@@ -51,12 +50,12 @@ public class LeaveServiceImpl implements LeaveService {
 
   /** 전자결재 연동 휴가 생성 */
   @Override
-  public void createLeaveFromApproval(Document document, User drafter, CreateLeaveRequestDTO dto) {
+  public void createLeaveFromApproval(Document document, User drafter, LocalDate startDate, LocalDate endDate, String type, String reason) {
     LeaveRequest leave = LeaveRequest.createLeaveRequest(drafter, 
-                                                         dto.startDate(), 
-                                                         dto.endDate(), 
-                                                         dto.type(), 
-                                                         dto.reason(), 
+                                                         startDate, 
+                                                         endDate, 
+                                                         type, 
+                                                         reason, 
                                                          document.getId());
     leaveRequestRepository.save(leave);
   }
