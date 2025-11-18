@@ -38,7 +38,7 @@ public class ApprovalLineResponseDTO {
         .approvalComment(line.getApprovalLineComment())
         .processedAt(line.getApprovalLineProcessedAt())
         .name(approver.getName())
-        .positionName(approver.getJobGrade().toString())
+        .positionName(approver.getJobGrade().label())
         .deptName(approver.getDepartment().getDeptName())
         .userId(approver.getId())
         .type(typeName)
