@@ -29,9 +29,10 @@ import {
   sendMail,
   saveDraftMail,
   getDraftDetail,
-  GetUserEmailFromStorage
 } from "../api/emailApi";
 import { useLocation } from "react-router-dom";
+import useUserEmail from '../hook/useUserEmail'; // ⭐️ 여기 추가
+
 
 const emailSuggestions = [
   "admin@gmail.com",
@@ -62,7 +63,7 @@ function MailWritePage() {
 
   const location = useLocation();
   const draftId = new URLSearchParams(location.search).get("draftId");
-  const userEmail = GetUserEmailFromStorage();
+  const userEmail = useUserEmail(); // ⭐️ 훅으로 교체!
 
   useEffect(() => {
     if (draftId && userEmail) {

@@ -7,11 +7,11 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
 import { useNavigate } from "react-router-dom";
 import {
-  GetUserEmailFromStorage,
   fetchTrashMails, // backend 호출 함수
   deleteMails,      // 선택 삭제(영구 삭제) 호출
   emptyTrash        // 휴지통 비우기
 } from "../api/emailApi";
+import useUserEmail from '../../email/hook/useUserEmail'; // ⭐️ 여기 추가
 
 const MailTrashPage = () => {
   const [page, setPage] = useState(1); // UI page (1-based)
@@ -20,7 +20,7 @@ const MailTrashPage = () => {
   const [mails, setMails] = useState([]);
   const [selected, setSelected] = useState(new Set());
   const [loading, setLoading] = useState(false);
-  const userEmail = GetUserEmailFromStorage();
+  const userEmail = useUserEmail(); // ⭐️ 훅으로 교체!
   const navigate = useNavigate();
 
   // robust parser for many possible response shapes
@@ -132,6 +132,33 @@ const MailTrashPage = () => {
     // eslint-disable-next-line
   }, [page, size, userEmail]);
 
+  // 상태값 변환 함수
+  const formatMailStatusLabel = (status) => {
+    switch (status) {
+      case "SENT":
+        return "전송완료";
+      case "TRASH":
+        return "휴지통";
+      case "DELETED":
+        return "삭제됨";
+      default:
+        return status || "-";
+    }
+  };
+
+  const formatMailStatusColor = (status) => {
+    switch (status) {
+      case "SENT":
+        return "success";
+      case "TRASH":
+        return "warning";
+      case "DELETED":
+        return "error";
+      default:
+        return "default";
+    }
+  };
+
   // 휴지통 비우기
   const handleEmptyTrash = async () => {
     if (!window.confirm("휴지통을 완전히 비우시겠습니까?")) return;
@@ -179,6 +206,23 @@ const MailTrashPage = () => {
       copy.has(id) ? copy.delete(id) : copy.add(id);
       return copy;
     });
+  };
+
+  // 날짜 포맷 함수 (24시간제, yyyy-MM-dd HH시 mm분 ss초)
+  const formatSentTime = (sentTime) => {
+    if (!sentTime) return '-';
+    try {
+      const d = (typeof sentTime === "string" || typeof sentTime === "number") ? new Date(sentTime) : sentTime;
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      const HH = String(d.getHours()).padStart(2, "0");
+      const mi = String(d.getMinutes()).padStart(2, "0");
+      const ss = String(d.getSeconds()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd} ${HH}시 ${mi}분 ${ss}초`;
+    } catch {
+      return '-';
+    }
   };
 
   return (
@@ -264,13 +308,7 @@ const MailTrashPage = () => {
                     {mail.senderEmail || mail.senderName || '-'}
                   </TableCell>
                   <TableCell>{mail.emailTitle || '-'}</TableCell>
-                  <TableCell>
-                    {mail.sentTime
-                      ? (typeof mail.sentTime === "string"
-                        ? new Date(mail.sentTime).toLocaleString()
-                        : (mail.sentTime && mail.sentTime.toString ? new Date(mail.sentTime).toLocaleString() : "-"))
-                      : "-"}
-                  </TableCell>
+                  <TableCell>{formatSentTime(mail.sentTime)}</TableCell>
                   <TableCell sx={{ fontSize: 13 }}>
                     {Array.isArray(mail.recipientAddresses) && mail.recipientAddresses.length > 0
                       ? mail.recipientAddresses.map((email, idx) => (
@@ -283,7 +321,11 @@ const MailTrashPage = () => {
                     }
                   </TableCell>
                   <TableCell align="right">
-                    {mail.emailStatus || '-'}
+                    <Chip
+                      label={formatMailStatusLabel(mail.emailStatus)}
+                      color={formatMailStatusColor(mail.emailStatus)}
+                      size="small"
+                    />
                   </TableCell>
                   <TableCell onClick={e => e.stopPropagation()}>
                     <IconButton size="small" onClick={() => navigate(`/email/${mail.emailId}`)}>
