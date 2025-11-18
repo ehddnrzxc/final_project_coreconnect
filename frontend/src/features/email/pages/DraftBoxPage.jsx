@@ -6,8 +6,8 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { fetchDraftbox, deleteDraftMail } from "../api/emailApi";
-// ★ 사용자 이메일을 가져오는 커스텀 훅 import (Context 구조에 맞게!)
-import useUserEmail from '../../email/hook/useUserEmail';
+import { useContext } from "react";
+import { UserProfileContext } from "../../../App";
 import { useNavigate } from "react-router-dom";
 
 const DraftBoxPage = () => {
@@ -17,8 +17,8 @@ const DraftBoxPage = () => {
   const [size] = useState(20);
   const [loading, setLoading] = useState(false);
 
-  // ★ 커스텀 훅 사용: context.userProfile.email 반환 (App에서 value={{userProfile, setUserProfile}} 구조여야 정상동작)
-  const userEmail = useUserEmail();
+  const { userProfile } = useContext(UserProfileContext) || {};
+  const userEmail = userProfile?.email;
   const navigate = useNavigate();
 
   // 임시보관함 목록 조회 및 상태값 세팅 함수
@@ -166,10 +166,8 @@ export default DraftBoxPage;
 =========================
 주요 주석 요약 및 체크리스트
 -------------------------
-★ useUserEmail() 훅은 반드시 context.userProfile.email 구조에 맞춰 작성되어야 정상동작
-  (즉, App.jsx에서 Provider value가 { userProfile, setUserProfile } 구조일 때)
+★ UserProfileContext에서 userProfile.email을 직접 사용
 ★ 실제 userEmail 값이 null이면 API 호출 금지. Profile 비동기 처리 시에는 최초엔 null→email로 전환됨
 ★ userEmail 값이 제대로 들어 올 때만 reload()/fetchDraftbox API가 동작 → 데이터 표시됨
-★ 항상 실제 App에서 Context value 구조와 훅 구현, 그리고 각종 로그를 찍어서 값이 있는지 점검!
 =========================
 */

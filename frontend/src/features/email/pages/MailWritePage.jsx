@@ -31,7 +31,8 @@ import {
   getDraftDetail,
 } from "../api/emailApi";
 import { useLocation } from "react-router-dom";
-import useUserEmail from '../hook/useUserEmail'; // ⭐️ 여기 추가
+import { useContext } from "react";
+import { UserProfileContext } from "../../../App";
 
 
 const emailSuggestions = [
@@ -63,7 +64,8 @@ function MailWritePage() {
 
   const location = useLocation();
   const draftId = new URLSearchParams(location.search).get("draftId");
-  const userEmail = useUserEmail(); // ⭐️ 훅으로 교체!
+  const { userProfile } = useContext(UserProfileContext) || {};
+  const userEmail = userProfile?.email;
 
   useEffect(() => {
     if (draftId && userEmail) {

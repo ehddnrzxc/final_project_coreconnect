@@ -1,28 +1,4 @@
 import http from '../../../api/http.js';
-import { UserProfileContext } from '../../../App.jsx';
-import React, {useContext} from 'react';
-
-/**
- * 로그인한 사용자 이메일을 Context에서 추출하는 커스텀 훅
- * - user가 문자열(직렬화) 또는 객체일 수 있음
- * @returns {string|null} 사용자 이메일 또는 null
- */
-export function useUserEmail() {
-  const user = useContext(UserProfileContext);
-  if (!user) return null;
-
-  if (typeof user === "string") {
-    try {
-      const userObj = JSON.parse(user);
-      return userObj.email || null;
-    } catch {
-      return null;
-    }
-  } else if (typeof user === "object" && user !== null) {
-    return user.email || null;
-  }
-  return null;
-}
 
 
 // 기본 받은메일함 조회 (기본 옵션만)

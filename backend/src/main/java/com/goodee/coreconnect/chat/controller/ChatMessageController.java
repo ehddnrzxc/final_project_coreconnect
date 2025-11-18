@@ -21,6 +21,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -116,9 +117,19 @@ public class ChatMessageController {
 	@MessageMapping("/chat.sendMessage") // 프론트에서 /app/chat.sendMessage로 메시지 전송 (STOMP)
 	public void sendMessage(
 	        @Payload SendMessageRequestDTO req,
-	        @AuthenticationPrincipal CustomUserDetails user
+	        SimpMessageHeaderAccessor headerAccessor
 	) {
-	    String email = user.getEmail();
+	    // WebSocket 세션에서 사용자 이메일 가져오기 (WebSocketAuthInterceptor에서 설정)
+	    Map<String, Object> sessionAttributes = headerAccessor.getSessionAttributes();
+	    if (sessionAttributes == null) {
+	        log.warn("[ChatMessageController] sendMessage - 세션 attributes가 null입니다.");
+	        return;
+	    }
+	    String email = (String) sessionAttributes.get("wsUserEmail");
+	    if (email == null || email.isBlank()) {
+	        log.warn("[ChatMessageController] sendMessage - 세션에 사용자 이메일이 없습니다.");
+	        return;
+	    }
 
 	    // 1. 인증 사용자 체크 (프론트에서 senderId가 아닌, 인증 객체에서 반드시 가져오기)
 	    User authUser = userRepository.findByEmail(email).orElse(null);

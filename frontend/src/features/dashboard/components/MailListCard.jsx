@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import Card from "../../../components/ui/Card";
 import {
@@ -9,17 +9,14 @@ import {
   Box,
 } from "@mui/material";
 import { fetchInbox } from "../../email/api/emailApi";
-import useUserEmail from '../../email/hook/useUserEmail'; 
+import { UserProfileContext } from "../../../App";
 
 export default function MailListCard() {
   const navigate = useNavigate();
   const [recentMails, setRecentMails] = useState([]);
   const [mailLoading, setMailLoading] = useState(true);
-  
-  // Hook은 컴포넌트 최상위에서 호출해야 함
-  const userEmail = useUserEmail(); 
-
-  console.log("userEmail: ", userEmail);
+  const { userProfile } = useContext(UserProfileContext);
+  const userEmail = userProfile?.email; 
 
   // 받은메일함 최근 메일 가져오기
   useEffect(() => {
@@ -30,7 +27,7 @@ export default function MailListCard() {
     
     (async () => {
       try {
-        const res = await fetchInbox(userEmail, 0, 5, "all"); // 최근 5개만
+        const res = await fetchInbox(userEmail, 0, 5, "all"); 
         setRecentMails(res.data.data.content || []);
       } catch (err) {
         console.error("메일 목록 불러오기 실패:", err);
