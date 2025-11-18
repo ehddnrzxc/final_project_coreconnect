@@ -485,7 +485,7 @@ export default function CalendarPage() {
   const handleDelete = async (id) => {
     try {
       await deleteSchedule(id);
-      setEvents((prev) => prev.filter((e) => e.id !== id));
+      setEvents((prev) => prev.filter((e) => String(e.id) !== String(id)));
       showSnack("일정이 삭제되었습니다", "info");
       setModalOpen(false);
       setDetailOpen(false);
