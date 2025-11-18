@@ -12,7 +12,8 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import ReportIcon from '@mui/icons-material/Report';
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
-import useUserEmail from '../hook/useUserEmail'; // ⭐️ 여기 추가
+import { useContext } from "react";
+import { UserProfileContext } from "../../../App";
 
 // 파일 사이즈 변환
 function formatBytes(bytes) {
@@ -27,7 +28,8 @@ function MailDetailPage() {
   const navigate = useNavigate();
   const [mailDetail, setMailDetail] = useState(null);
   const { refreshUnreadCount } = useOutletContext();
-  const userEmail = useUserEmail(); // ⭐️ 훅으로 교체!
+  const { userProfile } = useContext(UserProfileContext) || {};
+  const userEmail = userProfile?.email;
 
   
   useEffect(() => {

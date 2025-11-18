@@ -3,23 +3,15 @@ import SockJS from 'sockjs-client/dist/sockjs.min.js'; // SockJS 웹소켓 클�
 import { Client } from "@stomp/stompjs";                // STOMP 프로토콜 클라이언트 라이브러리
 
 // ========================================================================
-// [중요] 쿠키에서 access_token을 꺼내서 WebSocket 연결 시 쿼리 파라미터로 전달
+// [중요] HttpOnly 쿠키로 설정된 access_token은 JavaScript에서 읽을 수 없습니다.
+//    -> SockJS가 자동으로 쿠키를 전송하므로 쿼리 파라미터 없이 연결합니다.
+//    -> 백엔드 WebSocketAuthInterceptor가 쿠키에서 자동으로 토큰을 읽습니다.
 //    -> 반드시 상대경로 (/ws/chat)로 ENDPOINT 지정!!
 // ========================================================================
 
-// access_token을 브라우저 쿠키에서 읽어오는 함수
-function getAccessTokenFromCookie() {
-  console.log("document.cookie =", document.cookie);         // 여기!
-  const match = document.cookie.match(/(?:^|;\s*)access_token=([^;]*)/);
-  console.log("match =", match);                             // 여기!
-  return match ? decodeURIComponent(match[1]) : null;
-}
-
-
-const accessToken = getAccessTokenFromCookie(); // 쿠키에서 access_token 값 추출
-
 // ENDPOINT를 상대경로로 지정! Vite dev-server가 프록시 처리할 것임
-const ENDPOINT = `/ws/chat?accessToken=${accessToken}`;
+// 쿠키는 SockJS가 자동으로 전송하므로 쿼리 파라미터 불필요
+const ENDPOINT = `/ws/chat`;
 
 // STOMP 클라이언트 및 구독(Subscription) 전역 변수
 let stompClient = null;      // STOMP 클라이언트 인스턴스
@@ -37,11 +29,30 @@ export function connectStomp(roomId, onMessage, onConnect, onError) {
   if (stompClient) stompClient.deactivate();
 
   stompClient = new Client({
-    // SockJS 객체를 accessToken 쿼리파라미터가 포함된 상대 ENDPOINT로 생성 ★핵심
-    webSocketFactory: () => new SockJS(ENDPOINT),
-    debug: () => {},                              // 디버그 로깅 (필요시 사용)
+    // SockJS 객체를 상대 ENDPOINT로 생성
+    // 쿠키는 자동으로 전송되므로 쿼리 파라미터 불필요
+    webSocketFactory: () => {
+      console.log('[ChatSocket] 연결 시도:', ENDPOINT);
+      const sock = new SockJS(ENDPOINT);
+      sock.onopen = () => {
+        console.log('[SockJS] 연결 열림');
+      };
+      sock.onclose = (event) => {
+        console.log('[SockJS] 연결 닫힘', event);
+        onError && onError(event);
+      };
+      sock.onerror = (error) => {
+        console.error('[SockJS] 에러:', error);
+        onError && onError(error);
+      };
+      return sock;
+    },
+    debug: (str) => {
+      console.log('[STOMP Debug]', str);
+    },
     reconnectDelay: 5000,                         // 자동 재연결(ms)
     onConnect: () => {                            // 연결 성공 콜백
+      console.log('[STOMP] 연결 성공');
       // 기존 구독 해제 (이중 수신 방지)
       if (subscription) subscription.unsubscribe();
       // /topic/chat.room.{roomId} 구독 (방의 메시지만 구독)
@@ -59,7 +70,12 @@ export function connectStomp(roomId, onMessage, onConnect, onError) {
       if (onConnect) onConnect();                 // 연결 성공 후처리 콜백
     },
     onStompError: (frame) => {                    // STOMP 프로토콜 에러 콜백
+      console.error('[STOMP Error]', frame);
       onError && onError(frame);
+    },
+    onWebSocketError: (event) => {                // WebSocket 레벨 에러 콜백
+      console.error('[WebSocket Error]', event);
+      onError && onError(event);
     }
     // 주의: STOMP 프로토콜 헤더로 인증 불가, 쿼리파라미터/쿠키 방식만 가능
   });
@@ -87,10 +103,26 @@ export function disconnectStomp() {
  * @param {string|null} param0.fileUrl - 파일 URL (기본 null)
  */
 export function sendStompMessage({ roomId, content, fileYn = false, fileUrl = null }) {
-  if (stompClient && stompClient.connected) {
+  if (!stompClient) {
+    console.error('[ChatSocket] STOMP 클라이언트가 초기화되지 않았습니다.');
+    return false;
+  }
+  
+  if (!stompClient.connected) {
+    console.error('[ChatSocket] STOMP 연결이 되어 있지 않습니다. 연결 상태:', stompClient.connected);
+    return false;
+  }
+
+  try {
+    const messageBody = JSON.stringify({ roomId, content, fileYn, fileUrl });
+    console.log('[ChatSocket] 메시지 전송:', { destination: "/app/chat.sendMessage", body: messageBody });
     stompClient.publish({
       destination: "/app/chat.sendMessage",        // 서버 @MessageMapping 대상
-      body: JSON.stringify({ roomId, content, fileYn, fileUrl }), // 메시지 본문
+      body: messageBody, // 메시지 본문
     });
+    return true;
+  } catch (error) {
+    console.error('[ChatSocket] 메시지 전송 실패:', error);
+    return false;
   }
 }

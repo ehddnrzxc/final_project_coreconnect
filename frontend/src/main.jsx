@@ -13,6 +13,7 @@ import AdminRoute from "./features/admin/utils/AdminRoute";
 import ApprovalHomePage from "./features/approval/pages/ApprovalHomePage";
 import ApprovalLayout from "./features/approval/pages/ApprovalLayout";
 import AdminHomePage from "./features/admin/pages/AdminHomePage";
+import AccountLogPage from "./features/admin/pages/AccountLogPage";
 import UserList from "./features/admin/components/UserList";
 import ChatHomePage from "./features/chat/pages/ChatHomePage";
 import ChatLayout from "./features/chat/pages/ChatLayout";
@@ -161,7 +162,8 @@ const router = createBrowserRouter([
           { path: "board/category", element: <AdminCategoryPage /> },
           { path: "password-reset-requests", element: <PasswordReset /> },
           { path: "leave-requests", element: <LeaveRequests /> },
-          { path: "departments", element: <DepartmentManagementPage /> }
+          { path: "departments", element: <DepartmentManagementPage /> },
+          { path: "account-logs", element: <AccountLogPage /> }
         ],
       },
       {

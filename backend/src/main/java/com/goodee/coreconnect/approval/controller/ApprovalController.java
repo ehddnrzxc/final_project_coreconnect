@@ -14,6 +14,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -33,8 +34,7 @@ import com.goodee.coreconnect.approval.entity.File;
 import com.goodee.coreconnect.approval.repository.FileRepository;
 import com.goodee.coreconnect.approval.service.ApprovalService;
 import com.goodee.coreconnect.approval.service.FileStorageService;
-import com.goodee.coreconnect.email.entity.EmailFile;
-import com.goodee.coreconnect.email.service.EmailFileStorageService;
+import com.goodee.coreconnect.approval.service.PdfGenerationService;
 import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -54,6 +54,7 @@ public class ApprovalController {
   private final ApprovalService approvalService;
   private final FileRepository fileRepository;
   private final FileStorageService fileStorageService;
+  private final PdfGenerationService pdfService;
 
   /**
    * 1. 새 결재 문서 상신 (파일 첨부 포함)
@@ -106,9 +107,10 @@ public class ApprovalController {
    * @param user
    * @return
    */
+  @PutMapping("/drafts/{documentId}")
   public ResponseEntity<Integer> updateDraft(
       @PathVariable("documentId") Integer documentId,
-      @Valid @RequestPart("dto") DocumentUpdateRequestDTO requestDTO,
+      @RequestPart("dto") DocumentUpdateRequestDTO requestDTO,
       @RequestPart(value = "files", required = false) List<MultipartFile> files,
       @AuthenticationPrincipal CustomUserDetails user
       ) {
@@ -118,6 +120,7 @@ public class ApprovalController {
     
   }
   
+  @PutMapping("/{documentId}")
   public ResponseEntity<Integer> updateAndSubmitDocument(
       @PathVariable("documentId") Integer documentId,
       @Valid @RequestPart("dto") DocumentUpdateRequestDTO requestDTO,
@@ -231,6 +234,79 @@ public class ApprovalController {
     String email = user.getEmail();
     DocumentDetailResponseDTO documentDetail = approvalService.getDocumentDetail(documentId, email);
     return ResponseEntity.ok(documentDetail);
+  }
+  
+  /**
+   * 
+   * @param documentId
+   * @param user
+   * @return
+   */
+  @Operation(summary = "문서 PDF 다운로드", description = "문서 상세 내용을 PDF 파일로 다운로드합니다.")
+  @GetMapping("/{documentId}/download-pdf")
+  public ResponseEntity<byte[]> downloadDocumentAsPdf(
+      @PathVariable("documentId") Integer documentId,
+      @AuthenticationPrincipal CustomUserDetails user
+      ) {
+    
+    try {
+      
+      String email = user.getEmail();
+      DocumentDetailResponseDTO documentDetail = approvalService.getDocumentDetail(documentId, email);
+      
+      String bodyContent = documentDetail.getProcessedHtmlContent();
+      String documentTitle = documentDetail.getDocumentTitle();
+      
+      if (bodyContent == null || bodyContent.isBlank()) {
+        throw new IllegalStateException("PDF로 변환할 처리된 HTML 내용이 없습니다.");
+      }
+      
+      String htmlWrapper = """
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <style>
+              @font-face {
+                font-family: 'NanumGothic';
+                src: url('/fonts/NanumGothic.ttf');
+                -fs-pdf-font-embed: embed;
+                -fs-pdf-font-encoding: Identity-H;
+              }
+              body, table, th, td, div, p, h3 {
+                font-family: 'NanumGothic', sans-serif;
+                font-size: 14px;
+              }
+            </style>
+          </head>
+          <body>
+            %s
+          </body>
+          </html>
+          """;
+      
+      String finalHtml = String.format(htmlWrapper, bodyContent);
+      
+      byte[] pdfBytes = pdfService.generatePdfFromHtmlString(finalHtml);
+      
+      HttpHeaders headers = new HttpHeaders();
+      headers.setContentType(MediaType.APPLICATION_PDF);
+      
+      String fileName = documentTitle + ".pdf";
+      
+      String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8)
+          .replaceAll("\\+", "%20");
+      headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFileName);
+      
+      return ResponseEntity.ok()
+          .headers(headers)
+          .body(pdfBytes);
+      
+    } catch (Exception e) {
+      e.printStackTrace();
+      return ResponseEntity.internalServerError().build();
+    }
+    
   }
 
   /**
