@@ -58,8 +58,40 @@ public class SecurityConfig {
                 res.sendError(HttpServletResponse.SC_FORBIDDEN);
               })
             );
+<<<<<<< HEAD
        
         configureAuthorization(http);
+=======
+        // 개발용이면 요청 경로 모두 허용, 아니면 기존 설정 유지
+        if("open".equalsIgnoreCase(securityMode)) {
+          log.info("프로필: 개발용");
+          http.authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+        } else {
+          log.info("프로필: 배포용");
+          http.authorizeHttpRequests(auth -> auth
+              // CORS 프리플라이트는 항상 허용
+              .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+              // Swagger/OpenAPI 경로 모두 허용
+              .requestMatchers(
+                  "/v3/api-docs/**",
+                  "/swagger-ui/**",
+                  "/swagger-ui.html",
+                  "/swagger-resources/**",
+                  "/webjars/**"
+                  ).permitAll()
+              // WebSocket 알림 엔드포인트도 인증없이 허용 (이 줄 추가)
+              .requestMatchers("/ws/notification/**").permitAll()
+              // 로그인/회원가입 등 인증 시작 엔드포인트만 오픈
+              .requestMatchers("/api/v1/auth/**").permitAll()
+              .requestMatchers("/api/v1/password-reset/requests").permitAll()
+              // 나머지 경로는 로그인 필요
+              .anyRequest().authenticated()
+              )
+          .addFilterBefore(jwtAuthFilter,
+              org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class);
+        }
+
+>>>>>>> stash
         return http.build();
     }
     
