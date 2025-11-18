@@ -8,7 +8,8 @@ import {
   ListItemText,
   Box,
 } from "@mui/material";
-import { fetchInbox, GetUserEmailFromStorage } from "../../email/api/emailApi";
+import { fetchInbox } from "../../email/api/emailApi";
+import useUserEmail from '../../email/hook/useUserEmail'; 
 
 export default function MailListCard() {
   const navigate = useNavigate();
@@ -16,7 +17,9 @@ export default function MailListCard() {
   const [mailLoading, setMailLoading] = useState(true);
   
   // Hook은 컴포넌트 최상위에서 호출해야 함
-  const userEmail = GetUserEmailFromStorage();
+  const userEmail = useUserEmail(); 
+
+  console.log("userEmail: ", userEmail);
 
   // 받은메일함 최근 메일 가져오기
   useEffect(() => {

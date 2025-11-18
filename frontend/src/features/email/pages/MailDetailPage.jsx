@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getEmailDetail, downloadAttachment, GetUserEmailFromStorage, markMailAsRead } from '../api/emailApi';
+import { getEmailDetail, downloadAttachment, markMailAsRead } from '../api/emailApi';
 import {
   Box, Typography, Divider, Paper, IconButton, Chip, Tooltip, Button
 } from '@mui/material';
@@ -12,6 +12,7 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import ReportIcon from '@mui/icons-material/Report';
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
+import useUserEmail from '../hook/useUserEmail'; // ⭐️ 여기 추가
 
 // 파일 사이즈 변환
 function formatBytes(bytes) {
@@ -26,7 +27,7 @@ function MailDetailPage() {
   const navigate = useNavigate();
   const [mailDetail, setMailDetail] = useState(null);
   const { refreshUnreadCount } = useOutletContext();
-  const userEmail = GetUserEmailFromStorage();
+  const userEmail = useUserEmail(); // ⭐️ 훅으로 교체!
 
   
   useEffect(() => {

@@ -17,8 +17,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface EmailRepository extends JpaRepository<Email, Integer> {
 
-	 // 이메일(문자열)로 조회
-	 Page<Email> findBySenderEmail(String email, Pageable pageable);
+	 // [수정] senderId (정수)로 조회하는 메서드 (이메일 문자열 아님!)
+    Page<Email> findBySenderId(Integer senderId, Pageable pageable);
 
 	// 내가 보낸 이메일 중 특정 상태(Bounce 등)만 페이징
 	Page<com.goodee.coreconnect.email.entity.Email> findBySenderIdAndEmailStatus(Integer userId, EmailStatusEnum bounce, Pageable pageable);
