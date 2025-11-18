@@ -11,7 +11,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         // 엔드포인트 경로, allow origins 등 설정
         registry.addEndpoint("/ws/chat")
-                .setAllowedOrigins("http://localhost:5173") // 또는 필요한 경우 allowedOrigins 파라미터 넣기
+                .setAllowedOrigins("http://localhost:5173", "http://13.125.225.211:5173", "http://13.125.225.211") // 또는 필요한 경우 allowedOrigins 파라미터 넣기
                 .withSockJS(); // 필요하다면 SockJS 지원도 추가
         // registry.addEndpoint("/ws/notification") ... 도 가능
     }
