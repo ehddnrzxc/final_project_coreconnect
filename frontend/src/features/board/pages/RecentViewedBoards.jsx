@@ -1,16 +1,8 @@
 import React, { useEffect, useState } from "react";
-// useEffect: 생명주기 훅 (렌더링 후 데이터 로드)
-// useState: 상태 관리 훅 (최근 본 게시글 목록 저장)
-import { useNavigate } from "react-router-dom"; // React Router 훅: 페이지 이동용
-import { getRecentViewedBoards } from "../api/boardAPI"; // 최근 본 게시글 목록 불러오기 API 함수
+import { useNavigate } from "react-router-dom"; 
+import { getRecentViewedBoards } from "../api/boardAPI";
 import { Box, Typography, Paper, List, ListItemButton, ListItemText, Divider } from "@mui/material";
-// Typography: 텍스트 표시
-// Paper: 외곽이 있는 카드형 컨테이너
-// List: 리스트 컨테이너
-// ListItemButton: 클릭 가능한 리스트 항목
-// ListItemText: 리스트 항목 텍스트
-// Divider: 리스트 구분선
-import { useSnackbarContext } from "../../../components/utils/SnackbarContext"; // 사용자 알림용 스낵바
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 
 
 // 최근 본 게시글을 보여주는 컴포넌트

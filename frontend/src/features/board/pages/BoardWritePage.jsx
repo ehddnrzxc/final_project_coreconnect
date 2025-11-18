@@ -1,14 +1,13 @@
 import { useEffect, useState } from "react";
-import { Box, Button, TextField, Typography, Checkbox, FormControlLabel, Select, MenuItem, InputLabel,
-  FormControl, Modal, Card, CardMedia, CardContent, IconButton } from "@mui/material";
+import { Box, Button, TextField, Typography, Checkbox, FormControlLabel, Select, MenuItem, InputLabel, FormControl, Modal, Card, CardMedia, CardContent, IconButton } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import DownloadIcon from "@mui/icons-material/Download";
 import DescriptionIcon from "@mui/icons-material/Description";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { createBoard, getBoardDetail, updateBoard } from "../api/boardAPI";
-import { uploadFiles, getFilesByBoard, deleteFilesBulk } from "../api/boardFileAPI"; // 서버 업로드 API
+import { uploadFiles, getFilesByBoard, deleteFilesBulk } from "../api/boardFileAPI";
 import { getAllCategories } from "../api/boardCategoryAPI";
-import { downloadZipFiles } from "../api/boardFileAPI"; // ZIP 다운로드 API
+import { downloadZipFiles } from "../api/boardFileAPI";
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 
 

@@ -21,7 +21,9 @@ public class OrganizationServiceImpl implements OrganizationService {
 
     @Override
     public List<OrganizationTreeDTO> getOrganizationTree() {
-        List<Department> roots = departmentRepository.findByParentIsNullOrderByDeptOrderNoAsc();
+        List<Department> roots = departmentRepository.findByParentIsNullOrderByDeptOrderNoAsc(); // 최상위 부서(부모 없는 부서)를 순서대로 조회
+       
+        // 각 부서를 트리 구조 DTO로 변환
         return roots.stream()
                      .map(dept -> OrganizationTreeDTO.from(dept))
                      .collect(Collectors.toList());
