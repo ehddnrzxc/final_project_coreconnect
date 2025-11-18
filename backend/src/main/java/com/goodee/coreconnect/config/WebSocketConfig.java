@@ -20,11 +20,14 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .addInterceptors(webSocketAuthInterceptor) // WebSocket 인증 인터셉터 추가
                 .withSockJS(); // 필요하다면 SockJS 지원도 추가
         // registry.addEndpoint("/ws/notification") ... 도 가능
+        registry.addEndpoint("/ws/notification")
+        .setAllowedOrigins("http://localhost:5173")
+        .withSockJS();
     }
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
         // /topic/* 으로 publish 될 메시지는 내부 메시지 브로커에서 관리 (방송)
-        registry.enableSimpleBroker("/topic");
+        registry.enableSimpleBroker("/topic", "/queue");
         // 클라이언트가 /app으로 시작하는 주소로 send한 메시지는 @MessageMapping 대상으로 전달
         registry.setApplicationDestinationPrefixes("/app");
     }

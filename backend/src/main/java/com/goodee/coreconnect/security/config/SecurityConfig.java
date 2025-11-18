@@ -58,9 +58,8 @@ public class SecurityConfig {
                 res.sendError(HttpServletResponse.SC_FORBIDDEN);
               })
             );
-        
+       
         configureAuthorization(http);
-        
         return http.build();
     }
     

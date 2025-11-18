@@ -262,6 +262,7 @@ public class ApprovalServiceImpl implements ApprovalService {
   /**
    * 1-2. 임시저장 문서 수정
    */
+  @Transactional
   @Override
   public Integer updateDraft(Integer documentId, DocumentUpdateRequestDTO requestDTO, List<MultipartFile> files,
       String email) {
@@ -756,9 +757,7 @@ public class ApprovalServiceImpl implements ApprovalService {
     }
   }
   
-  private void updateApprovalLines(Document document, List<ApprovalLineRequestDTO> approvalLineDTOs) {
-    approvalLineRepository.deleteByDocumet(document);
-    
+  private void updateApprovalLines(Document document, List<ApprovalLineRequestDTO> approvalLineDTOs) {    
     document.getApprovalLines().clear();
     
     if (approvalLineDTOs != null && !approvalLineDTOs.isEmpty()) {

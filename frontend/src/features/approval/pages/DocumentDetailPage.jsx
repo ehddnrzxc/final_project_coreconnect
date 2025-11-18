@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { approveDocument, downloadFile, getDocumentDetail, rejectDocument } from '../api/approvalApi';
+import { approveDocument, downloadDocumentPdf, downloadFile, getDocumentDetail, rejectDocument } from '../api/approvalApi';
 import { Alert, Box, Button, Chip, CircularProgress, Paper, Typography } from '@mui/material';
 import DynamicApprovalTable from '../components/DynamicApprovalTable';
 import DrafterInfoTable from '../components/DrafterInfoTable';
@@ -10,6 +10,7 @@ import DocumentStatusChip from '../components/DocumentStatusChip';
 import { useSnackbarContext } from '../../../components/utils/SnackbarContext';
 import { UserProfileContext } from '../../../App';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
 
 function DocumentDetailPage() {
   const { documentId } = useParams();
@@ -26,6 +27,39 @@ function DocumentDetailPage() {
 
   const handleDownload = (fileId, fileName) => {
     downloadFile(fileId, fileName);
+  };
+
+  const handlePdfDownload = async () => {
+    if (!documentData) return;
+
+    try {
+      const response = await downloadDocumentPdf(documentId);
+      const contentDisposition = response.headers['content-disposition'];
+      let fileName = `${documentData.documentTitle}.pdf`;
+
+      if (contentDisposition) {
+        const fileNameMatch = contentDisposition.match(/filename\*=UTF-8''(.+)/);
+        if (fileNameMatch && fileNameMatch[1]) {
+          fileName = decodeURIComponent(fileNameMatch[1]);
+        }
+      }
+
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+
+      link.click();
+
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+    } catch (error) {
+      console.error("PDF 다운로드 실패:", error);
+      showSnack(error.response?.data?.message || "PDF 다운로드에 실패했습니다.", "error");
+    }
   };
 
   useEffect(() => {
@@ -172,9 +206,19 @@ function DocumentDetailPage() {
           )}
         </Box>
         <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+          <Button
+            variant='outlined'
+            color='primary'
+            startIcon={<PictureAsPdfIcon />}
+            onClick={handlePdfDownload}
+          >
+            PDF 다운로드
+          </Button>
           {documentData.myTurnApprove && (
             <>
-              <Button variant='outlined' color='primary' onClick={handleApprove}>승인</Button>
+              <Button variant='outlined' sx={{ color: '#66bb6a', borderColor: '#66bb6a'}} onClick={handleApprove}>
+                승인
+              </Button>
               <Button variant='outlined' color='error' onClick={handleOpenRejectModal}>반려</Button>
             </>
           )}
