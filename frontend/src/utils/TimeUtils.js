@@ -2,7 +2,9 @@
 
 /** "2025년 11월 5일 (수)" 형식의 날짜 반환 */
 export function formatKoreanDate(date) {
-  return date.toLocaleDateString("ko-KR", {
+  // 문자열인 경우 Date 객체로 변환
+  const dateObj = date instanceof Date ? date : new Date(date);
+  return dateObj.toLocaleDateString("ko-KR", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -12,7 +14,9 @@ export function formatKoreanDate(date) {
 
 /** "11:22:31" 형식의 시간 반환 */
 export function formatKoreanTime(date) {
-  return date.toLocaleTimeString("ko-KR", {
+  // 문자열인 경우 Date 객체로 변환
+  const dateObj = date instanceof Date ? date : new Date(date);
+  return dateObj.toLocaleTimeString("ko-KR", {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",

@@ -75,8 +75,11 @@ const ReferDocumentPage = () => {
               <TableCell align='center' sx={{ fontWeight: "bold" }}>
                 기안자
               </TableCell>
+              <TableCell align='center' sx={{ fontWeight: "bold" }}>
+                ?
+              </TableCell>
             </TableRow>
-          </TableHead>
+          </TableHead>  
           <TableBody>
             {documents.map(doc => (
               <TableRow
@@ -88,7 +91,7 @@ const ReferDocumentPage = () => {
                 <TableCell align='center'>{doc.documentId}</TableCell>
                 <TableCell>{doc.templateName}</TableCell>
                 <TableCell>{doc.documentTitle}</TableCell>
-                <TableCell align='center'>{doc.drafterName}</TableCell>
+                <TableCell align='center'>{doc.writerName}</TableCell>
                 <TableCell align='center'>
                   {new Date(doc.createdAt).toLocaleDateString()}
                 </TableCell>

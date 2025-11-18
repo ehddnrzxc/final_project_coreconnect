@@ -16,19 +16,16 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
-/**
- * 부서 + 구성원을 계층 구조로 내려주는 DTO
- */
+/** 부서 + 구성원을 계층 구조로 내려주는 DTO */
 @Getter
 @Builder
 @AllArgsConstructor
 public class OrganizationTreeDTO {
 
-    /** S3 URL 구성용 (정적 주입) */
-    private static String BUCKET;
-    private static String REGION;
+    private static String BUCKET; // S3 URL 생성용 정적 필드
+    private static String REGION; // S3 URL 생성용 정적 필드
 
-    /** Spring이 자동으로 값을 주입해주는 setter (정적 저장) */
+    /** 정적 필드에 application.properties 값을 주입하는 설정 클래스 */
     @Component
     public static class AwsConfigSetter {
         @Autowired
@@ -43,12 +40,10 @@ public class OrganizationTreeDTO {
 
     private Integer deptId;
     private String deptName;
-    private List<MemberDTO> members;
-    private List<OrganizationTreeDTO> children;
+    private List<MemberDTO> members;  // 구성원 목록
+    private List<OrganizationTreeDTO> children; // 하위 부서 목록 (재귀 구조)
 
-    /**
-     * 구성원 DTO
-     */
+    /** 구성원 DTO */
     @Getter
     @Builder
     @AllArgsConstructor
@@ -59,7 +54,7 @@ public class OrganizationTreeDTO {
         private String email;
         private String profileUrl; // S3 전체 URL
         private String phone;
-        private String deptPath;
+        private String deptPath; // 상위 부서까지 포함한 경로 문자열
         private String deptName;
 
         /** User → MemberDTO 변환 */
@@ -72,7 +67,8 @@ public class OrganizationTreeDTO {
                 StringBuilder sb = new StringBuilder();
 
                 while (d != null) {
-                    if (sb.length() == 0) sb.insert(0, d.getDeptName());
+                    // 가장 상위 부서가 앞에 오도록 누적
+                    if (sb.length() == 0) sb.insert(0, d.getDeptName()); 
                     else sb.insert(0, d.getDeptName() + " > ");
                     d = d.getParent();
                 }
@@ -82,30 +78,26 @@ public class OrganizationTreeDTO {
             // 프로필 S3 URL 만들기
             String profileUrl = null;
             if (user.getProfileImageKey() != null) {
-                profileUrl = String.format(
-                        "https://%s.s3.%s.amazonaws.com/%s",
-                        BUCKET,
-                        REGION,
-                        user.getProfileImageKey()
-                );
+                profileUrl = String.format("https://%s.s3.%s.amazonaws.com/%s",
+                                            BUCKET,
+                                            REGION,
+                                            user.getProfileImageKey());
             }
 
             return MemberDTO.builder()
-                    .userId(user.getId())
-                    .name(user.getName())
-                    .jobGrade(user.getJobGrade() != null ? user.getJobGrade().label() : null)
-                    .email(user.getEmail())
-                    .profileUrl(profileUrl)
-                    .phone(user.getPhone())
-                    .deptPath(deptPath)
-                    .deptName(user.getDepartment() != null ? user.getDepartment().getDeptName() : null)
-                    .build();
+                             .userId(user.getId())
+                             .name(user.getName())
+                             .jobGrade(user.getJobGrade() != null ? user.getJobGrade().label() : null)
+                             .email(user.getEmail())
+                             .profileUrl(profileUrl)
+                             .phone(user.getPhone())
+                             .deptPath(deptPath)
+                             .deptName(user.getDepartment() != null ? user.getDepartment().getDeptName() : null)
+                             .build();
         }
     }
 
-    /**
-     * 직급 정렬 우선순위 (커스터마이징)
-     */
+    /** 직급 정렬 우선순위 (높은 직급 먼저) */
     private static int gradeOrder(JobGrade grade) {
         if (grade == null) return 999; // 직급 없는 경우 맨 아래
 
@@ -123,31 +115,27 @@ public class OrganizationTreeDTO {
         };
     }
 
-    /**
-     * Department → OrganizationTreeDTO 변환
-     */
+    /** Department → OrganizationTreeDTO 변환 */
     public static OrganizationTreeDTO from(Department dept) {
 
-        //  구성원 직급순 + 이름순 정렬
+        // 구성원 정렬 (직급순 → 이름순)
         List<MemberDTO> members = dept.getUsers().stream()
-                .sorted(Comparator
-                        .comparing((User u) -> gradeOrder(u.getJobGrade()))
-                        .thenComparing(User::getName)
-                )
-                .map(MemberDTO::from)
-                .collect(Collectors.toList());
+                                      .sorted(Comparator.comparing((User u) -> gradeOrder(u.getJobGrade()))
+                                                        .thenComparing(User::getName))
+                                      .map(user -> MemberDTO.from(user))
+                                      .collect(Collectors.toList());
 
-        //  하위 부서 재귀 변환
+        // 하위 부서 재귀 변환
         List<OrganizationTreeDTO> children = dept.getChildren().stream()
-                .map(OrganizationTreeDTO::from)
-                .collect(Collectors.toList());
+                                                 .map(d -> OrganizationTreeDTO.from(d))
+                                                 .collect(Collectors.toList());
 
-        //  최종 DTO 생성
+        // 최종 트리 DTO 생성
         return OrganizationTreeDTO.builder()
-                .deptId(dept.getId())
-                .deptName(dept.getDeptName())
-                .members(members)
-                .children(children)
-                .build();
+                                   .deptId(dept.getId())
+                                   .deptName(dept.getDeptName())
+                                   .members(members)
+                                   .children(children)
+                                   .build();
     }
 }

@@ -2,18 +2,21 @@ import { Box, Button, Chip, Typography, useTheme, Container, Paper, List, ListIt
 import { checkIn, checkOut, getTodayAttendance } from "../api/attendanceAPI";
 import { formatKoreanDate, formatKoreanTime, formatTime } from "../../../utils/TimeUtils";
 import { useState, useEffect } from "react";
+import { Outlet, Link as RouterLink, useLocation } from "react-router-dom";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
-import MyAttendanceStatus from "../components/MyAttendanceStatus";
-import CompanyAttendanceStatus from "../components/CompanyAttendanceStatus";
 
 function AttendanceLayout() {
   const theme = useTheme();
+  const location = useLocation();
   const [now, setNow] = useState(new Date());
   const [attendance, setAttendance] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [selectedMenu, setSelectedMenu] = useState("my-attendance"); // "my-attendance" or "company-attendance"
+  
+  // 현재 경로에 따라 선택된 메뉴 결정
+  const isMyAttendance = location.pathname === "/attendance" || location.pathname === "/attendance/my";
+  const isCompanyAttendance = location.pathname === "/attendance/company";
   
   const dateString = formatKoreanDate(now);
   const timeString = formatKoreanTime(now);
@@ -179,8 +182,9 @@ function AttendanceLayout() {
             </Typography>
             <List sx={{ p: 0 }}>
               <ListItemButton
-                selected={selectedMenu === "my-attendance"}
-                onClick={() => setSelectedMenu("my-attendance")}
+                component={RouterLink}
+                to="/attendance/my"
+                selected={isMyAttendance}
                 sx={{
                   borderRadius: 1,
                   mb: 0.5,
@@ -206,8 +210,9 @@ function AttendanceLayout() {
             </Typography>
             <List sx={{ p: 0 }}>
               <ListItemButton
-                selected={selectedMenu === "company-attendance"}
-                onClick={() => setSelectedMenu("company-attendance")}
+                component={RouterLink}
+                to="/attendance/company"
+                selected={isCompanyAttendance}
                 sx={{
                   borderRadius: 1,
                   mb: 0.5,
@@ -229,8 +234,7 @@ function AttendanceLayout() {
 
       {/* 메인 콘텐츠 영역 */}
       <Box sx={{ flex: 1, overflowY: "auto", bgcolor: "background.default" }}>
-        {selectedMenu === "my-attendance" && <MyAttendanceStatus />}
-        {selectedMenu === "company-attendance" && <CompanyAttendanceStatus />}
+        <Outlet />
       </Box>
     </Box>
   );

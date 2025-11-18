@@ -1,25 +1,11 @@
 import React, { useEffect, useRef, useContext } from "react";
-// useEffect: 컴포넌트가 마운트/업데이트/언마운트될 때 부수 효과(side effect)를 실행하는 훅
-// useRef: DOM 요소나 변경 가능한 값을 기억하기 위한 훅 (값이 바뀌어도 리렌더링을 발생시키지 않음)
 import { Box, Button, List, ListItemButton, ListItemText, Typography } from "@mui/material";
-// List: 리스트 컨테이너
-// ListItemButton: 클릭 가능한 리스트 아이템 (hover, ripple 효과 포함)
-// ListItemText: 리스트 아이템 내 텍스트 전용 컴포넌트
-// Typography: 텍스트 표시용(제목, 본문 등), variant로 스타일 지정
 import { Outlet, useNavigate, useLocation, useParams } from "react-router-dom";
-// useNavigate: JS 코드에서 특정 경로로 이동할 때 사용 (ex: navigate("/board"))
-// useLocation: 현재 URL 정보(경로, 쿼리 등)를 객체로 제공 (location.pathname 등)
-// useParams: URL 경로 변수(:id, :categoryId 등)를 객체로 제공
-// Outlet: 중첩 라우팅에서 자식 컴포넌트를 렌더링하는 위치를 표시하는 컴포넌트
 import { getAllCategories } from "../api/boardCategoryAPI";
-// getAllCategories(): 백엔드에서 삭제되지 않은 카테고리 목록을 가져오는 함수
-import { useSnackbarContext } from "../../../components/utils/SnackbarContext"; // 전역 Snackbar 컨텍스트 임포트
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 import { UserProfileContext } from "../../../App";
 
 
-// BoardLayout 컴포넌트
-// 게시판 모듈의 전체 레이아웃을 담당 (왼쪽 카테고리 리스트 + 오른쪽 콘텐츠 영역)
-// 모든 게시판 페이지(BoardList, BoardDetail, BoardWrite 등)의 공통 부모 레이아웃 역할
 const BoardLayout = () => {
   const [categories, setCategories] = React.useState([]);
   // 상태값: 게시판 카테고리 목록 배열
@@ -38,7 +24,7 @@ const BoardLayout = () => {
   // 현재는 window.scrollTo를 사용하고 있어 직접 사용되지는 않지만,
   // 필요시 contentRef.current.scrollTo(...) 방식으로 영역 내부 스크롤 제어 가능
   const { showSnack } = useSnackbarContext(); // 스낵바 표시 함수 (success, error 등 상태별 호출)
-  const userProfile = useContext(UserProfileContext);
+  const { userProfile } = useContext(UserProfileContext);
   const isAdmin = userProfile?.role === "ADMIN";
   // 사용자 권한이 ADMIN인지 확인 → 관리자 여부 판별
   // ADMIN이면 카테고리 관리 버튼을 보여줌

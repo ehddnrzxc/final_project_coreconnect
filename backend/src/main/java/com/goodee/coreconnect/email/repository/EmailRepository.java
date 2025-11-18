@@ -17,8 +17,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface EmailRepository extends JpaRepository<Email, Integer> {
 
-	 // 이메일(문자열)로 조회
-	 Page<Email> findBySenderEmail(String email, Pageable pageable);
+	 // [수정] senderId (정수)로 조회하는 메서드 (이메일 문자열 아님!)
+    Page<Email> findBySenderId(Integer senderId, Pageable pageable);
 
 	// 내가 보낸 이메일 중 특정 상태(Bounce 등)만 페이징
 	Page<com.goodee.coreconnect.email.entity.Email> findBySenderIdAndEmailStatus(Integer userId, EmailStatusEnum bounce, Pageable pageable);
@@ -39,7 +39,8 @@ public interface EmailRepository extends JpaRepository<Email, Integer> {
     @Query("UPDATE Email e SET e.emailStatus = :status WHERE e.emailId IN :ids")
     int updateEmailStatusByIds(@Param("ids") List<Integer> ids, @Param
     		("status") EmailStatusEnum status);
-    
+ // 정렬기준 추가 (emailSentTime 내림차순)
+    Page<Email> findBySenderEmailAndEmailStatusOrderByEmailSentTimeDesc(String senderEmail, EmailStatusEnum emailStatus, Pageable pageable);
 
     /*
      * 기존 JPQL 방식(수신자 주소 기준)도 유지되어 있으면 괜찮지만,

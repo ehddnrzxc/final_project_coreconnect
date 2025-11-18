@@ -26,6 +26,7 @@ import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ExpandLess from "@mui/icons-material/ExpandLess";
 import ExpandMore from "@mui/icons-material/ExpandMore";
+import { getJobGradeLabel } from "../../../components/utils/labelUtils";
 
 const style = {
   position: "absolute",
@@ -311,7 +312,7 @@ function ApprovalLineModal({
                     >
                       <ApprovalTypeChip type={line.type} sx={{ mr: 2 }} />
                       <ListItemText
-                        primary={`${line.name} (${line.positionName})`}
+                        primary={`${line.name} (${getJobGradeLabel(line.positionName)})`}
                         secondary={line.deptName}
                       />
                       <Box>

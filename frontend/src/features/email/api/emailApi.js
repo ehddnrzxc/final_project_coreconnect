@@ -1,40 +1,5 @@
 import http from '../../../api/http.js';
-import { UserProfileContext } from '../../../App.jsx';
-import React, {useContext} from 'react';
 
-// 로컬스토리지에서 로그인 사용자 email 추출
-export function GetUserEmailFromStorage() {
-  const user = useContext(UserProfileContext);
-  if (!user) return null;
-
-  // user가 문자열(직렬화) 또는 객체일 수 있음
-  if (typeof user === "string") {
-    try {
-      const userObj = JSON.parse(user);
-      return userObj.email || null;
-    } catch {
-      return null;
-    }
-  } else if (typeof user === "object" && user !== null) {
-    return user.email || null;
-  }
-  return null;
-}
-
-export function useUserEmailFromContext() {
-  const user = useContext(UserProfileContext);
-  if (!user) return null;
-  if (typeof user === "string") {
-    try {
-      const userObj = JSON.parse(user);
-      return userObj.email || null;
-    } catch { return null; }
-  }
-  if (typeof user === "object" && user !== null) {
-    return user.email || null;
-  }
-  return null;
-}
 
 // 기본 받은메일함 조회 (기본 옵션만)
 export const fetchInboxSimple = (userEmail, page, size, filter) =>

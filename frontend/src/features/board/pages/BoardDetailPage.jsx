@@ -1,41 +1,18 @@
 import React, { useEffect, useMemo, useState, useRef, useContext  } from "react";
-// useEffect: 생명주기 제어
-// useState: 상태 관리
-// useMemo: 렌더링 최적화 (계산 결과 캐싱)
-// useRef: DOM 요소나 값 저장 (리렌더링과 무관)
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-// useParams: URL 파라미터 추출 (예: /board/:id)
-// useNavigate: 페이지 이동 함수
 import { Box, Typography, TextField, Button, Stack, Paper } from "@mui/material";
-// Box: 레이아웃 컨테이너
-// Typography: 텍스트 표시
-// TextField: 입력 필드
-// Button: 버튼
-// Stack: Flexbox 정렬 컨테이너
-// Paper: 카드형 컨테이너 (그림자 포함)
-import ReplyIcon from "@mui/icons-material/Reply"; // 답글 아이콘 (화살표)
-import EditIcon from "@mui/icons-material/Edit"; // 수정 아이콘
-import DeleteIcon from "@mui/icons-material/Delete"; // 삭제 아이콘
+import ReplyIcon from "@mui/icons-material/Reply"; 
+import EditIcon from "@mui/icons-material/Edit"; 
+import DeleteIcon from "@mui/icons-material/Delete";
 import { getBoardDetail, deleteBoard } from "../api/boardAPI";
-// getBoardDetail: 게시글 상세 조회
-// deleteBoard: 게시글 삭제
-import { getFilesByBoard, getFile, downloadZipFiles } from "../api/boardFileAPI"; // 특정 게시글의 첨부파일 목록 조회
+import { getFilesByBoard, getFile, downloadZipFiles } from "../api/boardFileAPI"; 
 import { getRepliesByBoard, createReply, updateReply, deleteReply } from "../api/boardReplyAPI";
-// getRepliesByBoard: 게시글 댓글 목록 조회
-// createReply: 댓글 등록
-// updateReply: 댓글 수정
-// deleteReply: 댓글 삭제
-import { useSnackbarContext } from "../../../components/utils/SnackbarContext"; // 전역 스낵바 컨텍스트
-import ConfirmDialog from "../../../components/utils/ConfirmDialog"; // 공용 확인창 컴포넌트 임포트
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext"; 
+import ConfirmDialog from "../../../components/utils/ConfirmDialog"; 
 import { Modal, Card, CardMedia, CardContent, IconButton } from "@mui/material";
-// Modal: 첨부파일 미리보기 모달
-// Card: 첨부파일 카드
-// CardMedia: 카드 안 이미지
-// CardContent: 카드 하단 텍스트 영역
-// IconButton: 카드 우측 상단 X 버튼
-import CloseIcon from "@mui/icons-material/Close"; // 카드 X 버튼
-import DownloadIcon from "@mui/icons-material/Download"; // 다운로드 버튼
-import DescriptionIcon from "@mui/icons-material/Description"; // 비이미지 파일 아이콘
+import CloseIcon from "@mui/icons-material/Close"; 
+import DownloadIcon from "@mui/icons-material/Download";
+import DescriptionIcon from "@mui/icons-material/Description";
 import { UserProfileContext } from "../../../App";
 
 
@@ -54,7 +31,7 @@ const BoardDetailPage = () => {
   const { showSnack } = useSnackbarContext(); // 스낵바 훅 사용
 
   // 로그인 사용자 정보 로드
-  const userProfile = useContext(UserProfileContext);
+  const { userProfile } = useContext(UserProfileContext);
   const loginName = userProfile?.name || "익명"; // 로그인 이름 (user.name 이 없거나 undefined면 "익명"으로 대체)
   const loginRole = userProfile?.role; // 사용자 역할(권한). 예: "ADMIN", "USER" 등
 

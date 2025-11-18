@@ -227,135 +227,120 @@ public class EmailServiceImpl implements EmailService {
 	 */
 	@Override
 	public Page<EmailResponseDTO> getInbox(String userEmail, int page, int size, String filter) {
-		Pageable pageable = PageRequest.of(page, size);
-		
-		 // 기본적으로 TO/CC로 받은 메일만 조회할 수 있게 recipientType 조건을 만듭니다
-		// [수정] TO/CC/BCC를 모두 포함
-	    List<String> types = List.of("TO", "CC", "BCC");
-	    Page<EmailRecipient> recipientPage; // 쿼리 결과 페이징 데이터
+	    Pageable pageable = PageRequest.of(page, size);
 
-	    // filter 파라미터(메소드 인자)로 뷰에서 '오늘', '안읽음', '전체' 등 분기 처리
+	    List<String> types = List.of("TO", "CC", "BCC");
+	    Page<EmailRecipient> recipientPage;
+
 	    if ("unread".equalsIgnoreCase(filter)) {
-	        // 안읽은 메일만 조회
-	    	 // [상세] '안읽은 메일'만 조회: 읽음여부(emailReadYn)가 false인 이메일만 select
-	        // (JPA 쿼리 메소드: findByEmailRecipientAddressAndEmailRecipientTypeInAndEmailReadYn)
-	    	// 안읽은 메일만 (TO/CC/BCC)
-	    	recipientPage = emailRecipientRepository.findByEmailRecipientAddressAndEmailRecipientTypeInAndEmailReadYn(
-	                userEmail, types, false, pageable
-	            );
+	        // 안읽은 메일: 최신순 정렬
+	        recipientPage = emailRecipientRepository.findByEmailRecipientAddressAndEmailRecipientTypeInAndEmailReadYnOrderByEmail_EmailSentTimeDesc(
+	            userEmail, types, false, pageable
+	        );
 	    } else if ("today".equalsIgnoreCase(filter)) {
-	        // 오늘 온 메일만 조회 (수신일 기준)
-	        // 오늘 날짜 계산
-	    	 // 오늘 온 (TO/CC/BCC)
 	        LocalDate today = LocalDate.now();
 	        LocalDateTime startOfDay = today.atStartOfDay();
 	        LocalDateTime endOfDay = today.plusDays(1).atStartOfDay().minusNanos(1);
 
 	        log.debug("[INBOX] '오늘온 메일' 조회 - userEmail={}, 날짜범위:{} ~ {}, page={}, size={}", userEmail, startOfDay, endOfDay, page, size);
-	        recipientPage = emailRecipientRepository.findByEmailRecipientAddressAndEmailRecipientTypeInAndEmail_EmailSentTimeBetween(
+	        recipientPage = emailRecipientRepository.findByEmailRecipientAddressAndEmailRecipientTypeInAndEmail_EmailSentTimeBetweenOrderByEmail_EmailSentTimeDesc(
 	            userEmail, types, startOfDay, endOfDay, pageable
 	        );
-	        
 	    } else {
-	        // 전체 조회
-	    	// [전체 메일] (조건 없이 받은 전체 - TO/CC)
 	        log.debug("[INBOX] 전체 메일 조회 - userEmail={}, page={}, size={}", userEmail, page, size);
-	        // 전체 (TO/CC/BCC)
-	        recipientPage = emailRecipientRepository.findByEmailRecipientAddressAndEmailRecipientTypeIn(
+	        recipientPage = emailRecipientRepository.findByEmailRecipientAddressAndEmailRecipientTypeInOrderByEmail_EmailSentTimeDesc(
 	            userEmail, types, pageable
 	        );
 	    }
-		
-		// 수신함 결과에서 메일 엔티티만 추출해서 중복 없이 리스트화
-		List<com.goodee.coreconnect.email.entity.Email> emailList = recipientPage.stream()
-				.map(EmailRecipient::getEmail)
-				.distinct()
-				.collect(Collectors.toList());
-		
-		// 각 메일 엔티티를 EmailResponseDTO로 변환 (기본정보만)
-		 List<EmailResponseDTO> dtoList = emailList.stream().map(email -> {
-	            EmailResponseDTO dto = new EmailResponseDTO();
-	            dto.setEmailId(email.getEmailId());
-	            dto.setEmailTitle(email.getEmailTitle());
-	            dto.setEmailContent(email.getEmailContent());
-	            dto.setSenderId(email.getSenderId());
-	            dto.setSentTime(email.getEmailSentTime());
-	            dto.setEmailStatus(email.getEmailStatus().name());
-	            dto.setReplyToEmailId(email.getReplyToEmailId());
-	            // 수신/참조/숨은참조 및 파일정보까지 상세조회 필요하면 추가적으로 Repository 사용!
-	            // ★ senderId -> senderName 조회
-	            Integer senderId = email.getSenderId();
-	            String senderName = userRepository.findById(senderId)
-	                .map(User::getName) // User 엔티티의 getUserName 메서드 참고
-	                .orElse(""); // 없으면 빈 문자열 등
-	            dto.setSenderName(senderName);
-	            return dto;
-	        }).collect(Collectors.toList());
-		
-		// [5] PageImpl로 반환 (총개수: recipient 기준)
-		log.debug("[INBOX] 반환 결과 dto count={}, totalElements={}", dtoList.size(), recipientPage.getTotalElements());
+
+	    List<com.goodee.coreconnect.email.entity.Email> emailList = recipientPage.stream()
+	            .map(EmailRecipient::getEmail)
+	            .distinct()
+	            .collect(Collectors.toList());
+
+	    List<EmailResponseDTO> dtoList = emailList.stream().map(email -> {
+	        EmailResponseDTO dto = new EmailResponseDTO();
+	        dto.setEmailId(email.getEmailId());
+	        dto.setEmailTitle(email.getEmailTitle());
+	        dto.setEmailContent(email.getEmailContent());
+	        dto.setSenderId(email.getSenderId());
+	        dto.setSentTime(email.getEmailSentTime());
+	        dto.setEmailStatus(email.getEmailStatus().name());
+	        dto.setReplyToEmailId(email.getReplyToEmailId());
+	        Integer senderId = email.getSenderId();
+	        String senderName = userRepository.findById(senderId)
+	                .map(User::getName)
+	                .orElse("");
+	        dto.setSenderName(senderName);
+	        return dto;
+	    }).collect(Collectors.toList());
+
+	    log.debug("[INBOX] 반환 결과 dto count={}, totalElements={}", dtoList.size(), recipientPage.getTotalElements());
 	    return new PageImpl<>(dtoList, pageable, recipientPage.getTotalElements());
 	}
 
 	@Override
 	public Page<EmailResponseDTO> getSentbox(String userEmail, int page, int size) {
-		Pageable pageable = PageRequest.of(page, size);
-		
-		// 내가 발신자(sender)로 보낸 이메일만
-		Page<com.goodee.coreconnect.email.entity.Email> emailPage = 
-				emailRepository.findBySenderEmail(userEmail, pageable);
-		
-		List<EmailResponseDTO> dtoList = emailPage.stream().map(email -> {
-		    EmailResponseDTO dto = new EmailResponseDTO();
+		// [1] userEmail(문자열) → senderId(정수) 변환 과정 필요!
+	    User sender = userRepository.findByEmail(userEmail) // 반드시 UserRepository 주입 필요!
+	        .orElseThrow(() -> new IllegalArgumentException("User not found by email: " + userEmail));
+	    Integer senderId = sender.getId(); // 또는 getId(), 실제 User 엔티티의 PK 필드명에 맞춤
 
-		    // email 엔티티의 기본 필드 세팅
-		    dto.setEmailId(email.getEmailId());
-		    dto.setEmailTitle(email.getEmailTitle());
-		    dto.setEmailContent(email.getEmailContent());
-		    dto.setSenderId(email.getSenderId());
-		    dto.setSentTime(email.getEmailSentTime());
-		    dto.setEmailStatus(email.getEmailStatus() != null ? email.getEmailStatus().name() : null);
-		    dto.setReplyToEmailId(email.getReplyToEmailId());
+	    // [2] 일자 내림차순으로 정렬
+	    Sort sort = Sort.by(Sort.Direction.DESC, "emailSentTime"); // DB/엔티티 컬럼명이 "emailSentTime"임을 위에서 확인함
+	    Pageable pageable = PageRequest.of(page, size, sort);
 
-		    // 수신자 정보
-		    List<EmailRecipient> recipients = emailRecipientRepository.findByEmail(email);
+	    // [3] 정수 senderId 기준으로 보낸 메일 조회 (JPA 메서드 수정됨)
+	    Page<com.goodee.coreconnect.email.entity.Email> emailPage = emailRepository.findBySenderId(senderId, pageable);
 
-		    // 수신자 정보 추가
-		    List<String> toAddresses = recipients.stream()
-		        .filter(r -> "TO".equalsIgnoreCase(r.getEmailRecipientType()))
-		        .map(EmailRecipient::getEmailRecipientAddress)
-		        .collect(Collectors.toList());
-		    dto.setRecipientAddresses(toAddresses);
+	    // [4] DTO 변환
+	    List<EmailResponseDTO> dtoList = emailPage.stream().map(email -> {
+	        EmailResponseDTO dto = new EmailResponseDTO();
 
-		    // 참조 정보 추가
-		    List<String> ccAddresses = recipients.stream()
-		        .filter(r -> "CC".equalsIgnoreCase(r.getEmailRecipientType()))
-		        .map(EmailRecipient::getEmailRecipientAddress)
-		        .collect(Collectors.toList());
-		    dto.setCcAddresses(ccAddresses);
+	        // email 엔티티의 기본 필드 세팅
+	        dto.setEmailId(email.getEmailId());
+	        dto.setEmailTitle(email.getEmailTitle());
+	        dto.setEmailContent(email.getEmailContent());
+	        dto.setSenderId(email.getSenderId());
+	        dto.setSentTime(email.getEmailSentTime());
+	        dto.setEmailStatus(email.getEmailStatus() != null ? email.getEmailStatus().name() : null);
+	        dto.setReplyToEmailId(email.getReplyToEmailId());
 
-		    // 숨은 참조 정보 추가
-		    List<String> bccAddresses = recipients.stream()
-		        .filter(r -> "BCC".equalsIgnoreCase(r.getEmailRecipientType()))
-		        .map(EmailRecipient::getEmailRecipientAddress)
-		        .collect(Collectors.toList());
-		    dto.setBccAddresses(bccAddresses);
+	        // 수신자 정보
+	        List<EmailRecipient> recipients = emailRecipientRepository.findByEmail(email);
 
-		    // 첨부파일 정보 (예시)
-		    // List<EmailFile> files = emailFileRepository.findByEmail(email);
-		    // List<Integer> fileIds = files.stream()
-		    //     .map(EmailFile::getEmailFileId)
-		    //     .collect(Collectors.toList());
-		    // dto.setFileIds(fileIds);
+	        // 수신자 정보 추가
+	        List<String> toAddresses = recipients.stream()
+	            .filter(r -> "TO".equalsIgnoreCase(r.getEmailRecipientType()))
+	            .map(EmailRecipient::getEmailRecipientAddress)
+	            .collect(Collectors.toList());
+	        dto.setRecipientAddresses(toAddresses);
 
-		    return dto;
-		}).collect(Collectors.toList());
-		 
-		 
-		 
-		 
-		 
-		 return new PageImpl<>(dtoList, pageable, emailPage.getTotalElements());
+	        // 참조 정보 추가
+	        List<String> ccAddresses = recipients.stream()
+	            .filter(r -> "CC".equalsIgnoreCase(r.getEmailRecipientType()))
+	            .map(EmailRecipient::getEmailRecipientAddress)
+	            .collect(Collectors.toList());
+	        dto.setCcAddresses(ccAddresses);
+
+	        // 숨은 참조 정보 추가
+	        List<String> bccAddresses = recipients.stream()
+	            .filter(r -> "BCC".equalsIgnoreCase(r.getEmailRecipientType()))
+	            .map(EmailRecipient::getEmailRecipientAddress)
+	            .collect(Collectors.toList());
+	        dto.setBccAddresses(bccAddresses);
+
+	        // 첨부파일 정보 (예시, 필요시 주석해제)
+	        // List<EmailFile> files = emailFileRepository.findByEmail(email);
+	        // List<Integer> fileIds = files.stream()
+	        //     .map(EmailFile::getEmailFileId)
+	        //     .collect(Collectors.toList());
+	        // dto.setFileIds(fileIds);
+
+	        return dto;
+	    }).collect(Collectors.toList());
+
+	    return new PageImpl<>(dtoList, pageable, emailPage.getTotalElements());
 	}
 
 	
@@ -782,52 +767,52 @@ public class EmailServiceImpl implements EmailService {
 
 	@Override
 	public Page<EmailResponseDTO> getDraftbox(String userEmail, int page, int size) {
-		Pageable pageable = PageRequest.of(page, size);
-	    // 1. 임시저장(DRAFT) 메일만, 본인이 '발신자'인 경우만!
-	    Page<com.goodee.coreconnect.email.entity.Email> draftPage = emailRepository.findBySenderEmailAndEmailStatus(
-	            userEmail, EmailStatusEnum.DRAFT, pageable);
+		 Pageable pageable = PageRequest.of(page, size);
+		    // 1. 임시저장(DRAFT) 메일만, 본인이 '발신자'인 경우만! (최신순 정렬 추가)
+		    Page<com.goodee.coreconnect.email.entity.Email> draftPage = emailRepository.findBySenderEmailAndEmailStatusOrderByEmailSentTimeDesc(
+		            userEmail, EmailStatusEnum.DRAFT, pageable);
 
-	    List<EmailResponseDTO> dtoList = draftPage.stream().map(email -> {
-	        EmailResponseDTO dto = new EmailResponseDTO();
-	        dto.setEmailId(email.getEmailId());
-	        dto.setEmailTitle(email.getEmailTitle());
-	        dto.setEmailContent(email.getEmailContent());
-	        dto.setSenderId(email.getSenderId());
-	        dto.setSenderEmail(email.getSenderEmail());
-	        dto.setSentTime(email.getEmailSentTime());
-	        dto.setEmailStatus(email.getEmailStatus().name()); // DRAFT
-	        dto.setReplyToEmailId(email.getReplyToEmailId());
+		    List<EmailResponseDTO> dtoList = draftPage.stream().map(email -> {
+		        EmailResponseDTO dto = new EmailResponseDTO();
+		        dto.setEmailId(email.getEmailId());
+		        dto.setEmailTitle(email.getEmailTitle());
+		        dto.setEmailContent(email.getEmailContent());
+		        dto.setSenderId(email.getSenderId());
+		        dto.setSenderEmail(email.getSenderEmail());
+		        dto.setSentTime(email.getEmailSentTime());
+		        dto.setEmailStatus(email.getEmailStatus().name()); // DRAFT
+		        dto.setReplyToEmailId(email.getReplyToEmailId());
 
-	        // 받는 사람 (TO/CC/BCC)
-	        List<EmailRecipient> recipients = emailRecipientRepository.findByEmail(email);
-	        List<String> toAddresses = recipients.stream()
-	            .filter(r -> "TO".equalsIgnoreCase(r.getEmailRecipientType()))
-	            .map(EmailRecipient::getEmailRecipientAddress)
-	            .collect(Collectors.toList());
-	        List<String> ccAddresses = recipients.stream()
-	            .filter(r -> "CC".equalsIgnoreCase(r.getEmailRecipientType()))
-	            .map(EmailRecipient::getEmailRecipientAddress)
-	            .collect(Collectors.toList());
-	        List<String> bccAddresses = recipients.stream()
-	            .filter(r -> "BCC".equalsIgnoreCase(r.getEmailRecipientType()))
-	            .map(EmailRecipient::getEmailRecipientAddress)
-	            .collect(Collectors.toList());
-	        dto.setRecipientAddresses(toAddresses);
-	        dto.setCcAddresses(ccAddresses);
-	        dto.setBccAddresses(bccAddresses);
+		        // 받는 사람 (TO/CC/BCC)
+		        List<EmailRecipient> recipients = emailRecipientRepository.findByEmail(email);
+		        List<String> toAddresses = recipients.stream()
+		            .filter(r -> "TO".equalsIgnoreCase(r.getEmailRecipientType()))
+		            .map(EmailRecipient::getEmailRecipientAddress)
+		            .collect(Collectors.toList());
+		        List<String> ccAddresses = recipients.stream()
+		            .filter(r -> "CC".equalsIgnoreCase(r.getEmailRecipientType()))
+		            .map(EmailRecipient::getEmailRecipientAddress)
+		            .collect(Collectors.toList());
+		        List<String> bccAddresses = recipients.stream()
+		            .filter(r -> "BCC".equalsIgnoreCase(r.getEmailRecipientType()))
+		            .map(EmailRecipient::getEmailRecipientAddress)
+		            .collect(Collectors.toList());
+		        dto.setRecipientAddresses(toAddresses);
+		        dto.setCcAddresses(ccAddresses);
+		        dto.setBccAddresses(bccAddresses);
 
-	        // 첨부파일 정보
-	        List<EmailFile> files = emailFileRepository.findByEmail(email);
-	        List<Integer> fileIds = files.stream()
-	                .map(EmailFile::getEmailFileId)
-	                .collect(Collectors.toList());
-	        dto.setFileIds(fileIds);
+		        // 첨부파일 정보
+		        List<EmailFile> files = emailFileRepository.findByEmail(email);
+		        List<Integer> fileIds = files.stream()
+		                .map(EmailFile::getEmailFileId)
+		                .collect(Collectors.toList());
+		        dto.setFileIds(fileIds);
 
-	        return dto;
-	    }).collect(Collectors.toList());
+		        return dto;
+		    }).collect(Collectors.toList());
 
-	    // 반환
-	    return new PageImpl<>(dtoList, pageable, draftPage.getTotalElements());
+		    // 반환
+		    return new PageImpl<>(dtoList, pageable, draftPage.getTotalElements());
 	}
 
 	@Override

@@ -16,10 +16,11 @@ import PeopleIcon from "@mui/icons-material/People";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import LockResetIcon from "@mui/icons-material/LockReset";
 import BeachAccessIcon from "@mui/icons-material/BeachAccess";
+import HistoryIcon from "@mui/icons-material/History";
 import { UserProfileContext } from "../../../App";
 
 export default function AdminHomePage() {
-  const userProfile = useContext(UserProfileContext);
+  const { userProfile } = useContext(UserProfileContext) || {};
   const displayName = userProfile?.name || "관리자";
 
   const [stats, setStats] = useState({
@@ -69,6 +70,11 @@ export default function AdminHomePage() {
       label: "휴가 요청 관리",
       to: "/admin/leave-requests",
       icon: <BeachAccessIcon fontSize="small" />,
+    },
+    {
+      label: "로그인 이력",
+      to: "/admin/account-logs",
+      icon: <HistoryIcon fontSize="small" />,
     },
   ];
 

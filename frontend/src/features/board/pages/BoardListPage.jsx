@@ -1,32 +1,13 @@
 import { useEffect, useState } from "react";
-// useEffect → 컴포넌트 생명주기 제어 (렌더링 이후 데이터 로드 등)
-// useState → 상태 관리 (데이터를 저장하고 변경 시 리렌더링)
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-// useParams → URL의 동적 파라미터 추출 (예: /board/:categoryId)
-// useNavigate → 페이지 이동 (navigate("/path"))
-// useSearchParams → URL 쿼리스트링 (예: ?page=1&sortType=latest) 제어
-import {
-  Box, Typography, ListItemButton, Stack, TextField, Button, MenuItem,
-  Select, FormControl, InputLabel
-} from "@mui/material";
-// Typography: 텍스트 표현용
-// ListItemButton: 클릭 가능한 리스트 항목
-// Stack: 수평 또는 수직 정렬 컨테이너 (flexbox 래퍼)
-// TextField: 입력 필드
-// MenuItem, Select, FormControl, InputLabel: 선택 드롭다운 UI 구성 요소
+import { Box, Typography, ListItemButton, Stack, TextField, Button, MenuItem, Select, FormControl, InputLabel } from "@mui/material";
 import { getBoardsByCategory, getBoardsOrdered, searchBoards } from "../api/boardAPI";
-// getBoardsByCategory → 특정 카테고리의 게시글 목록 요청
-// getBoardsOrdered → 전체 게시글 목록 (정렬 기준 포함)
-// searchBoards → 검색 조건에 따른 게시글 조회
-import CommentIcon from "@mui/icons-material/Comment"; // 댓글 개수 표시용 아이콘
-import RecentViewedBoards from "./RecentViewedBoards"; // 오른쪽 사이드 영역에서 "최근 본 게시글"을 렌더링하는 컴포넌트
-import { useSnackbarContext } from "../../../components/utils/SnackbarContext"; // 전역 스낵바 컨텍스트
-import AttachFileIcon from "@mui/icons-material/AttachFile"; // 첨부파일 아이콘 추가
+import CommentIcon from "@mui/icons-material/Comment";
+import RecentViewedBoards from "./RecentViewedBoards";
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
+import AttachFileIcon from "@mui/icons-material/AttachFile";
 
 
-// BoardListPage 컴포넌트
-// - 게시판 목록 페이지 전체를 담당하는 컴포넌트
-// - 정렬, 검색, 페이지네이션, 목록 렌더링, 최근 본 게시글 등을 모두 포함
 const BoardListPage = () => {
   const { categoryId } = useParams(); // URL의 /board/:categoryId 값 추출 (없으면 undefined)
   const [searchParams] = useSearchParams(); // URL 쿼리스트링 (?page=, ?sortType= 등) 제어용

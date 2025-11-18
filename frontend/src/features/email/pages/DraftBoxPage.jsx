@@ -5,7 +5,9 @@ import {
   IconButton, Pagination, Chip
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { fetchDraftbox, deleteDraftMail, GetUserEmailFromStorage } from "../api/emailApi";
+import { fetchDraftbox, deleteDraftMail } from "../api/emailApi";
+import { useContext } from "react";
+import { UserProfileContext } from "../../../App";
 import { useNavigate } from "react-router-dom";
 
 const DraftBoxPage = () => {
@@ -15,15 +17,24 @@ const DraftBoxPage = () => {
   const [size] = useState(20);
   const [loading, setLoading] = useState(false);
 
-  const userEmail = GetUserEmailFromStorage();
+  const { userProfile } = useContext(UserProfileContext) || {};
+  const userEmail = userProfile?.email;
   const navigate = useNavigate();
 
-  // 임시보관함 목록 조회 및 상태값 세팅
+  // 임시보관함 목록 조회 및 상태값 세팅 함수
   const reload = () => {
-    if (!userEmail) return;
+    // 2. reload에서 userEmail 값 찍기
+    console.log('reload() - userEmail:', userEmail); // 👈 이 줄도 추가
+    if (!userEmail) {
+      // userEmail이 null/undefined면 API 호출 금지
+      return;
+    }
     setLoading(true);
     fetchDraftbox(userEmail, page - 1, size)
       .then(res => {
+        // 3. fetchDraftbox 응답 전체 한 번 찍기
+        console.log('fetchDraftbox response:', res); // 👈 이 줄 추가
+
         const boxData = res?.data?.data;
         setDrafts(boxData?.content || []);
         setTotal(
@@ -34,30 +45,33 @@ const DraftBoxPage = () => {
       })
       .catch(err => {
         console.error("[DraftBoxPage] fetchDraftbox 실패", err);
+        setDrafts([]);
         setTotal(0);
       })
       .finally(() => setLoading(false));
   };
 
+  // ★ 페이지 변경, userEmail 변경 시 목록 갱신
   useEffect(() => {
     reload();
     // eslint-disable-next-line
-  }, [page, userEmail]);
+  }, [page, userEmail]); // userEmail 변경을 반드시 의존성 배열에 넣는다!
 
   // [핵심] 임시메일 삭제 - 클릭시 확인 후 삭제 API 호출&목록 새로고침
-const handleDelete = async (draftId) => {
-  if (!window.confirm("정말로 이 임시저장 메일을 삭제하시겠습니까?")) return;
-  try {
-    const res = await deleteDraftMail(draftId);
-    console.log("삭제 응답:", res);
-    reload();
-  } catch (e) {
-    console.error("삭제 에러:", e);
-    alert("삭제 요청 실패: " + (e?.message || e));
-  }
-};
+  const handleDelete = async (draftId) => {
+    // ★ confirm 다이얼로그로 삭제 의사 확인
+    if (!window.confirm("정말로 이 임시저장 메일을 삭제하시겠습니까?")) return;
+    try {
+      const res = await deleteDraftMail(draftId);
+      // 삭제 후 다시 목록 새로고침
+      reload();
+    } catch (e) {
+      console.error("삭제 에러:", e);
+      alert("삭제 요청 실패: " + (e?.message || e));
+    }
+  };
 
-  // 메일 클릭 시: 쓰기페이지 이동 (draftId 전달)
+  // 메일 클릭 시: 쓰기페이지로 이동 (draftId만 쿼리로 전달)
   const handleRowClick = (draft) => {
     navigate(`/email/write?draftId=${draft.emailId}`);
   };
@@ -86,7 +100,10 @@ const handleDelete = async (draftId) => {
           <TableBody>
             {drafts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} align="center">임시저장 메일이 없습니다.</TableCell>
+                <TableCell colSpan={5} align="center">
+                  {/* ★ drafts 비어있을 때 안내 메시지 */}
+                  임시저장 메일이 없습니다.
+                </TableCell>
               </TableRow>
             ) : (
               drafts.map(draft => (
@@ -94,11 +111,12 @@ const handleDelete = async (draftId) => {
                   key={draft.emailId}
                   hover
                   style={{ cursor: "pointer" }}
-                  // 행 클릭: 메일 쓰기 이동
+                  // ★ 행 클릭: 해당 임시메일 쓰기페이지로 이동
                   onClick={() => handleRowClick(draft)}
                 >
                   <TableCell>{draft.emailTitle}</TableCell>
                   <TableCell>
+                    {/* ★ 작성일 포맷팅 */}
                     {draft.sentTime
                       ? (typeof draft.sentTime === "string"
                         ? new Date(draft.sentTime).toLocaleString()
@@ -106,17 +124,19 @@ const handleDelete = async (draftId) => {
                       : "-"}
                   </TableCell>
                   <TableCell>
+                    {/* ★ 받는사람 정보 */}
                     {Array.isArray(draft.recipientAddresses) && draft.recipientAddresses.length > 0
                       ? draft.recipientAddresses.join(", ")
                       : "-"}
                   </TableCell>
                   <TableCell>
+                    {/* ★ 파일수: attachments/또는 fileIds 배열 중 하나라도 있으면 출력 */}
                     {Array.isArray(draft.attachments)
                       ? draft.attachments.length
                       : (Array.isArray(draft.fileIds) ? draft.fileIds.length : 0)
                     }
                   </TableCell>
-                  {/* 삭제 버튼만 누를 때 행 클릭 이벤트 버블 차단 */}
+                  {/* ★ 삭제버튼은 클릭 이벤트 버블링 차단 */}
                   <TableCell align="center" onClick={e => { e.stopPropagation(); handleDelete(draft.emailId); }}>
                     <IconButton color="error">
                       <DeleteIcon />
@@ -141,3 +161,13 @@ const handleDelete = async (draftId) => {
 };
 
 export default DraftBoxPage;
+
+/*
+=========================
+주요 주석 요약 및 체크리스트
+-------------------------
+★ UserProfileContext에서 userProfile.email을 직접 사용
+★ 실제 userEmail 값이 null이면 API 호출 금지. Profile 비동기 처리 시에는 최초엔 null→email로 전환됨
+★ userEmail 값이 제대로 들어 올 때만 reload()/fetchDraftbox API가 동작 → 데이터 표시됨
+=========================
+*/

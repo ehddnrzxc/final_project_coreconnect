@@ -1,4 +1,4 @@
-import React, { useEffect, useState,  useContext } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { 
   Box, Typography, Paper, Table, TableHead, TableBody, TableRow, TableCell, 
   IconButton, ButtonGroup, Button, InputBase, Divider, Checkbox, Chip, Pagination 
@@ -20,32 +20,20 @@ import { fetchSentbox, moveToTrash } from '../api/emailApi';
 import { useNavigate } from 'react-router-dom';
 import { UserProfileContext } from '../../../App';
 
-function GetUserEmailFromStorage() {
-  const user = useContext(UserProfileContext);
-  if (!user) return null;
-  if (typeof user === "string") {
-    try {
-      const userObj = JSON.parse(user);
-      return userObj.email || null;
-    } catch {
-      return null;
-    }
-  } else if (typeof user === "object" && user !== null) {
-    return user.email || null;
-  }
-  return null;
-}
-
-// 상태에 따라 라벨 한글 변환 함수
+/*
+  상태에 따라 라벨 한글 변환 함수 (메일 상태 표시에 사용)
+*/
 function getStatusLabel(emailStatus) {
   if (emailStatus === "SENT") return "발신완료";
   if (emailStatus === "FAILED" || emailStatus === "FAIL" || emailStatus === "BOUNCE") return "발신실패";
   if (emailStatus === "TRASH") return "휴지통";
   if (emailStatus === "DELETED") return "삭제됨";
-  // 그 외 상태는 원문 노출
   return emailStatus;
 }
-// 상태에 따라 칩 색상 결정 함수
+
+/*
+  상태에 따라 칩 색상 결정 함수 (메일 상태 표시에 사용)
+*/
 function getStatusColor(emailStatus) {
   if (emailStatus === "SENT") return "success";
   if (emailStatus === "FAILED" || emailStatus === "FAIL" || emailStatus === "BOUNCE") return "error";
@@ -54,25 +42,20 @@ function getStatusColor(emailStatus) {
   return "default";
 }
 
-function useUserEmailFromContext() {
-  const user = useContext(UserProfileContext);
-  if (!user) return null;
-  if (typeof user === "string") {
-    try {
-      const userObj = JSON.parse(user);
-      return userObj.email || null;
-    } catch {
-      return null;
-    }
-  } else if (typeof user === "object" && user !== null) {
-    return user.email || null;
-  }
-  return null;
-}
-
+/*
+  보낸메일함 페이지 컴포넌트
+  - 보낸 메일 목록 조회, 삭제, 페이징, 메일 정보 표시, 선택 등 담당
+*/
 const MailSentBoxPage = () => {
- const userEmail = useUserEmailFromContext();
+  // UserProfileContext에서 userProfile을 가져와 이메일을 추출
+  const context = useContext(UserProfileContext);
+  const userEmail = context?.userProfile?.email || null;
 
+  // 디버깅 로그: Context와 userEmail 체크
+  console.log("MailSentBoxPage context:", context);
+  console.log("MailSentBoxPage userEmail:", userEmail);
+
+  // 상태 정의: 메일 목록, 페이징, 선택 등
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(9);
@@ -81,10 +64,24 @@ const MailSentBoxPage = () => {
   const [selected, setSelected] = useState(new Set());
   const navigate = useNavigate();
 
- const load = () => {
-    if (!userEmail) return; // 👈 userEmail이 없으면 API 호출하지 마세요
+  /*
+    보낸 메일 목록을 서버에서 조회하는 함수 (userEmail, page, size 기준)
+  */
+  const load = () => {
+    if (!userEmail) {
+      // userEmail이 없으면 리스트를 클리어 및 중단
+      console.log("No userEmail, skipping fetchSentbox");
+      setTotal(0); setMails([]);
+      return;
+    }
+
+    // 디버깅 로그: API 요청 직전 파라미터 확인
+    console.log("fetchSentbox() called with:", userEmail, page, size);
+
     fetchSentbox(userEmail, page - 1, size)
       .then(res => {
+        // 응답 전체를 출력하여 구조 확인
+        console.log('fetchSentbox response:', res);
         const boxData = res?.data?.data;
         const mailList = Array.isArray(boxData?.content) ? boxData.content : [];
         setMails(mailList);
@@ -93,14 +90,20 @@ const MailSentBoxPage = () => {
       .catch(err => {
         setMails([]);
         setTotal(0);
+        console.error("fetchSentbox error", err);
       });
   };
 
+  // page, size, userEmail 바뀔 때마다 메일 목록 새로고침
   useEffect(() => {
     load();
     // eslint-disable-next-line
-  }, [page, size]);
+  }, [page, size, userEmail]);
 
+  /*
+    메일 행 선택/해제용 핸들러
+    id: 선택/해제할 이메일의 emailId
+  */
   const toggleSelect = (id) => {
     setSelected(prev => {
       const copy = new Set(prev);
@@ -109,6 +112,10 @@ const MailSentBoxPage = () => {
     });
   };
 
+  /*
+    여러 메일을 휴지통(삭제) 처리
+    - 체크박스 선택 후 삭제 버튼 클릭 시 동작
+  */
   const handleDeleteSelected = async () => {
     if (selected.size === 0) return alert("삭제할 메일을 선택하세요.");
     if (!window.confirm("선택한 메일을 휴지통으로 이동하시겠습니까?")) return;
@@ -123,20 +130,25 @@ const MailSentBoxPage = () => {
     }
   };
 
-  // 전체 선택/해제
+  // 전체 행이 선택됐는지(체크박스UI용)
   const allChecked = mails.length > 0 && selected.size === mails.length;
+  // indeterminate(선택 일부만, 전체X, 0개X)
   const isIndeterminate = selected.size > 0 && selected.size < mails.length;
 
+  /*
+    렌더링 부분: 메일함 타이틀 + 도구 + 메일 테이블 + 페이지네이션
+  */
   return (
     <Box sx={{ p: 4, bgcolor: "#fafbfd", minHeight: "100vh" }}>
       <Paper elevation={0} sx={{ p: 3, borderRadius: 2 }}>
-        {/* 상단 타이틀 */}
+        {/* 상단 타이틀 및 툴바 */}
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
           <Typography variant="h5" sx={{ fontWeight: 700 }}>보낸메일함</Typography>
           <Typography sx={{ ml: 2, color: 'text.secondary', fontSize: 15 }}>
             전체메일 <b>{total}</b>
           </Typography>
           <Box sx={{ flex: 1 }} />
+          {/* 검색창 */}
           <Paper
             component="form"
             sx={{
@@ -162,7 +174,8 @@ const MailSentBoxPage = () => {
             </IconButton>
           </Paper>
         </Box>
-        {/* 상단 툴바 */}
+
+        {/* 툴바 버튼들 */}
         <Box sx={{ display: 'flex', alignItems: 'center', mt: 2, mb: 2 }}>
           <ButtonGroup variant="text" sx={{ gap: 1 }}>
             <Button startIcon={<ReplyIcon />}>답장</Button>
@@ -183,6 +196,8 @@ const MailSentBoxPage = () => {
           </Paper>
         </Box>
         <Divider sx={{ mb: 2 }} />
+
+        {/* 메일 목록 테이블 */}
         <Table sx={{ minWidth: 900 }}>
           <TableHead>
             <TableRow sx={{ bgcolor: "#f8fafd", borderBottom: '2px solid #e1e3ea' }}>
@@ -268,6 +283,8 @@ const MailSentBoxPage = () => {
             )}
           </TableBody>
         </Table>
+
+        {/* 페이지네이션 */}
         <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>
           <Pagination
             count={Math.ceil(total / size)}
@@ -282,3 +299,18 @@ const MailSentBoxPage = () => {
 };
 
 export default MailSentBoxPage;
+
+/*
+==================================================================================
+함수/구조별 주석 요약
+----------------------------------------------------------------------------------
+- getStatusLabel, getStatusColor: 메일 상태에 따라 보여줄 라벨, 칩색상 결정
+- useContext(UserProfileContext)로 "context?.userProfile?.email"에서 이메일 추출!
+    -> App.jsx의 Provider 값이 value={{userProfile, setUserProfile}} 구조이기 때문.
+- useEffect([page, size, userEmail]) 의존성: userEmail변경도 꼭 갱신(비동기 Profile)
+- load: API 호출 전, 후 콘솔로 userEmail, 응답 구조 꼼꼼하게 확인 필수!
+- 리렌더/페이징/삭제 핸들러 모두 동작 정상화
+- Table, 버튼 등 모두 배치 설명
+- 콘솔로 모든 상태 흐름 · 요청 · 응답을 점검하면 이상 현상은 항상 추적 가능
+==================================================================================
+*/

@@ -29,9 +29,11 @@ import {
   sendMail,
   saveDraftMail,
   getDraftDetail,
-  GetUserEmailFromStorage
 } from "../api/emailApi";
 import { useLocation } from "react-router-dom";
+import { useContext } from "react";
+import { UserProfileContext } from "../../../App";
+
 
 const emailSuggestions = [
   "admin@gmail.com",
@@ -62,7 +64,8 @@ function MailWritePage() {
 
   const location = useLocation();
   const draftId = new URLSearchParams(location.search).get("draftId");
-  const userEmail = GetUserEmailFromStorage();
+  const { userProfile } = useContext(UserProfileContext) || {};
+  const userEmail = userProfile?.email;
 
   useEffect(() => {
     if (draftId && userEmail) {

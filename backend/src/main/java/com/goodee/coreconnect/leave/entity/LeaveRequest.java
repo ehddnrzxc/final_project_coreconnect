@@ -59,7 +59,7 @@ public class LeaveRequest {
     
     private Integer documentId;
     
-    private String approvalComment; // 결재자가 남긴 의견
+    private String approvalComment; 
     
     @Column(name = "leave_req_created_at", 
             nullable = false,
@@ -82,7 +82,7 @@ public class LeaveRequest {
         leave.endDate = endDate;
         leave.type = type;
         leave.reason = reason;
-        leave.status = LeaveStatus.PENDING; // 기본값: 대기 상태
+        leave.status = LeaveStatus.PENDING; 
         leave.documentId = documentId;
         leave.createdAt = LocalDateTime.now();
         return leave;

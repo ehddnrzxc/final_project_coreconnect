@@ -17,8 +17,11 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import SyncIcon from '@mui/icons-material/Sync';
 import ViewListIcon from '@mui/icons-material/ViewList';
 
-import { fetchInbox, fetchUnreadCount, GetUserEmailFromStorage, deleteMails } from '../api/emailApi';
+import { fetchInbox, fetchUnreadCount,deleteMails } from '../api/emailApi';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useContext } from "react";
+import { UserProfileContext } from "../../../App";
+
 
 const MailInboxPage = () => {
   const [tab, setTab] = useState("all"); // all|today|unread
@@ -30,7 +33,8 @@ const MailInboxPage = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [selected, setSelected] = useState(new Set());
   const [snack, setSnack] = useState({ open: false, severity: 'info', message: '' });
-  const userEmail = GetUserEmailFromStorage();
+  const { userProfile } = useContext(UserProfileContext) || {};
+  const userEmail = userProfile?.email;
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -42,6 +46,37 @@ const MailInboxPage = () => {
     }
     // eslint-disable-next-line
   }, [location.search]);
+
+  const formatMailStatusLabel = (status) => {
+  switch (status) {
+    case "SENT":
+      return "전송완료";
+    case "TRASH":
+      return "휴지통";
+    case "DELETED":
+      return "삭제됨";
+    default:
+      return status || "-";
+  }
+};
+
+const formatMailStatusColor = (status) => {
+  switch (status) {
+    case "SENT":
+      return "success";
+    case "TRASH":
+      return "warning";
+    case "DELETED":
+      return "error";
+    default:
+      return "default";
+  }
+};
+
+
+
+
+
 
   // function to load inbox (used on mount and after delete)
   const loadInbox = async (pageIdx = page, pageSize = size, activeTab = tab) => {
@@ -137,7 +172,14 @@ const MailInboxPage = () => {
   const formatSentTime = (sentTime) => {
     if (!sentTime) return '-';
     try {
-      return (typeof sentTime === "string") ? new Date(sentTime).toLocaleString() : new Date(sentTime).toLocaleString();
+      const d = (typeof sentTime === "string" || typeof sentTime === "number") ? new Date(sentTime) : sentTime;
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      const HH = String(d.getHours()).padStart(2, "0");      // 24시간제!
+      const mi = String(d.getMinutes()).padStart(2, "0");
+      const ss = String(d.getSeconds()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd} ${HH}시 ${mi}분 ${ss}초`;
     } catch {
       return '-';
     }
@@ -281,8 +323,8 @@ const MailInboxPage = () => {
                     </TableCell>
                     <TableCell align="right">
                       <Chip
-                        label={mail.emailStatus}
-                        color={mail.emailStatus === "SENT" ? "success" : (mail.emailStatus === "FAILED" ? "error" : "default")}
+                        label={formatMailStatusLabel(mail.emailStatus)}
+                        color={formatMailStatusColor(mail.emailStatus)}
                         size="small"
                       />
                     </TableCell>

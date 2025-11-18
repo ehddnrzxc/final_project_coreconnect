@@ -35,7 +35,7 @@ export default function ProfileCard() {
   const [receivedApprovalCount, setReceivedApprovalCount] = useState(null);
 
   const { setAvatarUrl } = useOutletContext();
-  const userProfile = useContext(UserProfileContext);
+  const { userProfile, setUserProfile } = useContext(UserProfileContext) || {};
 
   const email = userProfile?.email || "";
   const displayName = userProfile?.name || "";
@@ -147,6 +147,13 @@ export default function ProfileCard() {
 
       // 업로드 후 프로필 정보 재조회
       const updatedProfile = await getMyProfileInfo();
+      
+      // UserProfileContext 업데이트 (즉시 반영)
+      if (setUserProfile) {
+        setUserProfile(updatedProfile);
+      }
+      
+      // 상단바 아바타도 업데이트
       setAvatarUrl(updatedProfile.profileImageUrl || DEFAULT_AVATAR);
     } catch (err) {
       console.error("이미지 업로드 실패:", err);
