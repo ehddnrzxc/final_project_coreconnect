@@ -38,20 +38,29 @@ public interface EmailRecipientRepository extends JpaRepository<EmailRecipient, 
     // 수신자 이메일 기준, 읽음여부로 개수 카운트
     int countByEmailRecipientAddressAndEmailReadYn(String emailRecipientAddress, Boolean emailReadYn);
 
-    // 안읽은 메일만 페이징 (filter=unread)
-    Page<EmailRecipient> findByEmailRecipientAddressAndEmailRecipientTypeInAndEmailReadYn(
-        String emailRecipientAddress, List<String> emailRecipientType, Boolean emailReadYn, Pageable pageable
+    // 전체 메일 수신 데이터: 최신 이메일이 먼저 오도록 emailSentTime 내림차순 정렬
+    Page<EmailRecipient> findByEmailRecipientAddressAndEmailRecipientTypeInOrderByEmail_EmailSentTimeDesc(
+        String emailRecipientAddress,
+        List<String> emailRecipientType,
+        Pageable pageable
     );
 
-    // 오늘 온 메일만 페이징 (filter=today)  
-    // ※ emailReceivedTime이 없다면 emailSentTime 등으로 이름 변경!  
-    Page<EmailRecipient> findByEmailRecipientAddressAndEmailRecipientTypeInAndEmail_EmailSentTimeBetween(
-    	    String emailRecipientAddress,
-    	    List<String> emailRecipientType,
-    	    LocalDateTime start,
-    	    LocalDateTime end,
-    	    Pageable pageable
-    	);
+    // 오늘 받은 메일: emailSentTime 내림차순
+    Page<EmailRecipient> findByEmailRecipientAddressAndEmailRecipientTypeInAndEmail_EmailSentTimeBetweenOrderByEmail_EmailSentTimeDesc(
+        String emailRecipientAddress,
+        List<String> emailRecipientType,
+        LocalDateTime start,
+        LocalDateTime end,
+        Pageable pageable
+    );
+
+    // 안읽은 메일: emailSentTime 내림차순
+    Page<EmailRecipient> findByEmailRecipientAddressAndEmailRecipientTypeInAndEmailReadYnOrderByEmail_EmailSentTimeDesc(
+        String emailRecipientAddress,
+        List<String> emailRecipientType,
+        Boolean emailReadYn,
+        Pageable pageable
+    );
     
     @Query("SELECT r.email.emailId FROM EmailRecipient r WHERE r.emailRecipientAddress = :address")
     List<Integer> findEmailIdsByRecipientAddress(@Param("address") String address);

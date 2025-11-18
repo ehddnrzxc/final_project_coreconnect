@@ -39,7 +39,8 @@ public interface EmailRepository extends JpaRepository<Email, Integer> {
     @Query("UPDATE Email e SET e.emailStatus = :status WHERE e.emailId IN :ids")
     int updateEmailStatusByIds(@Param("ids") List<Integer> ids, @Param
     		("status") EmailStatusEnum status);
-    
+ // 정렬기준 추가 (emailSentTime 내림차순)
+    Page<Email> findBySenderEmailAndEmailStatusOrderByEmailSentTimeDesc(String senderEmail, EmailStatusEnum emailStatus, Pageable pageable);
 
     /*
      * 기존 JPQL 방식(수신자 주소 기준)도 유지되어 있으면 괜찮지만,
