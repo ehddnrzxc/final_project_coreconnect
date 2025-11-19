@@ -5,14 +5,8 @@ import {
   IconButton, Pagination, Chip, Snackbar, Alert
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-<<<<<<< HEAD
 import { fetchDraftbox, deleteDraftMail, fetchDraftCount } from "../api/emailApi"; // ★ fetchDraftCount 추가!
-import useUserEmail from '../../email/hook/useUserEmail'; // ★ 사용자 이메일을 가져오는 커스텀 훅
-=======
-import { fetchDraftbox, deleteDraftMail } from "../api/emailApi";
-import { useContext } from "react";
 import { UserProfileContext } from "../../../App";
->>>>>>> d5e1f38fdb312c6f86bc1969ca3ed7a58d4ab2a7
 import { useNavigate } from "react-router-dom";
 import { MailCountContext } from "../../../App"; // ★ 임시보관함/언리드 context
 

@@ -17,7 +17,6 @@ import SyncIcon from '@mui/icons-material/Sync';
 import ViewListIcon from '@mui/icons-material/ViewList';
 import { fetchInbox, fetchUnreadCount, moveToTrash, markMailAsRead } from '../api/emailApi'; // ※ moveToTrash로 변경! (휴지통 이동)
 import { useNavigate, useLocation } from 'react-router-dom';
-import useUserEmail from '../../email/hook/useUserEmail'; // 사용자 이메일 추출 훅
 import { MailCountContext } from "../../../App"; // 메일 카운트 컨텍스트(사이드바 등 공유)
 import { UserProfileContext } from "../../../App";
 
