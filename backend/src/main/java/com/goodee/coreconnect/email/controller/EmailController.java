@@ -347,7 +347,8 @@ public class EmailController {
      */
     @DeleteMapping("/trash")
     public ResponseEntity<DeleteMailsResponse> deleteMails(@RequestBody DeleteMailsRequest req) {
-        DeleteMailsResponse res = emailService.deleteMailsForCurrentUser(req);
+    	log.info("휴지통 비우기 요청 들어옴====== req: {}", req);
+    	DeleteMailsResponse res = emailService.deleteMailsForCurrentUser(req);
         return ResponseEntity.ok(res);
     }
     
@@ -358,6 +359,7 @@ public class EmailController {
             @RequestParam(value="page", defaultValue="0") int page,
             @RequestParam(value="size", defaultValue="10") int size
     ) {
+    	
         Page<EmailResponseDTO> result = emailService.getTrashMails(userEmail, page, size);
         return ResponseEntity.ok(ResponseDTO.success(result, "휴지통 조회 성공"));
     }

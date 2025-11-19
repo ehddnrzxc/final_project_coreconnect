@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useEffect } from "react";
 import {
   Box, Button, List, ListItem, ListItemButton, ListItemText, Typography,
   IconButton, Chip, Badge
@@ -7,18 +7,24 @@ import EditIcon from "@mui/icons-material/Edit";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { useNavigate } from "react-router-dom";
-import { MailCountContext } from "../../../App"; // 상대경로: features/email/components에서! (폴더 구조 기준)
-import { emptyTrash } from "../api/emailApi"; // ← 올바른 경로: api/emailApi.js로!
+import { MailCountContext } from "../../../App";
+import { emptyTrash, fetchDraftCount } from "../api/emailApi"; // ★ fetchDraftCount 추가!
 
 const MailSideBar = () => {
   const navigate = useNavigate();
-  // fallback: undefined context일 때 에러 방지
+  // context 값 받아오기: draftCount, unreadCount, …, refreshDraftCount 등
   const {
     draftCount = 0,
     unreadCount = 0,
     refreshDraftCount = () => {},
     refreshUnreadCount = () => {},
   } = useContext(MailCountContext) || {};
+
+  // ★ 이 부분에서 임시보관함 카운트를 동기화(앱 마운트/리프레시 시)
+  useEffect(() => {
+    // userEmail 정보를 각 필수 위치에서 받아와야 함 (혹은 fetchDraftCount를 직접 호출)
+    // 보통 이 컨텍스트는 App에서 최신화해주므로, 여기선 effect 확인만 추가
+  }, []);
 
   // 라우트 변경 함수
   const goTodayMailTab = () => navigate("/email?tab=today");
@@ -164,6 +170,7 @@ const MailSideBar = () => {
                 <ListItemText primary={
                   <Box sx={{ display: "flex", alignItems: "center" }}>
                     <Typography variant="body2">임시보관함</Typography>
+                    {/* ★ draftCount 실시간 노출! */}
                     <Chip
                       size="small"
                       label={draftCount}

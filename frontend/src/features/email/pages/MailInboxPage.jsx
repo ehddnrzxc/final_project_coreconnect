@@ -13,80 +13,68 @@ import ForwardIcon from '@mui/icons-material/Forward';
 import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
 import MoveToInboxIcon from '@mui/icons-material/MoveToInbox';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
-import VisibilityIcon from '@mui/icons-material/Visibility';
 import SyncIcon from '@mui/icons-material/Sync';
 import ViewListIcon from '@mui/icons-material/ViewList';
 
-import { fetchInbox, fetchUnreadCount, deleteMails, markMailAsRead } from '../api/emailApi'; // ← markMailAsRead 추가
+import { fetchInbox, fetchUnreadCount, moveToTrash, markMailAsRead } from '../api/emailApi'; // ※ moveToTrash로 변경! (휴지통 이동)
 import { useNavigate, useLocation } from 'react-router-dom';
-import useUserEmail from '../../email/hook/useUserEmail';
-import { MailCountContext } from "../../../App"; // 사이드바 등과 공유할 카운트 컨텍스트
+import useUserEmail from '../../email/hook/useUserEmail'; // 사용자 이메일 추출 훅
+import { MailCountContext } from "../../../App"; // 메일 카운트 컨텍스트(사이드바 등 공유)
 
 const MailInboxPage = () => {
-  // 각종 상태값 선언
+  // 상태변수 선언
   const [tab, setTab] = useState("all"); // 전체/오늘/안읽음
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(20);
   const [total, setTotal] = useState(0);
   const [mails, setMails] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0); // 상단 Chip 용
+  const [unreadCount, setUnreadCount] = useState(0); // Chip/Badge
   const [selected, setSelected] = useState(new Set());
   const [snack, setSnack] = useState({ open: false, severity: 'info', message: '' });
   const userEmail = useUserEmail();
   const navigate = useNavigate();
   const location = useLocation();
-  // MailCountContext 사용: 사이드바 등과 카운트 공유, 동기화 필요
   const mailCountContext = useContext(MailCountContext);
 
-  // URL 쿼리(tab)로 필터 자동 변경
+  // 쿼리파라미터에 따라 탭 상태 반영
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const tabQuery = searchParams.get('tab');
     if (tabQuery && ["all", "today", "unread"].includes(tabQuery) && tab !== tabQuery) {
       setTab(tabQuery);
     }
-    // eslint-disable-next-line
-  }, [location.search]);
+  }, [location.search, tab]);
 
-  // 메일 상태 라벨/컬러 등 포맷터
+  // 메일상태 라벨/칼라 변환
   const formatMailStatusLabel = (status) => {
     switch (status) {
-      case "SENT":
-        return "전송완료";
-      case "TRASH":
-        return "휴지통";
-      case "DELETED":
-        return "삭제됨";
-      default:
-        return status || "-";
+      case "SENT": return "전송완료";
+      case "TRASH": return "휴지통";
+      case "DELETED": return "삭제됨";
+      default: return status || "-";
     }
   };
-
   const formatMailStatusColor = (status) => {
     switch (status) {
-      case "SENT":
-        return "success";
-      case "TRASH":
-        return "warning";
-      case "DELETED":
-        return "error";
-      default:
-        return "default";
+      case "SENT": return "success";
+      case "TRASH": return "warning";
+      case "DELETED": return "error";
+      default: return "default";
     }
   };
 
-  // 메일함 데이터 로드 함수
+  // 받은메일함 목록 로딩
   const loadInbox = async (pageIdx = page, pageSize = size, activeTab = tab) => {
     if (!userEmail) return;
     try {
+      // 서버에서 삭제된 메일이 제외되어 반환됨(DB/JPQL 필터)
       const res = await fetchInbox(userEmail, pageIdx - 1, pageSize, activeTab === "all" ? null : activeTab);
       const boxData = res?.data?.data;
       const mailList = Array.isArray(boxData?.content) ? boxData.content : [];
       setMails(mailList);
       setTotal(typeof boxData?.totalElements === "number" ? boxData.totalElements : 0);
       setSelected(prev => {
-        // 현재 페이지에 없는 선택은 제거 (유지)
         const idsOnPage = new Set(mailList.map(m => m.emailId));
         const newSet = new Set([...prev].filter(id => idsOnPage.has(id)));
         return newSet;
@@ -98,19 +86,19 @@ const MailInboxPage = () => {
     }
   };
 
-  // 초기/Tab 등 변경시 메일 로딩
+  // 탭/페이지 등 변경시 메일함 새로고침
   useEffect(() => {
     loadInbox();
     // eslint-disable-next-line
   }, [userEmail, page, size, tab]);
 
-  // 안읽은 메일 카운트 fetch 및 컨텍스트/상단 Chip 연동 갱신
+  // 안읽은 개수 fetch + 컨텍스트 연동
   const loadUnreadCount = async () => {
     if (!userEmail) return;
     fetchUnreadCount(userEmail)
       .then(count => {
         setUnreadCount(count || 0);
-        if (mailCountContext?.refreshUnreadCount) mailCountContext.refreshUnreadCount(count || 0); // 사이드바와 공유
+        if (mailCountContext?.refreshUnreadCount) mailCountContext.refreshUnreadCount(count || 0);
       })
       .catch(() => {
         setUnreadCount(0);
@@ -119,9 +107,9 @@ const MailInboxPage = () => {
   };
   useEffect(() => {
     loadUnreadCount();
-  }, [userEmail]); // userEmail 바뀔 때만
+  }, [userEmail]);
 
-  // 행 체크박스
+  // 개별 행 선택/토글
   const toggleSelect = (mailId) => {
     setSelected(prev => {
       const s = new Set(prev);
@@ -131,7 +119,7 @@ const MailInboxPage = () => {
     });
   };
 
-  // 전체 선택
+  // 전체선택/해제 토글
   const toggleSelectAll = () => {
     setSelected(prev => {
       const idsOnPage = mails.map(m => m.emailId);
@@ -148,7 +136,7 @@ const MailInboxPage = () => {
     });
   };
 
-  // 선택행 삭제
+  // 선택된 메일들 휴지통 이동 (moveToTrash 호출)
   const deleteSelected = async () => {
     const ids = Array.from(selected);
     if (ids.length === 0) {
@@ -158,22 +146,22 @@ const MailInboxPage = () => {
     if (!window.confirm(`선택한 ${ids.length}개의 메일을 휴지통으로 이동하시겠습니까?`)) return;
 
     try {
-      await deleteMails(ids);
+      await moveToTrash(ids); // 휴지통으로 이동! (영구삭제 아님)
       setSnack({ open: true, severity: 'success', message: `${ids.length}개의 메일을 휴지통으로 이동했습니다.` });
       setSelected(prev => {
         const s = new Set(prev);
         ids.forEach(id => s.delete(id));
         return s;
       });
-      await loadInbox();
-      await loadUnreadCount();
+      await loadInbox();      // 새로고침: 이동한 항목 즉시 사라짐
+      await loadUnreadCount();// 언리드카운트까지 새로고침
     } catch (err) {
       console.error('deleteSelected error', err);
-      setSnack({ open: true, severity: 'error', message: '메일 삭제 중 오류가 발생했습니다.' });
+      setSnack({ open: true, severity: 'error', message: '메일 삭제(휴지통 이동) 중 오류가 발생했습니다.' });
     }
   };
 
-  // 날짜 포맷
+  // 날짜 포맷 (YYYY-MM-DD HH시 mm분 ss초)
   const formatSentTime = (sentTime) => {
     if (!sentTime) return '-';
     try {
@@ -181,7 +169,7 @@ const MailInboxPage = () => {
       const yyyy = d.getFullYear();
       const mm = String(d.getMonth() + 1).padStart(2, "0");
       const dd = String(d.getDate()).padStart(2, "0");
-      const HH = String(d.getHours()).padStart(2, "0");      // 24시간제!
+      const HH = String(d.getHours()).padStart(2, "0");
       const mi = String(d.getMinutes()).padStart(2, "0");
       const ss = String(d.getSeconds()).padStart(2, "0");
       return `${yyyy}-${mm}-${dd} ${HH}시 ${mi}분 ${ss}초`;
@@ -190,26 +178,25 @@ const MailInboxPage = () => {
     }
   };
 
-  // ====== 메일 행 클릭-읽음 처리 함수 ======
+  // 메일 행 클릭(읽음처리 + 상세진입)
   const handleMailRowClick = async (mail) => {
     try {
-      // 1. 읽지 않은 메일인 경우에만 읽음 처리 API 호출
       if (mail.emailReadYn === false) {
-        await markMailAsRead(mail.emailId, userEmail); // PATCH 호출
-        await loadUnreadCount(); // 읽음 후 즉시 카운트/컨텍스트 동기화
+        await markMailAsRead(mail.emailId, userEmail); // 읽음 처리
+        await loadUnreadCount();
       }
-      // 2. 상세 진입(라우터 이동)
-      navigate(`/email/${mail.emailId}`);
+      navigate(`/email/${mail.emailId}`);   // 상세 페이지 이동
     } catch (err) {
       setSnack({ open: true, severity: 'error', message: "메일 읽음처리 중 오류" });
-      navigate(`/email/${mail.emailId}`); // (오류 발생했어도 일단 상세화면 이동)
+      navigate(`/email/${mail.emailId}`);
     }
   };
 
+  // 렌더링
   return (
     <Box sx={{ p: 4, minHeight: "100vh", bgcolor: "#fafbfd" }}>
       <Paper elevation={0} sx={{ p: 3, borderRadius: 2 }}>
-        {/* 상단 타이틀 및 탭 */}
+        {/* 상단 타이틀 및 탭/Chip */}
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
           <Typography variant="h5" sx={{ fontWeight: 700 }}>
             받은메일함
@@ -250,7 +237,7 @@ const MailInboxPage = () => {
           </Paper>
         </Box>
 
-        {/* 탭 필터 */}
+        {/* 탭 구역 */}
         <Box sx={{ mt: 2, mb: 2 }}>
           <Tabs value={tab} onChange={(_, v) => setTab(v)}>
             <Tab value="all" label="전체" />
@@ -266,8 +253,9 @@ const MailInboxPage = () => {
           </Tabs>
         </Box>
 
-        {/* 상단 툴바 */}
+        {/* 상단 툴바(삭제, 등) */}
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+          {/* 전체선택 */}
           <Checkbox
             sx={{ mr: 1 }}
             edge="start"
@@ -278,6 +266,7 @@ const MailInboxPage = () => {
           <ButtonGroup variant="text" sx={{ gap: 1 }}>
             <Button startIcon={<ReportIcon />}>스팸신고</Button>
             <Button startIcon={<ReplyIcon />}>답장</Button>
+            {/* 삭제(휴지통 이동) */}
             <Button startIcon={<DeleteIcon />} onClick={deleteSelected}>삭제</Button>
             <Button startIcon={<TagIcon />}>태그</Button>
             <Button startIcon={<ForwardIcon />}>전달</Button>
@@ -295,6 +284,8 @@ const MailInboxPage = () => {
           </Paper>
         </Box>
         <Divider sx={{ mb: 2 }} />
+
+        {/* 메일 테이블 */}
         <Table sx={{ minWidth: 900 }}>
           <TableHead>
             <TableRow sx={{ bgcolor: "#f8fafd", borderBottom: '2px solid #e1e3ea' }}>
@@ -308,6 +299,7 @@ const MailInboxPage = () => {
             </TableRow>
           </TableHead>
           <TableBody>
+            {/* 메일이 없을 때 안내 */}
             {Array.isArray(mails) && mails.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} align="center">받은 메일이 없습니다.</TableCell>
@@ -316,7 +308,7 @@ const MailInboxPage = () => {
               mails.map(mail => {
                 const id = mail.emailId;
                 const checked = selected.has(id);
-                // mail.emailReadYn 값이 undefined면(legacy 메일) 안전하게 false 판단
+                // 안읽음 처리 (fontWeight, bg)
                 const isUnread = mail.emailReadYn === false || typeof mail.emailReadYn === "undefined";
                 return (
                   <TableRow
@@ -324,8 +316,8 @@ const MailInboxPage = () => {
                     hover
                     sx={{
                       cursor: "pointer",
-                      fontWeight: isUnread ? 700 : 400, // 안읽음-진하게, 읽음-일반
-                      background: isUnread ? "#fff4f4" : undefined        // 안읽음 연한 배경
+                      fontWeight: isUnread ? 700 : 400,
+                      background: isUnread ? "#fff4f4" : undefined
                     }}
                     onClick={() => handleMailRowClick(mail)}
                   >
@@ -356,9 +348,7 @@ const MailInboxPage = () => {
                       />
                     </TableCell>
                     <TableCell>
-                      <IconButton size="small" onClick={e => { e.stopPropagation(); handleMailRowClick(mail); }}>
-                        <VisibilityIcon fontSize="small" />
-                      </IconButton>
+                      {/* (눈 아이콘 삭제) ※ */}
                     </TableCell>
                   </TableRow>
                 );
@@ -366,6 +356,7 @@ const MailInboxPage = () => {
             )}
           </TableBody>
         </Table>
+        {/* 하단 페이징 */}
         <Box sx={{ display: 'flex', justifyContent: 'center', my: 3 }}>
           <Pagination
             count={Math.max(1, Math.ceil(total / size))}
@@ -375,7 +366,7 @@ const MailInboxPage = () => {
           />
         </Box>
       </Paper>
-
+      {/* 알림 Snackbar */}
       <Snackbar
         open={snack.open}
         autoHideDuration={4000}

@@ -1,40 +1,36 @@
 // DraftBoxPage.jsx - 임시보관함 목록 및 삭제 기능 페이지
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext } from "react";
 import {
   Box, Typography, Paper, Table, TableHead, TableBody, TableRow, TableCell,
-  IconButton, Pagination, Chip
+  IconButton, Pagination, Chip, Snackbar, Alert
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { fetchDraftbox, deleteDraftMail } from "../api/emailApi";
-// ★ 사용자 이메일을 가져오는 커스텀 훅 import (Context 구조에 맞게!)
-import useUserEmail from '../../email/hook/useUserEmail';
+import { fetchDraftbox, deleteDraftMail, fetchDraftCount } from "../api/emailApi"; // ★ fetchDraftCount 추가!
+import useUserEmail from '../../email/hook/useUserEmail'; // ★ 사용자 이메일을 가져오는 커스텀 훅
 import { useNavigate } from "react-router-dom";
+import { MailCountContext } from "../../../App"; // ★ 임시보관함/언리드 context
 
 const DraftBoxPage = () => {
+  // 임시 메일 목록, 전체 개수, 페이지, 페이지당 크기, 로딩상태, 임시카운트, 스낵바 상태
   const [drafts, setDrafts] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [size] = useState(20);
   const [loading, setLoading] = useState(false);
+  const [snack, setSnack] = useState({ open: false, severity: "info", message: "" });
 
-  // ★ 커스텀 훅 사용: context.userProfile.email 반환 (App에서 value={{userProfile, setUserProfile}} 구조여야 정상동작)
+  // ★ context에서 draftCount, refreshDraftCount 받아오기
+  const { draftCount = 0, refreshDraftCount = () => {} } = useContext(MailCountContext) || {};
+  // 로그인 유저 email 추출
   const userEmail = useUserEmail();
   const navigate = useNavigate();
 
-  // 임시보관함 목록 조회 및 상태값 세팅 함수
+  // 임시보관함 목록 조회 및 상태 세팅
   const reload = () => {
-    // 2. reload에서 userEmail 값 찍기
-    console.log('reload() - userEmail:', userEmail); // 👈 이 줄도 추가
-    if (!userEmail) {
-      // userEmail이 null/undefined면 API 호출 금지
-      return;
-    }
+    if (!userEmail) return;
     setLoading(true);
     fetchDraftbox(userEmail, page - 1, size)
       .then(res => {
-        // 3. fetchDraftbox 응답 전체 한 번 찍기
-        console.log('fetchDraftbox response:', res); // 👈 이 줄 추가
-
         const boxData = res?.data?.data;
         setDrafts(boxData?.content || []);
         setTotal(
@@ -51,27 +47,40 @@ const DraftBoxPage = () => {
       .finally(() => setLoading(false));
   };
 
-  // ★ 페이지 변경, userEmail 변경 시 목록 갱신
-  useEffect(() => {
-    reload();
-    // eslint-disable-next-line
-  }, [page, userEmail]); // userEmail 변경을 반드시 의존성 배열에 넣는다!
-
-  // [핵심] 임시메일 삭제 - 클릭시 확인 후 삭제 API 호출&목록 새로고침
-  const handleDelete = async (draftId) => {
-    // ★ confirm 다이얼로그로 삭제 의사 확인
-    if (!window.confirm("정말로 이 임시저장 메일을 삭제하시겠습니까?")) return;
+  // ★ 임시보관함 개수 카운트 최신화 → context & chip 등에서 사용
+  const updateDraftCount = async () => {
+    if (!userEmail) return;
     try {
-      const res = await deleteDraftMail(draftId);
-      // 삭제 후 다시 목록 새로고침
-      reload();
-    } catch (e) {
-      console.error("삭제 에러:", e);
-      alert("삭제 요청 실패: " + (e?.message || e));
+      const count = await fetchDraftCount(userEmail);
+      // context의 refreshDraftCount 함수 호출 - 사이드바/상단 Chip 등 모두 동기화
+      refreshDraftCount(count);
+    } catch (err) {
+      refreshDraftCount(0);
     }
   };
 
-  // 메일 클릭 시: 쓰기페이지로 이동 (draftId만 쿼리로 전달)
+  // ★ 페이지/이메일 변경/삭제 후 → 목록/카운트 동시 갱신
+  useEffect(() => {
+    reload();
+    updateDraftCount();
+    // eslint-disable-next-line
+  }, [page, userEmail]); // page, userEmail 변경시 갱신
+
+  // ★ 임시메일 삭제
+  const handleDelete = async (draftId) => {
+    if (!window.confirm("정말로 이 임시저장 메일을 삭제하시겠습니까?")) return;
+    try {
+      await deleteDraftMail(draftId);
+      setSnack({ open: true, severity: "success", message: "임시보관 메일을 삭제했습니다." });
+      reload();          // 목록 새로고침
+      updateDraftCount();// 임시메일 개수 갱신
+    } catch (e) {
+      setSnack({ open: true, severity: "error", message: "삭제 요청 실패!" });
+      console.error("삭제 에러:", e);
+    }
+  };
+
+  // 메일 클릭: 임시메일로 쓰기
   const handleRowClick = (draft) => {
     navigate(`/email/write?draftId=${draft.emailId}`);
   };
@@ -81,9 +90,10 @@ const DraftBoxPage = () => {
       <Paper sx={{ p: 3, mb: 3 }}>
         <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>
           임시보관함
+          {/* Chip에 최신 draftCount 사용, fallback: total */}
           <Chip
-            label={`총 ${total}개`}
-            color={total > 0 ? "primary" : "default"}
+            label={`총 ${draftCount ?? total}개`}
+            color={(draftCount ?? total) > 0 ? "primary" : "default"}
             sx={{ ml: 2 }}
           />
         </Typography>
@@ -101,7 +111,6 @@ const DraftBoxPage = () => {
             {drafts.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} align="center">
-                  {/* ★ drafts 비어있을 때 안내 메시지 */}
                   임시저장 메일이 없습니다.
                 </TableCell>
               </TableRow>
@@ -111,12 +120,10 @@ const DraftBoxPage = () => {
                   key={draft.emailId}
                   hover
                   style={{ cursor: "pointer" }}
-                  // ★ 행 클릭: 해당 임시메일 쓰기페이지로 이동
                   onClick={() => handleRowClick(draft)}
                 >
                   <TableCell>{draft.emailTitle}</TableCell>
                   <TableCell>
-                    {/* ★ 작성일 포맷팅 */}
                     {draft.sentTime
                       ? (typeof draft.sentTime === "string"
                         ? new Date(draft.sentTime).toLocaleString()
@@ -124,19 +131,16 @@ const DraftBoxPage = () => {
                       : "-"}
                   </TableCell>
                   <TableCell>
-                    {/* ★ 받는사람 정보 */}
                     {Array.isArray(draft.recipientAddresses) && draft.recipientAddresses.length > 0
                       ? draft.recipientAddresses.join(", ")
                       : "-"}
                   </TableCell>
                   <TableCell>
-                    {/* ★ 파일수: attachments/또는 fileIds 배열 중 하나라도 있으면 출력 */}
                     {Array.isArray(draft.attachments)
                       ? draft.attachments.length
                       : (Array.isArray(draft.fileIds) ? draft.fileIds.length : 0)
                     }
                   </TableCell>
-                  {/* ★ 삭제버튼은 클릭 이벤트 버블링 차단 */}
                   <TableCell align="center" onClick={e => { e.stopPropagation(); handleDelete(draft.emailId); }}>
                     <IconButton color="error">
                       <DeleteIcon />
@@ -156,20 +160,19 @@ const DraftBoxPage = () => {
           />
         </Box>
       </Paper>
+      {/* SnackBar: 삭제 성공/실패 안내 */}
+      <Snackbar
+        open={snack.open}
+        autoHideDuration={3000}
+        onClose={() => setSnack(s => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity={snack.severity} onClose={() => setSnack(s => ({ ...s, open: false }))} sx={{ width: '100%' }}>
+          {snack.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
 
 export default DraftBoxPage;
-
-/*
-=========================
-주요 주석 요약 및 체크리스트
--------------------------
-★ useUserEmail() 훅은 반드시 context.userProfile.email 구조에 맞춰 작성되어야 정상동작
-  (즉, App.jsx에서 Provider value가 { userProfile, setUserProfile } 구조일 때)
-★ 실제 userEmail 값이 null이면 API 호출 금지. Profile 비동기 처리 시에는 최초엔 null→email로 전환됨
-★ userEmail 값이 제대로 들어 올 때만 reload()/fetchDraftbox API가 동작 → 데이터 표시됨
-★ 항상 실제 App에서 Context value 구조와 훅 구현, 그리고 각종 로그를 찍어서 값이 있는지 점검!
-=========================
-*/
