@@ -163,11 +163,20 @@ export default function ChatLayout() {
   // ---------- 메시지 보내기 ----------
   const handleSend = () => {
     const message = inputRef.current.value;
-    if (socketConnected && message.trim()) {
-      sendStompMessage({ roomId: selectedRoomId, content: message });
+    if (!message.trim()) {
+      return;
+    }
+    
+    if (!socketConnected) {
+      alert("채팅 서버와 연결되어 있지 않습니다. 잠시 후 다시 시도해 주세요.");
+      return;
+    }
+
+    const success = sendStompMessage({ roomId: selectedRoomId, content: message });
+    if (success) {
       inputRef.current.value = "";
     } else {
-      alert("채팅 서버와 연결되어 있지 않습니다. 잠시 후 다시 시도해 주세요.");
+      alert("메시지 전송에 실패했습니다. 연결 상태를 확인해주세요.");
     }
   };
 

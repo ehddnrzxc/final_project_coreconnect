@@ -49,9 +49,19 @@ export const approveDocument = (documentId, requestDTO) => http.post(`/approvals
 // 문서 반려
 export const rejectDocument = (documentId, requestDTO) => http.post(`/approvals/${documentId}/reject`, requestDTO);
 
+// 문서 PDF 다운로드
+export const downloadDocumentPdf = documentId => http.get(
+  `/approvals/${documentId}/download-pdf`,
+  {
+    responseType: 'blob',
+  }
+);
+
 // 파일 다운로드 (첨부파일)
 export const downloadFile = async (fileId, fileName) => {
-  const res = await http.get(`/approvals/file/download/${fileId}`);
+  const res = await http.get(`/approvals/file/download/${fileId}`, {
+    responseType: 'blob',
+  });
   const url_2 = window.URL.createObjectURL(new Blob([res.data]));
   const link = document.createElement('a');
   link.href = url_2;

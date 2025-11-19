@@ -16,11 +16,12 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import SyncIcon from '@mui/icons-material/Sync';
 import ViewListIcon from '@mui/icons-material/ViewList';
-
 import { fetchInbox, fetchUnreadCount, deleteMails, markMailAsRead } from '../api/emailApi'; // ← markMailAsRead 추가
 import { useNavigate, useLocation } from 'react-router-dom';
 import useUserEmail from '../../email/hook/useUserEmail';
 import { MailCountContext } from "../../../App"; // 사이드바 등과 공유할 카운트 컨텍스트
+import { useContext } from "react";
+import { UserProfileContext } from "../../../App";
 
 const MailInboxPage = () => {
   // 각종 상태값 선언
@@ -33,7 +34,8 @@ const MailInboxPage = () => {
   const [unreadCount, setUnreadCount] = useState(0); // 상단 Chip 용
   const [selected, setSelected] = useState(new Set());
   const [snack, setSnack] = useState({ open: false, severity: 'info', message: '' });
-  const userEmail = useUserEmail();
+  const { userProfile } = useContext(UserProfileContext) || {};
+  const userEmail = userProfile?.email;
   const navigate = useNavigate();
   const location = useLocation();
   // MailCountContext 사용: 사이드바 등과 카운트 공유, 동기화 필요

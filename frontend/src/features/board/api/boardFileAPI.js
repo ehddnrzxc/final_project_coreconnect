@@ -1,5 +1,6 @@
 import http from "../../../api/http";
 
+
 // 파일 업로드
 export const uploadFiles = (boardId, files) => {
   const formData = new FormData();

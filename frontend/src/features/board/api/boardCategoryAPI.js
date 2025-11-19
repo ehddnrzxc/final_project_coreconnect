@@ -1,5 +1,6 @@
 import http from "../../../api/http";
 
+
 const BASE_URL = "/board-category"; 
 
 // 전체 카테고리 조회

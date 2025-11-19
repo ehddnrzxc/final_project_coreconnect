@@ -11,7 +11,8 @@ import {
   deleteMails,      // 선택 삭제(영구 삭제) 호출
   emptyTrash        // 휴지통 비우기
 } from "../api/emailApi";
-import useUserEmail from '../../email/hook/useUserEmail'; // ⭐️ 여기 추가
+import { useContext } from "react";
+import { UserProfileContext } from "../../../App";
 
 const MailTrashPage = () => {
   const [page, setPage] = useState(1); // UI page (1-based)
@@ -20,7 +21,8 @@ const MailTrashPage = () => {
   const [mails, setMails] = useState([]);
   const [selected, setSelected] = useState(new Set());
   const [loading, setLoading] = useState(false);
-  const userEmail = useUserEmail(); // ⭐️ 훅으로 교체!
+  const { userProfile } = useContext(UserProfileContext) || {};
+  const userEmail = userProfile?.email;
   const navigate = useNavigate();
 
   // robust parser for many possible response shapes

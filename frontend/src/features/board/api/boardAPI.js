@@ -1,4 +1,5 @@
-import http from "../../../api/http";
+import http from "../../../api/http"; 
+
 
 // 전체 게시글 목록 (페이징)
 export const getAllBoards = (page = 0, size = 10) =>
