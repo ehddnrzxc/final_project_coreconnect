@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Box, Typography, Table, TableHead, TableRow, TableCell, TableBody, IconButton, TextField, Button } from "@mui/material";
+import { Box, Typography, Table, TableHead, TableRow, TableCell, TableBody, IconButton, TextField, Button, Paper, Tooltip, Divider } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SaveIcon from "@mui/icons-material/Save";
@@ -107,132 +107,213 @@ const AdminCategoryPage = () => {
     }
   };
 
-  // JSX 렌더링
   return (
-    <Box sx={{ p: 3, width: "80%", mx: "auto" }}>
-      {/* 페이지 제목 영역 */}
-      <Typography variant="h5" sx={{ mb: 2 }}>
-        카테고리 관리 (관리자 전용)
-      </Typography>
-
-      {/* 신규 카테고리 등록 영역 */}
-      <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
-        {/* 카테고리명 입력 필드 */}
-        <TextField
-          label="카테고리명"
-          size="small"
-          value={newCategory.name}
-          onChange={(e) =>
-            setNewCategory((prev) => ({ ...prev, name: e.target.value }))
-          } // 입력값 변경 시 상태 갱신
-        />
-        {/* 순서번호 입력 필드 */}
-        <TextField
-          label="순서번호"
-          size="small"
-          type="number"
-          inputProps={{ min: 0 }} // 0 이상만 입력 허용
-          value={newCategory.orderNo}
-          onChange={(e) =>
-            setNewCategory((prev) => ({ ...prev, orderNo: e.target.value }))
-          } // 입력값 변경 시 상태 갱신
-        />
-        {/* 등록 버튼 */}
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />} // 추가 아이콘 표시
-          onClick={handleCreate} // 클릭 시 등록 실행
+    <Box
+      sx={{
+        p: 3,
+        bgcolor: "#f4f6fb", // 관리자 페이지 전체 배경색
+        minHeight: "100vh",
+      }}
+    >
+      <Paper
+        elevation={2}
+        sx={{
+          width: "90%",
+          maxWidth: 1200,
+          mx: "auto",
+          p: 3,
+          borderRadius: 2,
+          bgcolor: "#ffffff", // 메인 카드
+        }}
+      >
+        {/* 페이지 제목 영역 */}
+        <Typography variant="h5" sx={{ mb: 1, fontWeight: 700 }}>
+          카테고리 관리 (관리자 전용)
+        </Typography>
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ mb: 3 }}
         >
-          등록
-        </Button>
-      </Box>
+          게시판 카테고리명과 노출 순서를 한눈에 관리할 수 있는 페이지입니다.
+        </Typography>
 
-      {/* 카테고리 목록 테이블 */}
-      <Table>
-        <TableHead>
-          <TableRow>
-            {/* 테이블 헤더: 열 이름 */}
-            <TableCell>카테고리명</TableCell>
-            <TableCell>순서번호</TableCell>
-            <TableCell align="center">수정/삭제</TableCell> {/* 수정/삭제 버튼 구역 */}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {/* 카테고리 리스트 반복 렌더링 */}
-          {categories.map((cat) => (
-            <TableRow key={cat.id}>
-              <TableCell>
-                {/* 수정 중이면 입력창, 아니면 텍스트 표시 */}
-                {editingId === cat.id ? (
-                  <TextField
-                    size="small"
-                    value={editedData.name}
-                    onChange={(e) =>
-                      setEditedData((prev) => ({
-                        ...prev,
-                        name: e.target.value,
-                      }))
-                    }
-                  />
-                ) : (
-                  cat.name
-                )}
-              </TableCell>
+        {/* 신규 카테고리 등록 영역 */}
+        <Paper
+          variant="outlined"
+          sx={{
+            mb: 3,
+            p: 2,
+            borderRadius: 2,
+            bgcolor: "#fafafa", // 입력 영역을 박스로 분리
+          }}
+        >
+          <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 600 }}>
+            새 카테고리 등록
+          </Typography>
+          <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+            {/* 카테고리명 입력 필드 */}
+            <TextField
+              label="카테고리명"
+              size="small"
+              value={newCategory.name}
+              onChange={(e) =>
+                setNewCategory((prev) => ({ ...prev, name: e.target.value }))
+              }
+              sx={{ minWidth: 220 }}
+            />
+            {/* 순서번호 입력 필드 */}
+            <TextField
+              label="순서번호"
+              size="small"
+              type="number"
+              inputProps={{ min: 0 }}
+              value={newCategory.orderNo}
+              onChange={(e) =>
+                setNewCategory((prev) => ({ ...prev, orderNo: e.target.value }))
+              }
+              sx={{ width: 120 }}
+            />
+            {/* 등록 버튼 */}
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleCreate}
+            >
+              등록
+            </Button>
+          </Box>
+        </Paper>
 
-              <TableCell>
-                {/* 수정 중이면 입력창, 아니면 숫자 표시 */}
-                {editingId === cat.id ? (
-                  <TextField
-                    size="small"
-                    type="number"
-                    inputProps={{ min: 0 }}
-                    value={editedData.orderNo}
-                    onChange={(e) =>
-                      setEditedData((prev) => ({
-                        ...prev,
-                        orderNo: e.target.value,
-                      }))
-                    }
-                  />
-                ) : (
-                  cat.orderNo
-                )}
-              </TableCell>
+        <Divider sx={{ mb: 2 }} />
 
-              {/* 액션 버튼 (수정 / 저장 / 삭제) */}
-              <TableCell align="center">
-                {editingId === cat.id ? (
-                  // 수정 모드일 때는 저장 버튼 표시
-                  <IconButton color="primary" onClick={() => handleSave(cat.id)}>
-                    <SaveIcon />
-                  </IconButton>
-                ) : (
-                  // 일반 모드일 때는 수정 버튼 표시
-                  <IconButton color="secondary" onClick={() => handleEdit(cat)}>
-                    <EditIcon />
-                  </IconButton>
-                )}
-                {/* 삭제 → 확인창 오픈 */}
-                <IconButton
-                  color="error"
-                  onClick={() => handleOpenDeleteConfirm(cat.id)}
+        {/* 카테고리 목록 테이블 */}
+        <Paper
+          variant="outlined"
+          sx={{
+            borderRadius: 2,
+            overflow: "hidden", // 둥근 모서리에 맞게 테이블 잘림
+          }}
+        >
+          <Table>
+            <TableHead>
+              <TableRow
+                sx={{
+                  bgcolor: "#f0f4ff", // 헤더 배경색
+                }}
+              >
+                <TableCell sx={{ fontWeight: 700 }}>카테고리명</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>순서번호</TableCell>
+                <TableCell sx={{ fontWeight: 700 }} align="center">
+                  수정 / 삭제
+                </TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {categories.map((cat) => (
+                <TableRow
+                  key={cat.id}
+                  sx={{
+                    "&:hover": {
+                      bgcolor: "#fafafa", // 행 hover 효과
+                    },
+                  }}
                 >
-                  <DeleteIcon />
-                </IconButton>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+                  <TableCell>
+                    {editingId === cat.id ? (
+                      <TextField
+                        size="small"
+                        value={editedData.name}
+                        onChange={(e) =>
+                          setEditedData((prev) => ({
+                            ...prev,
+                            name: e.target.value,
+                          }))
+                        }
+                        sx={{ maxWidth: 260 }}
+                      />
+                    ) : (
+                      cat.name
+                    )}
+                  </TableCell>
 
-      {/* 삭제 확인창 */}
-      <ConfirmDialog
-        open={confirmOpen}
-        title="삭제 확인"
-        message={confirmMessage}
-        onConfirm={handleConfirm}
-        onCancel={handleCancel}
-      />
+                  <TableCell>
+                    {editingId === cat.id ? (
+                      <TextField
+                        size="small"
+                        type="number"
+                        inputProps={{ min: 0 }}
+                        value={editedData.orderNo}
+                        onChange={(e) =>
+                          setEditedData((prev) => ({
+                            ...prev,
+                            orderNo: e.target.value,
+                          }))
+                        }
+                        sx={{ width: 120 }}
+                      />
+                    ) : (
+                      cat.orderNo
+                    )}
+                  </TableCell>
+
+                  {/* 액션 버튼 (수정 / 저장 / 삭제) */}
+                  <TableCell align="center">
+                    {editingId === cat.id ? (
+                      <Tooltip title="저장">
+                        <IconButton
+                          color="primary"
+                          onClick={() => handleSave(cat.id)}
+                          sx={{
+                            "&:hover": { transform: "scale(1.05)" }, // 호버 시 살짝 확대
+                          }}
+                        >
+                          <SaveIcon />
+                        </IconButton>
+                      </Tooltip>
+                    ) : (
+                      <Tooltip title="수정">
+                        <IconButton
+                          color="secondary"
+                          onClick={() => handleEdit(cat)}
+                          sx={{
+                            "&:hover": { transform: "scale(1.05)" },
+                          }}
+                        >
+                          <EditIcon />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+
+                    <Tooltip title="삭제">
+                      <IconButton
+                        color="error"
+                        onClick={() => handleOpenDeleteConfirm(cat.id)}
+                        sx={{
+                          "&:hover": {
+                            transform: "scale(1.05)",
+                          },
+                        }}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Paper>
+
+        {/* 삭제 확인창 */}
+        <ConfirmDialog
+          open={confirmOpen}
+          title="삭제 확인"
+          message={confirmMessage}
+          onConfirm={handleConfirm}
+          onCancel={handleCancel}
+        />
+      </Paper>
     </Box>
   );
 };

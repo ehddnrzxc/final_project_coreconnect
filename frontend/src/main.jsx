@@ -160,6 +160,7 @@ const router = createBrowserRouter([
           { path: "detail/:boardId", element: <BoardDetailPage /> },
           { path: "new", element: <BoardWritePage /> },
           { path: "edit/:boardId", element: <BoardWritePage /> },
+          { path: "category-admin", element: <AdminCategoryPage /> },
         ],
       },
       {
@@ -174,7 +175,6 @@ const router = createBrowserRouter([
           { path: "users/create", element: <UserCreateForm /> },
           { path: "users", element: <UserList /> },
           { path: "templates/create", element: <TemplateAdminCreate /> },
-          { path: "board/category", element: <AdminCategoryPage /> },
           { path: "password-reset-requests", element: <PasswordReset /> },
           { path: "leave-requests", element: <LeaveRequests /> },
           { path: "departments", element: <DepartmentManagementPage /> },
