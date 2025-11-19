@@ -21,7 +21,6 @@ import useUserEmail from '../../email/hook/useUserEmail'; // 사용자 이메일
 import { MailCountContext } from "../../../App"; // 메일 카운트 컨텍스트(사이드바 등 공유)
 import { UserProfileContext } from "../../../App";
 
-
 const MailInboxPage = () => {
   // 상태변수 선언
   const [tab, setTab] = useState("all"); // 전체/오늘/안읽음
@@ -33,12 +32,8 @@ const MailInboxPage = () => {
   const [unreadCount, setUnreadCount] = useState(0); // Chip/Badge
   const [selected, setSelected] = useState(new Set());
   const [snack, setSnack] = useState({ open: false, severity: 'info', message: '' });
-<<<<<<< HEAD
-  const userEmail = useUserEmail();
-=======
   const { userProfile } = useContext(UserProfileContext) || {};
   const userEmail = userProfile?.email;
->>>>>>> d5e1f38fdb312c6f86bc1969ca3ed7a58d4ab2a7
   const navigate = useNavigate();
   const location = useLocation();
   const mailCountContext = useContext(MailCountContext);
