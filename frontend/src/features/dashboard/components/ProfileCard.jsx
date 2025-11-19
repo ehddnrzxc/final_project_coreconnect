@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from "react";
 import { getMyLeaveSummary } from "../../leave/api/leaveAPI";
 import { getMyPendingApprovalCount, getMyReceivedApprovalCount  } from "../api/dashboardAPI";
+import { fetchUnreadCount } from "../../email/api/emailApi";
 import { Link } from "react-router-dom";
 import Card from "../../../components/ui/Card";
 import {
@@ -34,6 +35,7 @@ export default function ProfileCard() {
   const [remainingLeaveDays, setRemainingLeaveDays] = useState(null);
   const [pendingApprovalCount, setPendingApprovalCount] = useState(null);
   const [receivedApprovalCount, setReceivedApprovalCount] = useState(null);
+  const [unreadMailCount, setUnreadMailCount] = useState(null);
 
   const { userProfile, setUserProfile } = useContext(UserProfileContext) || {};
 
@@ -103,6 +105,20 @@ export default function ProfileCard() {
     })();
   }, []);
 
+  /** 안 읽은 메일 개수 로딩 */
+  useEffect(() => {
+    if (!email) return;
+    (async () => {
+      try {
+        const count = await fetchUnreadCount(email);
+        setUnreadMailCount(Number.isFinite(count) ? count : 0);
+      } catch (e) {
+        console.error("안 읽은 메일 개수 로딩 실패:", e);
+        setUnreadMailCount(null);
+      }
+    })();
+  }, [email]);
+
   /** 오늘 새 글 카운트 */ 
   useEffect(() => {
     if (!deptCategoryId) {
@@ -170,6 +186,11 @@ export default function ProfileCard() {
       value: deptNewCount == null ? "-" : deptNewCount,
       highlight: Number(deptNewCount) > 0,
       to: deptCategoryId ? `/board/${deptCategoryId}?sortType=latest&scope=today` : null,
+    },
+    { label: "안 읽은 메일", 
+      value: unreadMailCount == null ? "-" : unreadMailCount,
+      highlight: Number(unreadMailCount) > 0, 
+      to: "/email?tab=unread", 
     },
     { label: "결재/합의 대기 문서", 
       value: pendingApprovalCount == null ? "-" : pendingApprovalCount,
