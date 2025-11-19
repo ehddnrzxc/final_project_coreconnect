@@ -142,9 +142,7 @@ function NewDocumentPage() {
 
 
   useEffect(() => {
-    if (!currentUser || !currentUser.userProfile) {
-      setError("로그인 정보가 없습니다.");
-      setLoading(false);
+    if (!currentUser) {
       return;
     }
 
@@ -185,6 +183,7 @@ function NewDocumentPage() {
         setLoading(true);
         setError(null);
         const detailRes = await getTemplateDetail(templateId);
+        console.log("detailResponse", detailRes)
 
         if(!detailRes.data.temp_key) {
           setError("API 응답에 'temp_key'가 포함되어 있지 않습니다.");
@@ -324,9 +323,14 @@ function NewDocumentPage() {
 
 
   if (loading) return <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}><CircularProgress /></Box>;
-  if (error && selectedTemplate) return <Alert severity='error'>{error}</Alert>;
+  if (error) return (
+    <Box sx={{ mt: 4 }}>
+      <Alert severity='error'>{error}</Alert>
+      <Button variant='outlined' sx={{ mt: 2 }} onClick={() => navigate(-1)}>뒤로 가기</Button>
+    </Box>
+  )
   if (!selectedTemplate) return <Alert severity='warning'>선택된 양식 정보를 찾을 수 없습니다.</Alert>;
-console.log("현재 로그인 유저 정보:", currentUser)
+
   return (
     <Box>
       {error && (
