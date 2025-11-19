@@ -216,12 +216,13 @@ export default function ScheduleDetailModal({
           <>
             <Button
               variant="contained"
-              onClick={() =>
-                onEdit({
+              onClick={() => {
+                const editData = {
                   ...schedule,
                   participantIds: participants.map((p) => p.userId),
-                })
-              }
+                };
+                onEdit(editData);
+              }}
             >
               수정
             </Button>
