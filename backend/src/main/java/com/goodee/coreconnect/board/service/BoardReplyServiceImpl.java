@@ -13,8 +13,8 @@ import com.goodee.coreconnect.board.entity.Board;
 import com.goodee.coreconnect.board.entity.BoardReply;
 import com.goodee.coreconnect.board.repository.BoardReplyRepository;
 import com.goodee.coreconnect.board.repository.BoardRepository;
-import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.User;
+import com.goodee.coreconnect.user.enums.Role;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
 import jakarta.persistence.EntityNotFoundException;

@@ -44,3 +44,15 @@ export async function changePassword(currentPassword, newPassword, confirmPasswo
   });
   return res.data;
 }
+
+// 프로필 정보 조회
+export async function getDetailProfileInfo() {
+  const res = await http.get("/user/detail-profile");
+  return res.data;
+}
+
+// 프로필 정보 수정
+export async function updateDetailProfileInfo(profileData) {
+  const res = await http.put("/user/detail-profile", profileData);
+  return res.data;
+}

@@ -3,9 +3,9 @@ package com.goodee.coreconnect.admin.service;
 import com.goodee.coreconnect.admin.dto.request.CreateUserReqDTO;
 import com.goodee.coreconnect.admin.dto.request.UpdateUserReqDTO;
 import com.goodee.coreconnect.user.dto.response.UserDTO;
-import com.goodee.coreconnect.user.entity.JobGrade;
-import com.goodee.coreconnect.user.entity.Role;
-import com.goodee.coreconnect.user.entity.Status;
+import com.goodee.coreconnect.user.enums.JobGrade;
+import com.goodee.coreconnect.user.enums.Role;
+import com.goodee.coreconnect.user.enums.Status;
 
 public interface AdminUserService {
   UserDTO createUser(CreateUserReqDTO req);

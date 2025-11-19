@@ -5,8 +5,10 @@ import java.util.List;
 
 import org.springframework.web.multipart.MultipartFile;
 
+import com.goodee.coreconnect.user.dto.request.UserDetailProfileUpdateRequestDTO;
 import com.goodee.coreconnect.user.dto.response.OrganizationUserResponseDTO;
 import com.goodee.coreconnect.user.dto.response.UserDTO;
+import com.goodee.coreconnect.user.dto.response.UserDetailProfileDTO;
 import com.goodee.coreconnect.user.entity.User;
 
 public interface UserService {
@@ -33,4 +35,10 @@ public interface UserService {
   
   /** 비밀번호 변경 */
   void changePassword(String email, String currentPassword, String newPassword);
+  
+  /** 프로필 정보 조회 */
+  UserDetailProfileDTO getDetailProfileInfo(String email);
+  
+  /** 프로필 정보 수정 */
+  void updateDetailProfileInfo(String email, UserDetailProfileUpdateRequestDTO requestDTO);
 }

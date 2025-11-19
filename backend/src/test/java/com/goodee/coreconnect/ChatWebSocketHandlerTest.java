@@ -54,7 +54,7 @@ import org.springframework.web.socket.WebSocketHttpHeaders;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
-import com.goodee.coreconnect.user.entity.Role;
+
 import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.approval.entity.Template;
 import com.goodee.coreconnect.approval.repository.DocumentRepository;
@@ -78,6 +78,7 @@ import com.goodee.coreconnect.common.notification.service.WebSocketDeliveryServi
 import com.goodee.coreconnect.common.service.S3Service;
 import com.goodee.coreconnect.security.jwt.JwtProvider;
 import com.goodee.coreconnect.user.entity.User;
+import com.goodee.coreconnect.user.enums.Role;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
 import lombok.extern.slf4j.Slf4j;

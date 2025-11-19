@@ -17,8 +17,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
 import com.goodee.coreconnect.user.dto.request.ChangePasswordRequestDTO;
+import com.goodee.coreconnect.user.dto.request.UserDetailProfileUpdateRequestDTO;
 import com.goodee.coreconnect.user.dto.response.OrganizationUserResponseDTO;
 import com.goodee.coreconnect.user.dto.response.UserDTO;
+import com.goodee.coreconnect.user.dto.response.UserDetailProfileDTO;
 import com.goodee.coreconnect.user.service.UserService;
 
 import lombok.RequiredArgsConstructor;
@@ -91,6 +93,27 @@ public class UserController {
       
       userService.changePassword(email, request.currentPassword(), request.newPassword());
       return ResponseEntity.ok().build();
+    }
+    
+    /** 프로필 정보 조회 */
+    @GetMapping("/detail-profile")
+    public ResponseEntity<UserDetailProfileDTO> getDetailProfileInfo(
+      @AuthenticationPrincipal CustomUserDetails user
+    ) {
+      String email = user.getEmail();
+      UserDetailProfileDTO profile = userService.getDetailProfileInfo(email);
+      return ResponseEntity.ok(profile);
+    }
+    
+    /** 프로필 정보 수정 */
+    @PutMapping("/detail-profile")
+    public ResponseEntity<String> updateDetailProfileInfo(
+      @AuthenticationPrincipal CustomUserDetails user,
+      @RequestBody UserDetailProfileUpdateRequestDTO request
+    ) {
+      String email = user.getEmail();
+      userService.updateDetailProfileInfo(email, request);
+      return ResponseEntity.ok("프로필 정보가 수정되었습니다.");
     }
     
     

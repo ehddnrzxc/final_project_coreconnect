@@ -24,8 +24,8 @@ import com.goodee.coreconnect.board.repository.BoardViewHistoryRepository;
 import com.goodee.coreconnect.chat.repository.NotificationRepository;
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
 import com.goodee.coreconnect.common.notification.service.NotificationService;
-import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.User;
+import com.goodee.coreconnect.user.enums.Role;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
 import jakarta.persistence.EntityNotFoundException;

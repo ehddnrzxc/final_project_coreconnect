@@ -2,6 +2,7 @@ package com.goodee.coreconnect.account.entity;
 
 import java.time.LocalDateTime;
 
+import com.goodee.coreconnect.account.enums.LogActionType;
 import com.goodee.coreconnect.user.entity.User;
 
 import jakarta.persistence.*;

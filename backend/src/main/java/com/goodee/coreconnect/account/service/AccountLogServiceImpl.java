@@ -7,7 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.goodee.coreconnect.account.dto.response.AccountLogResponseDTO;
 import com.goodee.coreconnect.account.entity.AccountLog;
-import com.goodee.coreconnect.account.entity.LogActionType;
+import com.goodee.coreconnect.account.enums.LogActionType;
 import com.goodee.coreconnect.account.repository.AccountLogRepository;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;

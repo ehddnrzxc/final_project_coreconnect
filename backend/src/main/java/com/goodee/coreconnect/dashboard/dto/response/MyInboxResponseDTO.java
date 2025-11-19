@@ -1,4 +1,4 @@
-package com.goodee.coreconnect.dashboard.dto;
+package com.goodee.coreconnect.dashboard.dto.response;
 
 import java.util.List;
 

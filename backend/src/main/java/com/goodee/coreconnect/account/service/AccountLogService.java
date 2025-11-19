@@ -4,7 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import com.goodee.coreconnect.account.dto.response.AccountLogResponseDTO;
-import com.goodee.coreconnect.account.entity.LogActionType;
+import com.goodee.coreconnect.account.enums.LogActionType;
 import com.goodee.coreconnect.user.entity.User;
 
 /**

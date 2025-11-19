@@ -1,4 +1,4 @@
-package com.goodee.coreconnect.user.entity;
+package com.goodee.coreconnect.user.enums;
 
 /** 사용자의 상태(탈퇴 등)을 나타내는 Enum */
 public enum Status {

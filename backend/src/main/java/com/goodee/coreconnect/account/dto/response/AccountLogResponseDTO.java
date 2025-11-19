@@ -3,7 +3,7 @@ package com.goodee.coreconnect.account.dto.response;
 import java.time.LocalDateTime;
 
 import com.goodee.coreconnect.account.entity.AccountLog;
-import com.goodee.coreconnect.account.entity.LogActionType;
+import com.goodee.coreconnect.account.enums.LogActionType;
 
 /**
  * 로그인 이력 응답 DTO

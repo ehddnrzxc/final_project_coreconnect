@@ -1,4 +1,4 @@
-package com.goodee.coreconnect.account.entity;
+package com.goodee.coreconnect.account.enums;
 
 /**
  * 사용자 인증 및 토큰 관련 주요 동작을 구분하기 위한 ENUM.

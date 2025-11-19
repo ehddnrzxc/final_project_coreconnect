@@ -1,4 +1,4 @@
-package com.goodee.coreconnect.auth.dto;
+package com.goodee.coreconnect.auth.dto.response;
 
 /**
  * 로그인 응답용 DTO

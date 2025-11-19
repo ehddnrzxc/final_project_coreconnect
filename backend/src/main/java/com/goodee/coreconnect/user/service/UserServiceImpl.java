@@ -12,9 +12,13 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.goodee.coreconnect.common.service.S3Service;
+import com.goodee.coreconnect.user.dto.request.UserDetailProfileUpdateRequestDTO;
 import com.goodee.coreconnect.user.dto.response.OrganizationUserResponseDTO;
 import com.goodee.coreconnect.user.dto.response.UserDTO;
+import com.goodee.coreconnect.user.dto.response.UserDetailProfileDTO;
 import com.goodee.coreconnect.user.entity.User;
+import com.goodee.coreconnect.user.entity.UserDetailProfile;
+import com.goodee.coreconnect.user.repository.UserDetailProfileRepository;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -24,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 public class UserServiceImpl implements UserService {
 
   private final UserRepository userRepository;
+  private final UserDetailProfileRepository userDetailProfileRepository;
   private final S3Service s3Service;
   private final PasswordEncoder passwordEncoder;
   
@@ -138,6 +143,47 @@ public class UserServiceImpl implements UserService {
     String encodedNewPassword = passwordEncoder.encode(newPassword);
     user.changePassword(encodedNewPassword);
     userRepository.save(user);
+  }
+  
+  /** 프로필 정보 조회 */
+  @Override
+  @Transactional(readOnly = true)
+  public UserDetailProfileDTO getDetailProfileInfo(String email) {
+    User user = userRepository.findByEmail(email)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
+    
+    UserDetailProfile profile = userDetailProfileRepository.findByUser(user)
+        .orElse(null);
+    
+    return UserDetailProfileDTO.toDTO(profile);
+  }
+  
+  /** 프로필 정보 수정 */
+  @Override
+  @Transactional
+  public void updateDetailProfileInfo(String email, UserDetailProfileUpdateRequestDTO requestDTO) {
+    User user = userRepository.findByEmail(email)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
+    
+    UserDetailProfile profile = userDetailProfileRepository.findByUser(user)
+        .orElseGet(() -> {
+            // 프로필이 없으면 새로 생성
+            UserDetailProfile newProfile = UserDetailProfile.createProfile(user);
+            return userDetailProfileRepository.save(newProfile);
+        });
+    
+    // 프로필 정보 업데이트
+    profile.updateProfile(
+        requestDTO.companyName(),
+        requestDTO.directPhone(),
+        requestDTO.fax(),
+        requestDTO.address(),
+        requestDTO.birthday(),
+        requestDTO.bio(),
+        requestDTO.externalEmail()
+    );
+    
+    userDetailProfileRepository.save(profile);
   }
   
 }

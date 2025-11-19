@@ -8,10 +8,10 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import com.goodee.coreconnect.user.entity.JobGrade;
-import com.goodee.coreconnect.user.entity.Role;
-import com.goodee.coreconnect.user.entity.Status;
 import com.goodee.coreconnect.user.entity.User;
+import com.goodee.coreconnect.user.enums.JobGrade;
+import com.goodee.coreconnect.user.enums.Role;
+import com.goodee.coreconnect.user.enums.Status;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

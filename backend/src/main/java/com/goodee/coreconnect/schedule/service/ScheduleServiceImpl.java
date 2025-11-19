@@ -29,8 +29,8 @@ import com.goodee.coreconnect.schedule.repository.MeetingRoomRepository;
 import com.goodee.coreconnect.schedule.repository.ScheduleCategoryRepository;
 import com.goodee.coreconnect.schedule.repository.ScheduleParticipantRepository;
 import com.goodee.coreconnect.schedule.repository.ScheduleRepository;
-import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.User;
+import com.goodee.coreconnect.user.enums.Role;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;

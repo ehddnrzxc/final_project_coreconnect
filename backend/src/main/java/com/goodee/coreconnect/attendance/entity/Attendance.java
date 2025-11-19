@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
+import com.goodee.coreconnect.attendance.enums.AttendanceStatus;
 import com.goodee.coreconnect.dashboard.entity.Dashboard;
 import com.goodee.coreconnect.user.entity.User;
 

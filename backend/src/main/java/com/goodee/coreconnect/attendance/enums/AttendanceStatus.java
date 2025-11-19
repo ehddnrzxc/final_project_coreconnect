@@ -1,4 +1,4 @@
-package com.goodee.coreconnect.attendance.entity;
+package com.goodee.coreconnect.attendance.enums;
 
 public enum AttendanceStatus {
   

@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.goodee.coreconnect.account.dto.response.AccountLogResponseDTO;
-import com.goodee.coreconnect.account.entity.LogActionType;
+import com.goodee.coreconnect.account.enums.LogActionType;
 import com.goodee.coreconnect.account.service.AccountLogService;
 
 import io.swagger.v3.oas.annotations.Operation;

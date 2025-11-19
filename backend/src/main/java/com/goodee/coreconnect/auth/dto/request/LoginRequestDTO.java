@@ -1,4 +1,4 @@
-package com.goodee.coreconnect.auth.dto;
+package com.goodee.coreconnect.auth.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 

@@ -9,8 +9,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import com.goodee.coreconnect.department.entity.Department;
-import com.goodee.coreconnect.user.entity.JobGrade;
 import com.goodee.coreconnect.user.entity.User;
+import com.goodee.coreconnect.user.enums.JobGrade;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
