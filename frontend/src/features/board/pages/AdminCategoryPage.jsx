@@ -199,4 +199,4 @@ const AdminCategoryPage = () => {
   );
 };
 
-export default AdminCategoryPage;  // 컴포넌트 내보내기 (다른 페이지에서 import하여 사용 가능)
+export default AdminCategoryPage;

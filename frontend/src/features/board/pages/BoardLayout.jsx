@@ -7,41 +7,28 @@ import { UserProfileContext } from "../../../App";
 
 
 const BoardLayout = () => {
-  const [categories, setCategories] = React.useState([]);
-  // 상태값: 게시판 카테고리 목록 배열
-  // 서버에서 불러온 카테고리들을 저장하고, 좌측 리스트 렌더링에 사용
+  const [categories, setCategories] = React.useState([]); // 상태값: 게시판 카테고리 목록 배열
   const navigate = useNavigate();
-  // 페이지 이동을 위한 훅
-  // 예: navigate("/board"), navigate("/board/new")
-  const location = useLocation();
-  // 현재 URL 경로 정보를 가져오는 훅
-  // 예: location.pathname → "/board/3", "/board/detail/10" 등
+  const location = useLocation(); // 현재 URL 경로 정보를 가져오는 훅
   const { categoryId } = useParams();
-  // URL 파라미터에서 categoryId 추출 (예: /board/3 → categoryId="3")
+  // URL 파라미터에서 categoryId 추출
   // /board, /board/detail/:id 같은 경로에서는 undefined일 수 있음
   const contentRef = useRef(null);
   // 스크롤을 제어하기 위해 오른쪽 콘텐츠 영역(Box)을 참조할 ref 객체
-  // 현재는 window.scrollTo를 사용하고 있어 직접 사용되지는 않지만,
-  // 필요시 contentRef.current.scrollTo(...) 방식으로 영역 내부 스크롤 제어 가능
+  // 현재는 window.scrollTo를 사용하고 있어 직접 사용되지는 않지만 필요시 contentRef.current.scrollTo(...) 방식으로 영역 내부 스크롤 제어 가능
   const { showSnack } = useSnackbarContext(); // 스낵바 표시 함수 (success, error 등 상태별 호출)
-  const { userProfile } = useContext(UserProfileContext);
+  const { userProfile } = useContext(UserProfileContext); // UserProfileContext에서 현재 로그인한 사용자 프로필 정보(userProfile)를 가져옴
   const isAdmin = userProfile?.role === "ADMIN";
-  // 사용자 권한이 ADMIN인지 확인 → 관리자 여부 판별
-  // ADMIN이면 카테고리 관리 버튼을 보여줌
 
   // 현재 활성화된 카테고리 ID 상태 관리
   // - 게시글 상세나 글쓰기 페이지로 이동해도, 좌측 카테고리 선택 상태(음영)를 유지하기 위해 별도 상태로 관리
   // - URL에 categoryId가 없을 수도 있어 초기값을 빈 문자열("")로 처리
   const [activeCategoryId, setActiveCategoryId] = React.useState(categoryId || "");
-  // activeCategoryId: 좌측 리스트에서 "어떤 카테고리가 선택되었는지" 표시하기 위한 값
-  // categoryId가 있으면 그 값으로, 없으면 ""로 시작
 
   // 전체 카테고리 목록 불러오기
   // - 페이지 최초 로드 시 한 번만 실행됨 (의존성 배열 [])
   // - 서버에서 가져온 카테고리를 orderNo 기준으로 정렬 후 상태에 저장
   useEffect(() => {
-    // 이 useEffect는 BoardLayout이 처음 화면에 나타날 때 한 번만 실행된다.
-    // 카테고리 목록을 서버에서 불러오고, 정렬하여 좌측 메뉴로 보여주는 핵심 부분이다.
     (async () => {
       try {
         const res = await getAllCategories(); // 백엔드 API 호출 (삭제되지 않은 카테고리 목록 조회)
@@ -53,12 +40,12 @@ const BoardLayout = () => {
           (a, b) => (a.orderNo ?? 0) - (b.orderNo ?? 0)
         );
 
-        setCategories(sorted); // 정렬된 카테고리 목록을 상태로 저장 → 좌측 리스트에서 사용
+        setCategories(sorted); // 정렬된 카테고리 목록을 상태로 저장
       } catch (err) {
         showSnack("카테고리 목록을 불러오지 못했습니다.", "error");
       }
     })();
-  }, []); // 컴포넌트 마운트 시 1회 실행 (카테고리 목록은 자주 변하지 않으므로 한 번만 로드)
+  }, []); // 컴포넌트 마운트 시 1회 실행
 
   // URL 경로(location)가 바뀔 때마다 카테고리 상태를 동기화
   // - /board/:categoryId 형태에서는 categoryId를 활성화
@@ -116,7 +103,6 @@ const BoardLayout = () => {
   };
 
   // 카테고리 클릭 시 해당 카테고리 게시판 페이지로 이동
-  // 예: 카테고리 ID가 3이면 /board/3 으로 이동
   const handleCategoryClick = (id) => navigate(`/board/${id}`);
 
   // 라우트 변경 시 화면 스크롤을 맨 위로 이동시키는 효과
@@ -130,15 +116,10 @@ const BoardLayout = () => {
   // URL(location)이 바뀔 때마다 실행됨
   // 즉, 카테고리 변경 / 상세보기 / 글쓰기 등 모든 네비게이션에 대해 항상 맨 위로 올림
 
-  // 실제 렌더링 부분
   // - 좌측: 카테고리 리스트 + 버튼들
   // - 우측: Outlet(게시판 페이지 콘텐츠)
   return (
-    <Box sx={{ display: "flex", height: "100%" }}>
-      {/* 최상위 레이아웃 컨테이너 */}
-      {/* display="flex" → 좌우 2컬럼 구조 (왼쪽 카테고리 / 오른쪽 콘텐츠) */}
-      {/* height="100%" → 부모 높이 전체를 차지 */}
-
+    <Box sx={{ display: "flex", height: "100%" }}> {/* display="flex" → 좌우 2컬럼 구조 (왼쪽 카테고리 / 오른쪽 콘텐츠) */}
       {/* 좌측 카테고리 영역 */}
       <Box
         sx={{
@@ -267,4 +248,4 @@ const BoardLayout = () => {
   );
 };
 
-export default BoardLayout; // BoardLayout 컴포넌트를 외부에서 사용할 수 있도록 export
+export default BoardLayout;

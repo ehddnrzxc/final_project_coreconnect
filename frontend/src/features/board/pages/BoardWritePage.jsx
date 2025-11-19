@@ -32,7 +32,6 @@ const BoardWritePage = () => {
   const [previewFile, setPreviewFile] = useState(null);  // 모달용
   const [openModal, setOpenModal] = useState(false);     // 모달 열기/닫기
 
-
   // 파일 확장자 체크 → 이미지인지 비이미지인지 구분용
   const isImage = (name) => {
     return /\.(jpg|jpeg|png|gif|bmp|webp)$/i.test(name);
@@ -159,7 +158,7 @@ const BoardWritePage = () => {
     const newFiles = Array.from(e.target.files).filter(f => !!f);;
 
     // 기존 파일 유지 + 새 파일 append
-    // → 새 파일도 기존과 동일한 구조(type/new, name, size, file)로 맞춰줌
+    // 새 파일도 기존과 동일한 구조(type/new, name, size, file)로 맞춰줌
     const wrapped = newFiles.map((file) => ({
       type: "new", // 신규 파일 표시
       file, // 실제 File 객체 보관
@@ -257,14 +256,13 @@ const BoardWritePage = () => {
     setPreviewFile(null);
   };
 
-  // UI 렌더링
   return (
     <Box sx={{ px: "5%", pt: 2, maxWidth: 1000 }}>
       <Typography variant="h6" sx={{ mb: 2 }}>
         {boardId ? "게시글 수정" : "새 게시글 작성"}
       </Typography>
 
-      {/* --- 카테고리 선택 --- */}
+      {/* 카테고리 선택 */}
       {!boardId ? (
         <FormControl fullWidth sx={{ mb: 2 }}>
           <InputLabel>카테고리 선택</InputLabel>

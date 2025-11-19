@@ -51,7 +51,7 @@ const RecentViewedBoards = () => {
           variant="outlined"
           sx={{
             p: 1,
-            width: "90%",   // 박스 폭
+            width: "91%",   // 박스 폭
             mx: "auto",     // 가운데 정렬
           }}
         >
@@ -69,7 +69,7 @@ const RecentViewedBoards = () => {
                     sx={{
                       width: 27,
                       height: 27,
-                      mr: 0.5
+                      mr: 1.5
                     }}
                   />
                   <ListItemText

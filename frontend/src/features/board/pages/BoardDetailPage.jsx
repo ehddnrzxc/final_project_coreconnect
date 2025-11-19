@@ -416,8 +416,6 @@ const BoardDetailPage = () => {
                 }}
                 onClick={() => openPreview(file)} // 카드 클릭 → 미리보기 모달
               >
-                {/* X 버튼 (상세에선 실제 삭제가 아니라 단순 UI 제거는 아니므로, 제거 버튼은 넣지 않음) */}
-
                 {/* 썸네일 */}
                 {isImage(file.fileName) ? (
                   <CardMedia
