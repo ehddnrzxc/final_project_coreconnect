@@ -42,6 +42,14 @@ const VacationForm = ({ formData, onFormChange }) => {
     loadLeaveTypes();
   }, []);
 
+  const handleReasonChange = e => {
+    const { value } = e.target;
+    if (value.length > 200) {
+      e.target.value = value.slice(0, 200);
+    }
+    onFormChange(e);
+  };
+
   return (
     <>
       <Typography variant="subtitle1" sx={{ mt: 3, mb: 1, fontWeight: 'bold', borderBottom: '1px solid #eee', pb: 1 }}>
@@ -129,12 +137,15 @@ const VacationForm = ({ formData, onFormChange }) => {
               <TextField
                 name="reason"
                 value={formData.reason || ''}
-                onChange={onFormChange}
+                onChange={handleReasonChange}
                 required
                 multiline
                 rows={8}
                 fullWidth
                 variant="outlined"
+                placeholder='휴가 사유를 입력해주세요.'
+                inputProps={{ maxLength: 200 }}
+                helperText={`${(formData.reason || '').length}/200자`}
               />
             </TableCell>
           </TableRow>
