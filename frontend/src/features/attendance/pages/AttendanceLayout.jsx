@@ -6,8 +6,10 @@ import { Outlet, Link as RouterLink, useLocation } from "react-router-dom";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 
 function AttendanceLayout() {
+  const { showSnack } = useSnackbarContext();
   const theme = useTheme();
   const location = useLocation();
   const [now, setNow] = useState(new Date());
@@ -55,10 +57,10 @@ function AttendanceLayout() {
     try {
       await checkIn();
       await loadAttendance();
-      alert("출근 처리되었습니다.");
+      showSnack("출근 처리되었습니다.", "success");
     } catch (err) {
       console.error(err);
-      alert("출근 처리에 실패했습니다.");
+      showSnack("출근 처리에 실패했습니다.", "error");
     }
   };
 
@@ -66,10 +68,10 @@ function AttendanceLayout() {
     try {
       await checkOut();
       await loadAttendance();
-      alert("퇴근 처리되었습니다.");
+      showSnack("퇴근 처리되었습니다.", "success");
     } catch (err) {
       console.error(err);
-      alert("퇴근 처리에 실패했습니다.");
+      showSnack("퇴근 처리에 실패했습니다.", "error");
     }
   };
 
@@ -95,8 +97,8 @@ function AttendanceLayout() {
       <Paper
         elevation={2}
         sx={{
-          width: 280,
-          minWidth: 280,
+          width: 260,
+          minWidth: 260,
           height: "100%",
           borderRadius: 0,
           display: "flex",
@@ -189,10 +191,10 @@ function AttendanceLayout() {
                   borderRadius: 1,
                   mb: 0.5,
                   "&.Mui-selected": {
-                    bgcolor: "primary.main",
-                    color: "white",
+                    bgcolor: "transparent",
+                    color: "primary.main",
                     "&:hover": {
-                      bgcolor: "primary.dark",
+                      bgcolor: "transparent",
                     },
                   },
                 }}
@@ -217,10 +219,10 @@ function AttendanceLayout() {
                   borderRadius: 1,
                   mb: 0.5,
                   "&.Mui-selected": {
-                    bgcolor: "primary.main",
-                    color: "white",
+                    bgcolor: "transparent",
+                    color: "primary.main",
                     "&:hover": {
-                      bgcolor: "primary.dark",
+                      bgcolor: "transparent",
                     },
                   },
                 }}

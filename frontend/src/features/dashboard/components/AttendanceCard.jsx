@@ -5,8 +5,10 @@ import { useState, useEffect } from "react";
 import Card from "../../../components/ui/Card";
 import { formatHM } from "../../../utils/TimeUtils";
 import http from "../../../api/http";
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 
 function AttendanceCard() {
+  const { showSnack } = useSnackbarContext();
   const theme = useTheme();
   const [now, setNow] = useState(new Date());
   const [attendance, setAttendance] = useState(null);
@@ -89,10 +91,10 @@ function AttendanceCard() {
     try {
       await checkIn();
       await loadAttendance();
-      alert("출근 처리되었습니다.");
+      showSnack("출근 처리되었습니다.", "success");
     } catch (err) {
       console.error(err);
-      alert("출근 처리에 실패했습니다.");
+      showSnack("출근 처리에 실패했습니다.", "error");
     }
   };
 
@@ -100,10 +102,10 @@ function AttendanceCard() {
     try {
       await checkOut();
       await loadAttendance();
-      alert("퇴근 처리되었습니다.");
+      showSnack("퇴근 처리되었습니다.", "success");
     } catch (err) {
       console.error(err);
-      alert("퇴근 처리에 실패했습니다.");
+      showSnack("퇴근 처리에 실패했습니다.", "error");
     }
   };
 

@@ -80,6 +80,7 @@ class BoardFileServiceTest {
                 "test@example.com",
                 "010-1234-5678",
                 null,
+                null,
                 null
         );
 

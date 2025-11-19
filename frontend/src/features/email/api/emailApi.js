@@ -20,8 +20,7 @@ export const fetchInbox = (
 
 // '안읽은 메일' 개수 조회 (Controller의 /email/inbox/unread-count와 매칭)
 export const fetchUnreadCount = (userEmail) =>
-  http
-    .get('/email/inbox/unread-count', { params: { userEmail } })
+  http.get('/email/inbox/unread-count', { params: { userEmail } })
     .then(res => res.data.data);
 
 // 메일 상세 조회 (userEmail 동봉)
@@ -133,9 +132,13 @@ export const fetchTrashList = (userEmail, page = 0, size = 20) =>
   http.get('/email/trash', { params: { userEmail, page, size } });
 
 // 선택된 mailIds를 삭제(휴지통) 처리
-export function deleteMails(mailIds) {
-  return http.delete('/email/trash', { data: { mailIds } })
-    .then(res => res.data);
+// api/emailApi.js (axios 인스턴스 http 이용 시)
+export function deleteMails(deleteMailsRequest) {
+  // 반드시 두번째 파라미터(config)에 data를 넣는다! (axios v0.19 이상)
+  return http.delete('/email/trash', {
+    data: deleteMailsRequest, // ← { mailIds: [...] }
+    headers: { 'Content-Type': 'application/json' } // 명시(일부 env에서 필요)
+  });
 }
 
 // fetchTrashMails wrapper returning axios response (older callers)
@@ -154,3 +157,4 @@ export async function fetchScheduledMails(userEmail, page = 0, size = 10) {
   });
   return res.data;
 }
+

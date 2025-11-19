@@ -51,7 +51,7 @@ function CompanyAttendanceStatus() {
 
   return (
     <Box sx={{ p: 4 }}>
-      <Typography variant="h4" fontWeight={700} sx={{ mb: 4 }}>
+      <Typography variant="h6" sx={{ mb: 4 }}>
         전사 근태현황
       </Typography>
 

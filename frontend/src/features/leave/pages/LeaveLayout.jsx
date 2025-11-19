@@ -27,8 +27,8 @@ export default function LeaveLayout() {
       <Paper
         elevation={2}
         sx={{
-          width: 280,
-          minWidth: 280,
+          width: 260,
+          minWidth: 260,
           height: "100%",
           borderRadius: 0,
           display: "flex",
@@ -46,12 +46,22 @@ export default function LeaveLayout() {
             </Typography>
           </Box>
           <Button
-            variant="contained"
-            color="primary"
+            variant="outlined"
             fullWidth
             component={RouterLink}
             to="/e-approval/new/1"
-            sx={{ py: 1 }}
+            sx={{ 
+              py: 1,
+              bgcolor: "transparent",
+              borderColor: "black",
+              borderWidth: 1,
+              color: "text.primary",
+              "&:hover": {
+                bgcolor: "transparent",
+                borderColor: "black",
+                borderWidth: 1,
+              },
+            }}
           >
             휴가 신청하기
           </Button>
@@ -76,10 +86,10 @@ export default function LeaveLayout() {
                   borderRadius: 1,
                   mb: 0.5,
                   "&.Mui-selected": {
-                    bgcolor: "primary.main",
-                    color: "white",
+                    bgcolor: "transparent",
+                    color: "primary.main",
                     "&:hover": {
-                      bgcolor: "primary.dark",
+                      bgcolor: "transparent",
                     },
                   },
                 }}
@@ -108,10 +118,10 @@ export default function LeaveLayout() {
                   borderRadius: 1,
                   mb: 0.5,
                   "&.Mui-selected": {
-                    bgcolor: "primary.main",
-                    color: "white",
+                    bgcolor: "transparent",
+                    color: "primary.main",
                     "&:hover": {
-                      bgcolor: "primary.dark",
+                      bgcolor: "transparent",
                     },
                   },
                 }}

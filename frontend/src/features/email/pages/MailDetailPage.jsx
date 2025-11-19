@@ -39,10 +39,18 @@ function MailDetailPage() {
     const data = res.data.data;
     setMailDetail(data);
 
-    if (data.readYn === false) {
+    if (data.readYn === false || data.readYn === null || data.readYn === undefined) {
       markMailAsRead(emailId, userEmail)
         .then(() => {
-          if (refreshUnreadCount) refreshUnreadCount(); // ★여기!
+          // DB 반영을 위한 짧은 대기 후 카운트 업데이트
+          setTimeout(() => {
+            if (refreshUnreadCount) {
+              refreshUnreadCount(); // ★여기!
+            }
+          }, 100);
+        })
+        .catch(err => {
+          console.error("markMailAsRead error in MailDetailPage:", err);
         });
     }
   });

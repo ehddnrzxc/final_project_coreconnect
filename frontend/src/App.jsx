@@ -12,7 +12,6 @@ import { Box, CssBaseline } from "@mui/material";
 import useAuth from "./hooks/useAuth";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { SnackbarProvider } from "./components/utils/SnackbarContext";
 // ----------- 채팅 컴포넌트 import 추가 -----------
 import ChatHeaderIcon from "../src/features/chat/components/ChatHeaderIcon";
 import ChatMain from "../src/features/chat/components/ChatMain";
@@ -75,9 +74,7 @@ const themeOptions = {
 };
 
 function App() {
-  const DEFAULT_AVATAR = "https://i.pravatar.cc/80?img=12";
   const [userProfile, setUserProfile] = useState(null);
-  const [avatarUrl, setAvatarUrl] = useState(DEFAULT_AVATAR);
 
   const [unreadCount, setUnreadCount] = useState(0);
   const [draftCount, setDraftCount] = useState(0);
@@ -148,7 +145,6 @@ function App() {
       try {
         const profileData = await getMyProfileInfo();
         setUserProfile(profileData);
-        setAvatarUrl(profileData.profileImageUrl || DEFAULT_AVATAR);
       } catch (e) {
         console.warn("프로필 정보 불러오기 실패:", e);
       }
@@ -157,69 +153,69 @@ function App() {
 
   // 최초 마운트 시 개수 상태 동기화 (안읽은+임시보관)
   useEffect(() => {
-    refreshUnreadCount();
-    refreshDraftCount();
-  }, []);
+    if (userProfile?.email) {
+      refreshUnreadCount();
+      refreshDraftCount();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userProfile?.email]);
 
   // context value: count, set, refresh 함수
   const mailCountContextValue = {
     unreadCount, refreshUnreadCount,
     draftCount, refreshDraftCount,
-    setAvatarUrl
   };
 
   return (
     <ThemeProvider theme={theme}>
       <LocalizationProvider dateAdapter={AdapterDayjs}>
-        <SnackbarProvider>
-          <CssBaseline />
-          <UserProfileContext.Provider value={{ userProfile, setUserProfile }}>
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: "column",
-                minHeight: "100vh",
-                bgcolor: "background.default",
-              }}
-            >
-              {/* ----------- Topbar(채팅아이콘 추가) ------------ */}
-              <Topbar 
-                onLogout={handleLogout}
-                themeMode={themeMode}
-                themeOptions={themeOptions}
-                onThemeChange={handleThemeChange}
-                rightExtra={
-                  <ChatHeaderIcon onClick={() => setChatOpen(true)} />
-                }
-              />
-              {/* ----------------------------------------------- */}
-              {/* MailCountContext Provider */}
-              <MailCountContext.Provider value={mailCountContextValue}>
-                <Box sx={{ display: "flex", flex: 1, minHeight: 0 }}>
-                  <Sidebar />
-                  <Box
-                    component="main"
-                    sx={{
-                      flex: 1,
-                      minHeight: 0,
-                      display: "flex",
-                      flexDirection: "column",
-                      bgcolor: "background.default",
-                    }}
-                  >
-                    <Outlet context={{ setAvatarUrl, refreshUnreadCount }} />
-                  </Box>
+        <CssBaseline />
+        <UserProfileContext.Provider value={{ userProfile, setUserProfile }}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              minHeight: "100vh",
+              bgcolor: "background.default",
+            }}
+          >
+            {/* ----------- Topbar(채팅아이콘 추가) ------------ */}
+            <Topbar 
+              onLogout={handleLogout}
+              themeMode={themeMode}
+              themeOptions={themeOptions}
+              onThemeChange={handleThemeChange}
+              rightExtra={
+                <ChatHeaderIcon onClick={() => setChatOpen(true)} />
+              }
+            />
+            {/* ----------------------------------------------- */}
+            {/* MailCountContext Provider */}
+            <MailCountContext.Provider value={mailCountContextValue}>
+              <Box sx={{ display: "flex", flex: 1, minHeight: 0 }}>
+                <Sidebar />
+                <Box
+                  component="main"
+                  sx={{
+                    flex: 1,
+                    minHeight: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    bgcolor: "background.default",
+                  }}
+                >
+                  <Outlet context={{ refreshUnreadCount }} />
                 </Box>
-              </MailCountContext.Provider>
+              </Box>
+            </MailCountContext.Provider>
 
-              {/* ---------- 채팅 패널(오버레이) ---------- */}
-              {chatOpen && (
-                <ChatMain onClose={() => setChatOpen(false)} />
-              )}
-              {/* ---------------------------------------- */}
-            </Box>
-          </UserProfileContext.Provider>
-        </SnackbarProvider>
+            {/* ---------- 채팅 패널(오버레이) ---------- */}
+            {chatOpen && (
+              <ChatMain onClose={() => setChatOpen(false)} />
+            )}
+            {/* ---------------------------------------- */}
+          </Box>
+        </UserProfileContext.Provider>
       </LocalizationProvider>
     </ThemeProvider>
   );

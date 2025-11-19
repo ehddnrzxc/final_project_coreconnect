@@ -9,28 +9,28 @@ import {
   TableBody,
   TableRow,
   TableCell,
-  Chip,
   Stack,
   CircularProgress,
-  Alert,
 } from "@mui/material";
 import BeachAccessIcon from "@mui/icons-material/BeachAccess";
 import { getAdminLeaveRequests } from "../api/adminAPI";
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
+import LeaveTypeChip from "../../leave/components/LeaveTypeChip";
+import LeaveStatusChip from "../../leave/components/LeaveStatusChip";
 
 export default function LeaveRequests() {
+  const { showSnack } = useSnackbarContext();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState("");
 
   const loadData = async () => {
     try {
       setLoading(true);
       const data = await getAdminLeaveRequests();
       setRequests(data);
-      setErr("");
     } catch (e) {
       console.error(e);
-      setErr("휴가 요청 목록을 불러오지 못했습니다.");
+      showSnack("휴가 요청 목록을 불러오지 못했습니다.", "error");
     } finally {
       setLoading(false);
     }
@@ -39,21 +39,6 @@ export default function LeaveRequests() {
   useEffect(() => {
     loadData();
   }, []);
-
-  const renderStatusChip = (status) => {
-    switch (status) {
-      case "PENDING":
-        return <Chip label="대기중" color="warning" size="small" />;
-      case "APPROVED":
-        return <Chip label="승인" color="success" size="small" />;
-      case "REJECTED":
-        return <Chip label="반려" color="error" size="small" />;
-      case "CANCELED":
-        return <Chip label="취소" size="small" />;
-      default:
-        return <Chip label={status} size="small" />;
-    }
-  };
 
   return (
     <Box sx={{ px: 4, py: 3, maxWidth: 1440, mx: "auto" }}>
@@ -72,12 +57,6 @@ export default function LeaveRequests() {
         }}
       >
         <CardContent sx={{ p: 2.5 }}>
-          {err && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {err}
-            </Alert>
-          )}
-
           {loading ? (
             <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
               <CircularProgress />
@@ -111,9 +90,13 @@ export default function LeaveRequests() {
                       <TableCell>
                         {req.startDate} ~ {req.endDate}
                       </TableCell>
-                      <TableCell>{req.type}</TableCell>
+                      <TableCell>
+                        <LeaveTypeChip type={req.type} />
+                      </TableCell>
                       <TableCell>{req.reason}</TableCell>
-                      <TableCell>{renderStatusChip(req.status)}</TableCell>
+                      <TableCell>
+                        <LeaveStatusChip status={req.status} />
+                      </TableCell>
                     </TableRow>
                   ))
                 )}

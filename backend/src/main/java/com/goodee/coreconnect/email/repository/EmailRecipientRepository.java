@@ -8,44 +8,39 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
-import com.goodee.coreconnect.email.entity.Email;
 import com.goodee.coreconnect.email.entity.EmailRecipient;
 
-import org.springframework.data.repository.query.Param; 
+import org.springframework.data.repository.query.Param;
 
 public interface EmailRecipientRepository extends JpaRepository<EmailRecipient, Integer> {
 
-	/**
-	 * 목적: 특정 이메일(userEmail)이 TO/CC/BCC로 수신한 이메일 목록을 페이징으로 조회
-	 * - userEmail: 수신자 이메일 주소(예: shark@gmail.com)
-	 * - emailRecipientType: 수신자 타입 리스트("TO", "CC", "BCC" 등)
-	 * - pageable: 페이징 정보 
-	 * => 실제 쿼리 예시:
-	 *    SELECT * FROM email_recipient WHERE email_recipient_address = ? AND email_recipient_type IN (?, ..., ?)
-	 */
-	Page<EmailRecipient> findByEmailRecipientAddressAndEmailRecipientTypeIn(
-	    String emailRecipientAddress, List<String> emailRecipientType, Pageable pageable
-	);
-	
-	/**
-     * 목적: 특정 이메일의 모든 수신자(TO/CC/BCC 등)를 리스트로 반환  
-     * - email: 메일 엔티티(Email)의 FK  
-     * => 실제 쿼리 예시:  
-     *    SELECT * FROM email_recipient WHERE email_id = ?  
-     */
+    // 기본: 특정 수신자(userEmail)로 TO/CC/BCC 메일들 전체 페이징 조회 (상태 필터링 없음)
+    Page<EmailRecipient> findByEmailRecipientAddressAndEmailRecipientTypeIn(
+        String emailRecipientAddress, List<String> emailRecipientType, Pageable pageable
+    );
+
+    // 메일 엔티티로 해당 메일의 모든 수신자 조회
     List<EmailRecipient> findByEmail(com.goodee.coreconnect.email.entity.Email email);
 
-    // 수신자 이메일 기준, 읽음여부로 개수 카운트
-    int countByEmailRecipientAddressAndEmailReadYn(String emailRecipientAddress, Boolean emailReadYn);
+    // 안읽은 메일 개수 (수신자 이메일, 읽음여부, 삭제되지 않은 것만)
+    // emailReadYn이 false이거나 null인 경우를 안읽은 메일로 간주
+    @Query("SELECT COUNT(r) FROM EmailRecipient r " +
+           "WHERE r.emailRecipientAddress = :emailRecipientAddress " +
+           "AND (r.emailReadYn = false OR r.emailReadYn IS NULL) " +
+           "AND r.email.emailStatus NOT IN ('TRASH', 'DELETED') " +
+           "AND (r.deleted IS NULL OR r.deleted = false)")
+    int countUnreadInboxMails(
+        @Param("emailRecipientAddress") String emailRecipientAddress
+    );
 
-    // 전체 메일 수신 데이터: 최신 이메일이 먼저 오도록 emailSentTime 내림차순 정렬
+    // 전체 메일 수신 데이터: 메일 생성시각 내림차순
     Page<EmailRecipient> findByEmailRecipientAddressAndEmailRecipientTypeInOrderByEmail_EmailSentTimeDesc(
         String emailRecipientAddress,
         List<String> emailRecipientType,
         Pageable pageable
     );
 
-    // 오늘 받은 메일: emailSentTime 내림차순
+    // 오늘 받은 메일: 메일 생성시각 내림차순
     Page<EmailRecipient> findByEmailRecipientAddressAndEmailRecipientTypeInAndEmail_EmailSentTimeBetweenOrderByEmail_EmailSentTimeDesc(
         String emailRecipientAddress,
         List<String> emailRecipientType,
@@ -54,18 +49,62 @@ public interface EmailRecipientRepository extends JpaRepository<EmailRecipient, 
         Pageable pageable
     );
 
-    // 안읽은 메일: emailSentTime 내림차순
+    // 안읽은 메일만 반환: 메일 생성시각 내림차순
     Page<EmailRecipient> findByEmailRecipientAddressAndEmailRecipientTypeInAndEmailReadYnOrderByEmail_EmailSentTimeDesc(
         String emailRecipientAddress,
         List<String> emailRecipientType,
         Boolean emailReadYn,
         Pageable pageable
     );
-    
+
+    // 수신자 이메일 기준으로 해당 이메일의 모든 메일 ID 조회
     @Query("SELECT r.email.emailId FROM EmailRecipient r WHERE r.emailRecipientAddress = :address")
     List<Integer> findEmailIdsByRecipientAddress(@Param("address") String address);
 
+    // 해당 메일ID+수신자 이메일이 존재하는지 체크
     @Query("SELECT CASE WHEN (COUNT(r) > 0) THEN true ELSE false END FROM EmailRecipient r WHERE r.email.emailId = :emailId AND r.emailRecipientAddress = :address")
     boolean existsByEmailIdAndEmailRecipientAddress(@Param("emailId") Integer emailId, @Param("address") String address);
 
+    // 받은메일함(전체)에서 'TRASH', 'DELETED' 상태 제외 및 삭제된 메일 제외
+    @Query("SELECT r FROM EmailRecipient r " +
+           "WHERE r.emailRecipientAddress = :emailRecipientAddress " +
+           "AND r.emailRecipientType IN :emailRecipientType " +
+           "AND r.email.emailStatus NOT IN ('TRASH', 'DELETED') " +
+           "AND (r.deleted IS NULL OR r.deleted = false) " +
+           "ORDER BY r.email.emailSentTime DESC")
+    Page<EmailRecipient> findInboxExcludingTrash(
+        @Param("emailRecipientAddress") String emailRecipientAddress,
+        @Param("emailRecipientType") List<String> emailRecipientType,
+        Pageable pageable
+    );
+
+    // 오늘의 메일(휴지통/삭제 제외)
+    @Query("SELECT r FROM EmailRecipient r " +
+           "WHERE r.emailRecipientAddress = :emailRecipientAddress " +
+           "AND r.emailRecipientType IN :emailRecipientType " +
+           "AND r.email.emailSentTime BETWEEN :start AND :end " +
+           "AND r.email.emailStatus NOT IN ('TRASH', 'DELETED') " +
+           "AND (r.deleted IS NULL OR r.deleted = false) " +
+           "ORDER BY r.email.emailSentTime DESC")
+    Page<EmailRecipient> findTodayInboxExcludingTrash(
+        @Param("emailRecipientAddress") String emailRecipientAddress,
+        @Param("emailRecipientType") List<String> emailRecipientType,
+        @Param("start") LocalDateTime start,
+        @Param("end") LocalDateTime end,
+        Pageable pageable
+    );
+
+    // 안읽은만(휴지통/삭제 제외) - emailReadYn이 false이거나 null인 경우
+    @Query("SELECT r FROM EmailRecipient r " +
+           "WHERE r.emailRecipientAddress = :emailRecipientAddress " +
+           "AND r.emailRecipientType IN :emailRecipientType " +
+           "AND (r.emailReadYn = false OR r.emailReadYn IS NULL) " +
+           "AND r.email.emailStatus NOT IN ('TRASH', 'DELETED') " +
+           "AND (r.deleted IS NULL OR r.deleted = false) " +
+           "ORDER BY r.email.emailSentTime DESC")
+    Page<EmailRecipient> findUnreadInboxExcludingTrash(
+        @Param("emailRecipientAddress") String emailRecipientAddress,
+        @Param("emailRecipientType") List<String> emailRecipientType,
+        Pageable pageable
+    );
 }

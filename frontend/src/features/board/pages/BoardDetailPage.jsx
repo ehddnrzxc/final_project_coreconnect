@@ -30,7 +30,7 @@ const BoardDetailPage = () => {
   const { showSnack } = useSnackbarContext(); // 스낵바 훅 사용
 
   // 로그인 사용자 정보 로드
-  const { userProfile } = useContext(UserProfileContext);
+  const { userProfile } = useContext(UserProfileContext) || {};
   const loginName = userProfile?.name || "익명"; // 로그인 이름 (user.name 이 없거나 undefined면 "익명"으로 대체)
   const loginRole = userProfile?.role; // 사용자 역할(권한). 예: "ADMIN", "USER" 등
 

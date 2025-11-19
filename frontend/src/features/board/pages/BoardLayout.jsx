@@ -17,7 +17,7 @@ const BoardLayout = () => {
   // 스크롤을 제어하기 위해 오른쪽 콘텐츠 영역(Box)을 참조할 ref 객체
   // 현재는 window.scrollTo를 사용하고 있어 직접 사용되지는 않지만 필요시 contentRef.current.scrollTo(...) 방식으로 영역 내부 스크롤 제어 가능
   const { showSnack } = useSnackbarContext(); // 스낵바 표시 함수 (success, error 등 상태별 호출)
-  const { userProfile } = useContext(UserProfileContext); // UserProfileContext에서 현재 로그인한 사용자 프로필 정보(userProfile)를 가져옴
+  const { userProfile } = useContext(UserProfileContext) || {}; // UserProfileContext에서 현재 로그인한 사용자 프로필 정보(userProfile)를 가져옴
   const isAdmin = userProfile?.role === "ADMIN";
 
   // 현재 활성화된 카테고리 ID 상태 관리

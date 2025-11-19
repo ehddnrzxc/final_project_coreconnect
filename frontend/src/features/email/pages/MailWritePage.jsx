@@ -57,6 +57,11 @@ function MailWritePage() {
   const [reservedAt, setReservedAt] = useState(null); // 예약발송 시각 (dayjs)
   const [sending, setSending] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
+  
+  // Autocomplete의 현재 입력값 추적 (엔터를 치지 않아도 인식하기 위함)
+  const [recipientInputValue, setRecipientInputValue] = useState("");
+  const [ccInputValue, setCcInputValue] = useState("");
+  const [bccInputValue, setBccInputValue] = useState("");
 
   const [snackOpen, setSnackOpen] = useState(false);
   const [snackSeverity, setSnackSeverity] = useState("success");
@@ -203,7 +208,18 @@ function MailWritePage() {
   const handleSend = async () => {
     setSending(true);
     try {
-      if (!form.recipientAddress?.length) {
+      // recipientAddress 배열에서 빈 문자열이나 공백만 있는 항목을 제거하고 유효한 이메일만 필터링
+      let validRecipients = (form.recipientAddress || [])
+        .map(addr => typeof addr === 'string' ? addr.trim() : addr)
+        .filter(addr => addr && addr.length > 0);
+      
+      // 엔터를 치지 않고 입력만 한 경우, 현재 입력값을 추가
+      const trimmedRecipientInput = recipientInputValue?.trim();
+      if (trimmedRecipientInput && trimmedRecipientInput.length > 0 && !validRecipients.includes(trimmedRecipientInput)) {
+        validRecipients = [...validRecipients, trimmedRecipientInput];
+      }
+      
+      if (!validRecipients.length) {
         alert("받는사람(수신자)을 입력해주세요.");
         setSending(false);
         return;
@@ -223,9 +239,27 @@ function MailWritePage() {
       // Build payload keys to exactly match backend EmailSendRequestDTO property names.
       const payload = {
         emailId: form.emailId,
-        recipientAddress: form.recipientAddress,           // backend expects recipientAddress (array)
-        ccAddresses: form.ccAddresses || [],               // ccAddresses (array)
-        bccAddresses: form.bccAddresses || [],             // bccAddresses (array)
+        recipientAddress: validRecipients,                 // backend expects recipientAddress (array) - use filtered valid recipients
+        ccAddresses: (() => {
+          let validCc = (form.ccAddresses || [])
+            .map(addr => typeof addr === 'string' ? addr.trim() : addr)
+            .filter(addr => addr && addr.length > 0);
+          const trimmedCcInput = ccInputValue?.trim();
+          if (trimmedCcInput && trimmedCcInput.length > 0 && !validCc.includes(trimmedCcInput)) {
+            validCc = [...validCc, trimmedCcInput];
+          }
+          return validCc;
+        })(),  // ccAddresses (array) - filter empty and include current input
+        bccAddresses: (() => {
+          let validBcc = (form.bccAddresses || [])
+            .map(addr => typeof addr === 'string' ? addr.trim() : addr)
+            .filter(addr => addr && addr.length > 0);
+          const trimmedBccInput = bccInputValue?.trim();
+          if (trimmedBccInput && trimmedBccInput.length > 0 && !validBcc.includes(trimmedBccInput)) {
+            validBcc = [...validBcc, trimmedBccInput];
+          }
+          return validBcc;
+        })(),  // bccAddresses (array) - filter empty and include current input
         emailTitle: form.emailTitle,                       // emailTitle (string)
         emailContent: form.emailContent,                   // emailContent (string) <-- NOT NULL in DB
         emailType: form.emailType || null,
@@ -282,6 +316,10 @@ function MailWritePage() {
         attachments: []
       });
       setReservedAt(null);
+      // 입력값도 초기화
+      setRecipientInputValue("");
+      setCcInputValue("");
+      setBccInputValue("");
     } catch (e) {
       console.error("sendMail error:", e);
       setSnackSeverity("error");
@@ -343,7 +381,22 @@ function MailWritePage() {
             freeSolo
             options={emailSuggestions}
             value={form.recipientAddress}
-            onChange={(e, value) => setForm(f => ({ ...f, recipientAddress: value }))}
+            inputValue={recipientInputValue}
+            onInputChange={(e, newInputValue) => {
+              setRecipientInputValue(newInputValue);
+            }}
+            onChange={(e, value) => {
+              // 빈 문자열이나 공백만 있는 항목을 필터링하고 trim 처리
+              const filteredValue = value
+                .map(addr => typeof addr === 'string' ? addr.trim() : addr)
+                .filter(addr => addr && addr.length > 0);
+              const prevLength = form.recipientAddress?.length || 0;
+              setForm(f => ({ ...f, recipientAddress: filteredValue }));
+              // 값이 추가되면 입력값 초기화 (칩이 생성되면 입력 필드 비우기)
+              if (filteredValue.length > prevLength) {
+                setRecipientInputValue("");
+              }
+            }}
             renderTags={(value, getTagProps) =>
               value.map((option, index) => (
                 <Chip variant="outlined" label={option} {...getTagProps({ index })} key={option + index} />
@@ -355,6 +408,18 @@ function MailWritePage() {
                 placeholder="이메일 주소 입력"
                 variant="standard"
                 sx={{ minWidth: 240 }}
+                onBlur={(e) => {
+                  // 포커스를 잃을 때 입력 중인 값이 있으면 처리
+                  const inputValue = e.target.value?.trim();
+                  if (inputValue && inputValue.length > 0) {
+                    const currentAddresses = form.recipientAddress || [];
+                    if (!currentAddresses.includes(inputValue)) {
+                      setForm(f => ({ ...f, recipientAddress: [...currentAddresses, inputValue] }));
+                    }
+                  }
+                  // 포커스를 잃으면 항상 입력 필드 비우기 (칩으로 변환된 후에도 남아있는 텍스트 제거)
+                  setRecipientInputValue("");
+                }}
               />
             )}
             sx={{ flex: 1 }}
@@ -368,7 +433,22 @@ function MailWritePage() {
             freeSolo
             options={emailSuggestions}
             value={form.ccAddresses}
-            onChange={(e, value) => setForm(f => ({ ...f, ccAddresses: value }))}
+            inputValue={ccInputValue}
+            onInputChange={(e, newInputValue) => {
+              setCcInputValue(newInputValue);
+            }}
+            onChange={(e, value) => {
+              // 빈 문자열이나 공백만 있는 항목을 필터링하고 trim 처리
+              const filteredValue = value
+                .map(addr => typeof addr === 'string' ? addr.trim() : addr)
+                .filter(addr => addr && addr.length > 0);
+              const prevLength = form.ccAddresses?.length || 0;
+              setForm(f => ({ ...f, ccAddresses: filteredValue }));
+              // 값이 추가되면 입력값 초기화 (칩이 생성되면 입력 필드 비우기)
+              if (filteredValue.length > prevLength) {
+                setCcInputValue("");
+              }
+            }}
             renderTags={(value, getTagProps) =>
               value.map((option, index) => (
                 <Chip variant="outlined" label={option} {...getTagProps({ index })} key={option + index} />
@@ -380,6 +460,18 @@ function MailWritePage() {
                 placeholder="이메일 주소 입력"
                 variant="standard"
                 sx={{ minWidth: 240 }}
+                onBlur={(e) => {
+                  // 포커스를 잃을 때 입력 중인 값이 있으면 처리
+                  const inputValue = e.target.value?.trim();
+                  if (inputValue && inputValue.length > 0) {
+                    const currentAddresses = form.ccAddresses || [];
+                    if (!currentAddresses.includes(inputValue)) {
+                      setForm(f => ({ ...f, ccAddresses: [...currentAddresses, inputValue] }));
+                    }
+                  }
+                  // 포커스를 잃으면 항상 입력 필드 비우기 (칩으로 변환된 후에도 남아있는 텍스트 제거)
+                  setCcInputValue("");
+                }}
               />
             )}
             sx={{ flex: 1 }}
@@ -392,7 +484,22 @@ function MailWritePage() {
             freeSolo
             options={emailSuggestions}
             value={form.bccAddresses}
-            onChange={(e, value) => setForm(f => ({ ...f, bccAddresses: value }))}
+            inputValue={bccInputValue}
+            onInputChange={(e, newInputValue) => {
+              setBccInputValue(newInputValue);
+            }}
+            onChange={(e, value) => {
+              // 빈 문자열이나 공백만 있는 항목을 필터링하고 trim 처리
+              const filteredValue = value
+                .map(addr => typeof addr === 'string' ? addr.trim() : addr)
+                .filter(addr => addr && addr.length > 0);
+              const prevLength = form.bccAddresses?.length || 0;
+              setForm(f => ({ ...f, bccAddresses: filteredValue }));
+              // 값이 추가되면 입력값 초기화 (칩이 생성되면 입력 필드 비우기)
+              if (filteredValue.length > prevLength) {
+                setBccInputValue("");
+              }
+            }}
             renderTags={(value, getTagProps) =>
               value.map((option, index) => (
                 <Chip variant="outlined" label={option} {...getTagProps({ index })} key={option + index} />
@@ -404,6 +511,18 @@ function MailWritePage() {
                 placeholder="이메일 주소 입력"
                 variant="standard"
                 sx={{ minWidth: 240 }}
+                onBlur={(e) => {
+                  // 포커스를 잃을 때 입력 중인 값이 있으면 처리
+                  const inputValue = e.target.value?.trim();
+                  if (inputValue && inputValue.length > 0) {
+                    const currentAddresses = form.bccAddresses || [];
+                    if (!currentAddresses.includes(inputValue)) {
+                      setForm(f => ({ ...f, bccAddresses: [...currentAddresses, inputValue] }));
+                    }
+                  }
+                  // 포커스를 잃으면 항상 입력 필드 비우기 (칩으로 변환된 후에도 남아있는 텍스트 제거)
+                  setBccInputValue("");
+                }}
               />
             )}
             sx={{ flex: 1 }}

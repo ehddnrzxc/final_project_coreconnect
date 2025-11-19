@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { NavLink } from "react-router-dom";
 import {
   Box,
@@ -8,6 +8,7 @@ import {
   ListItemText,
   Divider,
   Typography,
+  Badge,
 } from "@mui/material";
 import HomeIcon from "@mui/icons-material/Home";
 import MailIcon from "@mui/icons-material/Mail";
@@ -18,27 +19,51 @@ import BeachAccessIcon from "@mui/icons-material/BeachAccess";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import OrgChartDrawer from "../../features/organization/components/OrgChartDrawer";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
-
-const items = [
-  { to: "/home", label: "홈", icon: <HomeIcon fontSize="small" /> },
-  { to: "/email", label: "메일", icon: <MailIcon fontSize="small" /> },
-  {
-    to: "/e-approval",
-    label: "전자결재",
-    icon: <DescriptionIcon fontSize="small" />,
-  },
-  { to: "/leave", label: "휴가", icon: <BeachAccessIcon fontSize="small" /> },
-  {
-    to: "/calendar",
-    label: "캘린더",
-    icon: <CalendarMonthIcon fontSize="small" />,
-  },
-  { to: "/board", label: "게시판", icon: <PushPinIcon fontSize="small" /> },
-  { to: "/attendance", label: "근태", icon: <AccessTimeIcon fontSize="small" /> },
-];
+import { MailCountContext } from "../../App";
 
 const Sidebar = () => {
   const [orgOpen, setOrgOpen] = useState(false);
+  const { unreadCount = 0 } = useContext(MailCountContext) || {};
+
+  const items = [
+    { to: "/home", label: "홈", icon: <HomeIcon fontSize="small" /> },
+    { 
+      to: "/email", 
+      label: "메일", 
+      icon: (
+        <Badge 
+          badgeContent={unreadCount > 0 ? unreadCount : 0} 
+          color="error" 
+          max={99}
+          sx={{
+            "& .MuiBadge-badge": {
+              right: -8,
+              top: -2,
+              minWidth: 18,
+              height: 18,
+              fontSize: '0.7rem',
+            }
+          }}
+        >
+          <MailIcon fontSize="small" />
+        </Badge>
+      ),
+      showBadge: true
+    },
+    {
+      to: "/e-approval",
+      label: "전자결재",
+      icon: <DescriptionIcon fontSize="small" />,
+    },
+    { to: "/leave", label: "휴가", icon: <BeachAccessIcon fontSize="small" /> },
+    {
+      to: "/calendar",
+      label: "캘린더",
+      icon: <CalendarMonthIcon fontSize="small" />,
+    },
+    { to: "/board", label: "게시판", icon: <PushPinIcon fontSize="small" /> },
+    { to: "/attendance", label: "근태", icon: <AccessTimeIcon fontSize="small" /> },
+  ];
 
   return (
     <Box

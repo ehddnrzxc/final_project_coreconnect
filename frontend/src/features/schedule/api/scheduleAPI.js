@@ -1,13 +1,19 @@
 import http from "../../../api/http";
-import { toBackendFormat } from "../../../utils/dateFormat";
+import { toBackendFormat, toLocalDate } from "../../../utils/dateFormat";
 
 /** 일정 생성 (POST) */
 export const createSchedule = async (data) => {
+  const normalizedStart = toBackendFormat(data.startDateTime);
+  const normalizedEnd = toBackendFormat(data.endDateTime);
+  
+  if (!normalizedStart || !normalizedEnd) {
+    throw new Error("시작 시간 또는 종료 시간 형식이 올바르지 않습니다.");
+  }
   
   const payload = {
     ...data,
-    startDateTime: toBackendFormat(data.startDateTime),
-    endDateTime: toBackendFormat(data.endDateTime),
+    startDateTime: normalizedStart,
+    endDateTime: normalizedEnd,
   };
   try {
     const res = await http.post("/schedules", payload);
@@ -20,11 +26,17 @@ export const createSchedule = async (data) => {
 
 /** 일정 수정 */
 export const updateSchedule = async (id, data) => {
-
+  const normalizedStart = toBackendFormat(data.startDateTime);
+  const normalizedEnd = toBackendFormat(data.endDateTime);
+  
+  if (!normalizedStart || !normalizedEnd) {
+    throw new Error("시작 시간 또는 종료 시간 형식이 올바르지 않습니다.");
+  }
+  
   const payload = {
     ...data,
-    startDateTime: toBackendFormat(data.startDateTime),
-    endDateTime: toBackendFormat(data.endDateTime),
+    startDateTime: normalizedStart,
+    endDateTime: normalizedEnd,
   };
   try {
     const res = await http.put(`/schedules/${id}`, payload);
@@ -73,30 +85,40 @@ export const getMyTodaySchedules = async () => {
  *    여기서는 start/end 가 넘어오면 그것으로 보내고,
  *    없으면 date(yyyy-MM-dd) 로 보낸다.
  */
-export const getUsersAvailability = async (userIds, startOrDate, maybeEnd) => {
+export const getUsersAvailability = async (userIds, startOrDate, maybeEnd, scheduleId = null) => {
   try {
     const params = { userIds: userIds.join(",") }; // Spring List<Integer> 매핑용 "1,2,3"
 
     if (maybeEnd) {
       // 시간 구간(시작/종료)으로 조회
-      params.start = toBackendFormat(startOrDate);
-      params.end = toBackendFormat(maybeEnd);
+      const normalizedStart = toBackendFormat(startOrDate);
+      const normalizedEnd = toBackendFormat(maybeEnd);
+      
+      if (!normalizedStart || !normalizedEnd) {
+        throw new Error("시작 시간 또는 종료 시간 형식이 올바르지 않습니다.");
+      }
+      
+      params.start = normalizedStart;
+      params.end = normalizedEnd;
     } else {
-      // 하루 단위(date) 조회
-      const pureDate =
-        typeof startOrDate === "string"
-          ? startOrDate.includes("T")
-            ? startOrDate.split("T")[0]
-            : startOrDate
-          : startOrDate;
+      // 하루 단위(date) 조회 - toLocalDate 유틸리티 사용으로 일관성 확보
+      const pureDate = toLocalDate(startOrDate);
+      if (!pureDate) {
+        throw new Error("날짜 형식이 올바르지 않습니다.");
+      }
       params.date = pureDate;
+    }
+
+    // 수정 모드일 때 자기 자신의 일정은 제외
+    if (scheduleId) {
+      params.scheduleId = scheduleId;
     }
 
     const res = await http.get("/schedules/availability", { params });
     return res.data; // { 6: [...], 7: [...] }
   } catch (err) {
     const message =
-      err.response?.data || "참석자 일정 현황 조회 중 오류가 발생했습니다.";
+      err.response?.data || err.message || "참석자 일정 현황 조회 중 오류가 발생했습니다.";
     throw new Error(message);
   }
 };
@@ -179,17 +201,27 @@ export const getMeetingRooms = async () => {
     const message = err.response?.data || "회의실 목록을 불러올 수 없습니다.";
     throw new Error(message);
   }
-};
+}
 
 /** 회의실 예약 가능 여부 검사 */
-export const checkRoomAvailable = async (id, start, end) => {
+export const checkRoomAvailable = async (id, start, end, scheduleId = null) => {
   try {
-    const res = await http.get(`/meetingRooms/availability`, {
-      params: { id, start: toBackendFormat(start), end: toBackendFormat(end) },
-    });
+    const normalizedStart = toBackendFormat(start);
+    const normalizedEnd = toBackendFormat(end);
+    
+    if (!normalizedStart || !normalizedEnd) {
+      throw new Error("시작 시간 또는 종료 시간 형식이 올바르지 않습니다.");
+    }
+    
+    const params = { id, start: normalizedStart, end: normalizedEnd };
+    // 수정 모드일 때 자기 자신의 일정은 제외
+    if (scheduleId) {
+      params.scheduleId = scheduleId;
+    }
+    const res = await http.get(`/meetingRooms/availability`, { params });
     return res.data;
   } catch (err) {
-    const message = err.response?.data || "회의실 예약 가능 여부를 확인할 수 없습니다.";
+    const message = err.response?.data || err.message || "회의실 예약 가능 여부를 확인할 수 없습니다.";
     throw new Error(message);
   }
 };
@@ -197,10 +229,17 @@ export const checkRoomAvailable = async (id, start, end) => {
 /** 특정 시간대 예약 가능한 회의실 조회 */
 export const getAvailableMeetingRooms = async (start, end) => {
   try {
-    const res = await http.get("/meetingRooms/available", { params: { start, end } });
+    const normalizedStart = toBackendFormat(start);
+    const normalizedEnd = toBackendFormat(end);
+    
+    if (!normalizedStart || !normalizedEnd) {
+      throw new Error("시작 시간 또는 종료 시간 형식이 올바르지 않습니다.");
+    }
+    
+    const res = await http.get("/meetingRooms/available", { params: { start: normalizedStart, end: normalizedEnd } });
     return res.data.availableRooms;
   } catch (err) {
-    const message = err.response?.data || "예약 가능한 회의실을 불러올 수 없습니다.";
+    const message = err.response?.data || err.message || "예약 가능한 회의실을 불러올 수 없습니다.";
     throw new Error(message);
   }
 };

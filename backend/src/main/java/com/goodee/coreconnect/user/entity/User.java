@@ -76,6 +76,9 @@ public class User {
     @Column(name = "user_profile_image_key")
     private String profileImageKey;
 
+    @Column(name = "user_employee_number", length = 10, unique = true)
+    private String employeeNumber;
+
     // ─────────────── 연관관계 매핑 ───────────────
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ChatRoomUser> chatRoomUsers = new ArrayList<>();
@@ -113,7 +116,8 @@ public class User {
             String email,
             String phone,
             Department department,
-            JobGrade jobGrade
+            JobGrade jobGrade,
+            String employeeNumber
     ) {
         User user = new User();
         user.password = password;
@@ -125,6 +129,7 @@ public class User {
         user.joinDate = LocalDateTime.now();
         user.status = Status.ACTIVE;
         user.jobGrade = jobGrade;
+        user.employeeNumber = employeeNumber;
         return user;
     }
 

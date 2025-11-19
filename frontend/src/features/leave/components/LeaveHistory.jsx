@@ -12,7 +12,8 @@ import {
   Tab,
 } from "@mui/material";
 import { getMyLeaveRequests, getMyLeaveSummary } from "../api/leaveAPI";
-import { getLeaveRequestLabel } from "../../../components/utils/labelUtils";
+import LeaveStatusChip from "./LeaveStatusChip";
+import LeaveTypeChip from "./LeaveTypeChip";
 
 /** 내 휴가내역 컴포넌트 */
 export default function LeaveHistory() {
@@ -47,11 +48,11 @@ export default function LeaveHistory() {
       // 휴가현황: 전체
       return leaves;
     } else if (activeTab === 1) {
-      // 연차: type이 "연차"인 것만
-      return leaves.filter((leave) => leave.type === "연차");
+      // 연차: type이 "ANNUAL"인 것만
+      return leaves.filter((leave) => leave.type === "ANNUAL");
     } else {
-      // 기타휴가: type이 "연차"가 아닌 것만
-      return leaves.filter((leave) => leave.type !== "연차");
+      // 기타휴가: type이 "ANNUAL"이 아닌 것만
+      return leaves.filter((leave) => leave.type !== "ANNUAL");
     }
   }, [leaves, activeTab]);
 
@@ -132,7 +133,7 @@ export default function LeaveHistory() {
       <Paper elevation={0} sx={{ border: "1px solid", borderColor: "divider" }}>
         <Table>
           <TableHead>
-            <TableRow sx={{ bgcolor: "grey.50" }}>
+            <TableRow sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50' }}>
               <TableCell sx={{ fontWeight: 600 }}>시작일</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>종료일</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>종류</TableCell>
@@ -159,9 +160,13 @@ export default function LeaveHistory() {
                 <TableRow key={item.leaveReqId} hover>
                   <TableCell>{item.startDate}</TableCell>
                   <TableCell>{item.endDate}</TableCell>
-                  <TableCell>{item.type}</TableCell>
+                  <TableCell>
+                    <LeaveTypeChip type={item.type} />
+                  </TableCell>
                   <TableCell>{item.reason || "-"}</TableCell>
-                  <TableCell>{getLeaveRequestLabel(item.status)}</TableCell>
+                  <TableCell>
+                    <LeaveStatusChip status={item.status} />
+                  </TableCell>
                   <TableCell>{item.approvalComment || "-"}</TableCell>
                 </TableRow>
               ))

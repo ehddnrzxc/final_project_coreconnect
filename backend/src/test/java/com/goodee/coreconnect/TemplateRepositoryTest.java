@@ -48,7 +48,7 @@ public class TemplateRepositoryTest {
 
         // --- 1. 의존성 데이터 생성 (부서, 유저) ---
         Department testDept = departmentRepository.save(Department.createDepartment("테스트부", 1));
-        creator = userRepository.save(User.createUser("pw123", "양식작성자", Role.USER, "creator@example.com", "010-9999-9999", testDept, null));
+        creator = userRepository.save(User.createUser("pw123", "양식작성자", Role.USER, "creator@example.com", "010-9999-9999", testDept, null, null));
         userRepository.flush();
 
         // --- 2. 템플릿 데이터 생성 시나리오 ---

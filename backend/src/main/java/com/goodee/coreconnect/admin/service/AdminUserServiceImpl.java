@@ -14,6 +14,7 @@ import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.Status;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
+import com.goodee.coreconnect.user.service.EmployeeNumberService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -26,6 +27,7 @@ public class AdminUserServiceImpl implements AdminUserService {
   private final UserRepository userRepository;
   private final DepartmentRepository departmentRepository;
   private final PasswordEncoder passwordEncoder;
+  private final EmployeeNumberService employeeNumberService;
 
   /** 신규 사용자 생성 */
   @Override
@@ -40,6 +42,9 @@ public class AdminUserServiceImpl implements AdminUserService {
           .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 부서 ID: " + req.deptId()));
     }
 
+    // 사번 자동 생성 (연도 4자리 + 자동 증가 3자리)
+    String employeeNumber = employeeNumberService.generateEmployeeNumber();
+
     User user = User.createUser(
         passwordEncoder.encode(req.tempPassword()),
         req.name(),
@@ -47,7 +52,8 @@ public class AdminUserServiceImpl implements AdminUserService {
         req.email(),
         req.phone(),
         department,
-        req.jobGrade());
+        req.jobGrade(),
+        employeeNumber);
 
     return UserDTO.toDTO(userRepository.save(user));
   }
