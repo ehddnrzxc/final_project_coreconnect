@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from "react";
 import { getMyLeaveSummary } from "../../leave/api/leaveAPI";
 import { getMyPendingApprovalCount, getMyReceivedApprovalCount  } from "../api/dashboardAPI";
-import { Link, useOutletContext } from "react-router-dom";
+import { Link } from "react-router-dom";
 import Card from "../../../components/ui/Card";
 import {
   Box,
@@ -10,6 +10,7 @@ import {
   ListItemButton,
   ListItemText,
   Typography,
+  Avatar,
 } from "@mui/material";
 import {
   uploadMyProfileImage,
@@ -34,15 +35,12 @@ export default function ProfileCard() {
   const [pendingApprovalCount, setPendingApprovalCount] = useState(null);
   const [receivedApprovalCount, setReceivedApprovalCount] = useState(null);
 
-  const { setAvatarUrl } = useOutletContext();
   const { userProfile, setUserProfile } = useContext(UserProfileContext) || {};
 
   const email = userProfile?.email || "";
   const displayName = userProfile?.name || "";
   const grade = userProfile?.jobGrade ? jobGradeLabel(userProfile.jobGrade) : "";
   const deptName = userProfile?.deptName || "";
-
-  const DEFAULT_AVATAR = "https://i.pravatar.cc/80?img=12";
 
   /** 오늘 일정 */
   useEffect(() => {
@@ -152,9 +150,6 @@ export default function ProfileCard() {
       if (setUserProfile) {
         setUserProfile(updatedProfile);
       }
-      
-      // 상단바 아바타도 업데이트
-      setAvatarUrl(updatedProfile.profileImageUrl || DEFAULT_AVATAR);
     } catch (err) {
       console.error("이미지 업로드 실패:", err);
       setError("이미지 업로드에 실패했습니다.");
@@ -164,10 +159,10 @@ export default function ProfileCard() {
     }
   };
 
-  // 안전한 아바타 경로 계산
+  // 프로필 이미지가 있을 때만 사용, 없으면 MUI Avatar 기본 아이콘 표시
   const avatarUrl = userProfile?.profileImageUrl && userProfile.profileImageUrl.trim() !== "" 
     ? userProfile.profileImageUrl 
-    : DEFAULT_AVATAR;
+    : undefined;
 
   const items = [
     {
@@ -212,15 +207,12 @@ export default function ProfileCard() {
             gap: 1,
           }}
         >
-          <Box
-            component="img"
+          <Avatar
             src={avatarUrl}
             alt="프로필 이미지"
             sx={{
               width: 100,
               height: 100,
-              borderRadius: "50%",
-              objectFit: "cover",
               border: "2px solid #e5e7eb",
               boxShadow: "0 1px 2px rgba(0,0,0,.06)",
             }}

@@ -15,7 +15,7 @@ export default function MailListCard() {
   const navigate = useNavigate();
   const [recentMails, setRecentMails] = useState([]);
   const [mailLoading, setMailLoading] = useState(true);
-  const { userProfile } = useContext(UserProfileContext);
+  const { userProfile } = useContext(UserProfileContext) || {};
   const userEmail = userProfile?.email; 
 
   // 받은메일함 최근 메일 가져오기

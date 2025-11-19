@@ -4,12 +4,14 @@ import { createPasswordResetRequest } from "../../user/api/passwordResetAPI";
 import { clearAuthCache } from "../utils/authUtils";
 import {
   Box, TextField, Button, IconButton, InputAdornment,
-  Alert, Stack, Checkbox, FormControlLabel, Link,
+  Stack, Checkbox, FormControlLabel, Link,
 } from "@mui/material";
 import { Visibility, VisibilityOff, Close as CloseIcon } from "@mui/icons-material";
 import PasswordResetDialog from "../components/PasswordResetDialog";
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 
 export default function LoginForm({ onLoginSuccess }) {
+  const { showSnack } = useSnackbarContext();
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -17,7 +19,6 @@ export default function LoginForm({ onLoginSuccess }) {
     // savedEmail이 있으면 true, 없으면 false
     return !!localStorage.getItem("savedEmail");
   });
-  const [error, setError] = useState("");
   const [resetOpen, setResetOpen] = useState(false);
 
   // 처음 렌더 시 savedEmail 복원
@@ -34,7 +35,7 @@ export default function LoginForm({ onLoginSuccess }) {
     e.preventDefault();
 
     if(!email.trim() || !pw.trim()) {
-      setError("아이디와 비밀번호를 모두 입력해주세요.");
+      showSnack("아이디와 비밀번호를 모두 입력해주세요.", "error");
       return;
     }
     
@@ -54,7 +55,7 @@ export default function LoginForm({ onLoginSuccess }) {
       onLoginSuccess?.();
     } catch (e) {
       console.error("에러:", e);
-      setError("아이디 또는 비밀번호가 올바르지 않습니다.");
+      showSnack("아이디 또는 비밀번호가 올바르지 않습니다.", "error");
     }
   };
 
@@ -127,9 +128,6 @@ export default function LoginForm({ onLoginSuccess }) {
             비밀번호 초기화
           </Link>
         </Box>
-
-        {/* 에러 */}
-        {error && <Alert severity="error">{error}</Alert>}
 
         {/* 로그인 버튼 */}
         <Button

@@ -23,7 +23,7 @@ function DocumentDetailPage() {
 
   const navigate = useNavigate();
 
-  const currentUser = useContext(UserProfileContext);
+  const currentUser = useContext(UserProfileContext) || {};
 
   const handleDownload = (fileId, fileName) => {
     downloadFile(fileId, fileName);
@@ -128,7 +128,7 @@ function DocumentDetailPage() {
 
   const isDrafter = useMemo(() => {
     
-    if (!currentUser || !currentUser.email) {
+    if (!currentUser || !currentUser.userProfile || !currentUser.userProfile.email) {
       return false;
     }
 
@@ -136,7 +136,7 @@ function DocumentDetailPage() {
       return false;
     }
 
-    const userEmail = currentUser.email.trim().toLowerCase();
+    const userEmail = currentUser.userProfile.email.trim().toLowerCase();
     const drafterEmail = documentData.drafter.userEmail.trim().toLowerCase();
 
     return userEmail === drafterEmail;

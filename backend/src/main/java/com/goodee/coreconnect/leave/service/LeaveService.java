@@ -23,7 +23,7 @@ public interface LeaveService {
   public List<LeaveRequestResponseDTO> getMyLeaveRequests(String email);
   
   /** 전자결재 연동 휴가 생성 */
-  public void createLeaveFromApproval(Document document, User drafter, LocalDate startDate, LocalDate endDate, String type, String reason);
+  public void createLeaveFromApproval(Document document, User drafter, LocalDate startDate, LocalDate endDate, String typeLabel, String reason);
   
   /** 승인된 휴가 처리 */
   public void handleApprovedLeave(Document document, String approvalComment);
@@ -42,7 +42,6 @@ public interface LeaveService {
       LocalDate startDate, 
       LocalDate endDate, 
       String leaveType, 
-      String searchTerm, 
       Pageable pageable
   );
 }

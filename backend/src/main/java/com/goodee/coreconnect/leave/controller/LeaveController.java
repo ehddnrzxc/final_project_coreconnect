@@ -1,6 +1,7 @@
 package com.goodee.coreconnect.leave.controller;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
@@ -19,6 +20,8 @@ import com.goodee.coreconnect.leave.dto.response.CompanyLeaveDetailDTO;
 import com.goodee.coreconnect.leave.dto.response.CompanyLeaveWeeklyDTO;
 import com.goodee.coreconnect.leave.dto.response.LeaveRequestResponseDTO;
 import com.goodee.coreconnect.leave.dto.response.LeaveSummaryDTO;
+import com.goodee.coreconnect.leave.dto.response.LeaveTypeResponseDTO;
+import com.goodee.coreconnect.leave.enums.LeaveType;
 import com.goodee.coreconnect.leave.service.LeaveService;
 import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
 
@@ -63,7 +66,6 @@ public class LeaveController {
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
       @RequestParam(required = false) String leaveType,
-      @RequestParam(required = false) String searchTerm,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "50") int size
   ) {
@@ -72,9 +74,17 @@ public class LeaveController {
         startDate, 
         endDate, 
         leaveType, 
-        searchTerm, 
         pageable
     );
     return ResponseEntity.ok(details);
+  }
+  
+  /** 휴가 유형 목록 조회 */
+  @GetMapping("/types")
+  public ResponseEntity<List<LeaveTypeResponseDTO>> getLeaveTypes() {
+    List<LeaveTypeResponseDTO> types = Arrays.stream(LeaveType.values())
+        .map(type -> new LeaveTypeResponseDTO(type))
+        .toList();
+    return ResponseEntity.ok(types);
   }
 }
