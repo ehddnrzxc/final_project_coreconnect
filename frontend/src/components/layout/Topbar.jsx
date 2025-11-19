@@ -53,8 +53,10 @@ const Topbar = ({ onLogout, themeMode, themeOptions, onThemeChange }) => {
   const { userProfile } = useContext(UserProfileContext) || {};
   const isAdmin = userProfile?.role === "ADMIN";
   
-  const DEFAULT_AVATAR = "https://i.pravatar.cc/80?img=12";
-  const avatarUrl = userProfile?.profileImageUrl || DEFAULT_AVATAR;
+  // 프로필 이미지가 있을 때만 사용, 없으면 MUI Avatar 기본 아이콘 표시
+  const avatarUrl = userProfile?.profileImageUrl && userProfile.profileImageUrl.trim() !== "" 
+    ? userProfile.profileImageUrl 
+    : undefined;
 
   const [noticeOpen, setNoticeOpen] = useState(false);
   const [profileAnchor, setProfileAnchor] = useState(null);
@@ -247,6 +249,7 @@ const Topbar = ({ onLogout, themeMode, themeOptions, onThemeChange }) => {
         <Stack spacing={2}>
           {[
             { label: "회사이름", value: "코어커넥트" },
+            { label: "사번", value: userProfile?.employeeNumber || "-" },
             { label: "아이디/이메일", value: `${userProfile?.email || "-"}` },
             { label: "직책·부서", value: displayedDept },
             { label: "직급", value: displayedJobGrade || "-" },
@@ -337,7 +340,7 @@ const Topbar = ({ onLogout, themeMode, themeOptions, onThemeChange }) => {
           sx={{
             display: "flex",
             alignItems: "center",
-            gap: 1.5,
+            gap: 0.5,
             textDecoration: "none",
             color: "text.primary",
             mr: 2,
@@ -359,6 +362,7 @@ const Topbar = ({ onLogout, themeMode, themeOptions, onThemeChange }) => {
               fontWeight: 500,
               letterSpacing: "-0.02em",
               fontFamily: '"Paperlogy", sans-serif',
+              mt: -0.5,
             }}
           >
             코어커넥트
@@ -376,7 +380,7 @@ const Topbar = ({ onLogout, themeMode, themeOptions, onThemeChange }) => {
             gap: 1.5,
           }}
         >
-          <Box sx={{ width: 280 }}>
+          {/* <Box sx={{ width: 280 }}>
             <TextField size="small"
                        fullWidth
                        placeholder="검색어를 입력하세요"
@@ -390,7 +394,7 @@ const Topbar = ({ onLogout, themeMode, themeOptions, onThemeChange }) => {
                          "&:hover fieldset": { borderColor: "#e5e7eb", },
                          "&.Mui-focused fieldset": { borderColor: "#00a0e9", }, },
                        }} />
-          </Box>
+          </Box> */}
           {isAdmin && (
             <Button
               variant="outlined"

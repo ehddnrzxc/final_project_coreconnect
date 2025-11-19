@@ -20,6 +20,19 @@ export const LEAVE_REQUEST_LABELS = {
   CANCELED: "취소",
 };
 
+export const LEAVE_TYPE_LABELS = {
+  ANNUAL: "연차",
+  HALF_DAY_MORNING: "반차(오전)",
+  HALF_DAY_AFTERNOON: "반차(오후)",
+  SICK: "병가",
+  FAMILY_EVENT: "경조휴가",
+  ETC: "기타",
+};
+
+export const getLeaveTypeLabel = (value) => {
+  return LEAVE_TYPE_LABELS[value] || value;
+};
+
 export const NOTIFICATION_TYPE_LABELS = {
   EMAIL: "메일",
   NOTICE: "공지",

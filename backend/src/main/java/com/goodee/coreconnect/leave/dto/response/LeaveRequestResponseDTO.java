@@ -4,13 +4,14 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import com.goodee.coreconnect.leave.entity.LeaveRequest;
-import com.goodee.coreconnect.leave.entity.LeaveStatus;
+import com.goodee.coreconnect.leave.enums.LeaveStatus;
+import com.goodee.coreconnect.leave.enums.LeaveType;
 
 public record LeaveRequestResponseDTO(
   Integer leaveReqId,
   LocalDate startDate,
   LocalDate endDate,
-  String type,
+  LeaveType type,
   String reason,
   LeaveStatus status,
   LocalDateTime approvedDate,

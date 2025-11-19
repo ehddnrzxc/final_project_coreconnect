@@ -30,7 +30,7 @@ export async function getCompanyLeaveWeekly(startDate, endDate) {
 }
 
 /** 전사 휴가 상세 목록 조회 */
-export async function getCompanyLeaveDetails(startDate, endDate, leaveType, searchTerm, page = 0, size = 50) {
+export async function getCompanyLeaveDetails(startDate, endDate, leaveType, page = 0, size = 50) {
   const params = {
     startDate: startDate,
     endDate: endDate,
@@ -40,9 +40,12 @@ export async function getCompanyLeaveDetails(startDate, endDate, leaveType, sear
   if (leaveType) {
     params.leaveType = leaveType;
   }
-  if (searchTerm) {
-    params.searchTerm = searchTerm;
-  }
   const res = await http.get("/leave/company/details", { params });
+  return res.data;
+}
+
+/** 휴가 유형 목록 조회 */
+export async function getLeaveTypes() {
+  const res = await http.get("/leave/types");
   return res.data;
 }

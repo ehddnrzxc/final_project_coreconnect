@@ -5,6 +5,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -357,7 +358,7 @@ public class AttendanceServiceImpl implements AttendanceService {
     
     LocalDate today = LocalDate.now();
     String[] dayNames = {"월", "화", "수", "목", "금", "토", "일"};
-    List<DailyAttendanceDTO> dailyList = new java.util.ArrayList<>();
+    List<DailyAttendanceDTO> dailyList = new ArrayList<>();
     
     for (LocalDate date = startOfWeek; !date.isAfter(endOfWeek); date = date.plusDays(1)) {
       final LocalDate currentDate = date;
@@ -424,7 +425,7 @@ public class AttendanceServiceImpl implements AttendanceService {
     LocalDate today = LocalDate.now();
     String[] dayNames = {"월", "화", "수", "목", "금", "토", "일"};
     
-    List<DailyAttendanceDTO> dailyList = new java.util.ArrayList<>();
+    List<DailyAttendanceDTO> dailyList = new ArrayList<>();
     
     for (LocalDate date = startOfMonth; !date.isAfter(endOfMonth); date = date.plusDays(1)) {
       final LocalDate currentDate = date;

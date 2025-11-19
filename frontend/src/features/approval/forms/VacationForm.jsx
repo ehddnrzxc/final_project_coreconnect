@@ -2,8 +2,10 @@
 - MUI 컴포넌트 (Table, TableCell, TextField, Select)로 전체 리팩토링
 */
 
-import React from 'react';
-import { Table, TableBody, TableRow, TableCell, TextField, Select, MenuItem, Typography } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Table, TableBody, TableRow, TableCell, TextField, Select, MenuItem, Typography, CircularProgress } from '@mui/material';
+import { getLeaveTypes } from '../../leave/api/leaveAPI';
+import { getLeaveTypeLabel } from '../../../components/utils/labelUtils';
 
 // 공통 스타일 정의
 const commonStyles = {
@@ -23,6 +25,23 @@ const commonStyles = {
 };
 
 const VacationForm = ({ formData, onFormChange }) => {
+  const [leaveTypes, setLeaveTypes] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadLeaveTypes = async () => {
+      try {
+        const types = await getLeaveTypes();
+        setLeaveTypes(types);
+      } catch (error) {
+        console.error('휴가 유형 로딩 실패:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadLeaveTypes();
+  }, []);
+
   return (
     <>
       <Typography variant="subtitle1" sx={{ mt: 3, mb: 1, fontWeight: 'bold', borderBottom: '1px solid #eee', pb: 1 }}>
@@ -34,23 +53,26 @@ const VacationForm = ({ formData, onFormChange }) => {
           <TableRow>
             <TableCell component="th" sx={commonStyles.th}>* 휴가 종류</TableCell>
             <TableCell sx={commonStyles.td}>
-              <Select
-                name="vacationType"
-                value={formData.vacationType || ''}
-                onChange={onFormChange}
-                required
-                fullWidth
-                size="small"
-                displayEmpty
-              >
-                <MenuItem value="" disabled><em>선택</em></MenuItem>
-                <MenuItem value="연차">연차</MenuItem>
-                <MenuItem value="반차(오전)">반차(오전)</MenuItem>
-                <MenuItem value="반차(오후)">반차(오후)</MenuItem>
-                <MenuItem value="병가">병가</MenuItem>
-                <MenuItem value="경조휴가">경조휴가</MenuItem>
-                <MenuItem value="기타">기타</MenuItem>
-              </Select>
+              {loading ? (
+                <CircularProgress size={20} />
+              ) : (
+                <Select
+                  name="vacationType"
+                  value={formData.vacationType || ''}
+                  onChange={onFormChange}
+                  required
+                  fullWidth
+                  size="small"
+                  displayEmpty
+                >
+                  <MenuItem value="" disabled><em>선택</em></MenuItem>
+                  {leaveTypes.map((type) => (
+                    <MenuItem key={type.value} value={getLeaveTypeLabel(type.value)}>
+                      {getLeaveTypeLabel(type.value)}
+                    </MenuItem>
+                  ))}
+                </Select>
+              )}
             </TableCell>
           </TableRow>
           <TableRow>

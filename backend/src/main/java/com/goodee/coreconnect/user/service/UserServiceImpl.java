@@ -117,7 +117,8 @@ public class UserServiceImpl implements UserService {
         dto.joinDate(),
         dto.jobGrade(),
         dto.profileImageKey(),
-        imageUrl
+        imageUrl,
+        dto.employeeNumber()
     );
   }
   

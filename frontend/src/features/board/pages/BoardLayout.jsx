@@ -24,7 +24,7 @@ const BoardLayout = () => {
   // 현재는 window.scrollTo를 사용하고 있어 직접 사용되지는 않지만,
   // 필요시 contentRef.current.scrollTo(...) 방식으로 영역 내부 스크롤 제어 가능
   const { showSnack } = useSnackbarContext(); // 스낵바 표시 함수 (success, error 등 상태별 호출)
-  const { userProfile } = useContext(UserProfileContext);
+  const { userProfile } = useContext(UserProfileContext) || {};
   const isAdmin = userProfile?.role === "ADMIN";
   // 사용자 권한이 ADMIN인지 확인 → 관리자 여부 판별
   // ADMIN이면 카테고리 관리 버튼을 보여줌

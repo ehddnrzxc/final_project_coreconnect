@@ -47,7 +47,7 @@ export default function LoginPage() {
             mb: 4,
           }}
         >
-          <Box component="img" src={logo} alt="logo" sx={{ height: 100 }} />
+          <Box component="img" src={logo} alt="logo" sx={{ height: 70 }} />
           <Typography variant="h3" fontWeight={500}>
             코어커넥트
           </Typography>

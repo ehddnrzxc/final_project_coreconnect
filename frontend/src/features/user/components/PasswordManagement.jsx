@@ -15,8 +15,10 @@ import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import InfoIcon from "@mui/icons-material/Info";
 import { changePassword } from "../api/userAPI";
 import { logout } from "../../auth/api/authAPI";
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 
 const PasswordManagement = ({ onBack, theme }) => {
+  const { showSnack } = useSnackbarContext();
   const navigate = useNavigate();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -62,7 +64,7 @@ const PasswordManagement = ({ onBack, theme }) => {
       await changePassword(currentPassword, newPassword, confirmPassword);
       
       // 비밀번호 변경 성공 안내
-      alert("비밀번호가 성공적으로 변경되었습니다.\n로그인 페이지로 이동합니다.");
+      showSnack("비밀번호가 성공적으로 변경되었습니다. 로그인 페이지로 이동합니다.", "success");
       
       // 로그아웃 처리
       try {
@@ -72,7 +74,9 @@ const PasswordManagement = ({ onBack, theme }) => {
       }
       
       // 로그인 페이지로 이동
-      navigate("/login");
+      setTimeout(() => {
+        navigate("/login");
+      }, 1500);
     } catch (err) {
       if (err.response?.status === 400) {
         const message = err.response?.data || "현재 비밀번호가 일치하지 않습니다.";

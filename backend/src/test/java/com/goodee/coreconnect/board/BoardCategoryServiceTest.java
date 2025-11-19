@@ -54,6 +54,7 @@ class BoardCategoryServiceTest {
                 "admin@test.com",
                 "010-1111-2222",
                  null,
+                 null,
                  null
         );
 
@@ -64,6 +65,7 @@ class BoardCategoryServiceTest {
                 Role.USER,
                 "user@test.com",
                 "010-3333-4444",
+                null,
                 null,
                 null
         );

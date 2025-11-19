@@ -16,13 +16,13 @@ import {
   MenuItem,
   FormControl,
   Avatar,
-  Chip,
   Pagination,
   Stack,
 } from "@mui/material";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import { getCompanyLeaveWeekly, getCompanyLeaveDetails } from "../api/leaveAPI";
+import LeaveTypeChip from "./LeaveTypeChip";
 
 // 날짜 포맷팅 함수 (컴포넌트 외부로 이동)
 const formatDate = (date) => {
@@ -87,9 +87,9 @@ export default function CompanyLeaveStatus() {
           endDate = formatDate(weekEnd);
         }
         
-        const leaveType = activeTab === 1 ? "연차" : activeTab === 2 ? "기타" : null;
+        const leaveType = activeTab === 1 ? "ANNUAL" : activeTab === 2 ? "ETC" : null;
         
-        const response = await getCompanyLeaveDetails(startDate, endDate, leaveType, null, page, size);
+        const response = await getCompanyLeaveDetails(startDate, endDate, leaveType, page, size);
         setLeaveDetails(response.content || []);
         setTotalPages(response.totalPages || 0);
         setTotalElements(response.totalElements || 0);
@@ -180,17 +180,6 @@ export default function CompanyLeaveStatus() {
     leaveCountMap.set(item.date, item.leaveCount);
   });
 
-  // 휴가 유형 아이콘/라벨
-  const getLeaveTypeLabel = (type) => {
-    const typeMap = {
-      연차: { label: "연차", color: "primary" },
-      반차: { label: "반차", color: "info" },
-      병가: { label: "병가", color: "warning" },
-      경조사: { label: "경조사", color: "success" },
-      배우자돌봄휴가: { label: "배우자돌봄휴가", color: "default" },
-    };
-    return typeMap[type] || { label: type, color: "default" };
-  };
 
   return (
     <Box sx={{ p: 3 }}>
@@ -249,14 +238,20 @@ export default function CompanyLeaveStatus() {
                 </Typography>
                 {count > 0 && (
                   <Button
-                    variant="contained"
+                    variant="text"
                     size="small"
+                    disableRipple
                     sx={{
                       mt: 1,
                       minWidth: "auto",
                       px: 1,
                       py: 0.5,
-                      fontSize: 12,
+                      fontSize: 15,
+                      color: (theme) => theme.palette.mode === 'dark' ? 'text.primary' : 'rgba(0, 0, 0, 0.75)',
+                      "&:hover": {
+                        bgcolor: "transparent",
+                        color: (theme) => theme.palette.mode === 'dark' ? 'text.primary' : 'rgba(0, 0, 0, 0.75)',
+                      },
                     }}
                   >
                     휴가자 {count}명
@@ -292,7 +287,7 @@ export default function CompanyLeaveStatus() {
       <Paper elevation={0} sx={{ border: "1px solid", borderColor: "divider" }}>
         <Table>
           <TableHead>
-            <TableRow sx={{ bgcolor: "grey.50" }}>
+            <TableRow sx={{ bgcolor: (theme) => theme.palette.mode === 'dark' ? 'grey.800' : 'grey.50' }}>
               <TableCell sx={{ fontWeight: 600 }}>사번</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>사원명</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>부서명</TableCell>
@@ -317,7 +312,6 @@ export default function CompanyLeaveStatus() {
               </TableRow>
             ) : (
               leaveDetails.map((item) => {
-                const typeInfo = getLeaveTypeLabel(item.leaveType);
                 const dateRange = item.leaveDates && item.leaveDates.length > 0
                   ? `${formatDateString(item.leaveDates[0])}${item.leaveDates.length > 1 ? `, ${formatDateString(item.leaveDates[item.leaveDates.length - 1])}` : ""}`
                   : "-";
@@ -335,12 +329,7 @@ export default function CompanyLeaveStatus() {
                     </TableCell>
                     <TableCell>{item.departmentName || "-"}</TableCell>
                     <TableCell>
-                      <Chip
-                        label={typeInfo.label}
-                        size="small"
-                        color={typeInfo.color}
-                        variant="outlined"
-                      />
+                      <LeaveTypeChip type={item.leaveType} />
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" sx={{ fontSize: 13 }}>
@@ -368,6 +357,17 @@ export default function CompanyLeaveStatus() {
               color="primary"
               showFirstButton
               showLastButton
+              sx={{
+                "& .MuiPaginationItem-root": {
+                  bgcolor: "transparent",
+                  "&:hover": {
+                    bgcolor: "transparent",
+                  },
+                  "&.Mui-selected": {
+                    bgcolor: "transparent",
+                  },
+                },
+              }}
             />
             <Typography variant="body2" color="text.secondary">
               총 {totalElements}건
