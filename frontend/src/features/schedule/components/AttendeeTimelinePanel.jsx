@@ -89,17 +89,23 @@ export default function AttendeeTimelinePanel({
 
   // 설정 시간 범위 계산
   const selectedTimeRange = (() => {
-    if (!startDateTime || !endDateTime) return null;
+    if (!startDateTime || !endDateTime) {
+      return null;
+    }
     
     const normalizedStart = toBackendFormat(startDateTime);
     const normalizedEnd = toBackendFormat(endDateTime);
     
-    if (!normalizedStart || !normalizedEnd) return null;
+    if (!normalizedStart || !normalizedEnd) {
+      return null;
+    }
     
     const start = toDate(normalizedStart);
     const end = toDate(normalizedEnd);
     
-    if (!start || !end || isNaN(start.getTime()) || isNaN(end.getTime())) return null;
+    if (!start || !end || isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return null;
+    }
     
     return { start, end };
   })();
