@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Tabs, Tab, List, ListItem, ListItemAvatar, ListItemText, Badge, Avatar, Typography, Chip } from "@mui/material";
+import { Box, Tabs, Tab, List, ListItem, ListItemButton, ListItemAvatar, ListItemText, Badge, Avatar, Typography, Chip } from "@mui/material";
 import http from "../../../api/http"; // axios 인스턴스 불러오기
 
 // 채팅방 목록(좌측) & 탭
@@ -98,27 +98,31 @@ function ChatRoomListPane({
           filteredRooms.map(room => (
             <ListItem
               key={room.roomId}
-              selected={selectedRoomId === room.roomId}
-              button
-              alignItems="flex-start"
-              onClick={() => setSelectedRoomId(room.roomId)}
+              disablePadding
               sx={{
-                borderRadius: 0,
                 mb: 1,
-                background: selectedRoomId === room.roomId ? "#f3f6fa" : "#fff",
-                borderBottom: "1px solid #e9eaeb",
-                py: 2.4,
-                px: 1.2,
-                minHeight: "64px",
-                cursor: "pointer"
+                borderBottom: "1px solid #e9eaeb"
               }}
             >
-              <ListItemAvatar>
-                <Avatar sx={{ bgcolor: "#10c16d", mr: 1 }}>
-                  {room.roomName?.[0]?.toUpperCase()}
-                </Avatar>
-              </ListItemAvatar>
-              <ListItemText
+              <ListItemButton
+                selected={selectedRoomId === room.roomId}
+                onClick={() => setSelectedRoomId(room.roomId)}
+                alignItems="flex-start"
+                sx={{
+                  borderRadius: 0,
+                  background: selectedRoomId === room.roomId ? "#f3f6fa" : "#fff",
+                  py: 2.4,
+                  px: 1.2,
+                  minHeight: "64px",
+                  cursor: "pointer"
+                }}
+              >
+                <ListItemAvatar>
+                  <Avatar sx={{ bgcolor: "#10c16d", mr: 1 }}>
+                    {room.roomName?.[0]?.toUpperCase()}
+                  </Avatar>
+                </ListItemAvatar>
+                <ListItemText
                 primary={
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <Typography sx={{ fontWeight: 700, fontSize: 18, flexGrow: 1 }}>
@@ -144,20 +148,23 @@ function ChatRoomListPane({
                   </Box>
                 }
                 secondary={
-                  <Box>
+                  <Box component="span" sx={{ display: "block" }}>
                     <Typography
+                      component="span"
                       sx={{
                         fontSize: 14,
                         color: "#555",
                         whiteSpace: "nowrap",
                         overflow: "hidden",
-                        textOverflow: "ellipsis"
+                        textOverflow: "ellipsis",
+                        display: "block"
                       }}
                     >
                       {room.lastMessageContent ? room.lastMessageContent : ""}
                     </Typography>
-                    <Box sx={{ display: "flex", alignItems: "center", mt: 0.5 }}>
+                    <Box component="span" sx={{ display: "flex", alignItems: "center", mt: 0.5 }}>
                       <Typography
+                        component="span"
                         sx={{
                           fontSize: 13,
                           color: "#9495a0",
@@ -168,6 +175,7 @@ function ChatRoomListPane({
                       </Typography>
                       {room.lastSenderName && (
                         <Typography
+                          component="span"
                           sx={{
                             fontSize: 13,
                             color: "#9495a0"
@@ -180,6 +188,7 @@ function ChatRoomListPane({
                   </Box>
                 }
               />
+              </ListItemButton>
             </ListItem>
           ))
         )}

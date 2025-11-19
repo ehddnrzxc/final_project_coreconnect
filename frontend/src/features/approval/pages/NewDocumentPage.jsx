@@ -239,7 +239,7 @@ function NewDocumentPage() {
     }
 
     if (!documentTitle.trim()) {
-      showSnackt("문서 제목을 입력해주세요.", "warning");
+      showSnack("문서 제목을 입력해주세요.", "warning");
       return;
     }
   
@@ -417,7 +417,7 @@ function NewDocumentPage() {
           ) : (
             <List dense>
               {approvalLine.map((line, index) => (
-                <ListItem key={line.userId} disablePadding>
+                <ListItem key={line.lineId} disablePadding>
                   <ApprovalTypeChip type={line.type || line.approvalType} size="small" sx={{ mr: 1.5, minWidth: '50px' }} />
                   <ListItemText primary={`${index + 1}. ${line.name} (${getJobGradeLabel(line.positionName)})`} secondary={line.deptName} />
                 </ListItem>

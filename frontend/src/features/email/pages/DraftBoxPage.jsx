@@ -5,8 +5,14 @@ import {
   IconButton, Pagination, Chip, Snackbar, Alert
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
+<<<<<<< HEAD
 import { fetchDraftbox, deleteDraftMail, fetchDraftCount } from "../api/emailApi"; // ★ fetchDraftCount 추가!
 import useUserEmail from '../../email/hook/useUserEmail'; // ★ 사용자 이메일을 가져오는 커스텀 훅
+=======
+import { fetchDraftbox, deleteDraftMail } from "../api/emailApi";
+import { useContext } from "react";
+import { UserProfileContext } from "../../../App";
+>>>>>>> d5e1f38fdb312c6f86bc1969ca3ed7a58d4ab2a7
 import { useNavigate } from "react-router-dom";
 import { MailCountContext } from "../../../App"; // ★ 임시보관함/언리드 context
 
@@ -18,11 +24,11 @@ const DraftBoxPage = () => {
   const [size] = useState(20);
   const [loading, setLoading] = useState(false);
   const [snack, setSnack] = useState({ open: false, severity: "info", message: "" });
-
   // ★ context에서 draftCount, refreshDraftCount 받아오기
   const { draftCount = 0, refreshDraftCount = () => {} } = useContext(MailCountContext) || {};
   // 로그인 유저 email 추출
-  const userEmail = useUserEmail();
+  const { userProfile } = useContext(UserProfileContext) || {};
+  const userEmail = userProfile?.email;
   const navigate = useNavigate();
 
   // 임시보관함 목록 조회 및 상태 세팅
@@ -176,3 +182,14 @@ const DraftBoxPage = () => {
 };
 
 export default DraftBoxPage;
+
+/*
+=========================
+주요 주석 요약 및 체크리스트
+-------------------------
+★ UserProfileContext에서 userProfile.email을 직접 사용
+★ 실제 userEmail 값이 null이면 API 호출 금지. Profile 비동기 처리 시에는 최초엔 null→email로 전환됨
+★ userEmail 값이 제대로 들어 올 때만 reload()/fetchDraftbox API가 동작 → 데이터 표시됨
+=========================
+*/
+

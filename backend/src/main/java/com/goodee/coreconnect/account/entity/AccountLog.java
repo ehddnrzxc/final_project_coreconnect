@@ -41,8 +41,7 @@ public class AccountLog {
     private User user;
 
 
-    // 정적 팩토리 메서드 (생성자 대체)
- 
+    /** 정적 팩토리 메서드 */
     public static AccountLog createAccountLog(User user, LogActionType actionType, String ipAddress) {
         AccountLog log = new AccountLog();
         log.user = user;
@@ -53,8 +52,7 @@ public class AccountLog {
     }
 
 
-    // 도메인 로직 (필요시 확장 가능)
-
+    /** 도메인 로직 */
     public void updateIp(String newIp) {
         this.ipAddress = newIp;
     }

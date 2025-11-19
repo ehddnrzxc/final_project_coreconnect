@@ -1,24 +1,13 @@
 import { useEffect, useState } from "react";
-// useEffect: 생명주기 관리 (렌더링 이후 데이터 로드 등)
-// useState: 상태 관리 (데이터 저장 및 변경 시 리렌더링)
 import { Box, Typography, Table, TableHead, TableRow, TableCell, TableBody, IconButton, TextField, Button } from "@mui/material";
-// Typography: 텍스트 출력용
-// Table, TableHead, TableRow, TableCell, TableBody: 표 구조 렌더링
-// IconButton: 아이콘 클릭 버튼
-// TextField: 입력 필드
-import EditIcon from "@mui/icons-material/Edit"; // 수정 아이콘 (연필 모양)
-import DeleteIcon from "@mui/icons-material/Delete"; // 삭제 아이콘 (휴지통)
-import SaveIcon from "@mui/icons-material/Save"; // 저장 아이콘 (디스크)
-import AddIcon from "@mui/icons-material/Add"; // 추가 아이콘 (플러스)
+import EditIcon from "@mui/icons-material/Edit"; 
+import DeleteIcon from "@mui/icons-material/Delete";
+import SaveIcon from "@mui/icons-material/Save";
+import AddIcon from "@mui/icons-material/Add";
 import { getAllCategories, createCategory, updateCategory, deleteCategory } from "../api/boardCategoryAPI";
-// getAllCategories: 전체 카테고리 조회
-// createCategory: 카테고리 생성
-// updateCategory: 카테고리 수정
-// deleteCategory: 카테고리 삭제
-import { useSnackbarContext } from "../../../components/utils/SnackbarContext"; // 전역 스낵바 컨텍스트
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 
 
-// 관리자 전용 카테고리 관리 페이지 컴포넌트
 const AdminCategoryPage = () => {
   const { showSnack } = useSnackbarContext(); // 스낵바 훅 사용
 
@@ -190,17 +179,16 @@ const AdminCategoryPage = () => {
                 {editingId === cat.id ? (
                   // 수정 모드일 때는 저장 버튼 표시
                   <IconButton color="primary" onClick={() => handleSave(cat.id)}>
-                    <SaveIcon /> {/* 저장 아이콘 */}
+                    <SaveIcon /> 
                   </IconButton>
                 ) : (
                   // 일반 모드일 때는 수정 버튼 표시
                   <IconButton color="secondary" onClick={() => handleEdit(cat)}>
-                    <EditIcon /> {/* 수정 아이콘 */}
+                    <EditIcon /> 
                   </IconButton>
                 )}
-                {/* 삭제 버튼은 항상 표시 */}
                 <IconButton color="error" onClick={() => handleDelete(cat.id)}>
-                  <DeleteIcon /> {/* 삭제 아이콘 */}
+                  <DeleteIcon />
                 </IconButton>
               </TableCell>
             </TableRow>

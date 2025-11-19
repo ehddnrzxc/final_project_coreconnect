@@ -85,7 +85,6 @@ function AttendanceCard() {
     }
   };
 
-
   const handleCheckIn = async () => {
     try {
       await checkIn();

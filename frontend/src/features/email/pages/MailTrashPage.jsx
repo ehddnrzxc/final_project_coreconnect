@@ -11,7 +11,8 @@ import {
   deleteMails,       // "선택 삭제" - 휴지통에서 영구삭제({mailIds:[...]}로 호출)
   emptyTrash         // "휴지통 비우기" - 휴지통 전체 영구삭제
 } from "../api/emailApi";
-import useUserEmail from '../../email/hook/useUserEmail';
+import { useContext } from "react";
+import { UserProfileContext } from "../../../App";
 
 const MailTrashPage = () => {
   // 페이지, 사이즈, 총개수, 메일리스트, 선택Set, 로딩상태
@@ -21,7 +22,8 @@ const MailTrashPage = () => {
   const [mails, setMails] = useState([]);
   const [selected, setSelected] = useState(new Set());
   const [loading, setLoading] = useState(false);
-  const userEmail = useUserEmail();
+  const { userProfile } = useContext(UserProfileContext) || {};
+  const userEmail = userProfile?.email;
   const navigate = useNavigate();
 
   // 응답 파싱 유틸

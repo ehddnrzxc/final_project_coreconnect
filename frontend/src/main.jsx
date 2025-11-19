@@ -13,6 +13,7 @@ import AdminRoute from "./features/admin/utils/AdminRoute";
 import ApprovalHomePage from "./features/approval/pages/ApprovalHomePage";
 import ApprovalLayout from "./features/approval/pages/ApprovalLayout";
 import AdminHomePage from "./features/admin/pages/AdminHomePage";
+import AccountLogPage from "./features/admin/pages/AccountLogPage";
 import UserList from "./features/admin/components/UserList";
 import ChatHomePage from "./features/chat/pages/ChatHomePage";
 import ChatLayout from "./features/chat/pages/ChatLayout";
@@ -34,7 +35,9 @@ import MailSentBoxPage from "./features/email/pages/MailSentBoxPage";
 import MailDetailPage from "./features/email/pages/MailDetailPage";
 import DocumentDetailPage from "./features/approval/pages/DocumentDetailPage";
 import DraftBoxPage from "./features/email/pages/DraftBoxPage";
-import LeavePage from "./features/leave/pages/LeavePage";
+import LeaveLayout from "./features/leave/pages/LeaveLayout";
+import LeaveHistory from "./features/leave/components/LeaveHistory";
+import CompanyLeaveStatus from "./features/leave/components/CompanyLeaveStatus";
 import LeaveRequests from "./features/admin/components/LeaveRequests";
 import DepartmentManagementPage from "./features/admin/pages/DepartmentManagementPage";
 import { RealtimeNotificationProvider } from "./features/notification/RealtimeNotificationProvider";
@@ -44,6 +47,8 @@ import MyDraftsPage from "./features/approval/pages/MyDraftsPage";
 import ReferDocumentPage from "./features/approval/pages/ReferDocumentPage";
 import MailReservedPage from "./features/email/pages/MailReservedPage";
 import AttendanceLayout from "./features/attendance/pages/AttendanceLayout";
+import MyAttendanceStatus from "./features/attendance/components/MyAttendanceStatus";
+import CompanyAttendanceStatus from "./features/attendance/components/CompanyAttendanceStatus";
 
 /* 전체 라우트 구조 */
 const router = createBrowserRouter([
@@ -118,9 +123,14 @@ const router = createBrowserRouter([
         path: "leave",
         element: (
           <ProtectedRoute>
-            <LeavePage />
+            <LeaveLayout />
           </ProtectedRoute>
         ),
+        children: [
+          { index: true, element: <LeaveHistory /> },
+          { path: "history", element: <LeaveHistory /> },
+          { path: "company", element: <CompanyLeaveStatus /> },
+        ],
       },
       {
         path: "attendance",
@@ -129,6 +139,11 @@ const router = createBrowserRouter([
             <AttendanceLayout />
           </ProtectedRoute>
         ),
+        children: [
+          { index: true, element: <MyAttendanceStatus /> },
+          { path: "my", element: <MyAttendanceStatus /> },
+          { path: "company", element: <CompanyAttendanceStatus /> },
+        ],
       },
       {
         path: "board",
@@ -161,7 +176,8 @@ const router = createBrowserRouter([
           { path: "board/category", element: <AdminCategoryPage /> },
           { path: "password-reset-requests", element: <PasswordReset /> },
           { path: "leave-requests", element: <LeaveRequests /> },
-          { path: "departments", element: <DepartmentManagementPage /> }
+          { path: "departments", element: <DepartmentManagementPage /> },
+          { path: "account-logs", element: <AccountLogPage /> }
         ],
       },
       {

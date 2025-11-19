@@ -6,6 +6,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,16 +14,21 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.goodee.coreconnect.account.entity.LogActionType;
+import com.goodee.coreconnect.account.service.AccountLogService;
+import com.goodee.coreconnect.account.util.IpAddressUtil;
 import com.goodee.coreconnect.auth.dto.LoginRequestDTO;
 import com.goodee.coreconnect.auth.dto.LoginResponseDTO;
 import com.goodee.coreconnect.auth.util.JwtConstants;
 import com.goodee.coreconnect.security.jwt.JwtProvider;
+import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
 import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -42,26 +48,34 @@ public class AuthController {
   private final JwtProvider jwt;
   private final UserRepository userRepository;  
   private final PasswordEncoder passwordEncoder;
+  private final AccountLogService accountLogService;
 
   @Operation(summary = "로그인", 
              description = "이메일/비밀번호로 로그인하여 Access Token과 Refresh Token을 HttpOnly 쿠키로 발급합니다.")
   @PostMapping("/login")
   public ResponseEntity<LoginResponseDTO> login(
       @Valid @RequestBody LoginRequestDTO req,
+      HttpServletRequest request,
       HttpServletResponse res) {
 
       // 요청값 받기
       String email = req.email();
       String password = req.password();
+      String ipAddress = IpAddressUtil.getClientIpAddress(request);
       
       // 이메일로 사용자 조회
       User user = userRepository.findByEmail(email).orElse(null);
       if (user == null) { 
+        // 로그인 실패 이력 저장 (사용자가 존재하지 않음)
+        accountLogService.saveLoginFailLog(email, ipAddress);
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build(); 
       }
       // 비밀번호 비교 (BCrypt)
-      if (!passwordEncoder.matches(password, user.getPassword()))
-          return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+      if (!passwordEncoder.matches(password, user.getPassword())) {
+        // 로그인 실패 이력 저장 (비밀번호 오류)
+        accountLogService.saveLoginFailLog(email, ipAddress);
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+      }
 
       // 사용자 Role 추출
       Role role = user.getRole();
@@ -91,6 +105,9 @@ public class AuthController {
       res.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
       res.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
+      // 로그인 성공 이력 저장
+      accountLogService.saveLog(user, LogActionType.LOGIN, ipAddress);
+
       // 응답 데이터 (사용자 정보)
       LoginResponseDTO response = new LoginResponseDTO(
           user.getEmail(),
@@ -109,6 +126,7 @@ public class AuthController {
   @PostMapping("/refresh")
   public ResponseEntity<Void> refresh(
       @CookieValue(name = "refresh_token", required = false) String refresh,
+      HttpServletRequest request,
       HttpServletResponse res
   ) {
     if (refresh == null) {
@@ -129,6 +147,13 @@ public class AuthController {
           .build();
       res.addHeader(HttpHeaders.SET_COOKIE, newAccessCookie.toString());
       
+      // 토큰 재발급 이력 저장
+      User user = userRepository.findByEmail(email).orElse(null);
+      if (user != null) {
+        String ipAddress = IpAddressUtil.getClientIpAddress(request);
+        accountLogService.saveLog(user, LogActionType.REFRESH, ipAddress);
+      }
+      
       return ResponseEntity.noContent().build();
     } catch (Exception e) {
       e.printStackTrace();
@@ -140,7 +165,10 @@ public class AuthController {
   /** Access Token + Refresh Token 쿠키를 삭제하여 로그아웃 처리 */
   @Operation(summary = "로그아웃", description = "Access/Refresh Token 쿠키를 제거하고 로그아웃 기능을 수행합니다.")
   @PostMapping("/logout")
-  public ResponseEntity<Void> logout(HttpServletResponse res) {
+  public ResponseEntity<Void> logout(
+      @AuthenticationPrincipal CustomUserDetails userDetails,
+      HttpServletRequest request,
+      HttpServletResponse res) {
     // access_token (HttpOnly=false, Secure=false, SameSite=None, Path=/)
     ResponseCookie deleteAccess = ResponseCookie.from("access_token", "")
         .httpOnly(true)
@@ -160,6 +188,15 @@ public class AuthController {
         .maxAge(0)
         .build();
     res.addHeader(HttpHeaders.SET_COOKIE, deleteRefresh.toString());
+
+    // 로그아웃 이력 저장
+    if (userDetails != null) {
+      User user = userRepository.findByEmail(userDetails.getEmail()).orElse(null);
+      if (user != null) {
+        String ipAddress = IpAddressUtil.getClientIpAddress(request);
+        accountLogService.saveLog(user, LogActionType.LOGOUT, ipAddress);
+      }
+    }
 
     return ResponseEntity.noContent().build();
   }

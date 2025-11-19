@@ -16,8 +16,9 @@ import SyncIcon from '@mui/icons-material/Sync';
 import ViewListIcon from '@mui/icons-material/ViewList';
 
 import { fetchInbox, fetchUnreadCount} from '../api/emailApi';
-import { useNavigate, useLocation } from 'react-router-dom'; // <-- useLocation 추가
-import useUserEmail from '../hooks/useUserEmail'; // ⭐️ 여기 추가
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useContext } from "react";
+import { UserProfileContext } from "../../../App";
 
 const MailInboxPage = () => {
   const [tab, setTab] = useState("all"); // all|today|unread
@@ -27,7 +28,8 @@ const MailInboxPage = () => {
   const [total, setTotal] = useState(0);
   const [mails, setMails] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const userEmail = useUserEmail(); // ⭐️ 훅으로 교체!
+  const { userProfile } = useContext(UserProfileContext) || {};
+  const userEmail = userProfile?.email;
   const navigate = useNavigate();
   const location = useLocation(); // <-- 쿼리 문자열 인식용
 
