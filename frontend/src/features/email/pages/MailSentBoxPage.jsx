@@ -94,6 +94,10 @@ const MailSentBoxPage = () => {
       });
   };
 
+  const handleRefresh = () => {
+    load();
+  };
+
   // page, size, userEmail 바뀔 때마다 메일 목록 새로고침
   useEffect(() => {
     load();
@@ -194,7 +198,7 @@ const MailSentBoxPage = () => {
           </ButtonGroup>
           <Box sx={{ flex: 1 }} />
           <IconButton><ViewListIcon /></IconButton>
-          <IconButton><SyncIcon onClick={load} /></IconButton>
+          <IconButton onClick={handleRefresh}><SyncIcon /></IconButton>
           <IconButton><DraftsIcon /></IconButton>
           <Paper 
             sx={{ ml: 1, display: "inline-flex", alignItems: "center", px: 0.5, cursor: 'pointer' }}

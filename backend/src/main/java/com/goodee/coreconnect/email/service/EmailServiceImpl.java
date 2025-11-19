@@ -133,6 +133,7 @@ public class EmailServiceImpl implements EmailService {
 	    // emailReadYn이 false이거나 null인 경우 모두 처리
 	    if (myRecipientOpt.isPresent()) {
 	        EmailRecipient recipient = myRecipientOpt.get();
+	        Integer recipientId = recipient.getEmailRecipientId();
 	        Boolean currentReadYn = recipient.getEmailReadYn();
 	        // 안읽은 메일인 경우 (false 또는 null)
 	        if (currentReadYn == null || Boolean.FALSE.equals(currentReadYn)) {
@@ -143,8 +144,19 @@ public class EmailServiceImpl implements EmailService {
 	            emailRecipientRepository.save(recipient);
 	            // 즉시 DB에 반영되도록 flush
 	            emailRecipientRepository.flush();
-	            log.info("getEmailDetail: EmailRecipient updated - emailId={}, viewerEmail={}, emailReadYn={} -> true, emailReadAt={}", 
-	                    emailId, viewerEmail, currentReadYn, now);
+	            log.info("getEmailDetail: EmailRecipient updated - emailId={}, viewerEmail={}, recipientId={}, emailReadYn={} -> true, emailReadAt={}", 
+	                    emailId, viewerEmail, recipientId, currentReadYn, now);
+	            
+	            // DB에 실제로 반영되었는지 확인 (디버그 로그)
+	            emailRecipientRepository.findById(recipientId).ifPresent(savedRecipient -> {
+	                Boolean savedReadYn = savedRecipient.getEmailReadYn();
+	                log.info("getEmailDetail: DB 확인 - recipientId={}, 실제 DB의 emailReadYn={}", 
+	                        recipientId, savedReadYn);
+	                if (!Boolean.TRUE.equals(savedReadYn)) {
+	                    log.error("getEmailDetail: ⚠️ 경고 - DB에 emailReadYn이 true로 저장되지 않았습니다! recipientId={}, emailId={}, viewerEmail={}", 
+	                            recipientId, emailId, viewerEmail);
+	                }
+	            });
 	            
 	            // Email 엔티티의 emailReadAt도 업데이트
 	            email.setEmailReadAt(now);
@@ -659,6 +671,7 @@ public class EmailServiceImpl implements EmailService {
         // emailReadYn이 false이거나 null인 경우 모두 처리
         if (myRecipientOpt.isPresent()) {
             EmailRecipient recipient = myRecipientOpt.get();
+            Integer recipientId = recipient.getEmailRecipientId();
             Boolean currentReadYn = recipient.getEmailReadYn();
             // 안읽은 메일인 경우 (false 또는 null)
             if (currentReadYn == null || Boolean.FALSE.equals(currentReadYn)) {
@@ -669,8 +682,19 @@ public class EmailServiceImpl implements EmailService {
                 emailRecipientRepository.save(recipient);
                 // 즉시 DB에 반영되도록 flush
                 emailRecipientRepository.flush();
-                log.info("markMailAsRead: EmailRecipient updated - emailId={}, userEmail={}, emailReadYn={} -> true, emailReadAt={}", 
-                        emailId, userEmail, currentReadYn, now);
+                log.info("markMailAsRead: EmailRecipient updated - emailId={}, userEmail={}, recipientId={}, emailReadYn={} -> true, emailReadAt={}", 
+                        emailId, userEmail, recipientId, currentReadYn, now);
+                
+                // DB에 실제로 반영되었는지 확인 (디버그 로그)
+                emailRecipientRepository.findById(recipientId).ifPresent(savedRecipient -> {
+                    Boolean savedReadYn = savedRecipient.getEmailReadYn();
+                    log.info("markMailAsRead: DB 확인 - recipientId={}, 실제 DB의 emailReadYn={}", 
+                            recipientId, savedReadYn);
+                    if (!Boolean.TRUE.equals(savedReadYn)) {
+                        log.error("markMailAsRead: ⚠️ 경고 - DB에 emailReadYn이 true로 저장되지 않았습니다! recipientId={}, emailId={}, userEmail={}", 
+                                recipientId, emailId, userEmail);
+                    }
+                });
                 
                 // Email 엔티티의 emailReadAt도 업데이트
                 email.setEmailReadAt(now);

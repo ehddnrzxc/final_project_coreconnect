@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useRef } from 'react';
 import {
   Box, Typography, Paper, Table, TableHead, TableBody, TableRow, TableCell,
   IconButton, ButtonGroup, Button, InputBase, Divider, Checkbox, Chip, Pagination, Badge, Tabs, Tab,
@@ -32,6 +32,7 @@ const MailInboxPage = () => {
   const [unreadCount, setUnreadCount] = useState(0); // Chip/Badge
   const [selected, setSelected] = useState(new Set());
   const [snack, setSnack] = useState({ open: false, severity: 'info', message: '' });
+  const pendingReadIdsRef = useRef(new Set());
   const { userProfile } = useContext(UserProfileContext) || {};
   const userEmail = userProfile?.email;
   const navigate = useNavigate();
@@ -73,10 +74,34 @@ const MailInboxPage = () => {
       const res = await fetchInbox(userEmail, pageIdx - 1, pageSize, activeTab === "all" ? null : activeTab);
       const boxData = res?.data?.data;
       const mailList = Array.isArray(boxData?.content) ? boxData.content : [];
-      setMails(mailList);
-      setTotal(typeof boxData?.totalElements === "number" ? boxData.totalElements : 0);
+
+      if (activeTab === "unread") {
+        if (pendingReadIdsRef.current.size > 0) {
+          const idsFromServer = new Set(mailList.map(m => m.emailId));
+          const stillPending = new Set();
+          pendingReadIdsRef.current.forEach(id => {
+            if (idsFromServer.has(id)) {
+              stillPending.add(id);
+            }
+          });
+          pendingReadIdsRef.current = stillPending;
+        }
+      } else if (pendingReadIdsRef.current.size > 0) {
+        pendingReadIdsRef.current = new Set();
+      }
+
+      const listForState = activeTab === "unread"
+        ? mailList.filter(mail => !pendingReadIdsRef.current.has(mail.emailId))
+        : mailList;
+
+      setMails(listForState);
+      const serverTotal = typeof boxData?.totalElements === "number" ? boxData.totalElements : 0;
+      const adjustedTotal = activeTab === "unread"
+        ? Math.max(0, serverTotal - pendingReadIdsRef.current.size)
+        : serverTotal;
+      setTotal(adjustedTotal);
       setSelected(prev => {
-        const idsOnPage = new Set(mailList.map(m => m.emailId));
+        const idsOnPage = new Set(listForState.map(m => m.emailId));
         const newSet = new Set([...prev].filter(id => idsOnPage.has(id)));
         return newSet;
       });
@@ -85,6 +110,11 @@ const MailInboxPage = () => {
       setMails([]);
       setTotal(0);
     }
+  };
+
+  const handleRefresh = () => {
+    loadInbox(1, size, tab);
+    loadUnreadCount();
   };
 
   // 탭/페이지 등 변경시 메일함 새로고침
@@ -103,6 +133,18 @@ const MailInboxPage = () => {
     };
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userEmail, tab]);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (!document.hidden && userEmail && tab === "unread") {
+        loadInbox();
+        loadUnreadCount();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userEmail, tab]);
 
@@ -210,45 +252,30 @@ const MailInboxPage = () => {
         const result = await markMailAsRead(mail.emailId, userEmail);
         console.log("markMailAsRead result:", result);
         
-        // 안읽은 메일 탭에서 읽으면 목록에서 즉시 제거
+        // 안읽은 메일 탭에서 읽으면 목록에서 즉시 제거 (Optimistic Update)
         if (tab === "unread") {
-          // 목록에서 해당 메일 즉시 제거 (UI 반응성 향상)
+          pendingReadIdsRef.current = new Set(pendingReadIdsRef.current).add(mail.emailId);
           setMails(prev => prev.filter(m => m.emailId !== mail.emailId));
           setTotal(prev => Math.max(0, prev - 1));
         }
         
-        // DB 반영을 위한 짧은 대기 후 안읽은 메일 개수 업데이트 (여러 번 호출하여 확실하게)
-        setTimeout(async () => {
-          await loadUnreadCount();
-        }, 150);
-        
-        // 추가로 한 번 더 업데이트 (DB 반영 확실히)
-        setTimeout(async () => {
-          await loadUnreadCount();
-        }, 300);
-        
-        // 안읽은 메일 탭에서 읽으면 목록 새로고침
+        // 안읽은 메일 탭에서 읽으면 DB 반영 후 목록 새로고침
+        // 트랜잭션 커밋/반영 딜레이를 고려하여 충분한 대기 시간 설정 (700ms~1초)
         if (tab === "unread") {
-          // DB 반영 후 목록 새로고침 (안읽은 메일 필터 적용하여 서버와 동기화)
-          // 여러 번 시도하여 확실하게 반영
           setTimeout(async () => {
             try {
+              // DB 반영 후 목록 새로고침 (안읽은 메일 필터 적용하여 서버와 동기화)
               await loadInbox(page, size, "unread");
               await loadUnreadCount();
             } catch (err) {
-              console.error("loadInbox error after read (first attempt)", err);
+              console.error("loadInbox error after read", err);
             }
-          }, 300); // DB 반영을 위한 대기
-          
-          // 추가로 한 번 더 새로고침 (DB 반영 확실히)
+          }, 800); // DB 트랜잭션 커밋/반영 딜레이를 고려한 충분한 대기 시간
+        } else {
+          // 다른 탭에서는 안읽은 메일 개수만 업데이트
           setTimeout(async () => {
-            try {
-              await loadInbox(page, size, "unread");
-              await loadUnreadCount();
-            } catch (err) {
-              console.error("loadInbox error after read (second attempt)", err);
-            }
-          }, 600); // 추가 대기
+            await loadUnreadCount();
+          }, 500);
         }
       }
       navigate(`/email/${mail.emailId}`);   // 상세 페이지 이동
@@ -349,7 +376,7 @@ const MailInboxPage = () => {
           </ButtonGroup>
           <Box sx={{ flex: 1 }} />
           <IconButton><ViewListIcon /></IconButton>
-          <IconButton><SyncIcon onClick={() => { loadInbox(1, size, tab); loadUnreadCount(); }} /></IconButton>
+          <IconButton onClick={handleRefresh}><SyncIcon /></IconButton>
           <IconButton><MoreVertIcon /></IconButton>
           <Paper 
             sx={{ ml: 1, display: 'inline-flex', alignItems: 'center', px: 0.5, cursor: 'pointer' }}

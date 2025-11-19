@@ -6,6 +6,7 @@ import {
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
+import SyncIcon from "@mui/icons-material/Sync";
 import { fetchDraftbox, deleteDraftMail, fetchDraftCount } from "../api/emailApi"; // ★ fetchDraftCount 추가!
 import { UserProfileContext } from "../../../App";
 import { useNavigate } from "react-router-dom";
@@ -82,6 +83,11 @@ const DraftBoxPage = () => {
     }
   };
 
+  const handleRefresh = () => {
+    reload();
+    updateDraftCount();
+  };
+
   // 메일 클릭: 임시메일로 쓰기
   const handleRowClick = (draft) => {
     navigate(`/email/write?draftId=${draft.emailId}`);
@@ -107,6 +113,9 @@ const DraftBoxPage = () => {
             <Typography sx={{ px: 0.5, fontWeight: 500, fontSize: 15 }}>{size}</Typography>
             <IconButton size="small"><MoreVertIcon fontSize="small" /></IconButton>
           </Paper>
+          <IconButton onClick={handleRefresh} sx={{ ml: 1 }}>
+            <SyncIcon />
+          </IconButton>
           <Menu
             anchorEl={sizeMenuAnchor}
             open={Boolean(sizeMenuAnchor)}

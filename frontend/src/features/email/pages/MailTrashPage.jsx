@@ -12,6 +12,7 @@ import {
   deleteMails,       // "선택 삭제" - 휴지통에서 영구삭제({mailIds:[...]}로 호출)
   emptyTrash         // "휴지통 비우기" - 휴지통 전체 영구삭제
 } from "../api/emailApi";
+import SyncIcon from "@mui/icons-material/Sync";
 import { useContext } from "react";
 import { UserProfileContext } from "../../../App";
 
@@ -72,6 +73,10 @@ const MailTrashPage = () => {
     } finally { setLoading(false); }
   };
   useEffect(() => { load(page); }, [page, size, userEmail]);
+
+  const handleRefresh = () => {
+    load(page);
+  };
 
   // 전체/일부 체크 상태 유틸
   const allChecked = mails.length > 0 && selected.size === mails.length;
@@ -193,6 +198,9 @@ const MailTrashPage = () => {
           >
             휴지통 비우기
           </Button>
+          <IconButton onClick={handleRefresh} disabled={loading} sx={{ ml: 1 }}>
+            <SyncIcon />
+          </IconButton>
           <Box sx={{ ml: 2, display: 'flex', alignItems: 'center' }}>
             <Paper 
               sx={{ display: 'inline-flex', alignItems: 'center', px: 0.5, cursor: 'pointer' }}
