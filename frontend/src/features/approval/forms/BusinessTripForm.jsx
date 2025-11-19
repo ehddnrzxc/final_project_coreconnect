@@ -19,6 +19,15 @@ const commonStyles = {
 };
 
 const BusinessTripForm = ({ formData, onFormChange }) => {
+
+  const handleTextChange = (e, limit) => {
+    const {value} = e.target;
+    if (value.length > limit) {
+      e.target.value = value.slice(0, limit);
+    }
+    onFormChange(e);
+  };
+
   return (
     <>
       {/* 1. 출장 내용 */}
@@ -94,11 +103,13 @@ const BusinessTripForm = ({ formData, onFormChange }) => {
               <TextField
                 name="purpose"
                 value={formData.purpose || ''}
-                onChange={onFormChange}
+                onChange={e => handleTextChange(e, 200)}
                 required
                 multiline
                 rows={4}
                 fullWidth
+                inputProps={{ maxLength: 200 }}
+                helperText={`${(formData.purpose || '').length}/200자`}
               />
             </TableCell>
           </TableRow>
@@ -108,7 +119,7 @@ const BusinessTripForm = ({ formData, onFormChange }) => {
               <TextField
                 name="note"
                 value={formData.note || ''}
-                onChange={onFormChange}
+                onChange={e => handleTextChange(e, 200)}
                 multiline
                 rows={2}
                 fullWidth

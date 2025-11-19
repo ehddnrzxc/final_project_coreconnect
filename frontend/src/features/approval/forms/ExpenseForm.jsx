@@ -39,6 +39,10 @@ const ExpenseForm = ({ formData, onFormChange }) => {
   const handlePurposeChange = e => {
     const { name, value } = e.target;
 
+    if (value.length > 100) {
+      value = value.slice(0, 100);
+    }
+
     const valToSend = value === ''? ' ' : value;
 
     onFormChange({
@@ -99,6 +103,7 @@ const ExpenseForm = ({ formData, onFormChange }) => {
                 rows={3}
                 fullWidth
                 placeholder="지출의 주된 목적을 기재 (예: XX 프로젝트 야근 식대 및 교통비 정산)"
+                helperText={`${(formData.purpose || '').length}/100자`}
               />
             </TableCell>
           </TableRow>
@@ -163,6 +168,7 @@ const ExpenseForm = ({ formData, onFormChange }) => {
                   fullWidth
                   multiline
                   rows={2}
+                  inputProps={{ maxLength: 50 }}
                 />
               </TableCell>
               <TableCell sx={commonStyles.td}>
