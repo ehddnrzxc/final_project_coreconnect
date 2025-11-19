@@ -105,7 +105,7 @@
 /* 목록 뷰 시간 열 간격 조정 */
 .fc-list-table .fc-list-event-time {
   padding-right: 4px !important; /* 오른쪽 간격 줄이기 */
-  padding-left: 8px !important;
+  padding-left: 16px !important;
   width: 120px !important; /* 고정 너비로 설정 */
   max-width: 120px !important;
   min-width: 120px !important;
@@ -165,4 +165,25 @@
 .fc-popover,
 .fc-more-popover {
   z-index: 1000 !important; /* MUI 모달(1300)보다 낮게 설정 */
+}
+
+
+.fc-timegrid-axis-cushion {
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  display: inline-block !important;
+
+  /* 줄임 */
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+
+  line-height: 1.2 !important;
+}
+
+/* timeGrid 왼쪽 축 전체 폭 확장 */
+.fc-timegrid-axis {
+  width: 135px !important;
+  min-width: 135px !important;
+  max-width: 135px !important;
 }
