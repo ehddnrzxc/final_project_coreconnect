@@ -487,9 +487,19 @@ public class ApprovalServiceImpl implements ApprovalService {
       String processedHtml;
       
       if ("EXPENSE".equals(templateKey)) {
+        
+        String tempHtml = htmlTemplate;
+        for (Map.Entry<String, Object> entry : data.entrySet()) {
+          if (!(entry.getValue() instanceof Map) && !(entry.getValue() instanceof List)) {
+            String key = entry.getKey();
+            String value = String.valueOf(entry.getValue());
+            tempHtml = tempHtml.replace("${" + key + "}", value);
+          }
+        }
+        
         Context context = new Context();
         context.setVariables(data);
-        processedHtml = templateEngine.process(htmlTemplate, context);
+        processedHtml = templateEngine.process(tempHtml, context);
       } else {
         processedHtml = htmlTemplate;
         for (Map.Entry<String, Object> entry : data.entrySet()) {
