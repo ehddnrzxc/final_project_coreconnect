@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { 
   Box, Typography, Paper, Table, TableHead, TableBody, TableRow, TableCell, 
-  IconButton, ButtonGroup, Button, InputBase, Divider, Checkbox, Chip, Pagination 
+  IconButton, ButtonGroup, Button, InputBase, Divider, Checkbox, Chip, Pagination, Menu, MenuItem
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ReplyIcon from '@mui/icons-material/Reply';
@@ -57,8 +57,9 @@ const MailSentBoxPage = () => {
   // 상태 정의: 메일 목록, 페이징, 선택 등
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [size] = useState(9);
+  const [size, setSize] = useState(10); // 페이지당 항목 수 (5 또는 10 선택 가능)
   const [total, setTotal] = useState(0);
+  const [sizeMenuAnchor, setSizeMenuAnchor] = useState(null); // 페이지 크기 선택 메뉴
   const [mails, setMails] = useState([]);
   const [selected, setSelected] = useState(new Set());
   const navigate = useNavigate();
@@ -195,10 +196,39 @@ const MailSentBoxPage = () => {
           <IconButton><ViewListIcon /></IconButton>
           <IconButton><SyncIcon onClick={load} /></IconButton>
           <IconButton><DraftsIcon /></IconButton>
-          <Paper sx={{ ml: 1, display: "inline-flex", alignItems: "center", px: 0.5 }}>
+          <Paper 
+            sx={{ ml: 1, display: "inline-flex", alignItems: "center", px: 0.5, cursor: 'pointer' }}
+            onClick={(e) => setSizeMenuAnchor(e.currentTarget)}
+          >
             <Typography sx={{ px: 0.5, fontWeight: 500, fontSize: 15 }}>{size}</Typography>
             <IconButton size="small"><MoreVertIcon fontSize="small" /></IconButton>
           </Paper>
+          <Menu
+            anchorEl={sizeMenuAnchor}
+            open={Boolean(sizeMenuAnchor)}
+            onClose={() => setSizeMenuAnchor(null)}
+          >
+            <MenuItem 
+              onClick={() => {
+                setSize(5);
+                setPage(1);
+                setSizeMenuAnchor(null);
+              }}
+              selected={size === 5}
+            >
+              5개씩 보기
+            </MenuItem>
+            <MenuItem 
+              onClick={() => {
+                setSize(10);
+                setPage(1);
+                setSizeMenuAnchor(null);
+              }}
+              selected={size === 10}
+            >
+              10개씩 보기
+            </MenuItem>
+          </Menu>
         </Box>
         <Divider sx={{ mb: 2 }} />
 

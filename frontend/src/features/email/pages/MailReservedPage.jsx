@@ -17,10 +17,13 @@ import {
   Tooltip,
   Avatar,
   Stack,
-  Tooltip as MuiTooltip
+  Tooltip as MuiTooltip,
+  Menu,
+  MenuItem
 } from "@mui/material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import CancelIcon from "@mui/icons-material/Cancel";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { useNavigate } from "react-router-dom";
 import {  fetchScheduledMails } from "../api/emailApi";
 import { useContext } from "react";
@@ -35,11 +38,12 @@ import { UserProfileContext } from "../../../App";
 
 const MailReservedPage = () => {
   const [page, setPage] = useState(1); // UI: 1-based
-  const [size, setSize] = useState(10);
+  const [size, setSize] = useState(10); // 페이지당 항목 수 (5 또는 10 선택 가능)
   const [total, setTotal] = useState(0);
   const [mails, setMails] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState(new Set());
+  const [sizeMenuAnchor, setSizeMenuAnchor] = useState(null); // 페이지 크기 선택 메뉴
 
   const { userProfile } = useContext(UserProfileContext) || {};
   const userEmail = userProfile?.email;
@@ -205,6 +209,39 @@ const MailReservedPage = () => {
           >
             선택 취소
           </Button>
+          <Paper 
+            sx={{ display: 'inline-flex', alignItems: 'center', px: 0.5, cursor: 'pointer', ml: 2 }}
+            onClick={(e) => setSizeMenuAnchor(e.currentTarget)}
+          >
+            <Typography sx={{ px: 0.5, fontWeight: 500, fontSize: 15 }}>{size}</Typography>
+            <IconButton size="small"><MoreVertIcon fontSize="small" /></IconButton>
+          </Paper>
+          <Menu
+            anchorEl={sizeMenuAnchor}
+            open={Boolean(sizeMenuAnchor)}
+            onClose={() => setSizeMenuAnchor(null)}
+          >
+            <MenuItem 
+              onClick={() => {
+                setSize(5);
+                setPage(1);
+                setSizeMenuAnchor(null);
+              }}
+              selected={size === 5}
+            >
+              5개씩 보기
+            </MenuItem>
+            <MenuItem 
+              onClick={() => {
+                setSize(10);
+                setPage(1);
+                setSizeMenuAnchor(null);
+              }}
+              selected={size === 10}
+            >
+              10개씩 보기
+            </MenuItem>
+          </Menu>
         </Stack>
 
         <Table sx={{ minWidth: 900 }}>

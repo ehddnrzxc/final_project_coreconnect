@@ -37,7 +37,7 @@ public class Email {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Integer emailId;
 	
-	@Column(nullable = false, length = 20)
+	@Column(nullable = false, columnDefinition = "TEXT")
 	private String emailTitle;
 	
 	@Column(nullable = false, columnDefinition = "TEXT")

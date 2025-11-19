@@ -54,7 +54,19 @@ const MailSideBar = () => {
       }}
     >
       <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-        <Typography variant="h6" fontWeight={700} sx={{ flex: 1, fontSize: "1rem" }}>
+        <Typography 
+          variant="h6" 
+          fontWeight={700} 
+          sx={{ 
+            flex: 1, 
+            fontSize: "1rem",
+            cursor: "pointer",
+            "&:hover": {
+              color: "primary.main"
+            }
+          }}
+          onClick={goAllMailTab}
+        >
           메일
         </Typography>
         <IconButton size="small" sx={{ color: "grey.700" }}>

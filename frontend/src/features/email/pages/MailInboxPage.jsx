@@ -2,7 +2,7 @@ import React, { useEffect, useState, useContext } from 'react';
 import {
   Box, Typography, Paper, Table, TableHead, TableBody, TableRow, TableCell,
   IconButton, ButtonGroup, Button, InputBase, Divider, Checkbox, Chip, Pagination, Badge, Tabs, Tab,
-  Snackbar, Alert
+  Snackbar, Alert, Menu, MenuItem
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ReportIcon from '@mui/icons-material/Report';
@@ -25,8 +25,9 @@ const MailInboxPage = () => {
   const [tab, setTab] = useState("all"); // 전체/오늘/안읽음
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [size] = useState(20);
+  const [size, setSize] = useState(10); // 페이지당 항목 수 (5 또는 10 선택 가능)
   const [total, setTotal] = useState(0);
+  const [sizeMenuAnchor, setSizeMenuAnchor] = useState(null); // 페이지 크기 선택 메뉴
   const [mails, setMails] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0); // Chip/Badge
   const [selected, setSelected] = useState(new Set());
@@ -49,7 +50,7 @@ const MailInboxPage = () => {
   // 메일상태 라벨/칼라 변환
   const formatMailStatusLabel = (status) => {
     switch (status) {
-      case "SENT": return "전송완료";
+      case "SENT": return "발신완료";
       case "TRASH": return "휴지통";
       case "DELETED": return "삭제됨";
       default: return status || "-";
@@ -350,10 +351,39 @@ const MailInboxPage = () => {
           <IconButton><ViewListIcon /></IconButton>
           <IconButton><SyncIcon onClick={() => { loadInbox(1, size, tab); loadUnreadCount(); }} /></IconButton>
           <IconButton><MoreVertIcon /></IconButton>
-          <Paper sx={{ ml: 1, display: 'inline-flex', alignItems: 'center', px: 0.5 }}>
+          <Paper 
+            sx={{ ml: 1, display: 'inline-flex', alignItems: 'center', px: 0.5, cursor: 'pointer' }}
+            onClick={(e) => setSizeMenuAnchor(e.currentTarget)}
+          >
             <Typography sx={{ px: 0.5, fontWeight: 500, fontSize: 15 }}>{size}</Typography>
             <IconButton size="small"><MoreVertIcon fontSize="small" /></IconButton>
           </Paper>
+          <Menu
+            anchorEl={sizeMenuAnchor}
+            open={Boolean(sizeMenuAnchor)}
+            onClose={() => setSizeMenuAnchor(null)}
+          >
+            <MenuItem 
+              onClick={() => {
+                setSize(5);
+                setPage(1);
+                setSizeMenuAnchor(null);
+              }}
+              selected={size === 5}
+            >
+              5개씩 보기
+            </MenuItem>
+            <MenuItem 
+              onClick={() => {
+                setSize(10);
+                setPage(1);
+                setSizeMenuAnchor(null);
+              }}
+              selected={size === 10}
+            >
+              10개씩 보기
+            </MenuItem>
+          </Menu>
         </Box>
         <Divider sx={{ mb: 2 }} />
 
@@ -388,8 +418,7 @@ const MailInboxPage = () => {
                     hover
                     sx={{
                       cursor: "pointer",
-                      fontWeight: isUnread ? 700 : 400,
-                      background: isUnread ? "#fff4f4" : undefined
+                      fontWeight: isUnread ? 700 : 400
                     }}
                     onClick={() => handleMailRowClick(mail)}
                   >
