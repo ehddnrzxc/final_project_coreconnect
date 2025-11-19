@@ -112,7 +112,7 @@ function NewDocumentPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const currentUser = useContext(UserProfileContext);
+  const currentUser = useContext(UserProfileContext)?.userProfile;
 
   // formData의 초기값을 공통 값으로만 설정
   const [formData, setFormData] = useState({
@@ -322,7 +322,7 @@ function NewDocumentPage() {
   if (loading) return <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}><CircularProgress /></Box>;
   if (error && selectedTemplate) return <Alert severity='error'>{error}</Alert>;
   if (!selectedTemplate) return <Alert severity='warning'>선택된 양식 정보를 찾을 수 없습니다.</Alert>;
-
+console.log("현재 로그인 유저 정보:", currentUser)
   return (
     <Box>
       {error && (

@@ -4,7 +4,7 @@ import { approveDocument, downloadFile, getDocumentDetail, rejectDocument } from
 import { Alert, Box, Button, Chip, CircularProgress, Paper, Typography } from '@mui/material';
 import DynamicApprovalTable from '../components/DynamicApprovalTable';
 import DrafterInfoTable from '../components/DrafterInfoTable';
-import ApprovalRejectModal from '../components/ApprovalRejectModal';
+import ApprovalProcessModal from '../components/ApprovalProcessModal';
 import EditIcon from '@mui/icons-material/Edit';
 import DocumentStatusChip from '../components/DocumentStatusChip';
 import { useSnackbarContext } from '../../../components/utils/SnackbarContext';
@@ -19,7 +19,10 @@ function DocumentDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [documentData, setDocumentData] = useState(null);
-  const [openRejectModal, setOpenRejectModal] = useState(false);
+  const [modalConfig, setModalConfig] = useState({
+    open: false,
+    type: null
+  });
 
   const { showSnack } = useSnackbarContext();
 
@@ -73,55 +76,50 @@ function DocumentDetailPage() {
     }
   };
 
-  useEffect(() => {
-    const fetchDocument = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const res = await getDocumentDetail(documentId);
-        setDocumentData(res.data);
-      } catch (error) {
-        console.error("문서 상세 정보 조회 실패:", error);
-        setError(error.response?.data?.message || "문서 정보를 불러오는 데 실패했습니다.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchDocument();
-  }, [documentId]);
-
-  const handleApprove = async () => {
-    const comment = prompt("결재 의견을 입력하세요. 하기 싫음 말고");
-    if (comment === null) {
-      return;
-    }
-
+  const fetchDocument = async () => {
     try {
-      const requestDTO = { approvalComment: comment || ""};
-      await approveDocument(documentId, requestDTO);
-      showSnack("결재가 승인되었습니다.", "success");
-      navigate("/e-approval");
+      setLoading(true);
+      setError(null);
+      const res = await getDocumentDetail(documentId);
+      setDocumentData(res.data);
     } catch (error) {
-      console.error("승인 처리 실패:", error);
-      showSnack(error.response?.data?.message || "승인 처리에 실패했습니다.", "error");
+      console.error("문서 상세 정보 조회 실패:", error);
+      setError(error.response?.data?.message || "문서 정보를 불러오는 데 실패했습니다.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleOpenRejectModal = () => setOpenRejectModal(true);
+  useEffect(() => {
+    fetchDocument();
+  }, [documentId]);
 
-  const handleCloseRejectModal = () => setOpenRejectModal(false);
+  const handleOpenApprove = () => setModalConfig({ open: true, type: 'APPROVE' });
 
-  const handleRejectConfirm = async reason => {
+  const handleOpenReject = () => setModalConfig({ open: true, type: 'REJECT' });
+
+  const handleCloseModal = () => setModalConfig({ ...modalConfig, open: false });
+
+  const handleProcessComplete = async comment => {
     try {
-      const requestDTO = { approvalComment: reason };
-      await rejectDocument(documentId, requestDTO);
+      const requestDTO = { approvalComment: comment };
 
-      showSnack("결재가 반려되었습니다.", "warning");
-      handleCloseRejectModal();
-      navigate("/e-approval");
+      if (modalConfig.type === 'APPROVE') {
+        await approveDocument(documentId, requestDTO);
+        showSnack("결재가 승인되었습니다.", "success");
+      } else {
+        await rejectDocument(documentId, requestDTO);
+        showSnack("결재가 반려되었습니다.", "warning");
+      }
+
+      handleCloseModal();
+
+      await fetchDocument();
+
     } catch (error) {
-      console.error("반려 처리 실패:", error);
-      showSnack(error.response?.data?.message || "반려 처리에 실패했습니다.", "error");
+      console.error("결재 처리 실패:", error);
+      const actionName = modalConfig.type === 'APPROVE' ? "승인" : "반려";
+      showSnack(error.response?.data?.message || `${actionName} 처리에 실패했습니다.`, "error");
     }
   };
 
@@ -227,10 +225,10 @@ function DocumentDetailPage() {
           </Button>
           {documentData.myTurnApprove && (
             <>
-              <Button variant='outlined' sx={{ color: '#66bb6a', borderColor: '#66bb6a'}} onClick={handleApprove}>
+              <Button variant='outlined' sx={{ color: '#66bb6a', borderColor: '#66bb6a'}} onClick={handleOpenApprove}>
                 승인
               </Button>
-              <Button variant='outlined' color='error' onClick={handleOpenRejectModal}>반려</Button>
+              <Button variant='outlined' color='error' onClick={handleOpenReject}>반려</Button>
             </>
           )}
           {documentData.documentStatus === 'DRAFT' && isDrafter && (
@@ -240,10 +238,11 @@ function DocumentDetailPage() {
           )}
         </Box>
       </Paper>
-      <ApprovalRejectModal
-        open={openRejectModal}
-        handleClose={handleCloseRejectModal}
-        handleSubmit={handleRejectConfirm}
+      <ApprovalProcessModal
+        open={modalConfig.open}
+        type={modalConfig.type}
+        handleClose={handleCloseModal}
+        handleSubmit={handleProcessComplete}
       />
     </Box>
   )
