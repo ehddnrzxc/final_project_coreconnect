@@ -3,9 +3,11 @@ package com.goodee.coreconnect.leave.service;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Set;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,7 +20,8 @@ import com.goodee.coreconnect.leave.dto.response.CompanyLeaveWeeklyDTO;
 import com.goodee.coreconnect.leave.dto.response.LeaveRequestResponseDTO;
 import com.goodee.coreconnect.leave.dto.response.LeaveSummaryDTO;
 import com.goodee.coreconnect.leave.entity.LeaveRequest;
-import com.goodee.coreconnect.leave.entity.LeaveStatus;
+import com.goodee.coreconnect.leave.enums.LeaveStatus;
+import com.goodee.coreconnect.leave.enums.LeaveType;
 import com.goodee.coreconnect.leave.repository.LeaveRequestRepository;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
@@ -47,11 +50,12 @@ public class LeaveServiceImpl implements LeaveService {
 
   /** 전자결재 연동 휴가 생성 */
   @Override
-  public void createLeaveFromApproval(Document document, User drafter, LocalDate startDate, LocalDate endDate, String type, String reason) {
+  public void createLeaveFromApproval(Document document, User drafter, LocalDate startDate, LocalDate endDate, String typeLabel, String reason) {
+    LeaveType leaveType = LeaveType.fromLabel(typeLabel);
     LeaveRequest leave = LeaveRequest.createLeaveRequest(drafter, 
                                                          startDate, 
                                                          endDate, 
-                                                         type, 
+                                                         leaveType, 
                                                          reason, 
                                                          document.getId());
     leaveRequestRepository.save(leave);
@@ -85,7 +89,7 @@ public class LeaveServiceImpl implements LeaveService {
     List<LeaveRequest> approvedAnnualLeaves = leaveRequestRepository.findByUserAndStatusAndTypeAndYear(
         user, 
         LeaveStatus.APPROVED, 
-        "연차", 
+        LeaveType.ANNUAL, 
         currentYear);
     // 2. 사용 연차 일수 계산
     Integer usedDays = approvedAnnualLeaves.stream()
@@ -114,7 +118,7 @@ public class LeaveServiceImpl implements LeaveService {
     List<Object[]> results = leaveRequestRepository.findLeavesByDateRange(startDate, endDate);
     
     // 날짜별 휴가자 수를 계산하기 위한 Map (날짜 -> 사용자 ID Set)
-    Map<LocalDate, java.util.Set<Integer>> leaveUserMap = new java.util.HashMap<>();
+    Map<LocalDate, Set<Integer>> leaveUserMap = new HashMap<>();
     
     // 각 휴가에 대해 기간 내 모든 날짜에 사용자 추가
     for (Object[] row : results) {
@@ -127,7 +131,7 @@ public class LeaveServiceImpl implements LeaveService {
       LocalDate last = leaveEnd.isAfter(endDate) ? endDate : leaveEnd;
       
       while (!current.isAfter(last)) {
-        leaveUserMap.computeIfAbsent(current, k -> new java.util.HashSet<>()).add(userId);
+        leaveUserMap.computeIfAbsent(current, k -> new HashSet<>()).add(userId);
         current = current.plusDays(1);
       }
     }
@@ -136,7 +140,7 @@ public class LeaveServiceImpl implements LeaveService {
     List<CompanyLeaveWeeklyDTO> weeklyData = new ArrayList<>();
     LocalDate currentDate = startDate;
     while (!currentDate.isAfter(endDate)) {
-      int count = leaveUserMap.getOrDefault(currentDate, new java.util.HashSet<>()).size();
+      int count = leaveUserMap.getOrDefault(currentDate, new HashSet<>()).size();
       weeklyData.add(new CompanyLeaveWeeklyDTO(currentDate, count));
       currentDate = currentDate.plusDays(1);
     }
@@ -151,17 +155,13 @@ public class LeaveServiceImpl implements LeaveService {
       LocalDate startDate, 
       LocalDate endDate, 
       String leaveType, 
-      String searchTerm, 
       Pageable pageable
   ) {
-    // 검색어가 빈 문자열이면 null로 변환
-    String search = (searchTerm != null && searchTerm.trim().isEmpty()) ? null : searchTerm;
-    
     Page<LeaveRequest> leavePage = leaveRequestRepository.findCompanyLeaves(
         startDate, 
         endDate, 
         leaveType, 
-        search, 
+        LeaveType.ANNUAL,
         pageable
     );
     

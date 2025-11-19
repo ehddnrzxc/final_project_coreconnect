@@ -53,47 +53,26 @@ export default function CalendarPage() {
       
       if (view === "timeGridWeek") {
         const weekDate = localStorage.getItem("weekViewDate");
-        if (weekDate) {
-          const [year, month, day] = weekDate.split('-').map(Number);
-          const date = new Date(year, month - 1, day);
-          if (!isNaN(date.getTime())) {
-            dateToUse = date;
-          }
-        }
-        if (!dateToUse) {
-          dateToUse = new Date();
-        }
+        dateToUse = parseLocalStorageDate(weekDate) || new Date();
       } else if (view === "timeGridDay") {
         const dayDate = localStorage.getItem("dayViewDate");
-        if (dayDate) {
-          const [year, month, day] = dayDate.split('-').map(Number);
-          const date = new Date(year, month - 1, day);
-          if (!isNaN(date.getTime())) {
-            dateToUse = date;
-          }
-        }
-        if (!dateToUse) {
-          dateToUse = new Date();
-        }
+        dateToUse = parseLocalStorageDate(dayDate) || new Date();
       } else if (view === "dayGridMonth") {
         const monthDate = localStorage.getItem("monthViewDate");
         if (monthDate) {
-          const [year, month] = monthDate.split('-').map(Number);
           const dayDate = localStorage.getItem("dayViewDate");
           const weekDate = localStorage.getItem("weekViewDate");
-          if (dayDate || weekDate) {
-            const baseDate = dayDate || weekDate;
-            const [baseYear, baseMonth, baseDay] = baseDate.split('-').map(Number);
-            const date = new Date(year, month - 1, baseDay);
-            if (!isNaN(date.getTime())) {
-              dateToUse = date;
+          const baseDate = dayDate || weekDate;
+          if (baseDate) {
+            const baseParsed = parseLocalStorageDate(baseDate);
+            if (baseParsed) {
+              const monthParsed = parseLocalStorageDate(monthDate, baseParsed.getDate());
+              dateToUse = monthParsed || parseLocalStorageDate(monthDate, 1);
+            } else {
+              dateToUse = parseLocalStorageDate(monthDate, 1);
             }
-          }
-          if (!dateToUse) {
-            const date = new Date(year, month - 1, 1);
-            if (!isNaN(date.getTime())) {
-              dateToUse = date;
-            }
+          } else {
+            dateToUse = parseLocalStorageDate(monthDate, 1);
           }
         }
         if (!dateToUse) {
@@ -101,28 +80,22 @@ export default function CalendarPage() {
           const weekDate = localStorage.getItem("weekViewDate");
           const baseDate = dayDate || weekDate;
           if (baseDate) {
-            const [year, month] = baseDate.split('-').map(Number);
-            dateToUse = new Date(year, month - 1, 1);
+            const baseParsed = parseLocalStorageDate(baseDate);
+            dateToUse = baseParsed ? new Date(baseParsed.getFullYear(), baseParsed.getMonth(), 1) : new Date();
           } else {
             dateToUse = new Date();
           }
         }
       } else if (view === "list15days") {
         const listDate = localStorage.getItem("listViewDate");
-        if (listDate) {
-          const [year, month, day] = listDate.split('-').map(Number);
-          const date = new Date(year, month - 1, day);
-          if (!isNaN(date.getTime())) {
-            dateToUse = date;
-          }
-        }
+        dateToUse = parseLocalStorageDate(listDate);
         if (!dateToUse) {
           const dayDate = localStorage.getItem("dayViewDate");
           const weekDate = localStorage.getItem("weekViewDate");
           const baseDate = dayDate || weekDate;
           if (baseDate) {
-            const [year, month] = baseDate.split('-').map(Number);
-            dateToUse = new Date(year, month - 1, 1);
+            const baseParsed = parseLocalStorageDate(baseDate);
+            dateToUse = baseParsed ? new Date(baseParsed.getFullYear(), baseParsed.getMonth(), 1) : new Date();
           } else {
             dateToUse = new Date();
           }
@@ -136,7 +109,7 @@ export default function CalendarPage() {
   });
   const [visibleEnd, setVisibleEnd] = useState(null);
   const { showSnack } = useSnackbarContext();  // 전역 Snackbar 훅 사용
-  const userProfile = useContext(UserProfileContext);
+  const { userProfile } = useContext(UserProfileContext) || {};
   const currentUserEmail = userProfile?.email;
   const [drawerOpen, setDrawerOpen] = useState(true);
   const toggleDrawer = () => {
@@ -146,7 +119,33 @@ export default function CalendarPage() {
   };
 
 
-  // 하루 종일 일정인지 판단하는 헬퍼 함수
+  // localStorage 날짜 파싱 헬퍼 함수
+  const parseLocalStorageDate = (dateStr, defaultDay = null) => {
+    if (!dateStr) return null;
+    const parts = dateStr.split('-').map(Number);
+    if (parts.length < 2) return null;
+    const [year, month, day] = parts;
+    // day가 undefined이면 defaultDay 사용, 그것도 없으면 1 사용
+    const dayToUse = day !== undefined ? day : (defaultDay !== null ? defaultDay : 1);
+    const date = new Date(year, month - 1, dayToUse);
+    return !isNaN(date.getTime()) ? date : null;
+  };
+
+  /**
+   * 하루 종일 일정인지 판단하는 헬퍼 함수
+   * 
+   * 종일 일정 판단 기준:
+   * - 같은 날짜에 시작하고 끝나는 경우
+   * - 시작 시간이 00:00:00이고 종료 시간이 23:59:00 이상 (또는 다음날 00:00:00)
+   * - 또는 duration이 23시간 59분 이상
+   * 
+   * 참고: 백엔드에서 종일 일정 플래그를 제공하지 않으므로 프론트엔드에서 판단
+   * 종일 일정의 종료 시간은 "23:59:59"로 설정됨 (ScheduleModal에서 처리)
+   * 
+   * @param {string} startDateTime - 시작 날짜/시간 (백엔드 형식: "yyyy-MM-dd HH:mm:ss")
+   * @param {string} endDateTime - 종료 날짜/시간 (백엔드 형식: "yyyy-MM-dd HH:mm:ss")
+   * @returns {boolean} 종일 일정 여부
+   */
   const isFullDayEvent = (startDateTime, endDateTime) => {
     const startDate = new Date(startDateTime);
     const endDate = new Date(endDateTime);
@@ -176,62 +175,51 @@ export default function CalendarPage() {
     return isFullDay;
   };
 
+  // 서버 데이터를 FullCalendar 이벤트 형식으로 변환하는 공통 함수
+  const mapScheduleToEvent = (schedule, colors) => {
+    const color = colors[schedule.categoryId] || (schedule.visibility === "PRIVATE" ? "#999999" : "#00a0e9");
+    const startDateStr = toLocalDate(schedule.startDateTime);
+    const endDateStr = toLocalDate(schedule.endDateTime);
+    const isMultiDay = startDateStr !== endDateStr;
+    const isAllDayEvent = isFullDayEvent(schedule.startDateTime, schedule.endDateTime) || isMultiDay;
+    
+    let eventStart = toISO(schedule.startDateTime);
+    let eventEnd = toISO(schedule.endDateTime);
+    
+    if (isAllDayEvent) {
+      eventStart = startDateStr;
+      const endDateObj = new Date(schedule.endDateTime);
+      endDateObj.setDate(endDateObj.getDate() + 1);
+      eventEnd = toLocalDate(endDateObj);
+    }
+    
+    return {
+      id: String(schedule.id),
+      title: schedule.visibility === "PRIVATE" ? `${schedule.title}` : schedule.title,
+      start: eventStart,
+      end: eventEnd,
+      allDay: isAllDayEvent,
+      content: schedule.content,
+      location: schedule.location,
+      visibility: schedule.visibility,
+      categoryId: schedule.categoryId,
+      userId: schedule.userId,
+      userName: schedule.userName,
+      userEmail: schedule.userEmail,
+      categoryName: schedule.categoryName,
+      meetingRoomName: schedule.meetingRoomName,
+      meetingRoomId: schedule.meetingRoomId,
+      dotColor: color,
+      originalStartDateTime: schedule.startDateTime,
+      originalEndDateTime: schedule.endDateTime,
+    };
+  };
+
   // 일정 fetch 함수를 별도 정의
   const fetchSchedules = async (colors) => {
     try {
       const data = await getMySchedules();
-
-      const mapped = data.map((s) => {
-        const color =
-          colors[s.categoryId] ||
-          (s.visibility === "PRIVATE" ? "#999999" : "#00a0e9");
-
-        // multi-day event인지 확인 (하루를 넘어가는지)
-        const startDateStr = toLocalDate(s.startDateTime);
-        const endDateStr = toLocalDate(s.endDateTime);
-        const isMultiDay = startDateStr !== endDateStr;
-        const isAllDayEvent = isFullDayEvent(s.startDateTime, s.endDateTime) || isMultiDay;
-        
-        // FullCalendar의 all-day event는 날짜 문자열 형식 사용 (timezone 문제 방지)
-        // end는 exclusive이므로 종료일까지 포함하려면 다음날로 설정
-        let eventStart = toISO(s.startDateTime);
-        let eventEnd = toISO(s.endDateTime);
-        
-        if (isAllDayEvent) {
-          // 날짜 문자열로 직접 생성 (timezone 문제 방지)
-          // 시작일: YYYY-MM-DD 형식
-          eventStart = startDateStr;
-          
-          // 종료일의 다음날 (종료일까지 포함하기 위해)
-          const endDateObj = new Date(s.endDateTime);
-          endDateObj.setDate(endDateObj.getDate() + 1);
-          eventEnd = toLocalDate(endDateObj);
-        }
-        
-        return {
-          id: String(s.id), // 문자열로 변환하여 일관성 유지
-          title:
-            s.visibility === "PRIVATE" ? `${s.title}` : s.title,
-          start: eventStart,
-          end: eventEnd,
-          // 하루 종일 일정이거나 multi-day event인 경우 allDay로 설정
-          allDay: isAllDayEvent,
-          content: s.content,
-          location: s.location,
-          visibility: s.visibility,
-          categoryId: s.categoryId,
-          userId: s.userId,
-          userName: s.userName,
-          userEmail: s.userEmail,
-          categoryName: s.categoryName,
-          meetingRoomName: s.meetingRoomName,
-          dotColor: color,
-          // 원래 시작/종료 시간 저장 (multi-day event 처리용)
-          originalStartDateTime: s.startDateTime,
-          originalEndDateTime: s.endDateTime,
-        };
-      });
-
+      const mapped = data.map((s) => mapScheduleToEvent(s, colors));
       setEvents(mapped);
     } catch {
       showSnack("일정 불러오기 실패", "error");
@@ -313,7 +301,9 @@ export default function CalendarPage() {
 
   /** 날짜 클릭 → 새 일정 등록 */
   const handleDateClick = (info) => {
-    setSelectedDate(info.dateStr);
+    // timeGrid 뷰에서는 info.date에 시간 정보가 포함되어 있음
+    // info.dateStr은 날짜만 포함하므로, Date 객체를 직접 전달
+    setSelectedDate(info.date instanceof Date ? info.date : info.dateStr);
     setSelectedEvent(null);
     setModalOpen(true);
   };
@@ -386,60 +376,19 @@ export default function CalendarPage() {
     }
   };
 
-  /** allDay 이벤트 날짜 형식 변환 공통 함수 */
-  const formatEventDates = (startDateTime, endDateTime) => {
-    const startDateStr = toLocalDate(startDateTime);
-    const endDateStr = toLocalDate(endDateTime);
-    const isMultiDay = startDateStr !== endDateStr;
-    const isAllDayEvent = isFullDayEvent(startDateTime, endDateTime) || isMultiDay;
-    
-    let eventStart = toISO(startDateTime);
-    let eventEnd = toISO(endDateTime);
-    
-    if (isAllDayEvent) {
-      eventStart = startDateStr;
-      const endDateObj = new Date(endDateTime);
-      endDateObj.setDate(endDateObj.getDate() + 1);
-      eventEnd = toLocalDate(endDateObj);
-    }
-    
-    return { eventStart, eventEnd, isAllDayEvent };
-  };
 
   /** 일정 등록 or 수정 */
   const handleSubmit = async (formData, isEdit) => {
     try {
       if (isEdit && selectedEvent) {
         const updated = await updateSchedule(selectedEvent.id, formData);
-        const { eventStart, eventEnd, isAllDayEvent } = formatEventDates(
-          updated.startDateTime, 
-          updated.endDateTime
-        );
-
+        const updatedEvent = mapScheduleToEvent(updated, categoryColors);
+        
         setEvents((prev) =>
           prev.map((e) => {
             // ID 타입 불일치 문제 해결: String 변환으로 비교
             if (String(e.id) === String(selectedEvent.id)) {
-              return {
-                ...e,
-                title: updated.visibility === "PRIVATE" ? `${updated.title}` : updated.title,
-                start: eventStart,
-                end: eventEnd,
-                allDay: isAllDayEvent,
-                content: updated.content,
-                location: updated.location,
-                visibility: updated.visibility,
-                userId: updated.userId,
-                userEmail: updated.userEmail,
-                userName: updated.userName,
-                categoryId: updated.categoryId,          
-                categoryName: updated.categoryName,
-                meetingRoomName: updated.meetingRoomName,
-                meetingRoomId: updated.meetingRoomId,
-                dotColor: categoryColors[updated.categoryId],
-                originalStartDateTime: updated.startDateTime,
-                originalEndDateTime: updated.endDateTime,
-              };
+              return updatedEvent;
             }
             return e;
           })
@@ -447,31 +396,7 @@ export default function CalendarPage() {
         showSnack("일정이 수정되었습니다", "success");
       } else {
         const created = await createSchedule(formData);
-        const { eventStart, eventEnd, isAllDayEvent } = formatEventDates(
-          created.startDateTime, 
-          created.endDateTime
-        );
-
-        const newEvent = {
-          id: String(created.id), // 문자열로 변환하여 일관성 유지
-          title: created.visibility === "PRIVATE" ? `${created.title}` : created.title,
-          start: eventStart,
-          end: eventEnd,
-          allDay: isAllDayEvent,
-          content: created.content,
-          location: created.location,
-          visibility: created.visibility,
-          userId: created.userId,
-          userEmail: created.userEmail,
-          userName: created.userName,
-          categoryId: created.categoryId,          
-          categoryName: created.categoryName,
-          meetingRoomName: created.meetingRoomName,
-          meetingRoomId: created.meetingRoomId,
-          dotColor: categoryColors[created.categoryId],
-          originalStartDateTime: created.startDateTime,
-          originalEndDateTime: created.endDateTime,
-        };
+        const newEvent = mapScheduleToEvent(created, categoryColors);
         setEvents((prev) => [...prev, newEvent]);
         showSnack("일정이 등록되었습니다", "success");
       }
@@ -563,14 +488,25 @@ export default function CalendarPage() {
     }
   };
 
+  // 카테고리 색상을 rgba로 변환하는 헬퍼 함수 (컴포넌트 레벨로 이동)
+  const hexToRgba = (hex, alpha = 0.15) => {
+    // hex가 undefined이거나 유효하지 않을 때 기본값 사용
+    if (!hex || typeof hex !== 'string' || !hex.startsWith('#')) {
+      hex = "#00a0e9"; // 기본 색상
+    }
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  };
+
   /** 일정 표시 */
   const renderEventContent = (arg) => {
     const event = arg.event.extendedProps;
     const isPrivate = event.visibility === "PRIVATE";
-    const color = event.dotColor;  
+    const color = event.dotColor || (isPrivate ? "#999999" : "#00a0e9");  
 
-    const view = arg.view.type;               // 뷰 타입 체크
-    const isTimeView = view === "timeGridWeek" || view === "timeGridDay";
+    const isTimeView = arg.view.type === "timeGridWeek" || arg.view.type === "timeGridDay";
     
     // multi-day event인지 확인 (원래 시작/종료 날짜로 판단)
     const originalStart = event.originalStartDateTime ? new Date(event.originalStartDateTime) : null;
@@ -580,14 +516,6 @@ export default function CalendarPage() {
     const isMultiDay = originalStartDate && originalEndDate && originalStartDate !== originalEndDate; 
 
     const privateStyle = isPrivate ? { opacity: 0.55 } : {};
-
-    // 카테고리 색상을 rgba로 변환하는 헬퍼 함수
-    const hexToRgba = (hex, alpha = 0.15) => {
-      const r = parseInt(hex.slice(1, 3), 16);
-      const g = parseInt(hex.slice(3, 5), 16);
-      const b = parseInt(hex.slice(5, 7), 16);
-      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-    };
     
     // 시간 포맷팅 헬퍼
     const formatTime = (date) => {
@@ -738,10 +666,26 @@ export default function CalendarPage() {
       <Box sx={{ flexGrow: 1, p: 3, overflowY: "auto" }}>
         <FullCalendar
           fixedWeekCount={true}
+          locale="ko"
           ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
           initialView={initialView}
           initialDate={initialDate}
+
+          viewDidMount={() => {
+            // 왼쪽 축(시간 라벨) 너비 강제 확대
+            document.querySelectorAll(".fc-timegrid-axis").forEach((el) => {
+              el.style.width = "120px";
+              el.style.minWidth = "120px";
+              el.style.maxWidth = "120px";
+            });
+
+            // colgroup 축도 강제 스타일 적용
+            document.querySelectorAll("col.fc-scrollgrid-shrink").forEach((el) => {
+              el.style.width = "120px";
+            });
+          }}
+          
           headerToolbar={{
             left: "toggleCategoryButton,dayGridMonth,timeGridWeek,timeGridDay,list15days",
             center: "title",
@@ -762,6 +706,7 @@ export default function CalendarPage() {
             day: "일간",
             list15days: "목록",
           }}
+          allDayText="종일일정"
           height="auto"
           dayMaxEvents={3}          // 하루 최대 표시 일정 수 (넘으면 ‘+n개 더 보기’로 요약)
           moreLinkClick={(arg) => {
@@ -809,24 +754,25 @@ export default function CalendarPage() {
                 const savedWeekDate = localStorage.getItem("weekViewDate");
                 
                 if (monthDate && savedWeekDate) {
-                  const [monthYear, monthMonth] = monthDate.split('-').map(Number);
-                  const [savedYear, savedMonth, savedDay] = savedWeekDate.split('-').map(Number);
-                  const targetDate = new Date(monthYear, monthMonth - 1, savedDay);
-                  const targetWeekStart = new Date(targetDate);
-                  targetWeekStart.setDate(targetWeekStart.getDate() - targetWeekStart.getDay() + 1);
-                  const currentWeekStart = info.view.currentStart;
-                  if (currentWeekStart && toLocalDate(currentWeekStart) !== toLocalDate(targetWeekStart)) {
-                    api.gotoDate(targetWeekStart);
-                    const adjustedWeekStart = new Date(targetWeekStart);
-                    if (adjustedWeekStart instanceof Date && !isNaN(adjustedWeekStart.getTime())) {
-                      localStorage.setItem("weekViewDate", toLocalDate(adjustedWeekStart));
+                  const monthParsed = parseLocalStorageDate(monthDate);
+                  const savedWeekParsed = parseLocalStorageDate(savedWeekDate);
+                  if (monthParsed && savedWeekParsed) {
+                    const targetDate = new Date(monthParsed.getFullYear(), monthParsed.getMonth(), savedWeekParsed.getDate());
+                    const targetWeekStart = new Date(targetDate);
+                    targetWeekStart.setDate(targetWeekStart.getDate() - targetWeekStart.getDay() + 1);
+                    const currentWeekStart = info.view.currentStart;
+                    if (currentWeekStart && toLocalDate(currentWeekStart) !== toLocalDate(targetWeekStart)) {
+                      api.gotoDate(targetWeekStart);
+                      const adjustedWeekStart = new Date(targetWeekStart);
+                      if (adjustedWeekStart instanceof Date && !isNaN(adjustedWeekStart.getTime())) {
+                        localStorage.setItem("weekViewDate", toLocalDate(adjustedWeekStart));
+                      }
+                      return;
                     }
-                    return;
                   }
                 } else if (savedWeekDate) {
-                  const [year, month, day] = savedWeekDate.split('-').map(Number);
-                  const savedDate = new Date(year, month - 1, day);
-                  if (!isNaN(savedDate.getTime())) {
+                  const savedDate = parseLocalStorageDate(savedWeekDate);
+                  if (savedDate) {
                     const currentWeekStart = info.view.currentStart;
                     if (currentWeekStart && toLocalDate(currentWeekStart) !== toLocalDate(savedDate)) {
                       api.gotoDate(savedDate);
@@ -846,28 +792,30 @@ export default function CalendarPage() {
                 const savedDayDate = localStorage.getItem("dayViewDate");
                 
                 if (monthDate && savedDayDate) {
-                  const [monthYear, monthMonth] = monthDate.split('-').map(Number);
-                  const [savedYear, savedMonth, savedDay] = savedDayDate.split('-').map(Number);
-                  const targetDate = new Date(monthYear, monthMonth - 1, savedDay);
-                  const targetDateStr = toLocalDate(targetDate);
-                  const currentDateStr = toLocalDate(currentDate);
-                  if (targetDateStr && targetDateStr !== currentDateStr) {
-                    api.gotoDate(targetDate);
-                    const adjustedDate = api.getDate();
-                    if (adjustedDate instanceof Date && !isNaN(adjustedDate.getTime())) {
-                      const adjustedDateStr = toLocalDate(adjustedDate);
-                      if (adjustedDateStr) {
-                        localStorage.setItem("dayViewDate", adjustedDateStr);
+                  const monthParsed = parseLocalStorageDate(monthDate);
+                  const savedDayParsed = parseLocalStorageDate(savedDayDate);
+                  if (monthParsed && savedDayParsed) {
+                    const targetDate = new Date(monthParsed.getFullYear(), monthParsed.getMonth(), savedDayParsed.getDate());
+                    const targetDateStr = toLocalDate(targetDate);
+                    const currentDateStr = toLocalDate(currentDate);
+                    if (targetDateStr && targetDateStr !== currentDateStr) {
+                      api.gotoDate(targetDate);
+                      const adjustedDate = api.getDate();
+                      if (adjustedDate instanceof Date && !isNaN(adjustedDate.getTime())) {
+                        const adjustedDateStr = toLocalDate(adjustedDate);
+                        if (adjustedDateStr) {
+                          localStorage.setItem("dayViewDate", adjustedDateStr);
+                        }
                       }
+                      return;
                     }
-                    return;
                   }
                 } else if (savedDayDate) {
-                  const [year, month, day] = savedDayDate.split('-').map(Number);
-                  const savedDate = new Date(year, month - 1, day);
-                  if (!isNaN(savedDate.getTime())) {
+                  const savedDate = parseLocalStorageDate(savedDayDate);
+                  if (savedDate) {
                     const currentDateStr = toLocalDate(currentDate);
-                    if (currentDateStr !== savedDayDate) {
+                    const savedDateStr = toLocalDate(savedDate);
+                    if (currentDateStr !== savedDateStr) {
                       api.gotoDate(savedDate);
                       return;
                     }
@@ -886,17 +834,18 @@ export default function CalendarPage() {
                 const weekDate = localStorage.getItem("weekViewDate");
                 
                 if (monthDate) {
-                  const [year, month] = monthDate.split('-').map(Number);
-                  const savedMonth = new Date(year, month - 1, 1);
-                  if (!isNaN(savedMonth.getTime())) {
+                  const savedMonth = parseLocalStorageDate(monthDate, 1);
+                  if (savedMonth) {
                     const currentMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
                     if (toLocalDate(currentMonth) !== toLocalDate(savedMonth)) {
                       if (dayDate || weekDate) {
                         const baseDate = dayDate || weekDate;
-                        const [baseYear, baseMonth, baseDay] = baseDate.split('-').map(Number);
-                        const targetDate = new Date(year, month - 1, baseDay);
-                        api.gotoDate(targetDate);
-                        return;
+                        const baseParsed = parseLocalStorageDate(baseDate);
+                        if (baseParsed) {
+                          const targetDate = new Date(savedMonth.getFullYear(), savedMonth.getMonth(), baseParsed.getDate());
+                          api.gotoDate(targetDate);
+                          return;
+                        }
                       } else {
                         api.gotoDate(savedMonth);
                         return;
@@ -905,10 +854,12 @@ export default function CalendarPage() {
                   }
                 } else if (dayDate || weekDate) {
                   const baseDate = dayDate || weekDate;
-                  const [baseYear, baseMonth, baseDay] = baseDate.split('-').map(Number);
-                  const targetDate = new Date(new Date().getFullYear(), new Date().getMonth(), baseDay);
-                  api.gotoDate(targetDate);
-                  return;
+                  const baseParsed = parseLocalStorageDate(baseDate);
+                  if (baseParsed) {
+                    const targetDate = new Date(new Date().getFullYear(), new Date().getMonth(), baseParsed.getDate());
+                    api.gotoDate(targetDate);
+                    return;
+                  }
                 }
               }
             } else if (currentView === "list15days") {
@@ -917,20 +868,19 @@ export default function CalendarPage() {
                 let targetListStart = null;
                 
                 if (monthDate) {
-                  const [year, month] = monthDate.split('-').map(Number);
-                  targetListStart = new Date(year, month - 1, 1);
+                  targetListStart = parseLocalStorageDate(monthDate, 1);
                 } else {
                   const listDate = localStorage.getItem("listViewDate");
                   if (listDate) {
-                    const [year, month, day] = listDate.split('-').map(Number);
-                    targetListStart = new Date(year, month - 1, 1);
+                    const listParsed = parseLocalStorageDate(listDate);
+                    targetListStart = listParsed ? new Date(listParsed.getFullYear(), listParsed.getMonth(), 1) : null;
                   } else {
                     const dayDate = localStorage.getItem("dayViewDate");
                     const weekDate = localStorage.getItem("weekViewDate");
                     if (dayDate || weekDate) {
                       const baseDate = dayDate || weekDate;
-                      const [year, month] = baseDate.split('-').map(Number);
-                      targetListStart = new Date(year, month - 1, 1);
+                      const baseParsed = parseLocalStorageDate(baseDate);
+                      targetListStart = baseParsed ? new Date(baseParsed.getFullYear(), baseParsed.getMonth(), 1) : null;
                     }
                   }
                 }

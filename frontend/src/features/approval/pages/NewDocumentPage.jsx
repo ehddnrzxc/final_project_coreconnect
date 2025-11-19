@@ -111,7 +111,6 @@ function NewDocumentPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
   const currentUser = useContext(UserProfileContext)?.userProfile;
 
   // formData의 초기값을 공통 값으로만 설정
@@ -143,7 +142,7 @@ function NewDocumentPage() {
 
 
   useEffect(() => {
-    if (!currentUser) {
+    if (!currentUser || !currentUser.userProfile) {
       setError("로그인 정보가 없습니다.");
       setLoading(false);
       return;
@@ -373,11 +372,11 @@ console.log("현재 로그인 유저 정보:", currentUser)
                 <TableBody>
                   <tr>
                     <td style={{ border: '1px solid #ccc', backgroundColor: '#f8f8f8', padding: '10px', width: '100px', textAlign: 'center', fontWeight: 'bold' }}>기안자</td>
-                    <td style={{ border: '1px solid #ccc', padding: '10px' }}>{currentUser?.name}</td>
+                    <td style={{ border: '1px solid #ccc', padding: '10px' }}>{currentUser?.userProfile?.name}</td>
                   </tr>
                   <tr>
                     <td style={{ border: '1px solid #ccc', backgroundColor: '#f8f8f8', padding: '10px', textAlign: 'center', fontWeight: 'bold' }}>소속</td>
-                    <td style={{ border: '1px solid #ccc', padding: '10px' }}>{currentUser?.deptName}</td>
+                    <td style={{ border: '1px solid #ccc', padding: '10px' }}>{currentUser?.userProfile?.deptName}</td>
                   </tr>
                   <tr>
                     <td style={{ border: '1px solid #ccc', backgroundColor: '#f8f8f8', padding: '10px', textAlign: 'center', fontWeight: 'bold' }}>기안일</td>
@@ -395,7 +394,7 @@ console.log("현재 로그인 유저 정보:", currentUser)
             
             {/* 2-2. 결재란 (우측) - (공통) */}
             <div style={{ width: 'auto' }}>
-              <DynamicApprovalTable approvers={approvalLine} drafter={currentUser} />
+              <DynamicApprovalTable approvers={approvalLine} drafter={currentUser?.userProfile} />
             </div>
           </div>
 

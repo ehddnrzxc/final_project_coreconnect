@@ -12,12 +12,14 @@ import {
   InputLabel,
   FormControl,
   Typography,
-  Alert,
   Stack,
   Divider,
 } from "@mui/material";
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 
 export default function UserCreateForm() {
+  const { showSnack } = useSnackbarContext();
+  
   const [form, setForm] = useState({
     email: "",
     name: "",
@@ -32,9 +34,6 @@ export default function UserCreateForm() {
   const [roles, setRoles] = useState([]);
   const [jobGrades, setJobGrades] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState({ type: "", text: "" });
-  const [roleMsg, setRoleMsg] = useState("");
-  const [jobGradeMsg, setJobGradeMsg] = useState("");
 
   /** ─ 부서 목록 로드 ─ */
   useEffect(() => {
@@ -42,12 +41,9 @@ export default function UserCreateForm() {
       .get("/departments/flat")
       .then(({ data }) => setDepartments(data))
       .catch(() =>
-        setMsg({
-          type: "info",
-          text: "부서 목록을 불러오지 못했습니다. (부서 없이 생성 가능)",
-        })
+        showSnack("부서 목록을 불러오지 못했습니다. (부서 없이 생성 가능)", "info")
       );
-  }, []);
+  }, [showSnack]);
 
   /** Role 목록 로드 */
   useEffect(() => {
@@ -55,9 +51,9 @@ export default function UserCreateForm() {
       .get("/admin/users/roles")
       .then(({ data }) => setRoles(data))
       .catch(() => {
-        setRoleMsg("권한 목록을 불러오지 못했습니다.")
+        showSnack("권한 목록을 불러오지 못했습니다.", "warning");
       });
-  }, []);
+  }, [showSnack]);
 
   /** JobGrade 목록 로드 */
   useEffect(() => {
@@ -65,9 +61,9 @@ export default function UserCreateForm() {
       .get("/admin/users/job-grades")
       .then(({ data }) => setJobGrades(data))
       .catch(() => {
-        setJobGradeMsg("직급 목록을 불러오지 못했습니다.")
+        showSnack("직급 목록을 불러오지 못했습니다.", "warning");
       });
-  }, []);
+  }, [showSnack]);
 
   /** ─ 입력 변경 핸들러 ─ */
   const onChange = (e) => {
@@ -78,10 +74,9 @@ export default function UserCreateForm() {
   /** ─ 폼 제출 ─ */
   const submit = async (e) => {
     e.preventDefault();
-    setMsg({ type: "", text: "" });
 
     if (!form.email || !form.name || !form.tempPassword) {
-      setMsg({ type: "error", text: "이메일 / 이름 / 임시비밀번호는 필수입니다." });
+      showSnack("이메일 / 이름 / 임시비밀번호는 필수입니다.", "error");
       return;
     }
 
@@ -98,7 +93,7 @@ export default function UserCreateForm() {
     setLoading(true);
     try {
       const { data } = await http.post("/admin/users", payload);
-      setMsg({ type: "success", text: `생성 완료: ${data.name} (${data.email})` });
+      showSnack(`생성 완료: ${data.name} (${data.email})`, "success");
 
       // 폼 초기화
       setForm({
@@ -115,25 +110,13 @@ export default function UserCreateForm() {
       const message = e.response?.data?.message;
 
       if (status === 401) {
-        setMsg({
-          type: "error",
-          text: "인증이 만료되었거나 권한이 없습니다. 다시 로그인하세요.",
-        });
+        showSnack("인증이 만료되었거나 권한이 없습니다. 다시 로그인하세요.", "error");
       } else {
-        setMsg({
-          type: "error",
-          text: `유저 생성 실패: ${message || "서버 오류"}`,
-        });
+        showSnack(`유저 생성 실패: ${message || "서버 오류"}`, "error");
       }
     } finally {
       setLoading(false);
     }
-  };
-
-  const getSeverity = (type) => {
-    if (type === "success") return "success";
-    if (type === "error") return "error";
-    return "info";
   };
 
   /** ─ 렌더링 ─ */
@@ -158,12 +141,6 @@ export default function UserCreateForm() {
         <Divider />
         <CardContent sx={{ pt: 3, pb: 4 }}>
           <Stack spacing={2.5}>
-            {msg.text && (
-              <Alert severity={getSeverity(msg.type)} variant="outlined">
-                {msg.text}
-              </Alert>
-            )}
-
             <Box component="form" noValidate onSubmit={submit}>
               <Stack spacing={2.5}>
                 <TextField

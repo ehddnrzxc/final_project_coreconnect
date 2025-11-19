@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Box, Typography, Table, TableHead, TableRow, TableCell, TableBody, IconButton, TextField, Button } from "@mui/material";
-import EditIcon from "@mui/icons-material/Edit"; 
+import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SaveIcon from "@mui/icons-material/Save";
 import AddIcon from "@mui/icons-material/Add";
@@ -179,12 +179,12 @@ const AdminCategoryPage = () => {
                 {editingId === cat.id ? (
                   // 수정 모드일 때는 저장 버튼 표시
                   <IconButton color="primary" onClick={() => handleSave(cat.id)}>
-                    <SaveIcon /> 
+                    <SaveIcon />
                   </IconButton>
                 ) : (
                   // 일반 모드일 때는 수정 버튼 표시
                   <IconButton color="secondary" onClick={() => handleEdit(cat)}>
-                    <EditIcon /> 
+                    <EditIcon />
                   </IconButton>
                 )}
                 <IconButton color="error" onClick={() => handleDelete(cat.id)}>
@@ -199,4 +199,4 @@ const AdminCategoryPage = () => {
   );
 };
 
-export default AdminCategoryPage;  // 컴포넌트 내보내기 (다른 페이지에서 import하여 사용 가능)
+export default AdminCategoryPage;

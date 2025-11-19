@@ -21,6 +21,7 @@ import com.goodee.coreconnect.board.repository.BoardCategoryRepository;
 import com.goodee.coreconnect.board.repository.BoardFileRepository;
 import com.goodee.coreconnect.board.repository.BoardRepository;
 import com.goodee.coreconnect.board.repository.BoardViewHistoryRepository;
+import com.goodee.coreconnect.chat.repository.NotificationRepository;
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
 import com.goodee.coreconnect.common.notification.service.NotificationService;
 import com.goodee.coreconnect.user.entity.Role;
@@ -42,6 +43,7 @@ public class BoardServiceImpl implements BoardService {
     private final BoardViewHistoryRepository viewHistoryRepository;
     private final BoardFileRepository boardFileRepository;
     private final BoardFileService boardFileService; 
+    private final NotificationRepository notificationRepository;
     
     // 미리보기 적용 메소드
     private void applyPreview(Board board, BoardResponseDTO dto) {
@@ -145,6 +147,10 @@ public class BoardServiceImpl implements BoardService {
                                                             null, null,
                                                             user.getId(),
                                                             user.getName());
+                
+                notificationRepository.findBySenderId(user.getId())
+                                      .forEach(n -> n.markSent(java.time.LocalDateTime.now()));
+                
 
             } else if (user.getRole() == Role.MANAGER) {
                 // 자신의 부서 유저만 조회
@@ -162,6 +168,9 @@ public class BoardServiceImpl implements BoardService {
                                                                 null, null,
                                                                 user.getId(),
                                                                 user.getName());
+                    
+                    notificationRepository.findBySenderId(user.getId())
+                                          .forEach(n -> n.markSent(java.time.LocalDateTime.now()));
                 }
             }
         }
@@ -251,6 +260,10 @@ public class BoardServiceImpl implements BoardService {
                 notificationService.sendNotificationToUsers(
                         allUserIds, NotificationType.NOTICE, message, null, null,
                         loginUser.getId(), loginUser.getName());
+                
+                notificationRepository.findBySenderId(loginUser.getId())
+                                      .forEach(n -> n.markSent(java.time.LocalDateTime.now()));
+                
             } else if (loginUser.getRole() == Role.MANAGER) {
                 Integer deptId = loginUser.getDepartment() != null
                         ? loginUser.getDepartment().getId() : null;
@@ -263,6 +276,9 @@ public class BoardServiceImpl implements BoardService {
                     notificationService.sendNotificationToUsers(
                             deptUserIds, NotificationType.NOTICE, message, null, null,
                             loginUser.getId(), loginUser.getName());
+                    
+                    notificationRepository.findBySenderId(loginUser.getId())
+                                          .forEach(n -> n.markSent(java.time.LocalDateTime.now()));
                 }
             }
         }
@@ -279,6 +295,10 @@ public class BoardServiceImpl implements BoardService {
                 notificationService.sendNotificationToUsers(
                         allUserIds, NotificationType.NOTICE, message, null, null,
                         loginUser.getId(), loginUser.getName());
+                
+                notificationRepository.findBySenderId(loginUser.getId())
+                                      .forEach(n -> n.markSent(java.time.LocalDateTime.now()));
+                
             } else if (loginUser.getRole() == Role.MANAGER) {
                 Integer deptId = loginUser.getDepartment() != null
                         ? loginUser.getDepartment().getId() : null;
@@ -291,6 +311,9 @@ public class BoardServiceImpl implements BoardService {
                     notificationService.sendNotificationToUsers(
                             deptUserIds, NotificationType.NOTICE, message, null, null,
                             loginUser.getId(), loginUser.getName());
+                    
+                    notificationRepository.findBySenderId(loginUser.getId())
+                                          .forEach(n -> n.markSent(java.time.LocalDateTime.now()));
                 }
             }
         }
@@ -503,9 +526,8 @@ public class BoardServiceImpl implements BoardService {
           boardPage = boardRepository.findByCategoryIdOrdered(categoryId, pageable);
       }
 
-      List<BoardResponseDTO> dtoList = boardPage.getContent()
-                                                .stream()
-                                                .map(BoardResponseDTO::toDTO)
+      List<BoardResponseDTO> dtoList = boardPage.getContent().stream()
+                                                .map(board -> BoardResponseDTO.toDTO(board))
                                                 .toList();
 
       for (int i = 0; i < boardPage.getContent().size(); i++) {     
@@ -521,9 +543,8 @@ public class BoardServiceImpl implements BoardService {
     public Page<BoardResponseDTO> getBoardsByLatestOnly(Pageable pageable) {
         Page<Board> boardPage = boardRepository.findAllByCreatedAtDesc(pageable);
         
-        List<BoardResponseDTO> dtoList = boardPage.getContent()
-                                                  .stream()
-                                                  .map(BoardResponseDTO::toDTO)
+        List<BoardResponseDTO> dtoList = boardPage.getContent().stream()
+                                                  .map(board -> BoardResponseDTO.toDTO(board))
                                                   .toList();
         
         for (int i = 0; i < boardPage.getContent().size(); i++) {          

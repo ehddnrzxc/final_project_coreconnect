@@ -5,6 +5,7 @@ import {
   RouterProvider,
   Navigate,
 } from "react-router-dom";
+import { SnackbarProvider } from "./components/utils/SnackbarContext";
 import App from "./App";
 import LoginPage from "./features/auth/pages/LoginPage";
 import HomePage from "./features/dashboard/pages/HomePage";
@@ -199,8 +200,10 @@ const router = createBrowserRouter([
 /* 렌더링 */
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <RealtimeNotificationProvider>
-      <RouterProvider router={router} />
-    </RealtimeNotificationProvider>
+    <SnackbarProvider>
+      <RealtimeNotificationProvider>
+        <RouterProvider router={router} />
+      </RealtimeNotificationProvider>
+    </SnackbarProvider>
   </React.StrictMode>
 );

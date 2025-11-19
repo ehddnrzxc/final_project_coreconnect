@@ -11,7 +11,6 @@ import ForwardIcon from '@mui/icons-material/Forward';
 import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
 import MoveToInboxIcon from '@mui/icons-material/MoveToInbox';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
-import VisibilityIcon from '@mui/icons-material/Visibility';
 import SyncIcon from '@mui/icons-material/Sync';
 import ViewListIcon from '@mui/icons-material/ViewList';
 import DraftsIcon from '@mui/icons-material/Drafts';
@@ -58,7 +57,7 @@ const MailSentBoxPage = () => {
   // 상태 정의: 메일 목록, 페이징, 선택 등
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [size, setSize] = useState(9);
+  const [size] = useState(9);
   const [total, setTotal] = useState(0);
   const [mails, setMails] = useState([]);
   const [selected, setSelected] = useState(new Set());
@@ -117,15 +116,21 @@ const MailSentBoxPage = () => {
     - 체크박스 선택 후 삭제 버튼 클릭 시 동작
   */
   const handleDeleteSelected = async () => {
-    if (selected.size === 0) return alert("삭제할 메일을 선택하세요.");
-    if (!window.confirm("선택한 메일을 휴지통으로 이동하시겠습니까?")) return;
+    const ids = Array.from(selected);
+    if (ids.length === 0) {
+      alert("삭제할 메일을 선택하세요.");
+      return;
+    }
+    if (!window.confirm(`선택한 ${ids.length}개의 메일을 휴지통으로 이동하시겠습니까?`)) return;
+    
     try {
-      const ids = Array.from(selected);
       await moveToTrash(ids);
+      alert(`${ids.length}개의 메일을 휴지통으로 이동했습니다.`);
       setSelected(new Set());
+      // 목록 새로고침하여 이동한 항목 즉시 사라지게 함
       load();
     } catch (e) {
-      console.error(e);
+      console.error("handleDeleteSelected error:", e);
       alert("삭제 중 오류가 발생했습니다.");
     }
   };
@@ -274,9 +279,7 @@ const MailSentBoxPage = () => {
                     />
                   </TableCell>
                   <TableCell>
-                    <IconButton size="small" onClick={e => { e.stopPropagation(); navigate(`/email/${mail.emailId}`); }}>
-                      <VisibilityIcon fontSize="small" />
-                    </IconButton>
+                    {/* 눈모양 아이콘(상세보기) 제거됨 */}
                   </TableCell>
                 </TableRow>
               ))
@@ -299,18 +302,3 @@ const MailSentBoxPage = () => {
 };
 
 export default MailSentBoxPage;
-
-/*
-==================================================================================
-함수/구조별 주석 요약
-----------------------------------------------------------------------------------
-- getStatusLabel, getStatusColor: 메일 상태에 따라 보여줄 라벨, 칩색상 결정
-- useContext(UserProfileContext)로 "context?.userProfile?.email"에서 이메일 추출!
-    -> App.jsx의 Provider 값이 value={{userProfile, setUserProfile}} 구조이기 때문.
-- useEffect([page, size, userEmail]) 의존성: userEmail변경도 꼭 갱신(비동기 Profile)
-- load: API 호출 전, 후 콘솔로 userEmail, 응답 구조 꼼꼼하게 확인 필수!
-- 리렌더/페이징/삭제 핸들러 모두 동작 정상화
-- Table, 버튼 등 모두 배치 설명
-- 콘솔로 모든 상태 흐름 · 요청 · 응답을 점검하면 이상 현상은 항상 추적 가능
-==================================================================================
-*/

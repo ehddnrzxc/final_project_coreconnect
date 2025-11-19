@@ -13,16 +13,16 @@ import {
   TableBody,
   TableContainer,
   Typography,
-  Alert,
   Chip,
   CircularProgress,
   Stack,
   Divider,
 } from "@mui/material";
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 
 export default function UserList() {
+  const { showSnack } = useSnackbarContext();
   const [users, setUsers] = useState([]);
-  const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,7 +32,7 @@ export default function UserList() {
         setUsers(data);
       } catch (e) {
         console.error(e);
-        setErr("사용자 목록을 불러오지 못했습니다.");
+        showSnack("사용자 목록을 불러오지 못했습니다.", "error");
       } finally {
         setLoading(false);
       }
@@ -78,12 +78,6 @@ export default function UserList() {
 
         <CardContent sx={{ pt: 3, pb: 3 }}>
           <Stack spacing={2.5}>
-            {err && (
-              <Alert severity="error" variant="outlined">
-                {err}
-              </Alert>
-            )}
-
             {loading ? (
               <Box
                 sx={{

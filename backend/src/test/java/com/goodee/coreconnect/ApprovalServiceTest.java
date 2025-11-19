@@ -90,9 +90,9 @@ public class ApprovalServiceTest {
     // 1. 테스트용 사용자 생성 (User.createUser 사용)
     // User.createUser(password, name, role, email, phone, department)
     // Department가 필수지만, ApprovalService 테스트에는 불필요하므로 null 전달
-    drafter = User.createUser("password123", "기안자", Role.USER, "drafter@test.com", "010-1111-1111", null, null);
-    approver1 = User.createUser("password123", "결재자1", Role.USER, "approver1@test.com", "010-2222-2222", null, null);
-    approver2 = User.createUser("password123", "결재자2", Role.USER, "approver2@test.com", "010-3333-3333", null, null);
+    drafter = User.createUser("password123", "기안자", Role.USER, "drafter@test.com", "010-1111-1111", null, null, null);
+    approver1 = User.createUser("password123", "결재자1", Role.USER, "approver1@test.com", "010-2222-2222", null, null, null);
+    approver2 = User.createUser("password123", "결재자2", Role.USER, "approver2@test.com", "010-3333-3333", null, null, null);
 
     userRepository.saveAll(List.of(drafter, approver1, approver2));
 
@@ -376,7 +376,7 @@ public class ApprovalServiceTest {
   @DisplayName("문서 상세 조회 - 실패 (권한 없음)")
   void getDocumentDetail_Fail_NoPermission() {
     // Arrange
-    User otherUser = User.createUser("pass123", "외부인", Role.USER, "other@test.com", "010-4444-4444", null, null);
+    User otherUser = User.createUser("pass123", "외부인", Role.USER, "other@test.com", "010-4444-4444", null, null, null);
     userRepository.save(otherUser);
 
     Integer docId = testDocument.getId();

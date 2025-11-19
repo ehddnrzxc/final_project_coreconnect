@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -19,4 +20,12 @@ public interface MailUserVisibilityRepository extends JpaRepository<MailUserVisi
         nativeQuery = true
     )
     List<Long> findDeletedMailIdsByUserId(@Param("userId") Long userId);
+	 
+	 @Modifying
+	 @Query("DELETE FROM MailUserVisibility m WHERE m.userId = :userId AND m.deleted = true")
+	 void deleteAllByUserIdAndDeletedIsTrue(@Param("userId") Long userId);
+	 
+	 @Modifying
+	 @Query("DELETE FROM MailUserVisibility m WHERE m.mailId IN :mailIds AND m.userId = :userId")
+	 void deleteAllByMailIdInAndUserId(@Param("mailIds") List<Long> mailIds, @Param("userId") Long userId);
 }

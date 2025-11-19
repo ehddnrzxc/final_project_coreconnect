@@ -37,6 +37,8 @@ public class EmailRecipient {
 	private Boolean emailReadYn = false;
 	private LocalDateTime emailReadAt;
 	
+	private Boolean deleted = false; // 받은메일함에서 삭제 여부
+	private LocalDateTime deletedAt; // 삭제 시간
 	
 	private Boolean emailIsAlarmSent = false;
 	

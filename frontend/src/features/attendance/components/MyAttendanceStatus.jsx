@@ -123,7 +123,7 @@ function MyAttendanceStatus() {
     <Container maxWidth="lg" sx={{ py: 4 }}>
       {/* 헤더 */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 4 }}>
-        <Typography variant="h4" fontWeight={700}>
+        <Typography variant="h6">
           내 근태현황
         </Typography>
         <ToggleButtonGroup
@@ -139,7 +139,7 @@ function MyAttendanceStatus() {
 
       {/* 통계 요약 */}
       <Paper sx={{ p: 3, mb: 4 }}>
-        <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
+        <Typography variant="h8" sx={{ mb: 2 }}>
           {period === "weekly" ? "주간" : "월간"} 통계
         </Typography>
         {loading ? (
@@ -152,7 +152,7 @@ function MyAttendanceStatus() {
               <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
                 근무일수
               </Typography>
-              <Typography variant="h6" fontWeight={600}>
+              <Typography variant="h8">
                 {stats.workDays}일
               </Typography>
             </Box>
@@ -160,7 +160,7 @@ function MyAttendanceStatus() {
               <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
                 지각일수
               </Typography>
-              <Typography variant="h6" fontWeight={600}>
+              <Typography variant="h8">
                 {stats.lateDays}일
               </Typography>
             </Box>
@@ -168,7 +168,7 @@ function MyAttendanceStatus() {
               <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
                 결근일수
               </Typography>
-              <Typography variant="h6" fontWeight={600}>
+              <Typography variant="h8">
                 {stats.absentDays}일
               </Typography>
             </Box>
@@ -176,7 +176,7 @@ function MyAttendanceStatus() {
               <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
                 총 근무시간
               </Typography>
-              <Typography variant="h6" fontWeight={600}>
+              <Typography variant="h6">
                 {formatHM(stats.totalWorkMinutes)}
               </Typography>
             </Box>
@@ -186,7 +186,7 @@ function MyAttendanceStatus() {
 
       {/* 상세 정보 */}
       <Paper sx={{ p: 3 }}>
-        <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
+        <Typography variant="h6" sx={{ mb: 2 }}>
           {period === "weekly" ? "주간" : "월간"} 근태 상세
         </Typography>
         {loadingDetail ? (

@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import com.goodee.coreconnect.board.entity.Board;
+import com.goodee.coreconnect.department.dto.response.OrganizationTreeDTO;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -39,6 +40,7 @@ public class BoardResponseDTO {
     private Integer fileCount;
     private Integer categoryId;
     private String writerJobGrade;
+    private String writerProfileImageUrl;
 
     private List<BoardFileResponseDTO> files;    
     private List<BoardReplyResponseDTO> replies; 
@@ -49,6 +51,18 @@ public class BoardResponseDTO {
      */
     public static BoardResponseDTO toDTO(Board board) {
         if (board == null) return null;
+        
+        // S3 URL 생성을 위한 값
+        String defaultProfile = "/default-profile.png";
+        String profileImageUrl = defaultProfile;
+        
+        if (board.getUser() != null && board.getUser().getProfileImageKey() != null) { 
+            // OrganizationTreeDTO 와 동일한 URL 생성 방식
+            profileImageUrl = String.format("https://%s.s3.%s.amazonaws.com/%s",
+                                            OrganizationTreeDTO.BUCKET,                                           
+                                            OrganizationTreeDTO.REGION,                                           
+                                            board.getUser().getProfileImageKey());
+        }
 
         return BoardResponseDTO.builder().id(board.getId())
                                           .title(board.getTitle())
@@ -78,6 +92,7 @@ public class BoardResponseDTO {
                                           .writerJobGrade(board.getUser().getJobGrade() != null ? board.getUser()
                                                                                                        .getJobGrade()
                                                                                                        .label() : null)
+                                          .writerProfileImageUrl(profileImageUrl)
                                           .build();
     }
 }
