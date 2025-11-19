@@ -171,12 +171,14 @@ public class ScheduleServiceImpl implements ScheduleService {
         : null;
 
     // 수정 권한 확인 (OWNER 또는 MEMBER)
+    // 작성자(OWNER)이거나 참여자 목록에 있으면 수정 가능
+    boolean isScheduleOwner = schedule.getUser().getId().equals(user.getId());
     boolean isParticipant = scheduleParticipantRepository
         .findByScheduleAndDeletedYnFalse(schedule)
         .stream()
         .anyMatch(p -> p.getUser().getId().equals(user.getId()));
 
-    if (!isParticipant) {
+    if (!isScheduleOwner && !isParticipant) {
         throw new SecurityException("이 일정의 참여자가 아닙니다. 수정 권한이 없습니다.");
     }
     
@@ -353,18 +355,29 @@ public class ScheduleServiceImpl implements ScheduleService {
         schedules = scheduleRepository.findAccessibleSchedules(user)
           .stream()
           .filter(s -> {
-            // PRIVATE → 본인 + 참가자만
+            // 작성자가 참여자 목록에 포함되어 있는지 확인 (삭제되지 않은 참여자만)
+            boolean isOwnerInParticipants = s.getParticipants().stream()
+                .anyMatch(p -> p.getUser().getId().equals(s.getUser().getId()) && !p.getDeletedYn());
+            
+            // 현재 조회하는 사용자가 작성자인 경우:
+            // 작성자가 참여자 목록에 없으면 제외 (작성자의 캘린더에서 사라짐)
+            // 참석자는 여전히 자신의 캘린더에서 일정을 볼 수 있음
+            if (s.getUser().equals(user) && !isOwnerInParticipants) {
+                return false;
+            }
+            
+            // PRIVATE → 본인 + 참가자만 (삭제되지 않은 참여자만)
             if (s.getVisibility() == ScheduleVisibility.PRIVATE) {
                 return s.getUser().equals(user)
                     || s.getParticipants().stream()
-                         .anyMatch(p -> p.getUser().equals(user));
+                         .anyMatch(p -> p.getUser().equals(user) && !p.getDeletedYn());
             }
 
-            // PUBLIC → 본인 + 참가자만 (다른 유저의 PUBLIC은 제외)
+            // PUBLIC → 본인 + 참가자만 (다른 유저의 PUBLIC은 제외, 삭제되지 않은 참여자만)
             if (s.getVisibility() == ScheduleVisibility.PUBLIC) {
                 return s.getUser().equals(user)
                     || s.getParticipants().stream()
-                         .anyMatch(p -> p.getUser().equals(user));
+                         .anyMatch(p -> p.getUser().equals(user) && !p.getDeletedYn());
             }
 
             return false;

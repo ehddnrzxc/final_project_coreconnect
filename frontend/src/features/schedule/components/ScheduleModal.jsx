@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useContext } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -34,6 +34,7 @@ import {
 } from "../api/scheduleAPI";
 import AttendeeTimelinePanel from "../components/AttendeeTimelinePanel";
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
+import { UserProfileContext } from "../../../App";
 
 export default function ScheduleModal({
   open,
@@ -47,6 +48,8 @@ export default function ScheduleModal({
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm")); // 모바일일 때 전체화면 처리
   const { showSnack } = useSnackbarContext();
+  const { userProfile } = useContext(UserProfileContext) || {};
+  const currentUserEmail = userProfile?.email;
 
   // 종일 일정 판단 함수
   const isAllDayEvent = (startDateTime, endDateTime) => {
@@ -84,6 +87,8 @@ export default function ScheduleModal({
   const [users, setUsers] = useState([]);
   const [roomAvailable, setRoomAvailable] = useState(true);
   const [availabilityMap, setAvailabilityMap] = useState({});
+  const [categoryError, setCategoryError] = useState(false);
+  const [titleError, setTitleError] = useState(false);
 
   const [form, setForm] = useState({
     title: "",
@@ -120,11 +125,33 @@ export default function ScheduleModal({
         getUsers(),
       ]);
       if (roomsRes.status === "fulfilled") setMeetingRooms(roomsRes.value);
-      if (catsRes.status === "fulfilled") setCategories(catsRes.value);
+      if (catsRes.status === "fulfilled") {
+        const categoriesList = catsRes.value;
+        setCategories(categoriesList);
+        
+        // 새 일정 등록 모드일 때만 카테고리 자동 선택
+        if (!isEdit && categoriesList && categoriesList.length > 0) {
+          // 1순위: 기본 카테고리(defaultYn = true) 찾기
+          const defaultCategory = categoriesList.find(cat => cat.defaultYn === true);
+          
+          // 2순위: 기본 카테고리가 없으면 첫 번째 카테고리 선택
+          const selectedCategory = defaultCategory || categoriesList[0];
+          
+          if (selectedCategory) {
+            setForm(prev => ({
+              ...prev,
+              categoryId: selectedCategory.id
+            }));
+          }
+        } else if (!isEdit && (!categoriesList || categoriesList.length === 0)) {
+          // 카테고리 목록이 없으면 경고 표시
+          showSnack("사용 가능한 카테고리가 없습니다. 카테고리를 먼저 생성해주세요.", "warning");
+        }
+      }
       if (usersRes.status === "fulfilled") setUsers(usersRes.value);
     };
     load();
-  }, [open]);
+  }, [open, isEdit, showSnack]);
 
   /** 모달이 열릴 때 초기화 및 수정 모드일 때 기존 값 채우기 */
   useEffect(() => {
@@ -152,39 +179,79 @@ export default function ScheduleModal({
         participantIds: [],
         visibility: "PUBLIC",
       });
+      setCategoryError(false); // 에러 상태도 초기화
+      setTitleError(false); // 제목 에러 상태도 초기화
       return;
     }
 
     // 수정 모드라면 기존 값 채우기
     if (isEdit && initialData) {
-      const startISO = toISO(initialData.startDateTime);
-      const endISO = toISO(initialData.endDateTime);
+      // toBackendFormat으로 일관된 형식으로 변환
+      const normalizedStart = toBackendFormat(initialData.startDateTime);
+      const normalizedEnd = toBackendFormat(initialData.endDateTime);
       
-      // 통합 필드 → 분리 필드 변환
-      const startParts = startISO ? startISO.split('T') : ['', ''];
-      const endParts = endISO ? endISO.split('T') : ['', ''];
+      // null 검증: 날짜 형식이 올바르지 않으면 기본값 사용
+      if (!normalizedStart || !normalizedEnd) {
+        console.error("일정 데이터의 날짜 형식이 올바르지 않습니다:", initialData);
+        showSnack("일정 데이터를 불러오는 중 오류가 발생했습니다.", "error");
+        return;
+      }
       
       // 종일 여부 판단
       const isAllDay = isAllDayEvent(initialData.startDateTime, initialData.endDateTime);
       
+      // 정규화된 날짜에서 날짜와 시간 분리
+      const startParts = normalizedStart.split(' ');
+      const endParts = normalizedEnd.split(' ');
+      
+      // 날짜 검증: startParts[0]이 유효한 날짜 형식인지 확인
+      const startDateStr = startParts[0] && /^\d{4}-\d{2}-\d{2}$/.test(startParts[0]) ? startParts[0] : '';
+      const endDateStr = endParts[0] && /^\d{4}-\d{2}-\d{2}$/.test(endParts[0]) ? endParts[0] : '';
+      
       // 시간/분 분리
-      const startTimeParts = startParts[1] ? startParts[1].substring(0, 5).split(':') : ['09', '00'];
-      const endTimeParts = endParts[1] ? endParts[1].substring(0, 5).split(':') : ['10', '00'];
+      const startTimeStr = startParts[1] ? startParts[1].substring(0, 5) : '09:00';
+      const endTimeStr = endParts[1] ? endParts[1].substring(0, 5) : '10:00';
+      const startTimeParts = startTimeStr.split(':');
+      const endTimeParts = endTimeStr.split(':');
+      
+      // 분(minute) 값을 5분 단위로 정규화하는 함수
+      const normalizeMinute = (min) => {
+        if (!min) return "0";
+        const minNum = parseInt(min, 10);
+        if (isNaN(minNum)) return "0";
+        // 5분 단위로 반올림 (0, 5, 10, 15, ..., 55)
+        return String(Math.floor(minNum / 5) * 5).padStart(2, "0");
+      };
+      
+      // 정규화된 분 값 계산
+      const normalizedStartMinute = isAllDay ? "0" : normalizeMinute(startTimeParts[1]);
+      const normalizedEndMinute = isAllDay ? "55" : normalizeMinute(endTimeParts[1]); // 종일 일정도 "55"로 통일 (minutes 배열에 있는 값)
+      
+      // 종일 일정일 때는 시간을 명시적으로 설정 (종료 시간은 23:59:59로 설정)
+      const finalStartTime = isAllDay ? "00:00" : `${String(startTimeParts[0] || "9").padStart(2, "0")}:${normalizedStartMinute}`;
+      const finalEndTime = isAllDay ? "23:59" : `${String(endTimeParts[0] || "10").padStart(2, "0")}:${normalizedEndMinute}`;
+      
+      // 정규화된 startDateTime과 endDateTime 재생성 (종일 일정은 종료 시간을 23:59:59로 설정)
+      const finalNormalizedStart = startDateStr && finalStartTime ? `${startDateStr} ${finalStartTime}:00` : normalizedStart;
+      const endTimePart = isAllDay ? "23:59:59" : `${finalEndTime}:00`;
+      const finalNormalizedEnd = endDateStr && finalEndTime 
+        ? `${endDateStr} ${endTimePart}` 
+        : normalizedEnd;
       
       setForm({
         title: initialData.title || "",
         content: initialData.content || "",
         location: initialData.location || "",
-        startDateTime: startISO ? startISO.replace('T', ' ') : "",
-        endDateTime: endISO ? endISO.replace('T', ' ') : "",
-        startDate: startParts[0] || "",
-        startTime: startParts[1] ? startParts[1].substring(0, 5) : "09:00",
-        endDate: endParts[0] || "",
-        endTime: endParts[1] ? endParts[1].substring(0, 5) : "10:00",
+        startDateTime: finalNormalizedStart,
+        endDateTime: finalNormalizedEnd,
+        startDate: startDateStr,
+        startTime: finalStartTime,
+        endDate: endDateStr,
+        endTime: finalEndTime,
         startTimeHour: isAllDay ? "0" : (startTimeParts[0] || "9"),
-        startTimeMinute: isAllDay ? "0" : (startTimeParts[1] || "0"),
+        startTimeMinute: isAllDay ? "0" : normalizedStartMinute,
         endTimeHour: isAllDay ? "23" : (endTimeParts[0] || "10"),
-        endTimeMinute: isAllDay ? "59" : (endTimeParts[1] || "0"),
+        endTimeMinute: isAllDay ? "55" : normalizedEndMinute, // 종일 일정일 때는 minutes 배열에 있는 값 사용
         isAllDay: isAllDay,
         meetingRoomId: initialData.meetingRoomId || "",
         categoryId: initialData.categoryId || "",
@@ -193,18 +260,55 @@ export default function ScheduleModal({
       });
     } else if (date) {
       // 새 일정 등록 모드이고 date가 있으면 초기값 설정
+      // date가 Date 객체인 경우 시간 정보 추출, 문자열인 경우 기본 시간 사용
+      let dateStr, startHour, startMinute, endHour, endMinute;
+      
+      if (date instanceof Date && !isNaN(date.getTime())) {
+        // Date 객체인 경우: 시간 정보 추출
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        dateStr = `${year}-${month}-${day}`;
+        
+        // 시간 정보 추출 (timeGrid 뷰에서 클릭한 시간대 사용)
+        startHour = String(date.getHours()).padStart(2, "0");
+        startMinute = String(date.getMinutes()).padStart(2, "0");
+        
+        // 종료 시간은 시작 시간 + 1시간
+        const endDate = new Date(date);
+        endDate.setHours(endDate.getHours() + 1);
+        endHour = String(endDate.getHours()).padStart(2, "0");
+        endMinute = String(endDate.getMinutes()).padStart(2, "0");
+      } else {
+        // 문자열인 경우: 기본 시간 사용
+        dateStr = typeof date === "string" ? date : String(date);
+        startHour = "09";
+        startMinute = "00";
+        endHour = "10";
+        endMinute = "00";
+      }
+      
+      // 분(minute) 값을 5분 단위로 정규화
+      const normalizeMinute = (min) => {
+        const minNum = parseInt(min, 10);
+        return String(Math.floor(minNum / 5) * 5).padStart(2, "0");
+      };
+      
+      const normalizedStartMinute = normalizeMinute(startMinute);
+      const normalizedEndMinute = normalizeMinute(endMinute);
+      
       setForm((prev) => ({
         ...prev,
-        startDateTime: `${date} 09:00:00`,
-        endDateTime: `${date} 10:00:00`,
-        startDate: date,
-        startTime: "09:00",
-        endDate: date,
-        endTime: "10:00",
-        startTimeHour: "9",
-        startTimeMinute: "0",
-        endTimeHour: "10",
-        endTimeMinute: "0",
+        startDateTime: `${dateStr} ${startHour}:${normalizedStartMinute}:00`,
+        endDateTime: `${dateStr} ${endHour}:${normalizedEndMinute}:00`,
+        startDate: dateStr,
+        startTime: `${startHour}:${normalizedStartMinute}`,
+        endDate: dateStr,
+        endTime: `${endHour}:${normalizedEndMinute}`,
+        startTimeHour: String(parseInt(startHour, 10)),
+        startTimeMinute: normalizedStartMinute,
+        endTimeHour: String(parseInt(endHour, 10)),
+        endTimeMinute: normalizedEndMinute,
         isAllDay: false,
       }));
     } else {
@@ -228,64 +332,87 @@ export default function ScheduleModal({
     }
   }, [open, initialData, isEdit, date]);
 
-  /** 분리 필드 → 통합 필드 자동 동기화 (시작) */
+  /** 분리 필드 → 통합 필드 자동 동기화 */
+  // 시작 날짜+시간 → startDateTime
   useEffect(() => {
     if (form.startDate && form.startTime) {
-      const combined = `${form.startDate} ${form.startTime}:00`;
+      // 종일 일정일 때는 항상 "00:00:00"으로 설정
+      const timePart = form.isAllDay ? "00:00:00" : `${form.startTime}:00`;
+      const combined = `${form.startDate} ${timePart}`;
       setForm((prev) => {
-        // 무한 루프 방지: 값이 같으면 업데이트하지 않음
         if (prev.startDateTime === combined) return prev;
         return { ...prev, startDateTime: combined };
       });
     }
-  }, [form.startDate, form.startTime]);
+  }, [form.startDate, form.startTime, form.isAllDay]);
 
-  /** 분리 필드 → 통합 필드 자동 동기화 (종료) */
+  // 종료 날짜+시간 → endDateTime
   useEffect(() => {
     if (form.endDate && form.endTime) {
-      const combined = `${form.endDate} ${form.endTime}:00`;
+      // 종일 일정일 때는 항상 "23:59:59"로 설정 (더 정확한 종일 일정 표현)
+      const timePart = form.isAllDay ? "23:59:59" : `${form.endTime}:00`;
+      const combined = `${form.endDate} ${timePart}`;
       setForm((prev) => {
-        // 무한 루프 방지: 값이 같으면 업데이트하지 않음
         if (prev.endDateTime === combined) return prev;
         return { ...prev, endDateTime: combined };
       });
     }
-  }, [form.endDate, form.endTime]);
+  }, [form.endDate, form.endTime, form.isAllDay]);
 
-  /** 시간/분 분리 필드 → 통합 필드 자동 동기화 (시작) */
+  // 시작 시간(시/분) → startTime
   useEffect(() => {
     if (form.startTimeHour !== undefined && form.startTimeMinute !== undefined) {
-      const combined = `${String(form.startTimeHour).padStart(2, '0')}:${String(form.startTimeMinute).padStart(2, '0')}`;
+      // 종일 일정일 때는 항상 "00:00"으로 설정
+      const combined = form.isAllDay 
+        ? "00:00"
+        : `${String(form.startTimeHour).padStart(2, '0')}:${String(form.startTimeMinute).padStart(2, '0')}`;
       setForm((prev) => {
-        // 무한 루프 방지: 값이 같으면 업데이트하지 않음
         if (prev.startTime === combined) return prev;
         return { ...prev, startTime: combined };
       });
     }
-  }, [form.startTimeHour, form.startTimeMinute]);
+  }, [form.startTimeHour, form.startTimeMinute, form.isAllDay]);
 
-  /** 시간/분 분리 필드 → 통합 필드 자동 동기화 (종료) */
+  // 종료 시간(시/분) → endTime
   useEffect(() => {
     if (form.endTimeHour !== undefined && form.endTimeMinute !== undefined) {
-      const combined = `${String(form.endTimeHour).padStart(2, '0')}:${String(form.endTimeMinute).padStart(2, '0')}`;
+      // 종일 일정일 때는 항상 "23:59"로 설정
+      const combined = form.isAllDay 
+        ? "23:59"
+        : `${String(form.endTimeHour).padStart(2, '0')}:${String(form.endTimeMinute).padStart(2, '0')}`;
       setForm((prev) => {
-        // 무한 루프 방지: 값이 같으면 업데이트하지 않음
         if (prev.endTime === combined) return prev;
         return { ...prev, endTime: combined };
       });
     }
-  }, [form.endTimeHour, form.endTimeMinute]);
+  }, [form.endTimeHour, form.endTimeMinute, form.isAllDay]);
+
+  // 수정 모드일 때 일정 ID를 메모이제이션하여 참여자 일정 조회 시 항상 올바르게 전달
+  const scheduleId = useMemo(() => {
+    return isEdit && initialData ? initialData.id : null;
+  }, [isEdit, initialData?.id]);
 
   /** 참석자 일정 현황 조회 */
   useEffect(() => {
     if (form.participantIds.length === 0 || !form.startDateTime || !form.endDateTime) return;
 
     const checkParticipantsAvailability = async () => {
+      // 날짜 형식 검증: toBackendFormat이 null을 반환하면 API 호출 건너뛰기
+      const normalizedStart = toBackendFormat(form.startDateTime);
+      const normalizedEnd = toBackendFormat(form.endDateTime);
+      
+      if (!normalizedStart || !normalizedEnd) {
+        // 날짜 형식이 유효하지 않으면 조회 건너뛰기 (간헐적 오류 방지)
+        return;
+      }
+      
       try {
+        // 수정 모드일 때 자기 자신의 일정 ID 전달 (메모이제이션된 값 사용)
         const availability = await getUsersAvailability(
           form.participantIds,
-          toBackendFormat(form.startDateTime),
-          toBackendFormat(form.endDateTime)
+          normalizedStart,
+          normalizedEnd,
+          scheduleId
         );
         setAvailabilityMap({ ...availability });
         
@@ -294,11 +421,14 @@ export default function ScheduleModal({
           // 정보는 한 번만 표시하도록 플래그 사용 (선택사항)
         }
       } catch (err) {
+        // 날짜 형식 검증을 통과했는데도 오류가 발생한 경우
+        // (날짜 형식 검증 단계에서 이미 필터링되었으므로 실제 서버 오류일 가능성이 높음)
+        console.error("참석자 일정 현황 조회 실패:", err);
         showSnack("참석자 일정 현황을 불러오는 중 오류가 발생했습니다.", "error");
       }
     };
     checkParticipantsAvailability();
-  }, [form.participantIds, form.startDateTime, form.endDateTime, form.isAllDay, showSnack]);
+  }, [form.participantIds, form.startDateTime, form.endDateTime, form.isAllDay, scheduleId]);
 
   /** 회의실 선택 시 시간대 기반으로 가용성 조회 */
   const handleRoomSelectOpen = async () => {
@@ -333,45 +463,134 @@ export default function ScheduleModal({
         return;
       }
       
-      if (!form.meetingRoomId || !form.startDateTime || !form.endDateTime) return;
-      const result = await checkRoomAvailable(
-        form.meetingRoomId,
-        form.startDateTime,
-        form.endDateTime
-      );
-      setRoomAvailable(result.available);
+      // 회의실이 선택되지 않았으면 검사 건너뛰기
+      if (!form.meetingRoomId || !form.startDateTime || !form.endDateTime) {
+        setRoomAvailable(true);
+        return;
+      }
+      
+      // 수정 모드일 때: 회의실과 시간이 변경되지 않았으면 검사 건너뛰기
+      if (isEdit && initialData) {
+        const originalMeetingRoomId = initialData.meetingRoomId || null;
+        const originalStartDateTime = initialData.startDateTime || null;
+        const originalEndDateTime = initialData.endDateTime || null;
+        
+        // 날짜 형식을 정규화하여 비교 (toBackendFormat으로 통일)
+        const normalizedFormStart = form.startDateTime ? toBackendFormat(form.startDateTime) : null;
+        const normalizedFormEnd = form.endDateTime ? toBackendFormat(form.endDateTime) : null;
+        const normalizedOriginalStart = originalStartDateTime ? toBackendFormat(originalStartDateTime) : null;
+        const normalizedOriginalEnd = originalEndDateTime ? toBackendFormat(originalEndDateTime) : null;
+        
+        // 회의실이 같고, 시작/종료 시간도 같으면 검사 건너뛰기
+        if (originalMeetingRoomId && 
+            String(form.meetingRoomId) === String(originalMeetingRoomId) &&
+            normalizedFormStart === normalizedOriginalStart &&
+            normalizedFormEnd === normalizedOriginalEnd) {
+          setRoomAvailable(true);
+          return;
+        }
+      }
+      
+      try {
+        // 날짜 형식 검증: toBackendFormat이 null을 반환하면 API 호출 건너뛰기
+        const normalizedStart = toBackendFormat(form.startDateTime);
+        const normalizedEnd = toBackendFormat(form.endDateTime);
+        
+        if (!normalizedStart || !normalizedEnd) {
+          // 날짜 형식이 유효하지 않으면 검사 건너뛰기
+          setRoomAvailable(true);
+          return;
+        }
+        
+        // 수정 모드일 때 자기 자신의 일정 ID 전달 (메모이제이션된 값 사용)
+        const result = await checkRoomAvailable(
+          form.meetingRoomId,
+          normalizedStart,
+          normalizedEnd,
+          scheduleId
+        );
+        setRoomAvailable(result.available);
+      } catch (err) {
+        // 회의실 검사 실패 시 기본값으로 설정 (오류가 발생해도 일정 등록은 가능하도록)
+        console.error("회의실 예약 가능 여부 확인 실패:", err);
+        setRoomAvailable(true);
+      }
     };
     checkAvailability();
-  }, [form.meetingRoomId, form.startDateTime, form.endDateTime, form.isAllDay]);
+  }, [form.meetingRoomId, form.startDateTime, form.endDateTime, form.isAllDay, isEdit, initialData, scheduleId]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+    // 제목 입력 시 에러 상태 초기화
+    if (name === "title" && value) {
+      setTitleError(false);
+    }
+    // 카테고리 선택 시 에러 상태 초기화
+    if (name === "categoryId" && value) {
+      setCategoryError(false);
+    }
   };
 
   /** 참석자별 상태 계산 함수 */
   const getParticipantStatus = (userId) => {
+    // 수정 모드이고 현재 일정의 참여자 목록에 포함된 경우
+    if (isEdit && initialData && initialData.participantIds && initialData.participantIds.includes(userId)) {
+      return "participating";
+    }
+    
+    // 등록 모드이고 현재 사용자인 경우 (본인은 항상 참여중)
+    if (!isEdit && currentUserEmail) {
+      const currentUser = users.find(u => u.id === userId);
+      if (currentUser && currentUser.email === currentUserEmail) {
+        return "participating";
+      }
+    }
+    
+    // 기존 로직: availabilityMap 확인
     const schedules = availabilityMap[userId];
     return Array.isArray(schedules) && schedules.length > 0 ? "busy" : "free";
   };
 
   const handleSubmit = () => {
+    // 제목 필수 검증
+    if (!form.title || form.title.trim() === "") {
+      setTitleError(true);
+      showSnack("일정 제목을 입력해주세요.", "error");
+      return;
+    }
+    setTitleError(false);
+    
+    // 카테고리 필수 검증
+    if (!form.categoryId || form.categoryId === "") {
+      setCategoryError(true);
+      showSnack("카테고리를 선택해주세요.", "error");
+      return;
+    }
+    setCategoryError(false);
+    
     if (!roomAvailable && !form.isAllDay) {
       // 종일이 아닐 때만 회의실 예약 가능 여부 검사
       showSnack("이 시간대에는 선택한 회의실이 이미 예약되어 있습니다.", "warning");
       return;
     }
     
-    // 종일이면 시간을 00:00:00, 23:59:00으로 설정
-    const startDateTime = form.isAllDay
-      ? `${form.startDate} 00:00:00`
-      : `${form.startDate} ${form.startTime}:00`;
-      
-    const endDateTime = form.isAllDay
-      ? `${form.endDate} 23:59:00`
-      : `${form.endDate} ${form.endTime}:00`;
+    // form.startDateTime과 form.endDateTime을 직접 사용 (useEffect에서 이미 동기화됨)
+    // null 검증 추가
+    if (!form.startDateTime || !form.endDateTime) {
+      showSnack("시작 시간 또는 종료 시간이 올바르지 않습니다.", "error");
+      return;
+    }
     
-    // scheduleAPI.js에서 toBackendFormat을 처리하므로 여기서는 그대로 전달
+    // toBackendFormat으로 최종 검증 (scheduleAPI.js에서도 검증하지만, 조기 검증으로 사용자 경험 개선)
+    const normalizedStart = toBackendFormat(form.startDateTime);
+    const normalizedEnd = toBackendFormat(form.endDateTime);
+    
+    if (!normalizedStart || !normalizedEnd) {
+      showSnack("시작 시간 또는 종료 시간 형식이 올바르지 않습니다.", "error");
+      return;
+    }
+    
     // 분리 필드(UI용)는 제외하고 전송
     const { 
       startDate, 
@@ -388,8 +607,8 @@ export default function ScheduleModal({
     
     onSubmit({
       ...payload,
-      startDateTime,
-      endDateTime
+      startDateTime: normalizedStart,
+      endDateTime: normalizedEnd
     }, isEdit);
   };
 
@@ -468,6 +687,9 @@ export default function ScheduleModal({
                 value={form.title} 
                 onChange={handleChange} 
                 sx={{ flex: 1 }}
+                required
+                error={titleError}
+                helperText={titleError ? "일정 제목을 입력해주세요." : ""}
               />
               <FormControl>
                 <RadioGroup
@@ -479,15 +701,17 @@ export default function ScheduleModal({
                     setForm(prev => {
                       if (isAllDay) {
                         // 종일 선택: 00:00 ~ 23:59로 설정
+                        // endTimeMinute는 "55"로 설정 (minutes 배열에 있는 값)
+                        // 하지만 endTime은 "23:59"로 직접 설정
                         return {
                           ...prev,
                           isAllDay: true,
                           startTimeHour: "0",
                           startTimeMinute: "0",
                           endTimeHour: "23",
-                          endTimeMinute: "59",
+                          endTimeMinute: "55", // minutes 배열에 있는 값 사용
                           startTime: "00:00",
-                          endTime: "23:59",
+                          endTime: "23:59", // 종일 일정은 항상 23:59
                           // 통합 필드도 업데이트
                           startDateTime: `${prev.startDate} 00:00:00`,
                           endDateTime: `${prev.endDate} 23:59:00`,
@@ -537,11 +761,14 @@ export default function ScheduleModal({
             {/* 카테고리 */}
             <TextField
               select
+              required
               label="카테고리"
               name="categoryId"
               value={form.categoryId}
               onChange={handleChange}
               fullWidth
+              error={categoryError}
+              helperText={categoryError ? "카테고리를 선택해주세요." : ""}
             >
               {categories.map((cat) => (
                 <MenuItem key={cat.id} value={cat.id}>
@@ -565,11 +792,24 @@ export default function ScheduleModal({
               renderTags={(selected, getTagProps) =>
                 selected.map((option, index) => {
                   const status = getParticipantStatus(option.id);
+                  let label, color;
+                  
+                  if (status === "participating") {
+                    label = `${option.name} 🟦 참여중`;
+                    color = "info";
+                  } else if (status === "busy") {
+                    label = `${option.name} 🟥 바쁨`;
+                    color = "error";
+                  } else {
+                    label = `${option.name} 🟩 가능`;
+                    color = "success";
+                  }
+                  
                   return (
                     <Chip
                       key={option.id}
-                      label={`${option.name} ${status === "busy" ? "🟥 바쁨" : "🟩 가능"}`}
-                      color={status === "busy" ? "error" : "success"}
+                      label={label}
+                      color={color}
                       {...getTagProps({ index })}
                     />
                   );
@@ -673,6 +913,7 @@ export default function ScheduleModal({
                     <InputLabel>분</InputLabel>
                     <Select
                       value={form.startTimeMinute || "0"}
+                      disabled={form.isAllDay}
                       onChange={(e) => {
                         const minute = e.target.value;
                         const hour = form.startTimeHour || "9";
@@ -786,6 +1027,7 @@ export default function ScheduleModal({
                     <InputLabel>분</InputLabel>
                     <Select
                       value={form.endTimeMinute || "0"}
+                      disabled={form.isAllDay}
                       onChange={(e) => {
                         const minute = e.target.value;
                         const hour = form.endTimeHour || "10";
@@ -813,17 +1055,36 @@ export default function ScheduleModal({
               <Select
                 labelId="meetingRoom-label"
                 name="meetingRoomId"
-                value={form.meetingRoomId}
+                value={form.meetingRoomId || ""}
                 label="회의실"
                 disabled={form.isAllDay}  // 종일일 때 비활성화
                 onOpen={handleRoomSelectOpen}   // 드롭다운이 열릴 때 바로 실행됨
                 onChange={handleChange}
               >
-                {meetingRooms.map((room) => (
-                  <MenuItem key={room.id} value={room.id} disabled={!room.availableYn}>
-                    {room.name} {room.availableYn ? "" : "(예약 불가)"}
-                  </MenuItem>
-                ))}
+                <MenuItem value="">
+                  <em>회의실 선택 안함</em>
+                </MenuItem>
+                {meetingRooms.map((room) => {
+                  const isCurrentRoom = isEdit && initialData && initialData.meetingRoomId === room.id;
+                  const isUnavailable = !room.availableYn;
+                  
+                  let statusText = "";
+                  if (isCurrentRoom) {
+                    statusText = "(사용중)";
+                  } else if (isUnavailable) {
+                    statusText = "(예약 불가)";
+                  }
+                  
+                  return (
+                    <MenuItem 
+                      key={room.id} 
+                      value={room.id} 
+                      disabled={isUnavailable && !isCurrentRoom} // 사용중인 회의실은 비활성화하지 않음
+                    >
+                      {room.name} {statusText}
+                    </MenuItem>
+                  );
+                })}
               </Select>
             </FormControl>
 
@@ -842,12 +1103,12 @@ export default function ScheduleModal({
         </Box>
 
         {/* 오른쪽 참석자 일정표 */}
-        <Box sx={{width: 450, borderLeft: "1px solid #ddd", overflowY: "auto", overflowX: "auto", backgroundColor: "#fafafa"}}>
+        <Box sx={{width: "auto", minWidth: 720, borderLeft: "1px solid #ddd", overflowY: "auto", overflowX: "hidden", backgroundColor: "#fafafa"}}>
           <AttendeeTimelinePanel
             users={selectedUsers}
             availabilityMap={availabilityMap}
-            startDateTime={form.startDateTime}
-            endDateTime={form.endDateTime}
+            startDateTime={form.startDateTime || null}
+            endDateTime={form.endDateTime || null}
           />
         </Box>
       </DialogContent>

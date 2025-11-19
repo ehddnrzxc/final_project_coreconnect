@@ -40,12 +40,41 @@ export const toBackendFormat = (input) => {
 
   // 문자열 ("T" or " " 모두 지원)
   else if (typeof input === "string") {
-    let temp = input.includes("T") ? input.replace("T", " ") : input;
+    let temp = input.trim();
+    
+    // 타임존 오프셋 제거 (+09:00, -05:00, Z 등) - 먼저 처리
+    temp = temp.replace(/[+-]\d{2}:\d{2}$/, "").replace(/Z$/, "");
+    
+    // 잘못된 형식 정리: "2025-11-24 08:00:00+09:00 09:00:00" 같은 경우
+    // 타임존 오프셋이 제거된 후에도 중복 시간이 남아있을 수 있음
+    // 정규식으로 올바른 형식만 추출: "yyyy-MM-dd HH:mm:ss" 또는 "yyyy-MM-ddTHH:mm:ss"
+    const dateTimeMatch = temp.match(/^(\d{4}-\d{2}-\d{2})[T\s](\d{2}:\d{2}(?::\d{2})?)/);
+    if (dateTimeMatch) {
+      const [, datePart, timePart] = dateTimeMatch;
+      // 시간 부분에 초가 없으면 추가
+      const normalizedTime = timePart.includes(':') && timePart.split(':').length === 2 
+        ? `${timePart}:00` 
+        : timePart;
+      temp = `${datePart} ${normalizedTime}`;
+    } else {
+      // 매칭되지 않으면 기본 처리
+      // 공백 이후의 중복 시간 부분 제거
+      if (temp.includes(" ") && temp.split(" ").length > 2) {
+        const parts = temp.split(" ");
+        // 날짜 부분과 첫 번째 시간 부분만 사용
+        if (parts.length >= 2) {
+          temp = `${parts[0]} ${parts[1]}`;
+        }
+      }
+      
+      // "T"를 " "로 변환
+      temp = temp.includes("T") ? temp.replace("T", " ") : temp;
 
-    // 초(:ss)가 없는 경우 자동으로 ":00" 추가
-    // 예: "2025-11-07 11:00" → "2025-11-07 11:00:00"
-    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(temp)) {
-      temp += ":00";
+      // 초(:ss)가 없는 경우 자동으로 ":00" 추가
+      // 예: "2025-11-07 11:00" → "2025-11-07 11:00:00"
+      if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(temp)) {
+        temp += ":00";
+      }
     }
 
     result = temp.trim();
@@ -74,9 +103,24 @@ export const toISO = (input) => {
 
   // 문자열 (" " or "T")
   else if (typeof input === "string") {
-    result = input.includes("T")
-      ? input.trim()
-      : input.replace(" ", "T").trim();
+    let temp = input.trim();
+    
+    // 타임존 오프셋 제거 (+09:00, -05:00, Z 등)
+    temp = temp.replace(/[+-]\d{2}:\d{2}$/, "").replace(/Z$/, "");
+    
+    // 잘못된 형식 정리: "2025-11-24T09:00:00+09:00 09:00:00" 같은 경우
+    // 공백 이후의 중복 시간 부분 제거
+    if (temp.includes("T") && temp.includes(" ")) {
+      const tIndex = temp.indexOf("T");
+      const spaceIndex = temp.indexOf(" ", tIndex);
+      if (spaceIndex > 0) {
+        // "T" 이후 첫 번째 공백까지만 사용
+        temp = temp.substring(0, spaceIndex);
+      }
+    }
+    
+    // " "를 "T"로 변환
+    result = temp.includes("T") ? temp : temp.replace(" ", "T");
   }
 
   // 기타
