@@ -130,20 +130,31 @@ public class EmailServiceImpl implements EmailService {
 	    Optional<EmailRecipient> myRecipientOpt = recipients.stream()
 	        .filter(r -> viewerEmail.equals(r.getEmailRecipientAddress()))
 	        .findFirst();
-	    if (myRecipientOpt.isPresent() && Boolean.FALSE.equals(myRecipientOpt.get().getEmailReadYn())) {
-	        EmailRecipient old = myRecipientOpt.get();
-	        EmailRecipient updated = EmailRecipient.builder()
-	            .emailRecipientId(old.getEmailRecipientId())
-	            .emailRecipientType(old.getEmailRecipientType())
-	            .emailRecipientAddress(old.getEmailRecipientAddress())
-	            .userId(old.getUserId())
-	            .emailReadYn(true)
-	            .emailReadAt(LocalDateTime.now())
-	            .emailIsAlarmSent(old.getEmailIsAlarmSent())
-	            .email(old.getEmail())
-	            .extendedEmail(old.getExtendedEmail())
-	            .build();
-	        emailRecipientRepository.save(updated);
+	    // emailReadYn이 false이거나 null인 경우 모두 처리
+	    if (myRecipientOpt.isPresent()) {
+	        EmailRecipient recipient = myRecipientOpt.get();
+	        Boolean currentReadYn = recipient.getEmailReadYn();
+	        // 안읽은 메일인 경우 (false 또는 null)
+	        if (currentReadYn == null || Boolean.FALSE.equals(currentReadYn)) {
+	            LocalDateTime now = LocalDateTime.now();
+	            // 엔티티를 직접 수정하여 DB에 확실히 반영
+	            recipient.setEmailReadYn(true);
+	            recipient.setEmailReadAt(now);
+	            emailRecipientRepository.save(recipient);
+	            // 즉시 DB에 반영되도록 flush
+	            emailRecipientRepository.flush();
+	            log.info("getEmailDetail: EmailRecipient updated - emailId={}, viewerEmail={}, emailReadYn={} -> true, emailReadAt={}", 
+	                    emailId, viewerEmail, currentReadYn, now);
+	            
+	            // Email 엔티티의 emailReadAt도 업데이트
+	            email.setEmailReadAt(now);
+	            emailRepository.save(email);
+	            emailRepository.flush();
+	            log.info("getEmailDetail: Email updated - emailId={}, emailReadAt={}", emailId, now);
+	        } else {
+	            log.info("getEmailDetail: Email already read - emailId={}, viewerEmail={}, emailReadYn={}", 
+	                    emailId, viewerEmail, currentReadYn);
+	        }
 	    }
 
 	    // 2. 관련 수신자, 첨부파일 조회 (엔티티 직접 분리)
@@ -288,8 +299,8 @@ public class EmailServiceImpl implements EmailService {
 	    Sort sort = Sort.by(Sort.Direction.DESC, "emailSentTime"); // DB/엔티티 컬럼명이 "emailSentTime"임을 위에서 확인함
 	    Pageable pageable = PageRequest.of(page, size, sort);
 
-	    // [3] 정수 senderId 기준으로 보낸 메일 조회 (JPA 메서드 수정됨)
-	    Page<com.goodee.coreconnect.email.entity.Email> emailPage = emailRepository.findBySenderId(senderId, pageable);
+	    // [3] 정수 senderId 기준으로 보낸 메일 조회 (휴지통/삭제 상태 제외)
+	    Page<com.goodee.coreconnect.email.entity.Email> emailPage = emailRepository.findBySenderIdExcludingTrash(senderId, pageable);
 
 	    // [4] DTO 변환
 	    List<EmailResponseDTO> dtoList = emailPage.stream().map(email -> {
@@ -645,21 +656,33 @@ public class EmailServiceImpl implements EmailService {
             .filter(r -> userEmail.equals(r.getEmailRecipientAddress()))
             .findFirst();
 
-        if (myRecipientOpt.isPresent() && Boolean.FALSE.equals(myRecipientOpt.get().getEmailReadYn())) {
-            EmailRecipient old = myRecipientOpt.get();
-            EmailRecipient updated = EmailRecipient.builder()
-                    .emailRecipientId(old.getEmailRecipientId())
-                    .emailRecipientType(old.getEmailRecipientType())
-                    .emailRecipientAddress(old.getEmailRecipientAddress())
-                    .userId(old.getUserId())
-                    .emailReadYn(true)
-                    .emailReadAt(LocalDateTime.now())
-                    .emailIsAlarmSent(old.getEmailIsAlarmSent())
-                    .email(old.getEmail())
-                    .extendedEmail(old.getExtendedEmail())
-                    .build();
-            emailRecipientRepository.save(updated);
-            return true;
+        // emailReadYn이 false이거나 null인 경우 모두 처리
+        if (myRecipientOpt.isPresent()) {
+            EmailRecipient recipient = myRecipientOpt.get();
+            Boolean currentReadYn = recipient.getEmailReadYn();
+            // 안읽은 메일인 경우 (false 또는 null)
+            if (currentReadYn == null || Boolean.FALSE.equals(currentReadYn)) {
+                LocalDateTime now = LocalDateTime.now();
+                // 엔티티를 직접 수정하여 DB에 확실히 반영
+                recipient.setEmailReadYn(true);
+                recipient.setEmailReadAt(now);
+                emailRecipientRepository.save(recipient);
+                // 즉시 DB에 반영되도록 flush
+                emailRecipientRepository.flush();
+                log.info("markMailAsRead: EmailRecipient updated - emailId={}, userEmail={}, emailReadYn={} -> true, emailReadAt={}", 
+                        emailId, userEmail, currentReadYn, now);
+                
+                // Email 엔티티의 emailReadAt도 업데이트
+                email.setEmailReadAt(now);
+                emailRepository.save(email);
+                emailRepository.flush();
+                log.info("markMailAsRead: Email updated - emailId={}, emailReadAt={}", emailId, now);
+                
+                return true;
+            } else {
+                log.info("markMailAsRead: Email already read - emailId={}, userEmail={}, emailReadYn={}", 
+                        emailId, userEmail, currentReadYn);
+            }
         }
         // 이미 읽은 경우나 못찾은 경우
         return false;
@@ -931,16 +954,197 @@ public class EmailServiceImpl implements EmailService {
     @Override
     @Transactional
     public void moveEmailsToTrash(List<Integer> emailIds, String userEmail) {
-        if (CollectionUtils.isEmpty(emailIds)) {
+        log.info("moveEmailsToTrash: 시작 - emailIds={}, userEmail={}", emailIds, userEmail);
+        
+        if (CollectionUtils.isEmpty(emailIds) || userEmail == null) {
+            log.warn("moveEmailsToTrash: emailIds or userEmail is empty/null");
             return;
         }
-        // 조건 없이 모든 emailIds를 allowed에 복사
-        List<Integer> allowed = new ArrayList<>(emailIds);
-
-        if (!allowed.isEmpty()) {
-            int updated = emailRepository.updateEmailStatusByIds(allowed, EmailStatusEnum.TRASH);
-            log.info("moveEmailsToTrash: updated {} rows to TRASH for user {}", updated, userEmail);
+        
+        // userEmail -> userId 변환
+        Optional<User> userOpt = userRepository.findByEmail(userEmail);
+        if (userOpt.isEmpty()) {
+            log.error("moveEmailsToTrash: User not found for email {}", userEmail);
+            return;
         }
+        Integer userIntId = userOpt.get().getId();
+        Long userId = userIntId.longValue();
+        log.info("moveEmailsToTrash: userIntId={}, userId={}", userIntId, userId);
+        
+        LocalDateTime now = LocalDateTime.now();
+        int emailStatusUpdated = 0;
+        int visibilityUpdated = 0;
+        
+        for (Integer emailId : emailIds) {
+            try {
+                log.info("moveEmailsToTrash: 처리 중 - emailId={}", emailId);
+                
+                // 1. Email 엔티티 조회
+                Optional<com.goodee.coreconnect.email.entity.Email> emailOpt = emailRepository.findById(emailId);
+                if (emailOpt.isEmpty()) {
+                    log.warn("moveEmailsToTrash: Email not found for emailId {}", emailId);
+                    continue;
+                }
+                
+                com.goodee.coreconnect.email.entity.Email email = emailOpt.get();
+                log.info("moveEmailsToTrash: Email found - emailId={}, senderId={}, status={}", 
+                        emailId, email.getSenderId(), email.getEmailStatus());
+                
+                // 2. 발신자인지 수신자인지 먼저 확인
+                String role = "RECIPIENT";
+                boolean isSender = false;
+                boolean isRecipient = false;
+                
+                // 발신자 확인
+                Integer emailSenderId = email.getSenderId();
+                if (emailSenderId != null) {
+                    log.info("moveEmailsToTrash: 발신자 확인 - emailSenderId={}, userIntId={}", emailSenderId, userIntId);
+                    if (emailSenderId.equals(userIntId)) {
+                        role = "SENDER";
+                        isSender = true;
+                        log.info("moveEmailsToTrash: 발신자 확인됨 - emailId={}", emailId);
+                    }
+                }
+                
+                // 수신자 확인 (EmailRecipient를 통해)
+                EmailRecipient userRecipient = null;
+                if (!isSender) {
+                    List<EmailRecipient> recipients = emailRecipientRepository.findByEmail(email);
+                    log.info("moveEmailsToTrash: 수신자 확인 - recipients count={}", recipients.size());
+                    for (EmailRecipient recipient : recipients) {
+                        String recipientAddress = recipient.getEmailRecipientAddress();
+                        log.debug("moveEmailsToTrash: 수신자 비교 - recipientAddress={}, userEmail={}", recipientAddress, userEmail);
+                        if (userEmail != null && userEmail.equals(recipientAddress)) {
+                            isRecipient = true;
+                            role = "RECIPIENT";
+                            userRecipient = recipient;
+                            log.info("moveEmailsToTrash: 수신자 확인됨 - emailId={}, recipientAddress={}", emailId, recipientAddress);
+                            break;
+                        }
+                    }
+                }
+                
+                // 3. 발신자/수신자에 따라 다른 처리
+                if (isSender) {
+                    // 보낸메일함: Email 엔티티의 상태를 TRASH로 변경
+                    email.setEmailStatus(EmailStatusEnum.TRASH);
+                    emailRepository.save(email);
+                    emailRepository.flush();
+                    emailStatusUpdated++;
+                    log.info("moveEmailsToTrash: 보낸메일함 - Email status updated to TRASH - emailId={}", emailId);
+                } else if (isRecipient && userRecipient != null) {
+                    // 받은메일함: EmailRecipient의 deleted를 true로 설정 (Email.emailStatus는 변경하지 않음)
+                    userRecipient.setDeleted(true);
+                    userRecipient.setDeletedAt(now);
+                    emailRecipientRepository.save(userRecipient);
+                    emailRecipientRepository.flush();
+                    log.info("moveEmailsToTrash: 받은메일함 - EmailRecipient deleted=true - emailId={}, recipientId={}", 
+                            emailId, userRecipient.getEmailRecipientId());
+                } else {
+                    log.warn("moveEmailsToTrash: User {} is neither sender nor recipient of email {}", userEmail, emailId);
+                    // 발신자도 수신자도 아니면 경고만 하고 계속 진행
+                }
+                
+                // 4. mail_user_visibility 테이블에 기록 (휴지통 DB)
+                // 발신자도 수신자도 아니면 mail_user_visibility에 저장하지 않음
+                if (!isSender && !isRecipient) {
+                    log.warn("moveEmailsToTrash: User {} is neither sender nor recipient of email {}, skipping mail_user_visibility", 
+                            userEmail, emailId);
+                    continue; // 다음 메일로
+                }
+                
+                Long mailId = emailId.longValue();
+                
+                // mail_user_visibility에 기록 (무조건 저장 - 받은메일함/보낸메일함에서 삭제 요청이므로)
+                // 기존 레코드가 있으면 업데이트, 없으면 생성
+                Optional<MailUserVisibility> visibilityOpt = visibilityRepository.findByMailIdAndUserId(mailId, userId);
+                log.info("moveEmailsToTrash: mail_user_visibility 조회 - mailId={}, userId={}, exists={}", 
+                        mailId, userId, visibilityOpt.isPresent());
+                
+                MailUserVisibility visibility;
+                boolean isNewRecord = false;
+                
+                if (visibilityOpt.isPresent()) {
+                    // 기존 레코드 업데이트 (직접 수정)
+                    visibility = visibilityOpt.get();
+                    log.info("moveEmailsToTrash: 기존 레코드 업데이트 - id={}, deleted={}, role={}", 
+                            visibility.getId(), visibility.isDeleted(), visibility.getRole());
+                    visibility.setDeleted(true);
+                    visibility.setDeletedAt(now);
+                    if (visibility.getRole() == null || visibility.getRole().isEmpty()) {
+                        visibility.setRole(role);
+                    }
+                    if (visibility.getCreatedAt() == null) {
+                        visibility.setCreatedAt(now);
+                    }
+                } else {
+                    // 새 레코드 생성
+                    isNewRecord = true;
+                    log.info("moveEmailsToTrash: 새 레코드 생성 - mailId={}, userId={}, role={}", mailId, userId, role);
+                    visibility = MailUserVisibility.builder()
+                            .mailId(mailId)
+                            .userId(userId)
+                            .role(role)
+                            .deleted(true)
+                            .deletedAt(now)
+                            .createdAt(now)
+                            .build();
+                }
+                
+                // 저장 전 최종 확인
+                log.info("moveEmailsToTrash: 저장 전 확인 - mailId={}, userId={}, role={}, deleted={}, isNew={}", 
+                        visibility.getMailId(), visibility.getUserId(), visibility.getRole(), visibility.isDeleted(), isNewRecord);
+                
+                MailUserVisibility saved = visibilityRepository.save(visibility);
+                visibilityRepository.flush(); // 즉시 반영
+                
+                // 저장 후 확인
+                if (saved.getId() != null) {
+                    visibilityUpdated++;
+                    log.info("moveEmailsToTrash: ✅ 저장 성공 - id={}, mailId={}, userId={}, role={}, deleted={}, deletedAt={}", 
+                            saved.getId(), saved.getMailId(), saved.getUserId(), saved.getRole(), saved.isDeleted(), saved.getDeletedAt());
+                } else {
+                    log.error("moveEmailsToTrash: ❌ 저장 실패 - id가 null입니다. mailId={}, userId={}", mailId, userId);
+                }
+                
+            } catch (Exception e) {
+                log.error("moveEmailsToTrash: Error processing emailId={}", emailId, e);
+                // 개별 메일 처리 실패해도 계속 진행
+            }
+        }
+        
+        log.info("moveEmailsToTrash: 완료 - updated {} Email rows to TRASH, {} MailUserVisibility records for user {}", 
+                emailStatusUpdated, visibilityUpdated, userEmail);
+    }
+
+    @Override
+    @Transactional
+    public void deleteInboxMails(List<Integer> emailIds, String userEmail) {
+        if (CollectionUtils.isEmpty(emailIds) || userEmail == null) {
+            return;
+        }
+        
+        LocalDateTime now = LocalDateTime.now();
+        int deletedCount = 0;
+        
+        for (Integer emailId : emailIds) {
+            // 해당 이메일의 수신자 중 현재 사용자에 해당하는 EmailRecipient 찾기
+            com.goodee.coreconnect.email.entity.Email email = emailRepository.findById(emailId).orElse(null);
+            if (email == null) continue;
+            
+            List<EmailRecipient> recipients = emailRecipientRepository.findByEmail(email);
+            for (EmailRecipient recipient : recipients) {
+                if (userEmail.equals(recipient.getEmailRecipientAddress()) && 
+                    (recipient.getDeleted() == null || !recipient.getDeleted())) {
+                    recipient.setDeleted(true);
+                    recipient.setDeletedAt(now);
+                    emailRecipientRepository.save(recipient);
+                    deletedCount++;
+                }
+            }
+        }
+        
+        log.info("deleteInboxMails: deleted {} EmailRecipient records for user {}", deletedCount, userEmail);
     }
 
     @Override
@@ -1025,22 +1229,27 @@ public class EmailServiceImpl implements EmailService {
 
 	@Override
 	public Page<EmailResponseDTO> getTrashMails(String userEmail, int page, int size) {
-	    // 1) userEmail -> userId 변환
-	    Integer userId = userRepository.findByEmail(userEmail).map(User::getId).orElse(null);
-	    log.info("[getTrashMails] 요청 userEmail={}, userId={}, page={}, size={}", userEmail, userId, page, size);
-	    if (userId == null) {
+	    // 1) userEmail -> userId 변환 (Long 타입으로)
+	    Optional<User> userOpt = userRepository.findByEmail(userEmail);
+	    if (userOpt.isEmpty()) {
 	        Pageable emptyPageable = PageRequest.of(page, size);
-	        log.info("[getTrashMails] userId not found for email={}, return empty page", userEmail);
+	        log.warn("[getTrashMails] userId not found for email={}, return empty page", userEmail);
 	        return Page.empty(emptyPageable).map(e -> (EmailResponseDTO) null);
 	    }
+	    
+	    Integer userIntId = userOpt.get().getId();
+	    Long userId = userIntId.longValue();
+	    
+	    log.info("[getTrashMails] 요청 userEmail={}, userId={}, page={}, size={}", userEmail, userId, page, size);
 
 	    // 2) Pageable 설정
 	    Pageable pageable = PageRequest.of(page, size);
 
 	    // 3) repository에서 조회 (mail_user_visibility join 기반 nativeQuery를 사용)
+	    // 주의: findTrashEmailsByUserId는 Integer를 받지만, 실제 DB는 Long이므로 변환 필요
 	    Page<com.goodee.coreconnect.email.entity.Email> pageResult;
 	    try {
-	        pageResult = emailRepository.findTrashEmailsByUserId(userId, pageable);
+	        pageResult = emailRepository.findTrashEmailsByUserId(userIntId, pageable);
 	    } catch (Exception ex) {
 	        log.error("[getTrashMails] repository 조회 중 예외 발생", ex);
 	        Pageable emptyPageable = PageRequest.of(page, size);

@@ -116,15 +116,21 @@ const MailSentBoxPage = () => {
     - 체크박스 선택 후 삭제 버튼 클릭 시 동작
   */
   const handleDeleteSelected = async () => {
-    if (selected.size === 0) return alert("삭제할 메일을 선택하세요.");
-    if (!window.confirm("선택한 메일을 휴지통으로 이동하시겠습니까?")) return;
+    const ids = Array.from(selected);
+    if (ids.length === 0) {
+      alert("삭제할 메일을 선택하세요.");
+      return;
+    }
+    if (!window.confirm(`선택한 ${ids.length}개의 메일을 휴지통으로 이동하시겠습니까?`)) return;
+    
     try {
-      const ids = Array.from(selected);
       await moveToTrash(ids);
+      alert(`${ids.length}개의 메일을 휴지통으로 이동했습니다.`);
       setSelected(new Set());
+      // 목록 새로고침하여 이동한 항목 즉시 사라지게 함
       load();
     } catch (e) {
-      console.error(e);
+      console.error("handleDeleteSelected error:", e);
       alert("삭제 중 오류가 발생했습니다.");
     }
   };

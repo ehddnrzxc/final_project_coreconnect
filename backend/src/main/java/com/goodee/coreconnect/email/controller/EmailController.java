@@ -161,8 +161,7 @@ public class EmailController {
     ) {
     	// filter: null or "today"/"unread"
         Page<EmailResponseDTO> result = emailService.getInbox(userEmail, page, size, filter);
-        int unreadCount = emailRecipientRepository.countByEmailRecipientAddressAndEmailReadYn(userEmail, false);
-        // {"data":result, "unreadCount":unreadCount} 형태로 응답  
+        // 안읽은 메일 개수는 별도 API로 조회하므로 여기서는 제거
         return ResponseEntity.ok(ResponseDTO.success(result, "받은메일함 조회 성공"));
     }
 
@@ -195,7 +194,7 @@ public class EmailController {
     @Operation(summary = "받은메일함 안읽은 메일 개수", description = "받은메일함 중 안읽은 메일 개수를 반환합니다.")
     @GetMapping("/inbox/unread-count")
     public ResponseEntity<ResponseDTO<Integer>> getUnreadInboxCount(@RequestParam("userEmail") String userEmail) {
-        int unreadCount = emailRecipientRepository.countByEmailRecipientAddressAndEmailReadYn(userEmail, false);
+        int unreadCount = emailRecipientRepository.countUnreadInboxMails(userEmail);
         return ResponseEntity.ok(ResponseDTO.success(unreadCount, "안읽은 메일 개수 조회 성공"));
     }
 
@@ -325,17 +324,37 @@ public class EmailController {
     @CrossOrigin(origins="http://localhost:5173", allowCredentials="true")
     @PostMapping("/move-to-trash")
     public ResponseEntity<?> moveToTrash(@RequestBody List<Integer> emailIds, @AuthenticationPrincipal CustomUserDetails user) {
-        String userEmail = user != null ? user.getName() : null; // 프로젝트에 맞게 수정(예: CustomUserDetails)
-        emailService.moveEmailsToTrash(emailIds, userEmail);
-        return ResponseEntity.ok().build();
+        // CustomUserDetails에서 이메일 가져오기 (getEmail() 또는 getUsername() 사용)
+        String userEmail = user != null ? user.getEmail() : null;
+        log.info("moveToTrash API 호출 - emailIds={}, userEmail={}, user={}", emailIds, userEmail, user != null ? "exists" : "null");
+        
+        if (userEmail == null || userEmail.isEmpty()) {
+            log.error("moveToTrash API: userEmail is null or empty. user={}", user != null ? "exists" : "null");
+            return ResponseEntity.status(400).body("User email is required");
+        }
+        
+        if (emailIds == null || emailIds.isEmpty()) {
+            log.error("moveToTrash API: emailIds is null or empty");
+            return ResponseEntity.status(400).body("Email IDs are required");
+        }
+        
+        try {
+            emailService.moveEmailsToTrash(emailIds, userEmail);
+            log.info("moveToTrash API 완료 - emailIds={}, userEmail={}", emailIds, userEmail);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            log.error("moveToTrash API 오류 - emailIds={}, userEmail={}", emailIds, userEmail, e);
+            return ResponseEntity.status(500).body("Failed to move emails to trash: " + e.getMessage());
+        }
     }
+
 
     /**
      * 현재 사용자의 휴지통 비우기: TRASH -> DELETED
      */
     @PostMapping("/trash/empty")
     public ResponseEntity<?> emptyTrash(@AuthenticationPrincipal CustomUserDetails user) {
-        String userEmail = user != null ? user.getName() : null;
+        String userEmail = user != null ? user.getEmail() : null;
         emailService.emptyTrash(userEmail);
         return ResponseEntity.ok().build();
     }

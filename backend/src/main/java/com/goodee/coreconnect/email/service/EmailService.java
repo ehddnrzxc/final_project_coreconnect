@@ -129,6 +129,14 @@ public interface EmailService {
 	     * @param userEmail 요청자 이메일
 	     */
 	    void moveEmailsToTrash(List<Integer> emailIds, String userEmail);
+	    
+	    /**
+	     * 받은메일함에서 선택된 이메일들을 삭제 처리한다.
+	     * EmailRecipient의 deleted 플래그를 true로 설정하여 받은메일함에서 조회되지 않게 함.
+	     * @param emailIds emailId 리스트
+	     * @param userEmail 요청자 이메일
+	     */
+	    void deleteInboxMails(List<Integer> emailIds, String userEmail);
 
 	    /**
 	     * 요청자(userEmail)의 휴지통(TRASH) 상태인 모든 메일을 삭제 상태(DELETED)로 변경(휴지통 비우기)
