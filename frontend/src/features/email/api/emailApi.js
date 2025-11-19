@@ -44,8 +44,7 @@ export const fetchInbox = (
 
 // '안읽은 메일' 개수 조회 (Controller의 /email/inbox/unread-count와 매칭)
 export const fetchUnreadCount = (userEmail) =>
-  http
-    .get('/email/inbox/unread-count', { params: { userEmail } })
+  http.get('/email/inbox/unread-count', { params: { userEmail } })
     .then(res => res.data.data);
 
 // 메일 상세 조회 (userEmail 동봉)
@@ -178,3 +177,4 @@ export async function fetchScheduledMails(userEmail, page = 0, size = 10) {
   });
   return res.data;
 }
+
