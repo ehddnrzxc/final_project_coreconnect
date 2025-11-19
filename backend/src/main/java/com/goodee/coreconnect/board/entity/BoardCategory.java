@@ -32,8 +32,8 @@ public class BoardCategory {
       if (name == null || name.isBlank()) {
           throw new IllegalArgumentException("카테고리명은 반드시 입력되어야 합니다.");
       }
-      if (orderNo != null && orderNo < 0) {
-        throw new IllegalArgumentException("순서번호는 0 이상의 정수여야 합니다.");
+      if (orderNo != null && orderNo < -1) {
+        throw new IllegalArgumentException("순서번호는 -1 이상의 정수여야 합니다.");
       }
 
       BoardCategory category = new BoardCategory();
@@ -53,8 +53,8 @@ public class BoardCategory {
       if (orderNo == null) {
           throw new IllegalArgumentException("순서 번호는 반드시 지정되어야 합니다.");
       }
-      if (orderNo < 0) {
-        throw new IllegalArgumentException("순서번호는 0 이상의 정수여야 합니다.");
+      if (orderNo < -1) {
+        throw new IllegalArgumentException("순서번호는 -1 이상의 정수여야 합니다.");
       }
 
       this.name = name;

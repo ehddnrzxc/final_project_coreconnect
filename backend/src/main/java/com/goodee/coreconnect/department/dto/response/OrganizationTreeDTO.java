@@ -22,8 +22,8 @@ import lombok.Getter;
 @AllArgsConstructor
 public class OrganizationTreeDTO {
 
-    private static String BUCKET; // S3 URL 생성용 정적 필드
-    private static String REGION; // S3 URL 생성용 정적 필드
+    public static String BUCKET; // S3 URL 생성용 정적 필드
+    public static String REGION; // S3 URL 생성용 정적 필드
 
     /** 정적 필드에 application.properties 값을 주입하는 설정 클래스 */
     @Component

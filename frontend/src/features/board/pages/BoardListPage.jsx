@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { Box, Typography, ListItemButton, Stack, TextField, Button, MenuItem, Select, FormControl, InputLabel } from "@mui/material";
+import { Box, Typography, ListItemButton, Stack, TextField, Button, MenuItem, Select, FormControl, InputLabel, Avatar } from "@mui/material";
 import { getBoardsByCategory, getBoardsOrdered, searchBoards } from "../api/boardAPI";
 import CommentIcon from "@mui/icons-material/Comment";
 import RecentViewedBoards from "./RecentViewedBoards";
@@ -121,50 +121,31 @@ const BoardListPage = () => {
     else navigate(`/board?sortType=${newSort}&page=0`);
   };
 
-  // UI 렌더링
   return (
     <Box sx={{ display: "flex", gap: 3 }}>
-      {/* Box: 최상위 레이아웃 컨테이너 */}
-      {/* display="flex" → 내부를 좌우 배치 (왼쪽: 목록 / 오른쪽: 최근 본 글) */}
-      {/* gap=3 → 좌우 영역 간 간격 확보 */}
-
       <Box sx={{ flex: 3 }}>
-        {/* 왼쪽 메인 게시글 목록 영역 */}
-        {/* flex=3 → 전체 가로 공간 중 약 3비율 차지 */}
-
         {/* 상단 정렬 및 검색 영역 */}
         <Stack
           direction="row"
           spacing={2}
           justifyContent="space-between"
           alignItems="center"
-          sx={{ mb: 2, px: "10%" }}
+          sx={{
+            mb: 2,
+            width: "77%",   // 게시글 박스와 동일하게
+            mx: "auto",     // 가운데 정렬
+          }}
         >
-          {/* Stack: MUI의 수평 정렬 컨테이너 */}
-          {/* direction="row" → 내부 요소들을 가로로 나열 */}
-          {/* spacing=2 → 각 요소 간 기본 여백 */}
-          {/* justifyContent="space-between" → 좌측 정렬, 우측 검색 영역 구분 */}
-          {/* alignItems="center" → 세로 중앙 정렬 */}
-          {/* sx.mb=2 → Stack 아래 여백 2단위 */}
-          {/* px="10%" → 양쪽 여백을 10%로 두어 가운데 배치 효과 */}
-
+          
           {/* 정렬 선택박스 */}
           <FormControl size="small" sx={{ width: 130 }}>
-            {/* FormControl: Select, InputLabel을 감싸는 컨테이너 */}
-            {/* size="small" → 컴팩트한 높이로 */}
-            {/* width=130px 고정 */}
-
             <InputLabel id="sort-label">정렬</InputLabel>
-            {/* InputLabel: Select의 제목 역할 */}
-
             <Select
               labelId="sort-label"
               value={sortType}
               label="정렬"
               onChange={handleSortChange}
             >
-              {/* Select: 드롭다운 메뉴 */}
-              {/* value와 onChange로 상태 관리 */}
               <MenuItem value="latest">최신순</MenuItem>
               <MenuItem value="views">조회순</MenuItem>
             </Select>
@@ -172,7 +153,6 @@ const BoardListPage = () => {
 
           {/* 검색 영역 */}
           <Stack direction="row" spacing={2} alignItems="center">
-            {/* Stack: 검색 옵션 + 입력창 + 버튼을 수평 배치 */}
 
             <FormControl size="small" sx={{ width: 100 }}>
               <InputLabel>검색구분</InputLabel>
@@ -196,10 +176,6 @@ const BoardListPage = () => {
               onKeyDown={handleKeyPress}
               sx={{ width: 250 }}
             />
-            {/* TextField: 검색어 입력창
-                size="small" → 컴팩트 크기
-                placeholder → 회색 안내 문구
-                onKeyDown → 엔터로 검색 실행 */}
 
             <Button
               variant="contained"
@@ -209,9 +185,6 @@ const BoardListPage = () => {
             >
               검색
             </Button>
-            {/* Button: 검색 실행 버튼
-                variant="contained" → 채워진 스타일
-                color="primary" → 메인 색상 */}
           </Stack>
         </Stack>
 
@@ -236,8 +209,8 @@ const BoardListPage = () => {
               border: "1px solid #e0e0e0",
               borderRadius: 1,
               mb: 1.2,
-              py: 1.2,
-              width: "80%",
+              py: 1.5,
+              width: "77%",
               mx: "auto",
               flexDirection: "column",
               alignItems: "flex-start",
@@ -253,9 +226,9 @@ const BoardListPage = () => {
           >
             <Box sx={{ display: "flex", width: "100%" }}>
               {/* 텍스트 본문 (80%) */}
-              <Box sx={{ flex: 4, pr: 2 }}>
+              <Box sx={{ flex: 4, pr: 1 }}>
                 {" "}
-                {/* 기존 카테고리/댓글수/제목/내용/작성자 그대로 유지 */}
+                {/* 카테고리/댓글수/제목/내용/작성자 */}
                 <Stack direction="row" alignItems="center" spacing={1}>
                   {/* 게시판 카테고리명 */}
                   <Typography variant="body2" color="text.secondary">
@@ -264,7 +237,7 @@ const BoardListPage = () => {
 
                   <Stack direction="row" alignItems="center" spacing={0.5}>
                     {/* 댓글 아이콘 + 개수 */}
-                    <CommentIcon sx={{ fontSize: 15, color: "#616161" }} />
+                    <CommentIcon sx={{ fontSize: 20, color: "#1976d2" }} />
                     <Typography variant="caption" color="text.secondary">
                       {b.replyCount ?? 0}
                     </Typography>
@@ -277,7 +250,7 @@ const BoardListPage = () => {
                         spacing={0.3}
                         sx={{ ml: 1 }}
                       >
-                        <AttachFileIcon sx={{ fontSize: 15, color: "#616161" }} />
+                        <AttachFileIcon sx={{ fontSize: 20, color: "#e78018ff" }} />
                         <Typography variant="caption" color="text.secondary">
                           {b.fileCount}
                         </Typography>
@@ -285,7 +258,7 @@ const BoardListPage = () => {
                     )}
                   </Stack>
                 </Stack>
-                {/* 제목과 내용, 날짜 모두 기존 코드 그대로 */}
+                {/* 제목, 내용, 날짜 */}
                 <Stack
                   direction="row"
                   alignItems="center"
@@ -306,6 +279,7 @@ const BoardListPage = () => {
                     variant="subtitle1"
                     sx={{
                       fontWeight: 700,
+                      fontSize: 17,
                       flexGrow: 1,
                       overflow: "hidden",
                       textOverflow: "ellipsis",
@@ -321,7 +295,7 @@ const BoardListPage = () => {
                     color="text.secondary"
                     sx={{
                       mt: 0.5,
-                      mb: 0.5,
+                      mb: 1.5,
                       overflow: "hidden",
                       display: "-webkit-box",
                       WebkitLineClamp: 1,
@@ -331,14 +305,28 @@ const BoardListPage = () => {
                     {b.content}
                   </Typography>
                 )}
-                <Typography variant="caption" color="text.secondary">
-                  {b.writerName}
-                  {b.writerJobGrade ? ` ${b.writerJobGrade}` : ""}
-                  {" / "}
-                  {formatDate(b.createdAt)}
-                  {" / 조회수 "}
-                  {b.viewCount ?? 0}
-                </Typography>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 0.5 }}>
+
+                  {/* 프로필 이미지 */}
+                  <Avatar
+                    src={b.writerProfileImageUrl || undefined}
+                    sx={{
+                      width: 27,
+                      height: 27,
+                      mr: 0.5
+                    }}
+                  />
+
+                  {/* 작성자 정보 */}
+                  <Typography variant="caption" color="text.secondary">
+                    {b.writerName}
+                    {b.writerJobGrade ? ` ${b.writerJobGrade}` : ""}
+                    {" / "}
+                    {formatDate(b.createdAt)}
+                    {" / 조회수 "}
+                    {b.viewCount ?? 0}
+                  </Typography>
+                </Stack>
               </Box>
 
               {/* 오른쪽 이미지 미리보기 (20%) */}
@@ -351,7 +339,7 @@ const BoardListPage = () => {
                       flex: 1, // 20%
                       display: "flex",
                       justifyContent: "center",
-                      alignItems: "center",
+                      alignItems: "flex-start",
                     }}
                   >
                     <Box
@@ -360,7 +348,7 @@ const BoardListPage = () => {
                       alt={b.files[0].fileName || "첨부 이미지"}
                       sx={{
                         width: "100%",
-                        height: 100,
+                        height: 112,
                         objectFit: "cover",
                         borderRadius: 1,
                       }}
@@ -483,4 +471,4 @@ const BoardListPage = () => {
   );
 };
 
-export default BoardListPage; // BoardListPage 컴포넌트를 외부에서 import 가능하게 내보냄
+export default BoardListPage;
