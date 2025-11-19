@@ -13,8 +13,6 @@ import com.goodee.coreconnect.board.entity.Board;
 
 public interface BoardRepository extends JpaRepository<Board, Integer> {
 
-    // ─────────────── 기본 조회 ───────────────
-
     /** 
      * 전체 게시글 조회 
      * - 조건: 삭제되지 않은 게시글 (deletedYn = false)
@@ -39,22 +37,12 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
     /** 
      * 공지글 목록 조회 
      * - 조건: 공지글(noticeYn = true) AND 삭제되지 않음
-     * - 정렬 우선순위:
-     *   1) 상단고정(pinned) 내림차순
-     *   2) 작성일(createdAt) 내림차순
      */
     List<Board> findByNoticeYnTrueAndDeletedYnFalseOrderByPinnedDescCreatedAtDesc();
-
-
-    // ─────────────── 전체 게시판 정렬 조회 ───────────────
 
     /** 
      * 전체 게시글 정렬 조회 (최신순)
      * - 조건: 삭제되지 않은 게시글 (deletedYn = false)
-     * - 정렬 우선순위:
-     *   1) 상단고정(pinned) 내림차순
-     *   2) 공지글(noticeYn) 내림차순
-     *   3) 작성일(createdAt) 내림차순
      */
     @Query("""
         SELECT b FROM Board b
@@ -66,11 +54,6 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
     /** 
      * 전체 게시글 정렬 조회 (조회순)
      * - 조건: 삭제되지 않은 게시글 (deletedYn = false)
-     * - 정렬 우선순위:
-     *   1) 상단고정(pinned) 내림차순
-     *   2) 공지글(noticeYn) 내림차순
-     *   3) 조회수(viewCount) 내림차순
-     *   4) 작성일(createdAt) 내림차순
      */
     @Query("""
         SELECT b FROM Board b
@@ -82,7 +65,6 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
     /** 
      * 전체 게시글 최신순 조회 (공지/상단고정 구분 없음)
      * - 조건: 삭제되지 않은 게시글 (deletedYn = false)
-     * - 정렬: 작성일(createdAt) 내림차순만
      */
     @Query("""
         SELECT b FROM Board b
@@ -91,16 +73,9 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
     """)
     Page<Board> findAllByCreatedAtDesc(Pageable pageable);
 
-
-    // ─────────────── 카테고리별 정렬 조회 ───────────────
-
     /** 
      * 카테고리별 게시글 정렬 조회 (최신순)
      * - 조건: 삭제되지 않은 게시글 (deletedYn = false)
-     * - 정렬 우선순위:
-     *   1) 상단고정(pinned) 내림차순
-     *   2) 공지글(noticeYn) 내림차순
-     *   3) 작성일(createdAt) 내림차순
      */
     @Query("""
         SELECT b FROM Board b
@@ -112,11 +87,6 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
     /** 
      * 카테고리별 게시글 정렬 조회 (조회순)
      * - 조건: 삭제되지 않은 게시글 (deletedYn = false)
-     * - 정렬 우선순위:
-     *   1) 상단고정(pinned) 내림차순
-     *   2) 공지글(noticeYn) 내림차순
-     *   3) 조회수(viewCount) 내림차순
-     *   4) 작성일(createdAt) 내림차순
      */
     @Query("""
         SELECT b FROM Board b
@@ -124,9 +94,6 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
         ORDER BY b.pinned DESC, b.noticeYn DESC, b.viewCount DESC, b.createdAt DESC
     """)
     Page<Board> findByCategoryOrderedByViews(@Param("categoryId") Integer categoryId, Pageable pageable);
-
-
-    // ─────────────── 상단고정 관련 ───────────────
 
     /** 
      * 현재 상단고정 상태의 게시글 목록 조회
@@ -141,14 +108,10 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
      */
     Optional<Board> findByCategoryIdAndPinnedTrueAndDeletedYnFalse(Integer categoryId);
 
-
-    // ─────────────── 검색 기능 ───────────────
-
     /** 
      * 제목으로 검색
      * - 조건: 삭제되지 않은 게시글 (deletedYn = false)
      * - 검색: title LIKE %keyword%
-     * - 정렬: 작성일(createdAt) 내림차순
      */
     @Query("""
         SELECT b FROM Board b
@@ -162,7 +125,6 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
      * 내용으로 검색
      * - 조건: 삭제되지 않은 게시글 (deletedYn = false)
      * - 검색: content LIKE %keyword%
-     * - 정렬: 작성일(createdAt) 내림차순
      */
     @Query("""
         SELECT b FROM Board b
@@ -176,7 +138,6 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
      * 작성자명으로 검색
      * - 조건: 삭제되지 않은 게시글 (deletedYn = false)
      * - 검색: user.name LIKE %keyword%
-     * - 정렬: 작성일(createdAt) 내림차순
      */
     @Query("""
         SELECT b FROM Board b

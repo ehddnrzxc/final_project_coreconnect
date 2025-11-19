@@ -62,4 +62,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Inte
     	    @Param("userId") Integer userId,
     	    @Param("types") List<NotificationType> types
     	);
+    
+    /** 특정 사용자가 보낸 모든 알림 조회 (sentYn 보정용) */
+    List<Notification> findBySenderId(Integer senderId);
 }
