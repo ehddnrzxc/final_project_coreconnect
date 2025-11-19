@@ -376,11 +376,11 @@ function NewDocumentPage() {
                 <TableBody>
                   <tr>
                     <td style={{ border: '1px solid #ccc', backgroundColor: '#f8f8f8', padding: '10px', width: '100px', textAlign: 'center', fontWeight: 'bold' }}>기안자</td>
-                    <td style={{ border: '1px solid #ccc', padding: '10px' }}>{currentUser?.userProfile?.name}</td>
+                    <td style={{ border: '1px solid #ccc', padding: '10px' }}>{currentUser?.name}</td>
                   </tr>
                   <tr>
                     <td style={{ border: '1px solid #ccc', backgroundColor: '#f8f8f8', padding: '10px', textAlign: 'center', fontWeight: 'bold' }}>소속</td>
-                    <td style={{ border: '1px solid #ccc', padding: '10px' }}>{currentUser?.userProfile?.deptName}</td>
+                    <td style={{ border: '1px solid #ccc', padding: '10px' }}>{currentUser?.deptName}</td>
                   </tr>
                   <tr>
                     <td style={{ border: '1px solid #ccc', backgroundColor: '#f8f8f8', padding: '10px', textAlign: 'center', fontWeight: 'bold' }}>기안일</td>
@@ -398,7 +398,7 @@ function NewDocumentPage() {
             
             {/* 2-2. 결재란 (우측) - (공통) */}
             <div style={{ width: 'auto' }}>
-              <DynamicApprovalTable approvers={approvalLine} drafter={currentUser?.userProfile} />
+              <DynamicApprovalTable approvers={approvalLine} drafter={currentUser} />
             </div>
           </div>
 
