@@ -153,9 +153,12 @@ function App() {
 
   // 최초 마운트 시 개수 상태 동기화 (안읽은+임시보관)
   useEffect(() => {
-    refreshUnreadCount();
-    refreshDraftCount();
-  }, []);
+    if (userProfile?.email) {
+      refreshUnreadCount();
+      refreshDraftCount();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userProfile?.email]);
 
   // context value: count, set, refresh 함수
   const mailCountContextValue = {
