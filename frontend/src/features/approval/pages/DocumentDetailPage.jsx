@@ -28,7 +28,7 @@ function DocumentDetailPage() {
 
   const navigate = useNavigate();
 
-  const currentUser = useContext(UserProfileContext);
+  const currentUser = useContext(UserProfileContext)?.userProfile;
 
   const printRef = useRef(null);
 

@@ -85,7 +85,7 @@ const getInitialFormData = templateKey => {
     case 'EXPENSE':
       return {
         ...commonData,
-        purpose: "",
+        purpose: " ",
         items: [],
         totalAmount: 0,
       }
@@ -243,10 +243,15 @@ function NewDocumentPage() {
       return;
     }
   
-    if (!isDraft && approvalLine.length === 0) {
-      showSnack("결재선을 1명 이상 지정해야 합니다.", "warning");
-      setModalOpen(true);
-      return;
+    if (!isDraft) {
+      const hasApprover = approvalLine.some(line =>
+        (line.type || line.approvalType) === 'APPROVE'
+      );
+      if (!hasApprover) {
+        showSnack("최소 1명의 결재자를 지정해야 합니다.", "warning");
+        setModalOpen(true);
+        return;
+      }
     }
   
     const documentDataJson = JSON.stringify(formData);
