@@ -5,11 +5,11 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  TableBody,
 } from "@mui/material";
 import React from "react";
 
 import { getJobGradeLabel } from "../../../components/utils/labelUtils";
+import Signature from "./Signature";
 
 const DynamicApprovalTable = ({ approvers = [], drafter }) => {
   // "REFER" 타입을 거르기 위한 필터
@@ -50,14 +50,14 @@ const DynamicApprovalTable = ({ approvers = [], drafter }) => {
 
       let sigContent = "";
       if (approvalStatus === "APPROVED") {
-        sigContent = "승인";
+        sigContent = <Signature name={name} status="APPROVED" />;
       } else if (approvalStatus === "REJECTED") {
-        sigContent = "반려";
+        sigContent = <Signature name={name} status="REJECTED" />;
       } else if (approvalStatus === "WAITING") {
         sigContent = "";
       }
       approverSignatureCells.push(
-        <TableCell key={`${userId}-sig`} sx={{ height: "60px" }}>
+        <TableCell key={`${userId}-sig`} sx={{ height: "70px", verticalAlign: 'middle', textAlign: 'center' }}>
           {sigContent}
         </TableCell>
       );
@@ -121,8 +121,10 @@ const DynamicApprovalTable = ({ approvers = [], drafter }) => {
             <TableCell>{drafter?.userName || drafter?.name}</TableCell>
             {approverNameCells}
           </TableRow>
-          <TableRow sx={{ height: "60px" }}>
-            <TableCell>상신</TableCell>
+          <TableRow sx={{ height: "70px" }}>
+            <TableCell sx={{ verticalAlign: 'middle', textAlign: 'center' }}>
+              <Signature name={drafter?.userName || drafter?.name} status="APPRROVED" />
+            </TableCell>
             {approverSignatureCells}
           </TableRow>
         </TableHead>

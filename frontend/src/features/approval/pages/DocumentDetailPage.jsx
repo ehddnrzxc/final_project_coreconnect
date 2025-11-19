@@ -1,6 +1,6 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { approveDocument, downloadDocumentPdf, downloadFile, getDocumentDetail, rejectDocument } from '../api/approvalApi';
+import { approveDocument, downloadFile, getDocumentDetail, rejectDocument } from '../api/approvalApi';
 import { Alert, Box, Button, Chip, CircularProgress, Paper, Typography } from '@mui/material';
 import DynamicApprovalTable from '../components/DynamicApprovalTable';
 import DrafterInfoTable from '../components/DrafterInfoTable';
@@ -11,6 +11,8 @@ import { useSnackbarContext } from '../../../components/utils/SnackbarContext';
 import { UserProfileContext } from '../../../App';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 function DocumentDetailPage() {
   const { documentId } = useParams();
@@ -25,40 +27,49 @@ function DocumentDetailPage() {
 
   const currentUser = useContext(UserProfileContext);
 
+  const printRef = useRef(null);
+
   const handleDownload = (fileId, fileName) => {
     downloadFile(fileId, fileName);
   };
 
   const handlePdfDownload = async () => {
-    if (!documentData) return;
+    const element = printRef.current;
+    if (!element) return;
 
     try {
-      const response = await downloadDocumentPdf(documentId);
-      const contentDisposition = response.headers['content-disposition'];
-      let fileName = `${documentData.documentTitle}.pdf`;
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
 
-      if (contentDisposition) {
-        const fileNameMatch = contentDisposition.match(/filename\*=UTF-8''(.+)/);
-        if (fileNameMatch && fileNameMatch[1]) {
-          fileName = decodeURIComponent(fileNameMatch[1]);
-        }
+      const imgData = canvas.toDataURL('image/png');
+
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 210;
+      const pageHeight = 297;
+
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
       }
 
-      const blob = new Blob([response.data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', fileName);
-      document.body.appendChild(link);
-
-      link.click();
-
-      link.parentNode.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      pdf.save(`${documentData.documentTitle || '결재문서'}.pdf`);
 
     } catch (error) {
-      console.error("PDF 다운로드 실패:", error);
-      showSnack(error.response?.data?.message || "PDF 다운로드에 실패했습니다.", "error");
+      console.error("PDF 생성 실패:", error);
+      showSnack("PDF 생성 중 오류 발생", "error");
     }
   };
 
@@ -154,7 +165,7 @@ function DocumentDetailPage() {
       </Typography>
 
       <Paper elevation={3} sx={{ p: 4}}>
-        <div style={{ width: '750px', margin: '0 auto', padding: '30px', border: '1px solid #ddd', fontFamily: "'Malgun Gothic', sans-serif", position: 'relative' }}>
+        <div ref={printRef} style={{ width: '750px', margin: '0 auto', padding: '30px', backgroundColor: 'white', border: '1px solid #ddd', fontFamily: "'Malgun Gothic', sans-serif", position: 'relative' }}>
           <h1 style={{ fontSize: '32px', margin: '0', textAlign: 'center', paddingBottom: '10px', marginBottom: '20px' }}>
             {documentData.templateName}
           </h1>
