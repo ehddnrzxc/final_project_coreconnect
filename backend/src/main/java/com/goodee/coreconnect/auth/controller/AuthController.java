@@ -14,16 +14,16 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.goodee.coreconnect.account.entity.LogActionType;
+import com.goodee.coreconnect.account.enums.LogActionType;
 import com.goodee.coreconnect.account.service.AccountLogService;
 import com.goodee.coreconnect.account.util.IpAddressUtil;
-import com.goodee.coreconnect.auth.dto.LoginRequestDTO;
-import com.goodee.coreconnect.auth.dto.LoginResponseDTO;
-import com.goodee.coreconnect.auth.util.JwtConstants;
+import com.goodee.coreconnect.auth.constants.JwtConstants;
+import com.goodee.coreconnect.auth.dto.request.LoginRequestDTO;
+import com.goodee.coreconnect.auth.dto.response.LoginResponseDTO;
 import com.goodee.coreconnect.security.jwt.JwtProvider;
 import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
-import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.User;
+import com.goodee.coreconnect.user.enums.Role;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
 import io.swagger.v3.oas.annotations.Operation;

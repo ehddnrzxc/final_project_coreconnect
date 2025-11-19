@@ -2,10 +2,10 @@ package com.goodee.coreconnect.user.dto.response;
 
 import java.time.LocalDateTime;
 
-import com.goodee.coreconnect.user.entity.JobGrade;
-import com.goodee.coreconnect.user.entity.Role;
-import com.goodee.coreconnect.user.entity.Status;
 import com.goodee.coreconnect.user.entity.User;
+import com.goodee.coreconnect.user.enums.JobGrade;
+import com.goodee.coreconnect.user.enums.Role;
+import com.goodee.coreconnect.user.enums.Status;
 
 public record UserDTO(
     Integer id,

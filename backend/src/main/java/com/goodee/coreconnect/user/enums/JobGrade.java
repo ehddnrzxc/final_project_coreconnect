@@ -1,4 +1,4 @@
-package com.goodee.coreconnect.user.entity;
+package com.goodee.coreconnect.user.enums;
 
 /** 사용자의 직급을 나타내는 Enum */
 public enum JobGrade {

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, createContext } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
-import Topbar from "./components/layout/Topbar";
+import Topbar from "./components/layout/Topbar/Topbar";
 import Sidebar from "./components/layout/Sidebar";
 import { getMyProfileInfo } from "./features/user/api/userAPI";
 import {

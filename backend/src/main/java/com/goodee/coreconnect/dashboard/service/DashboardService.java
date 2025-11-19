@@ -6,7 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import com.goodee.coreconnect.approval.entity.Document;
-import com.goodee.coreconnect.dashboard.dto.DashboardNoticeDTO;
+import com.goodee.coreconnect.dashboard.dto.response.DashboardNoticeDTO;
 
 public interface DashboardService {
 	

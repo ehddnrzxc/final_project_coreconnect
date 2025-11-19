@@ -1,8 +1,8 @@
 package com.goodee.coreconnect.approval.dto.response;
 
 import com.goodee.coreconnect.user.entity.User;
-import com.goodee.coreconnect.user.entity.JobGrade;
-import com.goodee.coreconnect.user.entity.Role;
+import com.goodee.coreconnect.user.enums.JobGrade;
+import com.goodee.coreconnect.user.enums.Role;
 
 import lombok.Builder;
 import lombok.Getter;

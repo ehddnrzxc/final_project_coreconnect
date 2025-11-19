@@ -1,4 +1,4 @@
-package com.goodee.coreconnect.user.entity;
+package com.goodee.coreconnect.user.enums;
 
 
 /** 비밀번호 변경 요청 상태를 나타내는 ENUM */

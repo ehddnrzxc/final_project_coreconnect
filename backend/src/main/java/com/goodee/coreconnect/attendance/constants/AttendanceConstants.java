@@ -1,4 +1,4 @@
-package com.goodee.coreconnect.attendance;
+package com.goodee.coreconnect.attendance.constants;
 
 import java.time.LocalTime;
 

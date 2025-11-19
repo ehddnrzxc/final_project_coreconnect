@@ -25,8 +25,8 @@ import com.goodee.coreconnect.approval.repository.DocumentRepository;
 import com.goodee.coreconnect.approval.repository.TemplateRepository;
 import com.goodee.coreconnect.department.entity.Department; // Department 임포트
 import com.goodee.coreconnect.department.repository.DepartmentRepository; // DepartmentRepository 임포트
-import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.User;
+import com.goodee.coreconnect.user.enums.Role;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
 import lombok.extern.slf4j.Slf4j;

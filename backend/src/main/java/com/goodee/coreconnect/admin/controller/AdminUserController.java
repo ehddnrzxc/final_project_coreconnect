@@ -30,10 +30,10 @@ import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
 import com.goodee.coreconnect.user.dto.response.PasswordResetResponseDTO;
 import com.goodee.coreconnect.user.dto.response.TempPasswordResponseDTO;
 import com.goodee.coreconnect.user.dto.response.UserDTO;
-import com.goodee.coreconnect.user.entity.JobGrade;
-import com.goodee.coreconnect.user.entity.Role;
-import com.goodee.coreconnect.user.entity.Status;
 import com.goodee.coreconnect.user.entity.User;
+import com.goodee.coreconnect.user.enums.JobGrade;
+import com.goodee.coreconnect.user.enums.Role;
+import com.goodee.coreconnect.user.enums.Status;
 import com.goodee.coreconnect.user.service.PasswordResetService;
 import com.goodee.coreconnect.user.service.UserService;
 
