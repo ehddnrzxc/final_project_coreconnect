@@ -142,7 +142,7 @@ const BoardLayout = () => {
             color="info"
             fullWidth
             sx={{ mb: 2 }}
-            onClick={() => navigate("/admin/board/category")} // 관리자용 카테고리 관리 페이지로 이동
+            onClick={() => navigate("/board/category-admin")} // 관리자용 카테고리 관리 페이지로 이동
           >
             카테고리 관리
           </Button>

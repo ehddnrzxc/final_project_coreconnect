@@ -136,7 +136,7 @@ const BoardListPage = () => {
             mx: "auto",     // 가운데 정렬
           }}
         >
-          
+
           {/* 정렬 선택박스 */}
           <FormControl size="small" sx={{ width: 130 }}>
             <InputLabel id="sort-label">정렬</InputLabel>
@@ -426,7 +426,7 @@ const BoardListPage = () => {
                 </Button>
 
                 {/* 숫자 페이지 */}
-                {[...Array(blockEnd - blockStart + 1)].map((_, idx) => {
+                {[...Array(Math.max(0, blockEnd - blockStart + 1))].map((_, idx) => {
                   const pageNumber = blockStart + idx;
 
                   return (
