@@ -32,7 +32,7 @@ const BoardLayout = () => {
   // 현재 활성화된 카테고리 ID 상태 관리
   // - 게시글 상세나 글쓰기 페이지로 이동해도, 좌측 카테고리 선택 상태(음영)를 유지하기 위해 별도 상태로 관리
   // - URL에 categoryId가 없을 수도 있어 초기값을 빈 문자열("")로 처리
-  const [activeCategoryId, setActiveCategoryId] = React.useState( categoryId || "" );
+  const [activeCategoryId, setActiveCategoryId] = React.useState(categoryId || "");
   // activeCategoryId: 좌측 리스트에서 "어떤 카테고리가 선택되었는지" 표시하기 위한 값
   // categoryId가 있으면 그 값으로, 없으면 ""로 시작
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { Box, Typography, ListItemButton, Stack, TextField, Button, MenuItem, Select, FormControl, InputLabel } from "@mui/material";
+import { Box, Typography, ListItemButton, Stack, TextField, Button, MenuItem, Select, FormControl, InputLabel, Avatar } from "@mui/material";
 import { getBoardsByCategory, getBoardsOrdered, searchBoards } from "../api/boardAPI";
 import CommentIcon from "@mui/icons-material/Comment";
 import RecentViewedBoards from "./RecentViewedBoards";
@@ -255,7 +255,7 @@ const BoardListPage = () => {
               {/* 텍스트 본문 (80%) */}
               <Box sx={{ flex: 4, pr: 2 }}>
                 {" "}
-                {/* 기존 카테고리/댓글수/제목/내용/작성자 그대로 유지 */}
+                {/* 카테고리/댓글수/제목/내용/작성자 */}
                 <Stack direction="row" alignItems="center" spacing={1}>
                   {/* 게시판 카테고리명 */}
                   <Typography variant="body2" color="text.secondary">
@@ -331,14 +331,28 @@ const BoardListPage = () => {
                     {b.content}
                   </Typography>
                 )}
-                <Typography variant="caption" color="text.secondary">
-                  {b.writerName}
-                  {b.writerJobGrade ? ` ${b.writerJobGrade}` : ""}
-                  {" / "}
-                  {formatDate(b.createdAt)}
-                  {" / 조회수 "}
-                  {b.viewCount ?? 0}
-                </Typography>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 0.5 }}>
+
+                  {/* 프로필 이미지 */}
+                  <Avatar
+                    src={b.writerProfileImageUrl || undefined}
+                    sx={{
+                      width: 27,
+                      height: 27,
+                      mr: 0.5
+                    }}
+                  />
+
+                  {/* 작성자 정보 */}
+                  <Typography variant="caption" color="text.secondary">
+                    {b.writerName}
+                    {b.writerJobGrade ? ` ${b.writerJobGrade}` : ""}
+                    {" / "}
+                    {formatDate(b.createdAt)}
+                    {" / 조회수 "}
+                    {b.viewCount ?? 0}
+                  </Typography>
+                </Stack>
               </Box>
 
               {/* 오른쪽 이미지 미리보기 (20%) */}

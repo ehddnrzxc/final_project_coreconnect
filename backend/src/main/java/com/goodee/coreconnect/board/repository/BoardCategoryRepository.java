@@ -20,4 +20,8 @@ public interface BoardCategoryRepository extends JpaRepository<BoardCategory, In
 
     /** 단일 카테고리 조회 (삭제 제외) */
     Optional<BoardCategory> findByIdAndDeletedYnFalse(Integer categoryId);
+    
+    /** 순서번호로 카테고리 조회 (삭제 제외) */
+    Optional<BoardCategory> findByOrderNoAndDeletedYnFalse(Integer orderNo);
+    
 }

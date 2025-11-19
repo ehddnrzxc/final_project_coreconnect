@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom"; 
+import { useNavigate } from "react-router-dom";
 import { getRecentViewedBoards } from "../api/boardAPI";
-import { Box, Typography, Paper, List, ListItemButton, ListItemText, Divider } from "@mui/material";
+import { Box, Typography, Paper, List, ListItemButton, ListItemText, Divider, Avatar } from "@mui/material";
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 
 
-// 최근 본 게시글을 보여주는 컴포넌트
 const RecentViewedBoards = () => {
   const [boards, setBoards] = useState([]); // 최근 본 게시글 목록을 저장할 상태 변수
   const navigate = useNavigate(); // 특정 게시글 상세 페이지로 이동하기 위한 훅
@@ -65,6 +64,14 @@ const RecentViewedBoards = () => {
                   onClick={() => navigate(`/board/detail/${b.id}`)} // 게시글 ID 기반으로 상세 페이지 이동
                   sx={{ py: 1, "&:hover": { bgcolor: "#f5f5f5" } }} // hover 시 배경색 살짝 변경
                 >
+                  <Avatar
+                    src={b.writerProfileImageUrl || undefined}
+                    sx={{
+                      width: 27,
+                      height: 27,
+                      mr: 0.5
+                    }}
+                  />
                   <ListItemText
                     primary={b.title}
                     secondary={`${b.writerName}${b.writerJobGrade ? ` ${b.writerJobGrade}` : ""} · ${formatDate(

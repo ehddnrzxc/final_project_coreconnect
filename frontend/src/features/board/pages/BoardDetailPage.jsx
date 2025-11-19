@@ -1,16 +1,15 @@
-import React, { useEffect, useMemo, useState, useRef, useContext  } from "react";
+import React, { useEffect, useMemo, useState, useRef, useContext } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { Box, Typography, TextField, Button, Stack, Paper } from "@mui/material";
-import ReplyIcon from "@mui/icons-material/Reply"; 
-import EditIcon from "@mui/icons-material/Edit"; 
+import { Box, Typography, TextField, Button, Stack, Paper, Modal, Card, CardMedia, CardContent, IconButton, Avatar } from "@mui/material";
+import ReplyIcon from "@mui/icons-material/Reply";
+import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { getBoardDetail, deleteBoard } from "../api/boardAPI";
-import { getFilesByBoard, getFile, downloadZipFiles } from "../api/boardFileAPI"; 
+import { getFilesByBoard, getFile, downloadZipFiles } from "../api/boardFileAPI";
 import { getRepliesByBoard, createReply, updateReply, deleteReply } from "../api/boardReplyAPI";
-import { useSnackbarContext } from "../../../components/utils/SnackbarContext"; 
-import ConfirmDialog from "../../../components/utils/ConfirmDialog"; 
-import { Modal, Card, CardMedia, CardContent, IconButton } from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close"; 
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
+import ConfirmDialog from "../../../components/utils/ConfirmDialog";
+import CloseIcon from "@mui/icons-material/Close";
 import DownloadIcon from "@mui/icons-material/Download";
 import DescriptionIcon from "@mui/icons-material/Description";
 import { UserProfileContext } from "../../../App";
@@ -294,14 +293,24 @@ const BoardDetailPage = () => {
       <Typography variant="h5" sx={{ mb: 1 }}>
         {board.title} {/* 게시글 제목 */}
       </Typography>
-      <Typography variant="body2" sx={{ mb: 2, color: "text.secondary" }}>
-        {board.writerName}
-        {board.writerJobGrade ? ` ${board.writerJobGrade}` : ""}
-        {" | "}
-        {formatDateTime(board.createdAt)}
-        {" | 조회수 "}
-        {board.viewCount ?? 0}
-      </Typography>
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+
+        {/* 프로필 이미지 */}
+        <Avatar
+          src={board.writerProfileImageUrl || undefined}
+          sx={{ width: 27, height: 27 }}
+        />
+
+        {/* 이름 + 직급 + 날짜 + 조회수 */}
+        <Typography variant="body2" color="text.secondary">
+          {board.writerName}
+          {board.writerJobGrade ? ` ${board.writerJobGrade}` : ""}
+          {" | "}
+          {formatDateTime(board.createdAt)}
+          {" | 조회수 "}
+          {board.viewCount ?? 0}
+        </Typography>
+      </Stack>
 
       {/* 게시글 작성자 or 관리자만 수정/삭제 버튼 표시 */}
       {canEditOrDeletePost && (
@@ -561,13 +570,19 @@ const BoardDetailPage = () => {
                     justifyContent="space-between"
                     alignItems="center"
                   >
-                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                      {r.writerName || "익명"}
-                      {r.writerJobGrade ? ` ${r.writerJobGrade}` : ""}
-                      <Typography component="span" variant="caption" sx={{ color: "text.secondary" }}>
-                        ({formatDateTime(r.createdAt)})
+                    <Stack direction="row" alignItems="center" spacing={1}>
+                      <Avatar
+                        src={r.writerProfileImageUrl || undefined}
+                        sx={{ width: 27, height: 27 }}
+                      />
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                        {r.writerName || "익명"}
+                        {r.writerJobGrade ? ` ${r.writerJobGrade}` : ""}
+                        <Typography component="span" variant="caption" sx={{ color: "text.secondary" }}>
+                          ({formatDateTime(r.createdAt)})
+                        </Typography>
                       </Typography>
-                    </Typography>
+                    </Stack>
 
                     {/* 댓글 수정/삭제 */}
                     {!r.deletedYn &&
@@ -728,13 +743,19 @@ const BoardDetailPage = () => {
                       justifyContent="space-between"
                       alignItems="center"
                     >
-                      <Typography variant="subtitle2">
-                        ↳ {child.writerName}
-                        {child.writerJobGrade ? ` ${child.writerJobGrade}` : ""}
-                        <Typography component="span" variant="caption" sx={{ color: "text.secondary" }}>
-                          ({formatDateTime(child.createdAt)})
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <Avatar
+                          src={child.writerProfileImageUrl || undefined}
+                          sx={{ width: 27, height: 27 }}
+                        />
+                        <Typography variant="subtitle2">
+                          ↳ {child.writerName}
+                          {child.writerJobGrade ? ` ${child.writerJobGrade}` : ""}
+                          <Typography component="span" variant="caption" sx={{ color: "text.secondary" }}>
+                            ({formatDateTime(child.createdAt)})
+                          </Typography>
                         </Typography>
-                      </Typography>
+                      </Stack>
 
                       {(loginRole === "ADMIN" ||
                         child.writerName === loginName) && (
