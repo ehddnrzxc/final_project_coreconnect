@@ -24,7 +24,7 @@ const ExpenseForm = ({ formData, onFormChange }) => {
   // 항목(item) 테이블 내부의 입력값이 변경될 때 호출될 핸들러
   const handleItemChange = (index, e) => {
     const { name, value } = e.target;
-    const newItems = [...formData.items];
+    const newItems = [...(formData.items || [])];
     newItems[index] = { ...newItems[index], [name]: value };
 
     // 부모(NewDocumentPage)의 onFormChange를 호출
@@ -36,6 +36,19 @@ const ExpenseForm = ({ formData, onFormChange }) => {
     });
   };
 
+  const handlePurposeChange = e => {
+    const { name, value } = e.target;
+
+    const valToSend = value === ''? ' ' : value;
+
+    onFormChange({
+      target: {
+        name: name,
+        value: valToSend
+      }
+    });
+  }
+
   // 항목 추가 버튼 클릭 시
   const handleAddItem = () => {
     const newItem = {
@@ -46,7 +59,7 @@ const ExpenseForm = ({ formData, onFormChange }) => {
       amount: 0,
       note: ''
     };
-    const newItems = [...formData.items, newItem];
+    const newItems = [...(formData.items || []), newItem];
     onFormChange({
       target: {
         name: 'items',
@@ -80,7 +93,7 @@ const ExpenseForm = ({ formData, onFormChange }) => {
               <TextField
                 name="purpose"
                 value={formData.purpose || ''}
-                onChange={onFormChange} // 이 필드는 부모 핸들러 직접 호출
+                onChange={handlePurposeChange} // 이 필드는 부모 핸들러 직접 호출
                 required
                 multiline
                 rows={3}

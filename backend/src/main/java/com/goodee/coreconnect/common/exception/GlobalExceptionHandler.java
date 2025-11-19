@@ -29,6 +29,7 @@ public class GlobalExceptionHandler {
         ResponseDTO<Void> res = ResponseDTO.<Void>builder()
                 .status(HttpStatus.FORBIDDEN.value()) // 403
                 .message(ex.getMessage())
+                
                 .build();
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(res);
     }
@@ -81,11 +82,17 @@ public class GlobalExceptionHandler {
      * (서비스의 new IllegalStateException() 등)
      */
     @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<String> handleIllegalState(IllegalStateException ex) {
+    public ResponseEntity<ResponseDTO<Void>> handleIllegalState(IllegalStateException ex) {
         log.warn("Illegal State: {}", ex.getMessage());
+        
+        ResponseDTO<Void> res = ResponseDTO.<Void>builder()
+            .status(HttpStatus.BAD_REQUEST.value())
+            .message(ex.getMessage())
+            .build();
+        
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST) // 400
-                .body(ex.getMessage()); // (예: "진행 중인 문서만 결재할 수 있습니다.")
+                .body(res); // (예: "진행 중인 문서만 결재할 수 있습니다.")
     }
     
     /**
@@ -94,9 +101,16 @@ public class GlobalExceptionHandler {
      * @return ResponseEntity
      */
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<?> handleIllegalArgument(IllegalArgumentException ex) {
+    public ResponseEntity<ResponseDTO<Void>> handleIllegalArgument(IllegalArgumentException ex) {
+      log.warn("Illegal Argument: {}", ex.getMessage());
+      
+      ResponseDTO<Void> res = ResponseDTO.<Void>builder()
+          .status(HttpStatus.BAD_REQUEST.value())
+          .message(ex.getMessage())
+          .build();
+      
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ex.getMessage());
+                .body(res);
     }
     
     

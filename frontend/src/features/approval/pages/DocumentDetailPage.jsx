@@ -1,116 +1,122 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { approveDocument, downloadDocumentPdf, downloadFile, getDocumentDetail, rejectDocument } from '../api/approvalApi';
+import { approveDocument, downloadFile, getDocumentDetail, rejectDocument } from '../api/approvalApi';
 import { Alert, Box, Button, Chip, CircularProgress, Paper, Typography } from '@mui/material';
 import DynamicApprovalTable from '../components/DynamicApprovalTable';
 import DrafterInfoTable from '../components/DrafterInfoTable';
-import ApprovalRejectModal from '../components/ApprovalRejectModal';
+import ApprovalProcessModal from '../components/ApprovalProcessModal';
 import EditIcon from '@mui/icons-material/Edit';
 import DocumentStatusChip from '../components/DocumentStatusChip';
 import { useSnackbarContext } from '../../../components/utils/SnackbarContext';
 import { UserProfileContext } from '../../../App';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 function DocumentDetailPage() {
   const { documentId } = useParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [documentData, setDocumentData] = useState(null);
-  const [openRejectModal, setOpenRejectModal] = useState(false);
+  const [modalConfig, setModalConfig] = useState({
+    open: false,
+    type: null
+  });
 
   const { showSnack } = useSnackbarContext();
-
   const navigate = useNavigate();
-
-  const currentUser = useContext(UserProfileContext) || {};
+  const currentUser = useContext(UserProfileContext)?.userProfile;
+  const printRef = useRef(null);
 
   const handleDownload = (fileId, fileName) => {
     downloadFile(fileId, fileName);
   };
 
   const handlePdfDownload = async () => {
-    if (!documentData) return;
+    const element = printRef.current;
+    if (!element) return;
 
     try {
-      const response = await downloadDocumentPdf(documentId);
-      const contentDisposition = response.headers['content-disposition'];
-      let fileName = `${documentData.documentTitle}.pdf`;
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
 
-      if (contentDisposition) {
-        const fileNameMatch = contentDisposition.match(/filename\*=UTF-8''(.+)/);
-        if (fileNameMatch && fileNameMatch[1]) {
-          fileName = decodeURIComponent(fileNameMatch[1]);
-        }
+      const imgData = canvas.toDataURL('image/png');
+
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 210;
+      const pageHeight = 297;
+
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
       }
 
-      const blob = new Blob([response.data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', fileName);
-      document.body.appendChild(link);
-
-      link.click();
-
-      link.parentNode.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      pdf.save(`${documentData.documentTitle || '결재문서'}.pdf`);
 
     } catch (error) {
-      console.error("PDF 다운로드 실패:", error);
-      showSnack(error.response?.data?.message || "PDF 다운로드에 실패했습니다.", "error");
+      console.error("PDF 생성 실패:", error);
+      showSnack("PDF 생성 중 오류 발생", "error");
+    }
+  };
+
+  const fetchDocument = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await getDocumentDetail(documentId);
+      setDocumentData(res.data);
+    } catch (error) {
+      console.error("문서 상세 정보 조회 실패:", error);
+      setError(error.response?.data?.message || "문서 정보를 불러오는 데 실패했습니다.");
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    const fetchDocument = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const res = await getDocumentDetail(documentId);
-        setDocumentData(res.data);
-      } catch (error) {
-        console.error("문서 상세 정보 조회 실패:", error);
-        setError(error.response?.data?.message || "문서 정보를 불러오는 데 실패했습니다.");
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchDocument();
   }, [documentId]);
 
-  const handleApprove = async () => {
-    const comment = prompt("결재 의견을 입력하세요. 하기 싫음 말고");
-    if (comment === null) {
-      return;
-    }
+  const handleOpenApprove = () => setModalConfig({ open: true, type: 'APPROVE' });
 
+  const handleOpenReject = () => setModalConfig({ open: true, type: 'REJECT' });
+
+  const handleCloseModal = () => setModalConfig({ ...modalConfig, open: false });
+
+  const handleProcessComplete = async comment => {
     try {
-      const requestDTO = { approvalComment: comment || ""};
-      await approveDocument(documentId, requestDTO);
-      showSnack("결재가 승인되었습니다.", "success");
-      navigate("/e-approval");
+      const requestDTO = { approvalComment: comment };
+
+      if (modalConfig.type === 'APPROVE') {
+        await approveDocument(documentId, requestDTO);
+        showSnack("결재가 승인되었습니다.", "success");
+      } else {
+        await rejectDocument(documentId, requestDTO);
+        showSnack("결재가 반려되었습니다.", "warning");
+      }
+
+      handleCloseModal();
+
+      await fetchDocument();
+
     } catch (error) {
-      console.error("승인 처리 실패:", error);
-      showSnack(error.response?.data?.message || "승인 처리에 실패했습니다.", "error");
-    }
-  };
-
-  const handleOpenRejectModal = () => setOpenRejectModal(true);
-
-  const handleCloseRejectModal = () => setOpenRejectModal(false);
-
-  const handleRejectConfirm = async reason => {
-    try {
-      const requestDTO = { approvalComment: reason };
-      await rejectDocument(documentId, requestDTO);
-
-      showSnack("결재가 반려되었습니다.", "warning");
-      handleCloseRejectModal();
-      navigate("/e-approval");
-    } catch (error) {
-      console.error("반려 처리 실패:", error);
-      showSnack(error.response?.data?.message || "반려 처리에 실패했습니다.", "error");
+      console.error("결재 처리 실패:", error);
+      const actionName = modalConfig.type === 'APPROVE' ? "승인" : "반려";
+      showSnack(error.response?.data?.message || `${actionName} 처리에 실패했습니다.`, "error");
     }
   };
 
@@ -154,7 +160,7 @@ function DocumentDetailPage() {
       </Typography>
 
       <Paper elevation={3} sx={{ p: 4}}>
-        <div style={{ width: '750px', margin: '0 auto', padding: '30px', border: '1px solid #ddd', fontFamily: "'Malgun Gothic', sans-serif", position: 'relative' }}>
+        <div ref={printRef} style={{ width: '750px', margin: '0 auto', padding: '30px', backgroundColor: 'white', border: '1px solid #ddd', fontFamily: "'Malgun Gothic', sans-serif", position: 'relative' }}>
           <h1 style={{ fontSize: '32px', margin: '0', textAlign: 'center', paddingBottom: '10px', marginBottom: '20px' }}>
             {documentData.templateName}
           </h1>
@@ -216,10 +222,10 @@ function DocumentDetailPage() {
           </Button>
           {documentData.myTurnApprove && (
             <>
-              <Button variant='outlined' sx={{ color: '#66bb6a', borderColor: '#66bb6a'}} onClick={handleApprove}>
+              <Button variant='outlined' sx={{ color: '#66bb6a', borderColor: '#66bb6a'}} onClick={handleOpenApprove}>
                 승인
               </Button>
-              <Button variant='outlined' color='error' onClick={handleOpenRejectModal}>반려</Button>
+              <Button variant='outlined' color='error' onClick={handleOpenReject}>반려</Button>
             </>
           )}
           {documentData.documentStatus === 'DRAFT' && isDrafter && (
@@ -229,10 +235,11 @@ function DocumentDetailPage() {
           )}
         </Box>
       </Paper>
-      <ApprovalRejectModal
-        open={openRejectModal}
-        handleClose={handleCloseRejectModal}
-        handleSubmit={handleRejectConfirm}
+      <ApprovalProcessModal
+        open={modalConfig.open}
+        type={modalConfig.type}
+        handleClose={handleCloseModal}
+        handleSubmit={handleProcessComplete}
       />
     </Box>
   )

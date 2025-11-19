@@ -76,7 +76,7 @@ const ReferDocumentPage = () => {
                 기안자
               </TableCell>
               <TableCell align='center' sx={{ fontWeight: "bold" }}>
-                ?
+                생성일
               </TableCell>
             </TableRow>
           </TableHead>  
