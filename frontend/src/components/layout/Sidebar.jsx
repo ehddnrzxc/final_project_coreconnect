@@ -19,11 +19,12 @@ import BeachAccessIcon from "@mui/icons-material/BeachAccess";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import OrgChartDrawer from "../../features/organization/components/OrgChartDrawer";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
-import { MailCountContext } from "../../App";
+import { ApprovalCountContext, MailCountContext } from "../../App";
 
 const Sidebar = () => {
   const [orgOpen, setOrgOpen] = useState(false);
   const { unreadCount = 0 } = useContext(MailCountContext) || {};
+  const { approvalCount = 0} = useContext(ApprovalCountContext) || {};
 
   const items = [
     { to: "/home", label: "홈", icon: <HomeIcon fontSize="small" /> },
@@ -53,7 +54,20 @@ const Sidebar = () => {
     {
       to: "/e-approval",
       label: "전자결재",
-      icon: <DescriptionIcon fontSize="small" />,
+      icon: (
+        <Badge
+          badgeContent={approvalCount > 0 ? approvalCount : 0}
+          color="error"
+          max={99}
+          sx={{
+            "& .MuiBadge-badge": {
+              right: -8, top: -2, minWidth: 18, height: 18, fontSize: '0.7rem',
+            }
+          }}
+        >
+          <DescriptionIcon fontSize="small" />
+        </Badge>
+      )
     },
     { to: "/leave", label: "휴가", icon: <BeachAccessIcon fontSize="small" /> },
     {

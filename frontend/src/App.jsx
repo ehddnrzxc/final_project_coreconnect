@@ -15,10 +15,12 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 // ----------- 채팅 컴포넌트 import 추가 -----------
 import ChatHeaderIcon from "../src/features/chat/components/ChatHeaderIcon";
 import ChatMain from "../src/features/chat/components/ChatMain";
+import { getMyPendingApprovalCount } from "./features/dashboard/api/dashboardAPI";
 // -----------------------------------------------
 
 export const MailCountContext = createContext();
 export const UserProfileContext = createContext(null);
+export const ApprovalCountContext = createContext();
 
 const themeOptions = {
   light: {
@@ -84,6 +86,9 @@ function App() {
   const [chatOpen, setChatOpen] = useState(false);
   // --------------------------------------------
 
+  // 결재 대기 개수 상태
+  const [approvalCount, setApprovalCount] = useState(0);
+
   const [themeMode, setThemeMode] = useState(() => {
     const saved = localStorage.getItem("themeMode");
     return saved && themeOptions[saved] ? saved : "light";
@@ -132,6 +137,17 @@ function App() {
     setDraftCount(count);
   };
 
+  const refreshApprovalCount = async () => {
+    const userEmail = userProfile?.email;
+    if (!userEmail) return;
+    try {
+      const count = await getMyPendingApprovalCount();
+      setApprovalCount(count || 0);
+    } catch (e) {
+      console.warn("결재 대기 개수 조회 실패:", e);
+    }
+  }
+
   const { logout } = useAuth();
 
   const handleLogout = async () => {
@@ -156,6 +172,7 @@ function App() {
     if (userProfile?.email) {
       refreshUnreadCount();
       refreshDraftCount();
+      refreshApprovalCount();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userProfile?.email]);
@@ -165,6 +182,8 @@ function App() {
     unreadCount, refreshUnreadCount,
     draftCount, refreshDraftCount,
   };
+
+  const approvalCountContextValue = { approvalCount, refreshApprovalCount };
 
   return (
     <ThemeProvider theme={theme}>
@@ -192,21 +211,23 @@ function App() {
             {/* ----------------------------------------------- */}
             {/* MailCountContext Provider */}
             <MailCountContext.Provider value={mailCountContextValue}>
-              <Box sx={{ display: "flex", flex: 1, minHeight: 0 }}>
-                <Sidebar />
-                <Box
-                  component="main"
-                  sx={{
-                    flex: 1,
-                    minHeight: 0,
-                    display: "flex",
-                    flexDirection: "column",
-                    bgcolor: "background.default",
-                  }}
-                >
-                  <Outlet context={{ refreshUnreadCount }} />
+              <ApprovalCountContext.Provider value={approvalCountContextValue}>
+                <Box sx={{ display: "flex", flex: 1, minHeight: 0 }}>
+                  <Sidebar />
+                  <Box
+                    component="main"
+                    sx={{
+                      flex: 1,
+                      minHeight: 0,
+                      display: "flex",
+                      flexDirection: "column",
+                      bgcolor: "background.default",
+                    }}
+                  >
+                    <Outlet context={{ refreshUnreadCount }} />
+                  </Box>
                 </Box>
-              </Box>
+              </ApprovalCountContext.Provider>
             </MailCountContext.Provider>
 
             {/* ---------- 채팅 패널(오버레이) ---------- */}
