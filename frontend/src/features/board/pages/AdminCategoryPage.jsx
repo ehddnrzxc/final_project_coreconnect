@@ -6,6 +6,7 @@ import SaveIcon from "@mui/icons-material/Save";
 import AddIcon from "@mui/icons-material/Add";
 import { getAllCategories, createCategory, updateCategory, deleteCategory } from "../api/boardCategoryAPI";
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
+import ConfirmDialog from "../../../components/utils/ConfirmDialog";
 
 
 const AdminCategoryPage = () => {
@@ -16,6 +17,9 @@ const AdminCategoryPage = () => {
   const [editingId, setEditingId] = useState(null); // 현재 수정 중인 카테고리의 id (수정 모드 판별용)
   const [editedData, setEditedData] = useState({ name: "", orderNo: "" }); // 수정 중 입력값 저장
   const [newCategory, setNewCategory] = useState({ name: "", orderNo: "" }); // 신규 등록용 입력값 저장
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [targetId, setTargetId] = useState(null);
+  const confirmMessage = "이 카테고리를 삭제하시겠습니까?";
 
   // 전체 카테고리 불러오기 (비동기 함수)
   const loadCategories = async () => {
@@ -52,6 +56,27 @@ const AdminCategoryPage = () => {
     } catch (err) {
       showSnack("카테고리 수정 중 오류가 발생했습니다.", "error");
     }
+  };
+
+  // 삭제 버튼 클릭 시 → 확인창 오픈
+  const handleOpenDeleteConfirm = (id) => {
+    setTargetId(id);
+    setConfirmOpen(true);
+  };
+
+  // 확인창에서 "확인" 클릭 시
+  const handleConfirm = async () => {
+    setConfirmOpen(false);
+    if (targetId) {
+      await handleDelete(targetId);
+    }
+    setTargetId(null);
+  };
+
+  // 확인창에서 "취소"
+  const handleCancel = () => {
+    setConfirmOpen(false);
+    setTargetId(null);
   };
 
   // 삭제 버튼 클릭 시 동작
@@ -129,7 +154,7 @@ const AdminCategoryPage = () => {
             {/* 테이블 헤더: 열 이름 */}
             <TableCell>카테고리명</TableCell>
             <TableCell>순서번호</TableCell>
-            <TableCell align="center">액션</TableCell> {/* 수정/삭제 버튼 구역 */}
+            <TableCell align="center">수정/삭제</TableCell> {/* 수정/삭제 버튼 구역 */}
           </TableRow>
         </TableHead>
         <TableBody>
@@ -187,7 +212,11 @@ const AdminCategoryPage = () => {
                     <EditIcon />
                   </IconButton>
                 )}
-                <IconButton color="error" onClick={() => handleDelete(cat.id)}>
+                {/* 삭제 → 확인창 오픈 */}
+                <IconButton
+                  color="error"
+                  onClick={() => handleOpenDeleteConfirm(cat.id)}
+                >
                   <DeleteIcon />
                 </IconButton>
               </TableCell>
@@ -195,6 +224,15 @@ const AdminCategoryPage = () => {
           ))}
         </TableBody>
       </Table>
+
+      {/* 삭제 확인창 */}
+      <ConfirmDialog
+        open={confirmOpen}
+        title="삭제 확인"
+        message={confirmMessage}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
     </Box>
   );
 };
