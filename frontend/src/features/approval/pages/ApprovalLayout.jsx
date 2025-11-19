@@ -41,7 +41,7 @@ function ApprovalLayout() {
       {/* 1. 왼쪽 서브 네비게이션 (MUI 컴포넌트 활용) */}
       <Box
         sx={{
-          width: 240,
+          width: 260,
           flexShrink: 0,
           bgcolor: '#ffffff',
           borderRight: "1px solid",
