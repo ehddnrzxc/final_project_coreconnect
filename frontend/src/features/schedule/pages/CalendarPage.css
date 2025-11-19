@@ -101,7 +101,7 @@
   max-width: 0 !important;
   overflow: hidden !important;
 }
-
+ 
 /* 목록 뷰 시간 열 간격 조정 */
 .fc-list-table .fc-list-event-time {
   padding-right: 4px !important; /* 오른쪽 간격 줄이기 */
