@@ -58,9 +58,6 @@ dependencies {
   // === Lombok (test) 추가 ===
   testCompileOnly 'org.projectlombok:lombok'
   testAnnotationProcessor 'org.projectlombok:lombok'
-  
-  // PDF 생성을 위한 의존성
-  implementation 'com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10'
 	
 }
 

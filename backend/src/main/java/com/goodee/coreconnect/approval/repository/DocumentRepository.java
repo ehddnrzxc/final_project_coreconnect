@@ -110,5 +110,21 @@ public interface DocumentRepository extends JpaRepository<Document, Integer>{
       ORDER BY d.createdAt DESC
       """)
   List<Document> findByUserAndStatusInWithJoins(@Param("user") User user, @Param("statuses") List<DocumentStatus> statuses, @Param("deletedYn") Boolean deletedYn);
+  
+  /**
+   * 중복 검사를 위해 특정 유저의 특정 템플릿 문서 중 유효한(진행중, 완료) 문서 조회
+   * @param user
+   * @param templateId
+   * @param statuses
+   * @return
+   */
+  @Query("""
+      SELECT d FROM Document d
+      WHERE d.user = :user
+      AND d.template.id = :templateId
+      AND d.docDeletedYn = false
+      AND d.documentStatus IN :statuses
+      """)
+  List<Document> findByUserAndTemplateIdAndStatusIn(@Param("user") User user, @Param("templateId") Integer templateId, @Param("statuses") List<DocumentStatus> statuses);
 
 }

@@ -85,6 +85,10 @@ public class ApprovalServiceImpl implements ApprovalService {
     // 1. 기안자(User) 및 양식(Template) 조회
     User drafter = findUserByEmail(email);
     Template template = findTemplateById(requestDTO.getTemplateId());
+    
+    if (isLeaveTemplate(template)) {
+      validateLeaveOverlap(drafter, template, requestDTO.getDocumentDataJson(), null);
+    }
 
     // 2. 문서 엔티티 생성
     Document document = requestDTO.toEntity(template, drafter);
@@ -287,6 +291,11 @@ public class ApprovalServiceImpl implements ApprovalService {
     User drafter = findUserByEmail(email);
     Document document = documentRepository.findDocumentDetailById(documentId)
         .orElseThrow(() -> new EntityNotFoundException("문서를 찾을 수 없습니다."));
+    
+    if (isLeaveTemplate(document.getTemplate())) {
+      validateLeaveOverlap(drafter, document.getTemplate(), requestDTO.getDocumentDataJson(), documentId);
+    }
+    
     validateDocumentUpdateAuthority(document, drafter);
     document.updateDraftDetails(requestDTO.getDocumentTitle(), requestDTO.getDocumentDataJson());
     updateApprovalLines(document, requestDTO.getApprovalLines());
@@ -853,6 +862,55 @@ public class ApprovalServiceImpl implements ApprovalService {
           document.getId(), 
           e.getMessage()
           );
+    }
+  }
+  
+  private void validateLeaveOverlap(User user, Template template, String jsonData, Integer currentDocId) {
+    try {
+      TypeReference<Map<String, Object>> typeRef = new TypeReference<>() {};
+      Map<String, Object> requestData = objectMapper.readValue(jsonData, typeRef);
+      
+      String startStr = (String) requestData.get("startDate");
+      String endStr = (String) requestData.get("endDate");
+      
+      if (startStr == null || endStr == null) return;
+      
+      LocalDate newStart = LocalDate.parse(startStr);
+      LocalDate newEnd = LocalDate.parse(endStr);
+      
+      List<DocumentStatus> activeStatuses = Arrays.asList(
+          DocumentStatus.IN_PROGRESS,
+          DocumentStatus.COMPLETED
+          );
+      
+      List<Document> existingDocs = documentRepository.findByUserAndTemplateIdAndStatusIn(user, template.getId(), activeStatuses);
+      
+      for (Document doc : existingDocs) {
+        if (currentDocId != null && doc.getId().equals(currentDocId)) {
+          continue;
+        }
+        
+        Map<String, Object> docData = objectMapper.readValue(doc.getDocumentDataJson(), typeRef);
+        String docStartStr = (String) docData.get("startDate");
+        String docEndStr = (String) docData.get("endDate");
+        
+        if (docStartStr != null && docEndStr != null) {
+          LocalDate oldStart = LocalDate.parse(docStartStr);
+          LocalDate oldEnd = LocalDate.parse(docEndStr);
+          
+          if (!newStart.isAfter(oldEnd) && !newEnd.isBefore(oldStart)) {
+            throw new IllegalStateException("이미 해당 기간에 신청된 휴가가 존재합니다. ("
+                + docStartStr + " ~ " + docEndStr + ")");
+          }
+        }
+      }
+      
+    } catch (IOException e) {
+      log.error("중복 검사 중 JSON 파싱 오류", e);
+    } catch (IllegalStateException e) {
+      throw e;
+    } catch (Exception e) {
+      log.error("중복 검사 중 알 수 없는 오류", e);
     }
   }
   
