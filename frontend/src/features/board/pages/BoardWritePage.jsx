@@ -498,7 +498,7 @@ const BoardWritePage = () => {
           }}
         >
           <Typography variant="h6" sx={{ mb: 2 }}>
-            파일 미리보기
+            {previewFile?.name || "파일 미리보기"}
           </Typography>
 
           {/* 이미지 */}
