@@ -121,7 +121,6 @@ const BoardListPage = () => {
     else navigate(`/board?sortType=${newSort}&page=0`);
   };
 
-  // UI 렌더링
   return (
     <Box sx={{ display: "flex", gap: 3 }}>
       <Box sx={{ flex: 3 }}>
@@ -133,7 +132,7 @@ const BoardListPage = () => {
           alignItems="center"
           sx={{
             mb: 2,
-            width: "75%",   // 게시글 박스와 동일하게
+            width: "77%",   // 게시글 박스와 동일하게
             mx: "auto",     // 가운데 정렬
           }}
         >
@@ -210,8 +209,8 @@ const BoardListPage = () => {
               border: "1px solid #e0e0e0",
               borderRadius: 1,
               mb: 1.2,
-              py: 1.2,
-              width: "75%",
+              py: 1.5,
+              width: "77%",
               mx: "auto",
               flexDirection: "column",
               alignItems: "flex-start",
@@ -227,7 +226,7 @@ const BoardListPage = () => {
           >
             <Box sx={{ display: "flex", width: "100%" }}>
               {/* 텍스트 본문 (80%) */}
-              <Box sx={{ flex: 4, pr: 2 }}>
+              <Box sx={{ flex: 4, pr: 1 }}>
                 {" "}
                 {/* 카테고리/댓글수/제목/내용/작성자 */}
                 <Stack direction="row" alignItems="center" spacing={1}>
@@ -259,7 +258,7 @@ const BoardListPage = () => {
                     )}
                   </Stack>
                 </Stack>
-                {/* 제목과 내용, 날짜 모두 기존 코드 그대로 */}
+                {/* 제목, 내용, 날짜 */}
                 <Stack
                   direction="row"
                   alignItems="center"
@@ -280,6 +279,7 @@ const BoardListPage = () => {
                     variant="subtitle1"
                     sx={{
                       fontWeight: 700,
+                      fontSize: 17,
                       flexGrow: 1,
                       overflow: "hidden",
                       textOverflow: "ellipsis",
@@ -295,7 +295,7 @@ const BoardListPage = () => {
                     color="text.secondary"
                     sx={{
                       mt: 0.5,
-                      mb: 0.5,
+                      mb: 1.5,
                       overflow: "hidden",
                       display: "-webkit-box",
                       WebkitLineClamp: 1,
@@ -339,7 +339,7 @@ const BoardListPage = () => {
                       flex: 1, // 20%
                       display: "flex",
                       justifyContent: "center",
-                      alignItems: "center",
+                      alignItems: "flex-start",
                     }}
                   >
                     <Box
@@ -348,7 +348,7 @@ const BoardListPage = () => {
                       alt={b.files[0].fileName || "첨부 이미지"}
                       sx={{
                         width: "100%",
-                        height: 100,
+                        height: 112,
                         objectFit: "cover",
                         borderRadius: 1,
                       }}

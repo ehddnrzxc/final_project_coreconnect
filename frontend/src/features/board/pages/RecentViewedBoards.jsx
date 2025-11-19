@@ -51,7 +51,7 @@ const RecentViewedBoards = () => {
           variant="outlined"
           sx={{
             p: 1,
-            width: "91%",   // 박스 폭
+            width: "85%",   // 박스 폭
             mx: "auto",     // 가운데 정렬
           }}
         >
@@ -74,9 +74,23 @@ const RecentViewedBoards = () => {
                   />
                   <ListItemText
                     primary={b.title}
+                    primaryTypographyProps={{
+                      sx: {
+                        whiteSpace: "nowrap", // 제목 줄바꿈 금지
+                        overflow: "hidden", // 넘치는 부분 숨김
+                        textOverflow: "ellipsis", // 말줄임표(...)
+                      },
+                    }}
                     secondary={`${b.writerName}${b.writerJobGrade ? ` ${b.writerJobGrade}` : ""} · ${formatDate(
                       b.createdAt
                     )} · 조회수 ${b.viewCount}`}
+                    secondaryTypographyProps={{
+                      sx: {
+                        whiteSpace: "nowrap",       
+                        overflow: "hidden",        
+                        textOverflow: "ellipsis",  
+                      }
+                    }}
                   />
                 </ListItemButton>
                 {/* 마지막 항목이 아닐 경우 Divider(구분선) 추가 */}

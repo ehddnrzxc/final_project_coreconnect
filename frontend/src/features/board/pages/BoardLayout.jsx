@@ -93,41 +93,31 @@ const BoardLayout = () => {
   // location 또는 categoryId가 변경될 때마다 위 로직을 다시 실행
   // 경로가 바뀔 때마다 좌측 카테고리 상태를 최신 상태로 유지
 
-  // 글쓰기 버튼 클릭 시 현재 카테고리 정보를 유지한 채 이동
-  // - 카테고리 페이지에서 글쓰기 시, URL 쿼리로 categoryId를 함께 넘겨서
-  //   글쓰기 폼에서 해당 카테고리를 기본 선택 상태로 사용할 수 있게 함
   const handleWriteClick = () => {
-    if (categoryId) navigate(`/board/new?categoryId=${categoryId}`);
-    // 현재 카테고리가 있을 때 → /board/new?categoryId=xx 형태로 이동
+    if (categoryId) navigate(`/board/new?categoryId=${categoryId}`); // 현재 카테고리가 있을 때 → /board/new?categoryId=xx 형태로 이동
     else navigate(`/board/new`); // 전체 게시판일 경우 → 단순히 글쓰기 페이지로 이동
   };
 
-  // 카테고리 클릭 시 해당 카테고리 게시판 페이지로 이동
-  const handleCategoryClick = (id) => navigate(`/board/${id}`);
+  const handleCategoryClick = (id) => navigate(`/board/${id}`); // 카테고리 클릭 시 해당 카테고리 게시판 페이지로 이동
 
   // 라우트 변경 시 화면 스크롤을 맨 위로 이동시키는 효과
-  // - 예: 상세보기 → 목록 이동 시 스크롤 위치 초기화
   // - window.scrollTo는 브라우저 전체 스크롤 기준으로 동작
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    // location(경로)이 바뀔 때마다 브라우저 뷰포트의 스크롤을 최상단으로 이동
-    // behavior: "smooth" → 부드럽게 올라가는 애니메이션 효과
-  }, [location]);
-  // URL(location)이 바뀔 때마다 실행됨
-  // 즉, 카테고리 변경 / 상세보기 / 글쓰기 등 모든 네비게이션에 대해 항상 맨 위로 올림
+    window.scrollTo({ top: 0, behavior: "smooth" }); 
+  }, [location]); // URL(location)이 바뀔 때마다 실행됨
 
-  // - 좌측: 카테고리 리스트 + 버튼들
-  // - 우측: Outlet(게시판 페이지 콘텐츠)
+  // 좌측: 카테고리 리스트
+  // 우측: Outlet(게시판 페이지 콘텐츠)
   return (
-    <Box sx={{ display: "flex", height: "100%" }}> {/* display="flex" → 좌우 2컬럼 구조 (왼쪽 카테고리 / 오른쪽 콘텐츠) */}
+    <Box sx={{ display: "flex", height: "100%" }}> {/* display="flex" → 좌우 2컬럼 구조 (좌측 카테고리 / 우측 게시판 페이지 콘텐츠) */}
       {/* 좌측 카테고리 영역 */}
       <Box
         sx={{
-          width: 240, // 고정 폭 (240px)
-          borderRight: 1, // 오른쪽에 구분선 두께 1 (theme.spacing 단위)
-          borderColor: "divider", // 테마에서 정의된 divider 색상 사용
-          p: 2, // 내부 여백 (padding) 2단위
-          bgcolor: "#fff", // 배경색 흰색
+          width: 260,
+          borderRight: 1,
+          borderColor: "divider",
+          p: 2,
+          bgcolor: "#fff",
         }}
       >
         {/* 게시판 제목 (좌측 상단 텍스트) */}
