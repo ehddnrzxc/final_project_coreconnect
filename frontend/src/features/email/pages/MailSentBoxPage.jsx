@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { 
   Box, Typography, Paper, Table, TableHead, TableBody, TableRow, TableCell, 
-  IconButton, ButtonGroup, Button, InputBase, Divider, Checkbox, Chip, Pagination, Menu, MenuItem
+  IconButton, ButtonGroup, Button, InputBase, Divider, Checkbox, Chip, Pagination, Menu, MenuItem, Select
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ReplyIcon from '@mui/icons-material/Reply';
@@ -61,13 +61,21 @@ const MailSentBoxPage = () => {
   const [total, setTotal] = useState(0);
   const [sizeMenuAnchor, setSizeMenuAnchor] = useState(null); // 페이지 크기 선택 메뉴
   const [mails, setMails] = useState([]);
+  const [searchType, setSearchType] = useState("TITLE_CONTENT");
+  const [appliedSearchType, setAppliedSearchType] = useState("TITLE_CONTENT");
+  const [appliedKeyword, setAppliedKeyword] = useState("");
   const [selected, setSelected] = useState(new Set());
   const navigate = useNavigate();
 
   /*
     보낸 메일 목록을 서버에서 조회하는 함수 (userEmail, page, size 기준)
   */
-  const load = () => {
+  const load = (
+    pageIdx = page,
+    pageSize = size,
+    keywordParam = appliedKeyword,
+    searchTypeParam = appliedSearchType
+  ) => {
     if (!userEmail) {
       // userEmail이 없으면 리스트를 클리어 및 중단
       console.log("No userEmail, skipping fetchSentbox");
@@ -76,9 +84,9 @@ const MailSentBoxPage = () => {
     }
 
     // 디버깅 로그: API 요청 직전 파라미터 확인
-    console.log("fetchSentbox() called with:", userEmail, page, size);
+    console.log("fetchSentbox() called with:", userEmail, pageIdx, pageSize, searchTypeParam, keywordParam);
 
-    fetchSentbox(userEmail, page - 1, size)
+    fetchSentbox(userEmail, pageIdx - 1, pageSize, searchTypeParam, keywordParam)
       .then(res => {
         // 응답 전체를 출력하여 구조 확인
         console.log('fetchSentbox response:', res);
@@ -98,11 +106,21 @@ const MailSentBoxPage = () => {
     load();
   };
 
+  const handleSearchSubmit = (e) => {
+    if (e) e.preventDefault();
+    const keyword = search.trim();
+    const type = searchType;
+    setAppliedKeyword(keyword);
+    setAppliedSearchType(type);
+    setPage(1);
+    load(1, size, keyword, type);
+  };
+
   // page, size, userEmail 바뀔 때마다 메일 목록 새로고침
   useEffect(() => {
     load();
     // eslint-disable-next-line
-  }, [page, size, userEmail]);
+  }, [page, size, userEmail, appliedKeyword, appliedSearchType]);
 
   /*
     메일 행 선택/해제용 핸들러
@@ -159,30 +177,48 @@ const MailSentBoxPage = () => {
           </Typography>
           <Box sx={{ flex: 1 }} />
           {/* 검색창 */}
-          <Paper
+          <Box
             component="form"
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              width: 250,
-              p: '2px 8px',
-              borderRadius: 1,
-              bgcolor: "#f8fafb",
-              border: '1px solid #e2e6ea',
-              mr: 2
-            }}
-            onSubmit={e => { e.preventDefault(); }}
+            onSubmit={handleSearchSubmit}
+            sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 2 }}
           >
-            <InputBase
-              sx={{ flex: 1 }}
-              placeholder="검색어를 입력하세요"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-            <IconButton type="submit" sx={{ p: '6px' }}>
-              <SearchIcon fontSize="small" />
-            </IconButton>
-          </Paper>
+            <Select
+              size="small"
+              value={searchType}
+              onChange={e => setSearchType(e.target.value)}
+              sx={{
+                minWidth: 130,
+                bgcolor: '#f8fafb',
+                borderRadius: 1,
+                border: '1px solid #e2e6ea'
+              }}
+            >
+              <MenuItem value="TITLE">제목</MenuItem>
+              <MenuItem value="CONTENT">내용</MenuItem>
+              <MenuItem value="TITLE_CONTENT">제목+내용</MenuItem>
+            </Select>
+            <Paper
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                width: 250,
+                p: '2px 8px',
+                borderRadius: 1,
+                bgcolor: "#f8fafb",
+                border: '1px solid #e2e6ea'
+              }}
+            >
+              <InputBase
+                sx={{ flex: 1 }}
+                placeholder="검색어를 입력하세요"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+              <IconButton type="submit" sx={{ p: '6px' }}>
+                <SearchIcon fontSize="small" />
+              </IconButton>
+            </Paper>
+          </Box>
         </Box>
 
         {/* 툴바 버튼들 */}

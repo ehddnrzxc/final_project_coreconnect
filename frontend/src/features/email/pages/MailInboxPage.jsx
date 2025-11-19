@@ -2,7 +2,7 @@ import React, { useEffect, useState, useContext, useRef } from 'react';
 import {
   Box, Typography, Paper, Table, TableHead, TableBody, TableRow, TableCell,
   IconButton, ButtonGroup, Button, InputBase, Divider, Checkbox, Chip, Pagination, Badge, Tabs, Tab,
-  Snackbar, Alert, Menu, MenuItem
+  Snackbar, Alert, Menu, MenuItem, Select
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ReportIcon from '@mui/icons-material/Report';
@@ -32,6 +32,9 @@ const MailInboxPage = () => {
   const [unreadCount, setUnreadCount] = useState(0); // Chip/Badge
   const [selected, setSelected] = useState(new Set());
   const [snack, setSnack] = useState({ open: false, severity: 'info', message: '' });
+  const [searchType, setSearchType] = useState("TITLE_CONTENT");
+  const [appliedSearchType, setAppliedSearchType] = useState("TITLE_CONTENT");
+  const [appliedKeyword, setAppliedKeyword] = useState("");
   const pendingReadIdsRef = useRef(new Set());
   const { userProfile } = useContext(UserProfileContext) || {};
   const userEmail = userProfile?.email;
@@ -67,11 +70,26 @@ const MailInboxPage = () => {
   };
 
   // 받은메일함 목록 로딩
-  const loadInbox = async (pageIdx = page, pageSize = size, activeTab = tab) => {
+  const loadInbox = async (
+    pageIdx = page,
+    pageSize = size,
+    activeTab = tab,
+    keywordParam = appliedKeyword,
+    searchTypeParam = appliedSearchType
+  ) => {
     if (!userEmail) return;
     try {
       // 서버에서 삭제된 메일이 제외되어 반환됨(DB/JPQL 필터)
-      const res = await fetchInbox(userEmail, pageIdx - 1, pageSize, activeTab === "all" ? null : activeTab);
+      const res = await fetchInbox(
+        userEmail,
+        pageIdx - 1,
+        pageSize,
+        activeTab === "all" ? null : activeTab,
+        null,
+        null,
+        searchTypeParam,
+        keywordParam
+      );
       const boxData = res?.data?.data;
       const mailList = Array.isArray(boxData?.content) ? boxData.content : [];
 
@@ -117,11 +135,21 @@ const MailInboxPage = () => {
     loadUnreadCount();
   };
 
+  const handleSearchSubmit = (e) => {
+    if (e) e.preventDefault();
+    const keyword = search.trim();
+    const type = searchType;
+    setAppliedSearchType(type);
+    setAppliedKeyword(keyword);
+    setPage(1);
+    loadInbox(1, size, tab, keyword, type);
+  };
+
   // 탭/페이지 등 변경시 메일함 새로고침
   useEffect(() => {
     loadInbox();
     // eslint-disable-next-line
-  }, [userEmail, page, size, tab]);
+  }, [userEmail, page, size, tab, appliedKeyword, appliedSearchType]);
 
   // 페이지 포커스 시 목록 새로고침 (뒤로가기 시 목록 업데이트)
   useEffect(() => {
@@ -305,30 +333,48 @@ const MailInboxPage = () => {
             전체메일 <b>{total}</b>
           </Typography>
           <Box sx={{ flex: 1 }} />
-          <Paper
+          <Box
             component="form"
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              width: 250,
-              p: '2px 8px',
-              borderRadius: 1,
-              bgcolor: '#f8fafb',
-              border: '1px solid #e2e6ea',
-              mr: 2
-            }}
-            onSubmit={e => { e.preventDefault(); }}
+            onSubmit={handleSearchSubmit}
+            sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 2 }}
           >
-            <InputBase
-              sx={{ flex: 1 }}
-              placeholder="검색어를 입력하세요"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-            <IconButton type="submit" sx={{ p: '6px' }}>
-              <SearchIcon fontSize="small" />
-            </IconButton>
-          </Paper>
+            <Select
+              size="small"
+              value={searchType}
+              onChange={e => setSearchType(e.target.value)}
+              sx={{
+                minWidth: 130,
+                bgcolor: '#f8fafb',
+                borderRadius: 1,
+                border: '1px solid #e2e6ea'
+              }}
+            >
+              <MenuItem value="TITLE">제목</MenuItem>
+              <MenuItem value="CONTENT">내용</MenuItem>
+              <MenuItem value="TITLE_CONTENT">제목+내용</MenuItem>
+            </Select>
+            <Paper
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                width: 250,
+                p: '2px 8px',
+                borderRadius: 1,
+                bgcolor: '#f8fafb',
+                border: '1px solid #e2e6ea'
+              }}
+            >
+              <InputBase
+                sx={{ flex: 1 }}
+                placeholder="검색어를 입력하세요"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+              <IconButton type="submit" sx={{ p: '6px' }}>
+                <SearchIcon fontSize="small" />
+              </IconButton>
+            </Paper>
+          </Box>
         </Box>
 
         {/* 탭 구역 */}

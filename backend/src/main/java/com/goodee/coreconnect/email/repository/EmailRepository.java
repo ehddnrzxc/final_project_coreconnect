@@ -24,10 +24,22 @@ public interface EmailRepository extends JpaRepository<Email, Integer> {
     @Query("SELECT e FROM Email e " +
            "WHERE e.senderId = :senderId " +
            "AND e.emailStatus NOT IN ('TRASH', 'DELETED') " +
+           "AND (" +
+           "    :keyword IS NULL OR :keyword = '' OR (" +
+           "        (:searchType = 'TITLE' AND LOWER(e.emailTitle) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+           "        (:searchType = 'CONTENT' AND LOWER(e.emailContent) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+           "        (:searchType = 'TITLE_CONTENT' AND (" +
+           "            LOWER(e.emailTitle) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "            LOWER(e.emailContent) LIKE LOWER(CONCAT('%', :keyword, '%'))" +
+           "        ))" +
+           "    )" +
+           ") " +
            "ORDER BY e.emailSentTime DESC")
     Page<Email> findBySenderIdExcludingTrash(
         @Param("senderId") Integer senderId,
-        Pageable pageable
+        Pageable pageable,
+        @Param("searchType") String searchType,
+        @Param("keyword") String keyword
     );
 
 	// 내가 보낸 이메일 중 특정 상태(Bounce 등)만 페이징

@@ -42,6 +42,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
@@ -103,6 +104,24 @@ public class EmailServiceImpl implements EmailService {
 	private final NotificationService notificationService;
 	private final MailUserVisibilityRepository mailUserVisibilityRepository; // 추가
 	
+	private String normalizeSearchType(String searchType) {
+	    if (!StringUtils.hasText(searchType)) {
+	        return "TITLE_CONTENT";
+	    }
+	    String upper = searchType.trim().toUpperCase();
+	    if (!upper.equals("TITLE") && !upper.equals("CONTENT") && !upper.equals("TITLE_CONTENT")) {
+	        return "TITLE_CONTENT";
+	    }
+	    return upper;
+	}
+
+	private String normalizeKeyword(String keyword) {
+	    if (!StringUtils.hasText(keyword)) {
+	        return null;
+	    }
+	    return keyword.trim();
+	}
+
 	private Long getCurrentUserId() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (principal instanceof CustomUserDetails) {
@@ -250,27 +269,29 @@ public class EmailServiceImpl implements EmailService {
 	 * @return Page<EmailResponseDTO>
 	 */
 	@Override
-	public Page<EmailResponseDTO> getInbox(String userEmail, int page, int size, String filter) {
+	public Page<EmailResponseDTO> getInbox(String userEmail, int page, int size, String filter, String searchType, String keyword) {
 	    // 페이징 객체 생성 (page: 0-base)
 	    Pageable pageable = PageRequest.of(page, size);
 	    // TO/CC/BCC 모두 해당(받은메일함이기 때문)
 	    List<String> types = List.of("TO", "CC", "BCC");
 
 	    Page<EmailRecipient> recipientPage; // 실제 받은메일 레코드
+	    String normalizedSearchType = normalizeSearchType(searchType);
+	    String normalizedKeyword = normalizeKeyword(keyword);
 
 	    // 필터별 분기 처리
 	    if ("unread".equalsIgnoreCase(filter)) {
 	        // 안읽은 + 휴지통 제외
-	        recipientPage = emailRecipientRepository.findUnreadInboxExcludingTrash(userEmail, types, pageable);
+	        recipientPage = emailRecipientRepository.findUnreadInboxExcludingTrash(userEmail, types, pageable, normalizedSearchType, normalizedKeyword);
 	    } else if ("today".equalsIgnoreCase(filter)) {
 	        // 오늘 받은 메일(날짜 구간 + 상태 제외)
 	        LocalDate today = LocalDate.now();
 	        LocalDateTime startOfDay = today.atStartOfDay();
 	        LocalDateTime endOfDay = today.plusDays(1).atStartOfDay().minusNanos(1);
-	        recipientPage = emailRecipientRepository.findTodayInboxExcludingTrash(userEmail, types, startOfDay, endOfDay, pageable);
+	        recipientPage = emailRecipientRepository.findTodayInboxExcludingTrash(userEmail, types, startOfDay, endOfDay, pageable, normalizedSearchType, normalizedKeyword);
 	    } else {
 	        // 전체 메일(휴지통/삭제 제외)
-	        recipientPage = emailRecipientRepository.findInboxExcludingTrash(userEmail, types, pageable);
+	        recipientPage = emailRecipientRepository.findInboxExcludingTrash(userEmail, types, pageable, normalizedSearchType, normalizedKeyword);
 	    }
 
 	    // EmailRecipient → Email 엔티티만 추출, 중복 방지
@@ -301,7 +322,7 @@ public class EmailServiceImpl implements EmailService {
 	    return new PageImpl<>(dtoList, pageable, recipientPage.getTotalElements());
 	}
 	@Override
-	public Page<EmailResponseDTO> getSentbox(String userEmail, int page, int size) {
+	public Page<EmailResponseDTO> getSentbox(String userEmail, int page, int size, String searchType, String keyword) {
 		// [1] userEmail(문자열) → senderId(정수) 변환 과정 필요!
 	    User sender = userRepository.findByEmail(userEmail) // 반드시 UserRepository 주입 필요!
 	        .orElseThrow(() -> new IllegalArgumentException("User not found by email: " + userEmail));
@@ -312,7 +333,11 @@ public class EmailServiceImpl implements EmailService {
 	    Pageable pageable = PageRequest.of(page, size, sort);
 
 	    // [3] 정수 senderId 기준으로 보낸 메일 조회 (휴지통/삭제 상태 제외)
-	    Page<com.goodee.coreconnect.email.entity.Email> emailPage = emailRepository.findBySenderIdExcludingTrash(senderId, pageable);
+	    String normalizedSearchType = normalizeSearchType(searchType);
+	    String normalizedKeyword = normalizeKeyword(keyword);
+
+	    Page<com.goodee.coreconnect.email.entity.Email> emailPage =
+	            emailRepository.findBySenderIdExcludingTrash(senderId, pageable, normalizedSearchType, normalizedKeyword);
 
 	    // [4] DTO 변환
 	    List<EmailResponseDTO> dtoList = emailPage.stream().map(email -> {
