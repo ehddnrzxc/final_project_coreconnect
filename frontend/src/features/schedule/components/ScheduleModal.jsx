@@ -153,6 +153,19 @@ export default function ScheduleModal({
     load();
   }, [open, isEdit, showSnack]);
 
+  /** 새 일정 등록 모드일 때 본인을 참여자 목록에 자동 추가 */
+  useEffect(() => {
+    if (!open || isEdit || !users.length || !currentUserEmail) return;
+    
+    const currentUser = users.find(u => u.email === currentUserEmail);
+    if (currentUser && !form.participantIds.includes(currentUser.id)) {
+      setForm(prev => ({
+        ...prev,
+        participantIds: [currentUser.id, ...prev.participantIds]
+      }));
+    }
+  }, [open, isEdit, users, currentUserEmail]);
+
   /** categories와 meetingRooms가 로드된 후 initialData 값이 유효하면 form에 다시 설정 */
   useEffect(() => {
     if (!open || !isEdit || !initialData) return;
@@ -268,6 +281,11 @@ export default function ScheduleModal({
         ? `${endDateStr} ${endTimePart}` 
         : normalizedEnd;
       
+      // participantIds 처리: initialData.participantIds가 없거나 빈 배열인 경우 빈 배열로 설정
+      const participantIds = initialData.participantIds && Array.isArray(initialData.participantIds) && initialData.participantIds.length > 0
+        ? initialData.participantIds
+        : [];
+      
       const formData = {
         title: initialData.title || "",
         content: initialData.content || "",
@@ -285,32 +303,29 @@ export default function ScheduleModal({
         isAllDay: isAllDay,
         meetingRoomId: initialData.meetingRoomId || "",
         categoryId: initialData.categoryId || "",
-        participantIds: initialData.participantIds || [],
+        participantIds: participantIds,
         visibility: initialData.visibility || "PUBLIC",
       };
       
       setForm(formData);
+      
     } else if (date) {
       // 새 일정 등록 모드이고 date가 있으면 초기값 설정
-      // date가 Date 객체인 경우 시간 정보 추출, 문자열인 경우 기본 시간 사용
+      // date가 Date 객체인 경우 날짜만 추출하고 시간은 기본값(09:00, 10:00) 사용
       let dateStr, startHour, startMinute, endHour, endMinute;
       
       if (date instanceof Date && !isNaN(date.getTime())) {
-        // Date 객체인 경우: 시간 정보 추출
+        // Date 객체인 경우: 날짜만 추출, 시간은 기본값 사용
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, "0");
         const day = String(date.getDate()).padStart(2, "0");
         dateStr = `${year}-${month}-${day}`;
         
-        // 시간 정보 추출 (timeGrid 뷰에서 클릭한 시간대 사용)
-        startHour = String(date.getHours()).padStart(2, "0");
-        startMinute = String(date.getMinutes()).padStart(2, "0");
-        
-        // 종료 시간은 시작 시간 + 1시간
-        const endDate = new Date(date);
-        endDate.setHours(endDate.getHours() + 1);
-        endHour = String(endDate.getHours()).padStart(2, "0");
-        endMinute = String(endDate.getMinutes()).padStart(2, "0");
+        // 기본 시간 사용 (09:00, 10:00)
+        startHour = "09";
+        startMinute = "00";
+        endHour = "10";
+        endMinute = "00";
       } else {
         // 문자열인 경우: 기본 시간 사용
         dateStr = typeof date === "string" ? date : String(date);
@@ -525,13 +540,14 @@ export default function ScheduleModal({
           normalizedEnd,
           scheduleId
         );
+        
         setAvailabilityMap({ ...availability });
       } catch (err) {
         showSnack("참석자 일정 현황을 불러오는 중 오류가 발생했습니다.", "error");
       }
     };
     checkParticipantsAvailability();
-  }, [form.participantIds, form.startDateTime, form.endDateTime, form.isAllDay, scheduleId]);
+  }, [form.participantIds, form.startDateTime, form.endDateTime, form.isAllDay, scheduleId, isEdit]);
 
   /** 회의실 선택 시 시간대 기반으로 가용성 조회 */
   const handleRoomSelectOpen = async () => {
@@ -782,7 +798,7 @@ export default function ScheduleModal({
       open={open}
       onClose={onClose}
       fullScreen={fullScreen}
-      maxWidth="lg"
+      maxWidth="xl"
       fullWidth
       scroll="paper" // 내부 스크롤 자동 처리
       slotProps={{
@@ -798,7 +814,7 @@ export default function ScheduleModal({
       </DialogTitle>
 
       {/* 내용 영역 (자동 스크롤) */}
-      <DialogContent dividers sx={{p: 0, display: "flex", flexDirection: "row", height: "calc(100vh - 160px)",  overflow: "hidden"}}>
+      <DialogContent dividers sx={{p: 0, display: "flex", flexDirection: "row", height: "calc(100vh - 120px)", minHeight: "600px", overflow: "hidden"}}>
         <Box sx={{ flex: 1, p: 3, overflowY: "auto", minWidth: 600}}>
           <Stack spacing={2}>
             {/* 제목 + 종일 라디오 버튼 + 비공개 체크박스 */}
@@ -1009,7 +1025,7 @@ export default function ScheduleModal({
                   <FormControl sx={{ minWidth: 80 }}>
                     <InputLabel>시</InputLabel>
                     <Select
-                      value={form.startTimeHour || "9"}
+                      value={Number(form.startTimeHour) || 9}
                       onChange={(e) => {
                         const hour = e.target.value;
                         const minute = form.startTimeMinute || "0";
@@ -1021,7 +1037,7 @@ export default function ScheduleModal({
                         
                         setForm(prev => ({
                           ...prev,
-                          startTimeHour: hour,
+                          startTimeHour: String(hour),
                           startTime: combined,
                           endTimeHour: String(nextHour),
                           endTime: nextTime
@@ -1137,14 +1153,27 @@ export default function ScheduleModal({
                   <FormControl sx={{ minWidth: 80 }}>
                     <InputLabel>시</InputLabel>
                     <Select
-                      value={form.endTimeHour || "10"}
+                      value={(() => {
+                        const currentValue = form.endTimeHour;
+                        const numericValue = Number(currentValue);
+                        const availableOptions = endTimeHours;
+                        
+                        // currentValue가 availableOptions에 있는지 확인
+                        let finalValue = numericValue;
+                        if (!availableOptions.includes(finalValue)) {
+                          // 유효하지 않은 값이면 availableOptions의 첫 번째 값 사용
+                          finalValue = availableOptions.length > 0 ? availableOptions[0] : 10;
+                        }
+                        
+                        return finalValue;
+                      })()}
                       onChange={(e) => {
                         const hour = e.target.value;
                         const minute = form.endTimeMinute || "0";
                         const combined = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
                         setForm(prev => ({
                           ...prev,
-                          endTimeHour: hour,
+                          endTimeHour: String(hour),
                           endTime: combined
                         }));
                       }}
