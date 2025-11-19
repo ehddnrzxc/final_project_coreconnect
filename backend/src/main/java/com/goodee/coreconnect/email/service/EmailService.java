@@ -36,7 +36,7 @@ public interface EmailService {
      * @param size 한 페이지당 아이템 수
      * @return Page<EmailResponseDTO> 페이징된 EmailResponseDTO 리스트
      */
-	Page<EmailResponseDTO> getInbox(String userEmail, int page, int size,  String filter);
+	Page<EmailResponseDTO> getInbox(String userEmail, int page, int size,  String filter, String searchType, String keyword);
 	
 	/**
      * 발신함(보낸메일함) 리스트를 페이징으로 조회합니다.
@@ -45,7 +45,7 @@ public interface EmailService {
      * @param size 한 페이지당 아이템 수
      * @return Page<EmailResponseDTO> 페이징된 EmailResponseDTO 리스트
      */
-	Page<EmailResponseDTO> getSentbox(String userEmail, int page, int size);
+	Page<EmailResponseDTO> getSentbox(String userEmail, int page, int size, String searchType, String keyword);
 	
 	 /**
      * 반송함(실패/반송된 메일함) 리스트를 페이징으로 조회합니다.

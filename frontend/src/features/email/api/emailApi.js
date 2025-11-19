@@ -10,11 +10,14 @@ export const fetchInboxSimple = (userEmail, page, size, filter) =>
  */
 export const fetchInbox = (
   userEmail, page, size, filter,
-  sortField = null, sortDirection = null
+  sortField = null, sortDirection = null,
+  searchType = null, keyword = null
 ) => {
   const params = { userEmail, page, size, filter };
   if (sortField) params.sortField = sortField;
   if (sortDirection) params.sortDirection = sortDirection;
+  if (searchType) params.searchType = searchType;
+  if (keyword && keyword.trim().length > 0) params.keyword = keyword.trim();
   return http.get('/email/inbox', { params });
 };
 
@@ -68,9 +71,11 @@ export const sendMail = (mailData) => {
   return http.post('/email/send', formData);
 };
 
-export const fetchSentbox = (userEmail, page, size) => {
-  // const userEmail = GetUserEmailFromStorage();
-  return http.get('/email/sentbox', { params: { userEmail, page, size } });
+export const fetchSentbox = (userEmail, page, size, searchType = null, keyword = null) => {
+  const params = { userEmail, page, size };
+  if (searchType) params.searchType = searchType;
+  if (keyword && keyword.trim().length > 0) params.keyword = keyword.trim();
+  return http.get('/email/sentbox', { params });
 };
 
 export const downloadAllAttachments = (attachments = []) => {

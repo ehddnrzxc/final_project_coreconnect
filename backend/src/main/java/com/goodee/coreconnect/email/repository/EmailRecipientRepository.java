@@ -71,11 +71,23 @@ public interface EmailRecipientRepository extends JpaRepository<EmailRecipient, 
            "AND r.emailRecipientType IN :emailRecipientType " +
            "AND r.email.emailStatus NOT IN ('TRASH', 'DELETED') " +
            "AND (r.deleted IS NULL OR r.deleted = false) " +
+           "AND (" +
+           "    :keyword IS NULL OR :keyword = '' OR (" +
+           "        (:searchType = 'TITLE' AND LOWER(r.email.emailTitle) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+           "        (:searchType = 'CONTENT' AND LOWER(r.email.emailContent) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+           "        (:searchType = 'TITLE_CONTENT' AND (" +
+           "            LOWER(r.email.emailTitle) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "            LOWER(r.email.emailContent) LIKE LOWER(CONCAT('%', :keyword, '%'))" +
+           "        ))" +
+           "    )" +
+           ") " +
            "ORDER BY r.email.emailSentTime DESC")
     Page<EmailRecipient> findInboxExcludingTrash(
         @Param("emailRecipientAddress") String emailRecipientAddress,
         @Param("emailRecipientType") List<String> emailRecipientType,
-        Pageable pageable
+        Pageable pageable,
+        @Param("searchType") String searchType,
+        @Param("keyword") String keyword
     );
 
     // 오늘의 메일(휴지통/삭제 제외)
@@ -85,13 +97,25 @@ public interface EmailRecipientRepository extends JpaRepository<EmailRecipient, 
            "AND r.email.emailSentTime BETWEEN :start AND :end " +
            "AND r.email.emailStatus NOT IN ('TRASH', 'DELETED') " +
            "AND (r.deleted IS NULL OR r.deleted = false) " +
+           "AND (" +
+           "    :keyword IS NULL OR :keyword = '' OR (" +
+           "        (:searchType = 'TITLE' AND LOWER(r.email.emailTitle) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+           "        (:searchType = 'CONTENT' AND LOWER(r.email.emailContent) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+           "        (:searchType = 'TITLE_CONTENT' AND (" +
+           "            LOWER(r.email.emailTitle) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "            LOWER(r.email.emailContent) LIKE LOWER(CONCAT('%', :keyword, '%'))" +
+           "        ))" +
+           "    )" +
+           ") " +
            "ORDER BY r.email.emailSentTime DESC")
     Page<EmailRecipient> findTodayInboxExcludingTrash(
         @Param("emailRecipientAddress") String emailRecipientAddress,
         @Param("emailRecipientType") List<String> emailRecipientType,
         @Param("start") LocalDateTime start,
         @Param("end") LocalDateTime end,
-        Pageable pageable
+        Pageable pageable,
+        @Param("searchType") String searchType,
+        @Param("keyword") String keyword
     );
 
     // 안읽은만(휴지통/삭제 제외) - emailReadYn이 false이거나 null인 경우
@@ -101,10 +125,22 @@ public interface EmailRecipientRepository extends JpaRepository<EmailRecipient, 
            "AND (r.emailReadYn = false OR r.emailReadYn IS NULL) " +
            "AND r.email.emailStatus NOT IN ('TRASH', 'DELETED') " +
            "AND (r.deleted IS NULL OR r.deleted = false) " +
+           "AND (" +
+           "    :keyword IS NULL OR :keyword = '' OR (" +
+           "        (:searchType = 'TITLE' AND LOWER(r.email.emailTitle) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+           "        (:searchType = 'CONTENT' AND LOWER(r.email.emailContent) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+           "        (:searchType = 'TITLE_CONTENT' AND (" +
+           "            LOWER(r.email.emailTitle) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "            LOWER(r.email.emailContent) LIKE LOWER(CONCAT('%', :keyword, '%'))" +
+           "        ))" +
+           "    )" +
+           ") " +
            "ORDER BY r.email.emailSentTime DESC")
     Page<EmailRecipient> findUnreadInboxExcludingTrash(
         @Param("emailRecipientAddress") String emailRecipientAddress,
         @Param("emailRecipientType") List<String> emailRecipientType,
-        Pageable pageable
+        Pageable pageable,
+        @Param("searchType") String searchType,
+        @Param("keyword") String keyword
     );
 }

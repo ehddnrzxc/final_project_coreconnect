@@ -75,16 +75,82 @@ export default function ChatLayout() {
     ? roomList.filter((room) => room && room.unreadCount > 0).length
     : 0;
 
+  // 채팅방 목록 정렬 함수
+  // 우선순위: 1) 최근 생성된 방 (5분 이내) 2) 최근 메시지 시간
+  const sortRoomList = (rooms) => {
+    const now = new Date().getTime();
+    const FIVE_MINUTES = 5 * 60 * 1000; // 5분을 밀리초로
+    
+    return [...rooms].sort((a, b) => {
+      // 1. 최근 생성된 방 우선 정렬 (5분 이내)
+      const aCreatedAt = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bCreatedAt = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      const aIsRecent = aCreatedAt > 0 && (now - aCreatedAt) < FIVE_MINUTES;
+      const bIsRecent = bCreatedAt > 0 && (now - bCreatedAt) < FIVE_MINUTES;
+      
+      if (aIsRecent && !bIsRecent) return -1; // a가 최근 생성
+      if (!aIsRecent && bIsRecent) return 1;  // b가 최근 생성
+      if (aIsRecent && bIsRecent) {
+        // 둘 다 최근 생성이면 생성 시간 기준 내림차순
+        return bCreatedAt - aCreatedAt;
+      }
+      
+      // 2. 최근 메시지 시간 기준 정렬
+      const timeA = a.lasMessageTime ? new Date(a.lasMessageTime).getTime() : 0;
+      const timeB = b.lasMessageTime ? new Date(b.lasMessageTime).getTime() : 0;
+      
+      // 둘 다 메시지가 없으면 생성 시간 기준 (있는 경우만)
+      if (timeA === 0 && timeB === 0) {
+        if (aCreatedAt > 0 && bCreatedAt > 0) {
+          return bCreatedAt - aCreatedAt;
+        }
+        return 0;
+      }
+      
+      // 메시지 시간 기준 내림차순
+      return timeB - timeA;
+    });
+  };
+
   // ---------- 채팅방 생성 ----------
   const handleCreateRoom = async (data) => {
     try {
-      const room = await createChatRoom(data);
-      if (!room || !room.roomId) throw new Error("응답 데이터 없음");
-      setRoomList(prev => [...prev, room]);
-      setSelectedRoomId(room.roomId); // 방 생성시에만 바로 진입
+      const res = await createChatRoom(data);
+      // 백엔드 응답 구조: ResponseEntity<ChatRoomResponseDTO> (ResponseDTO로 감싸지 않음)
+      // res.data가 바로 ChatRoomResponseDTO: { id, roomName, roomType, ... }
+      const room = res?.data || res;
+      // 백엔드 DTO는 id 필드를 사용하므로 roomId 대신 id 확인
+      const roomId = room?.id || room?.roomId;
+      if (!room || !roomId) {
+        console.error("응답 데이터:", res);
+        throw new Error("응답 데이터 없음");
+      }
+      // roomId 필드로 통일하여 추가 (다른 곳에서 roomId를 사용하므로)
+      const now = new Date().toISOString();
+      const roomWithRoomId = { 
+        ...room, 
+        roomId: roomId,
+        roomName: room.roomName || room.roomName,
+        unreadCount: 0,
+        lastMessageContent: null,
+        lasMessageTime: null,
+        lastSenderName: null,
+        createdAt: now // 생성 시간 추가 (최근 생성된 방을 맨 위에 표시하기 위해)
+      };
+      
+      // 새로 생성된 방을 맨 위에 추가하고 정렬
+      setRoomList(prev => {
+        const updated = [roomWithRoomId, ...prev];
+        return sortRoomList(updated);
+      });
+      
+      setSelectedRoomId(roomId); // 방 생성시에만 바로 진입
       setCreateOpen(false);
+      // 목록 새로고침하여 최신 상태 유지 (백엔드에서 받은 데이터로 동기화)
+      setTimeout(() => loadRooms(), 500);
     } catch (error) {
-      alert("채팅방 생성 에러: " + (error.message || "err"));
+      console.error("채팅방 생성 에러:", error);
+      alert("채팅방 생성 에러: " + (error.message || "응답 데이터 없음"));
     }
   };
 
@@ -120,19 +186,21 @@ export default function ChatLayout() {
         );
       });
     }
-    // roomList의 해당 방 정보를 최신화
-    setRoomList((prevRoomList) =>
-      prevRoomList.map(room => Number(room.roomId) === roomIdNum
+    // roomList의 해당 방 정보를 최신화하고 정렬
+    setRoomList((prevRoomList) => {
+      const updated = prevRoomList.map(room => Number(room.roomId) === roomIdNum
         ? {
           ...room,
-          messageContent: msg.messageContent,
+          lastMessageContent: msg.messageContent,
+          lasMessageTime: msg.sendAt,
           fileYn: msg.fileYn,
           sendAt: msg.sendAt,
           unreadCount: msg.unreadCount,
         }
         : room
-      )
-    );
+      );
+      return sortRoomList(updated);
+    });
   };
 
   // ---------- 파일 업로드 ----------
@@ -194,7 +262,9 @@ export default function ChatLayout() {
   const loadRooms = async () => {
     const res = await fetchChatRoomsLatest();
     if (res && Array.isArray(res.data)) {
-      setRoomList(res.data);
+      // 정렬 함수 사용
+      const sortedRooms = sortRoomList(res.data);
+      setRoomList(sortedRooms);
       setSelectedRoomId(null); // ★ 첫 진입시 아무 방도 자동 선택 안 함
     } else {
       setRoomList([]);

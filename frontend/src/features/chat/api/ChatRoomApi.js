@@ -37,6 +37,9 @@ export const markRoomMessagesAsRead = async (roomId, accessToken) => {
 // ★ 채팅방 생성 (반드시 http 인스턴스 사용, fetch X)
 export async function createChatRoom(data) {
   const res = await http.post("chat", data);
-  // res.data가 바로 ChatRoomResponseDTO이므로 바로 반환!
-  return res.data; // { roomId, roomName, ... }
+  // 백엔드 응답 구조: ResponseEntity<ChatRoomResponseDTO>
+  // Spring이 자동으로 JSON 변환: { "id": ..., "roomName": ..., ... }
+  // axios는 res.data에 응답 본문을 담음
+  // ResponseDTO로 감싸져 있으면 res.data.data, 아니면 res.data
+  return res.data; // { id, roomName, roomType, ... } 또는 { data: { id, ... } }
 }

@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useRef } from 'react';
 import {
   Box, Typography, Paper, Table, TableHead, TableBody, TableRow, TableCell,
   IconButton, ButtonGroup, Button, InputBase, Divider, Checkbox, Chip, Pagination, Badge, Tabs, Tab,
-  Snackbar, Alert
+  Snackbar, Alert, Menu, MenuItem, Select
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ReportIcon from '@mui/icons-material/Report';
@@ -25,12 +25,17 @@ const MailInboxPage = () => {
   const [tab, setTab] = useState("all"); // 전체/오늘/안읽음
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [size] = useState(20);
+  const [size, setSize] = useState(10); // 페이지당 항목 수 (5 또는 10 선택 가능)
   const [total, setTotal] = useState(0);
+  const [sizeMenuAnchor, setSizeMenuAnchor] = useState(null); // 페이지 크기 선택 메뉴
   const [mails, setMails] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0); // Chip/Badge
   const [selected, setSelected] = useState(new Set());
   const [snack, setSnack] = useState({ open: false, severity: 'info', message: '' });
+  const [searchType, setSearchType] = useState("TITLE_CONTENT");
+  const [appliedSearchType, setAppliedSearchType] = useState("TITLE_CONTENT");
+  const [appliedKeyword, setAppliedKeyword] = useState("");
+  const pendingReadIdsRef = useRef(new Set());
   const { userProfile } = useContext(UserProfileContext) || {};
   const userEmail = userProfile?.email;
   const navigate = useNavigate();
@@ -49,7 +54,7 @@ const MailInboxPage = () => {
   // 메일상태 라벨/칼라 변환
   const formatMailStatusLabel = (status) => {
     switch (status) {
-      case "SENT": return "전송완료";
+      case "SENT": return "발신완료";
       case "TRASH": return "휴지통";
       case "DELETED": return "삭제됨";
       default: return status || "-";
@@ -65,17 +70,56 @@ const MailInboxPage = () => {
   };
 
   // 받은메일함 목록 로딩
-  const loadInbox = async (pageIdx = page, pageSize = size, activeTab = tab) => {
+  const loadInbox = async (
+    pageIdx = page,
+    pageSize = size,
+    activeTab = tab,
+    keywordParam = appliedKeyword,
+    searchTypeParam = appliedSearchType
+  ) => {
     if (!userEmail) return;
     try {
       // 서버에서 삭제된 메일이 제외되어 반환됨(DB/JPQL 필터)
-      const res = await fetchInbox(userEmail, pageIdx - 1, pageSize, activeTab === "all" ? null : activeTab);
+      const res = await fetchInbox(
+        userEmail,
+        pageIdx - 1,
+        pageSize,
+        activeTab === "all" ? null : activeTab,
+        null,
+        null,
+        searchTypeParam,
+        keywordParam
+      );
       const boxData = res?.data?.data;
       const mailList = Array.isArray(boxData?.content) ? boxData.content : [];
-      setMails(mailList);
-      setTotal(typeof boxData?.totalElements === "number" ? boxData.totalElements : 0);
+
+      if (activeTab === "unread") {
+        if (pendingReadIdsRef.current.size > 0) {
+          const idsFromServer = new Set(mailList.map(m => m.emailId));
+          const stillPending = new Set();
+          pendingReadIdsRef.current.forEach(id => {
+            if (idsFromServer.has(id)) {
+              stillPending.add(id);
+            }
+          });
+          pendingReadIdsRef.current = stillPending;
+        }
+      } else if (pendingReadIdsRef.current.size > 0) {
+        pendingReadIdsRef.current = new Set();
+      }
+
+      const listForState = activeTab === "unread"
+        ? mailList.filter(mail => !pendingReadIdsRef.current.has(mail.emailId))
+        : mailList;
+
+      setMails(listForState);
+      const serverTotal = typeof boxData?.totalElements === "number" ? boxData.totalElements : 0;
+      const adjustedTotal = activeTab === "unread"
+        ? Math.max(0, serverTotal - pendingReadIdsRef.current.size)
+        : serverTotal;
+      setTotal(adjustedTotal);
       setSelected(prev => {
-        const idsOnPage = new Set(mailList.map(m => m.emailId));
+        const idsOnPage = new Set(listForState.map(m => m.emailId));
         const newSet = new Set([...prev].filter(id => idsOnPage.has(id)));
         return newSet;
       });
@@ -86,11 +130,26 @@ const MailInboxPage = () => {
     }
   };
 
+  const handleRefresh = () => {
+    loadInbox(1, size, tab);
+    loadUnreadCount();
+  };
+
+  const handleSearchSubmit = (e) => {
+    if (e) e.preventDefault();
+    const keyword = search.trim();
+    const type = searchType;
+    setAppliedSearchType(type);
+    setAppliedKeyword(keyword);
+    setPage(1);
+    loadInbox(1, size, tab, keyword, type);
+  };
+
   // 탭/페이지 등 변경시 메일함 새로고침
   useEffect(() => {
     loadInbox();
     // eslint-disable-next-line
-  }, [userEmail, page, size, tab]);
+  }, [userEmail, page, size, tab, appliedKeyword, appliedSearchType]);
 
   // 페이지 포커스 시 목록 새로고침 (뒤로가기 시 목록 업데이트)
   useEffect(() => {
@@ -102,6 +161,18 @@ const MailInboxPage = () => {
     };
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userEmail, tab]);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (!document.hidden && userEmail && tab === "unread") {
+        loadInbox();
+        loadUnreadCount();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userEmail, tab]);
 
@@ -209,45 +280,30 @@ const MailInboxPage = () => {
         const result = await markMailAsRead(mail.emailId, userEmail);
         console.log("markMailAsRead result:", result);
         
-        // 안읽은 메일 탭에서 읽으면 목록에서 즉시 제거
+        // 안읽은 메일 탭에서 읽으면 목록에서 즉시 제거 (Optimistic Update)
         if (tab === "unread") {
-          // 목록에서 해당 메일 즉시 제거 (UI 반응성 향상)
+          pendingReadIdsRef.current = new Set(pendingReadIdsRef.current).add(mail.emailId);
           setMails(prev => prev.filter(m => m.emailId !== mail.emailId));
           setTotal(prev => Math.max(0, prev - 1));
         }
         
-        // DB 반영을 위한 짧은 대기 후 안읽은 메일 개수 업데이트 (여러 번 호출하여 확실하게)
-        setTimeout(async () => {
-          await loadUnreadCount();
-        }, 150);
-        
-        // 추가로 한 번 더 업데이트 (DB 반영 확실히)
-        setTimeout(async () => {
-          await loadUnreadCount();
-        }, 300);
-        
-        // 안읽은 메일 탭에서 읽으면 목록 새로고침
+        // 안읽은 메일 탭에서 읽으면 DB 반영 후 목록 새로고침
+        // 트랜잭션 커밋/반영 딜레이를 고려하여 충분한 대기 시간 설정 (700ms~1초)
         if (tab === "unread") {
-          // DB 반영 후 목록 새로고침 (안읽은 메일 필터 적용하여 서버와 동기화)
-          // 여러 번 시도하여 확실하게 반영
           setTimeout(async () => {
             try {
+              // DB 반영 후 목록 새로고침 (안읽은 메일 필터 적용하여 서버와 동기화)
               await loadInbox(page, size, "unread");
               await loadUnreadCount();
             } catch (err) {
-              console.error("loadInbox error after read (first attempt)", err);
+              console.error("loadInbox error after read", err);
             }
-          }, 300); // DB 반영을 위한 대기
-          
-          // 추가로 한 번 더 새로고침 (DB 반영 확실히)
+          }, 800); // DB 트랜잭션 커밋/반영 딜레이를 고려한 충분한 대기 시간
+        } else {
+          // 다른 탭에서는 안읽은 메일 개수만 업데이트
           setTimeout(async () => {
-            try {
-              await loadInbox(page, size, "unread");
-              await loadUnreadCount();
-            } catch (err) {
-              console.error("loadInbox error after read (second attempt)", err);
-            }
-          }, 600); // 추가 대기
+            await loadUnreadCount();
+          }, 500);
         }
       }
       navigate(`/email/${mail.emailId}`);   // 상세 페이지 이동
@@ -277,30 +333,48 @@ const MailInboxPage = () => {
             전체메일 <b>{total}</b>
           </Typography>
           <Box sx={{ flex: 1 }} />
-          <Paper
+          <Box
             component="form"
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              width: 250,
-              p: '2px 8px',
-              borderRadius: 1,
-              bgcolor: '#f8fafb',
-              border: '1px solid #e2e6ea',
-              mr: 2
-            }}
-            onSubmit={e => { e.preventDefault(); }}
+            onSubmit={handleSearchSubmit}
+            sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 2 }}
           >
-            <InputBase
-              sx={{ flex: 1 }}
-              placeholder="검색어를 입력하세요"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-            <IconButton type="submit" sx={{ p: '6px' }}>
-              <SearchIcon fontSize="small" />
-            </IconButton>
-          </Paper>
+            <Select
+              size="small"
+              value={searchType}
+              onChange={e => setSearchType(e.target.value)}
+              sx={{
+                minWidth: 130,
+                bgcolor: '#f8fafb',
+                borderRadius: 1,
+                border: '1px solid #e2e6ea'
+              }}
+            >
+              <MenuItem value="TITLE">제목</MenuItem>
+              <MenuItem value="CONTENT">내용</MenuItem>
+              <MenuItem value="TITLE_CONTENT">제목+내용</MenuItem>
+            </Select>
+            <Paper
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                width: 250,
+                p: '2px 8px',
+                borderRadius: 1,
+                bgcolor: '#f8fafb',
+                border: '1px solid #e2e6ea'
+              }}
+            >
+              <InputBase
+                sx={{ flex: 1 }}
+                placeholder="검색어를 입력하세요"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+              <IconButton type="submit" sx={{ p: '6px' }}>
+                <SearchIcon fontSize="small" />
+              </IconButton>
+            </Paper>
+          </Box>
         </Box>
 
         {/* 탭 구역 */}
@@ -348,12 +422,41 @@ const MailInboxPage = () => {
           </ButtonGroup>
           <Box sx={{ flex: 1 }} />
           <IconButton><ViewListIcon /></IconButton>
-          <IconButton><SyncIcon onClick={() => { loadInbox(1, size, tab); loadUnreadCount(); }} /></IconButton>
+          <IconButton onClick={handleRefresh}><SyncIcon /></IconButton>
           <IconButton><MoreVertIcon /></IconButton>
-          <Paper sx={{ ml: 1, display: 'inline-flex', alignItems: 'center', px: 0.5 }}>
+          <Paper 
+            sx={{ ml: 1, display: 'inline-flex', alignItems: 'center', px: 0.5, cursor: 'pointer' }}
+            onClick={(e) => setSizeMenuAnchor(e.currentTarget)}
+          >
             <Typography sx={{ px: 0.5, fontWeight: 500, fontSize: 15 }}>{size}</Typography>
             <IconButton size="small"><MoreVertIcon fontSize="small" /></IconButton>
           </Paper>
+          <Menu
+            anchorEl={sizeMenuAnchor}
+            open={Boolean(sizeMenuAnchor)}
+            onClose={() => setSizeMenuAnchor(null)}
+          >
+            <MenuItem 
+              onClick={() => {
+                setSize(5);
+                setPage(1);
+                setSizeMenuAnchor(null);
+              }}
+              selected={size === 5}
+            >
+              5개씩 보기
+            </MenuItem>
+            <MenuItem 
+              onClick={() => {
+                setSize(10);
+                setPage(1);
+                setSizeMenuAnchor(null);
+              }}
+              selected={size === 10}
+            >
+              10개씩 보기
+            </MenuItem>
+          </Menu>
         </Box>
         <Divider sx={{ mb: 2 }} />
 
@@ -388,8 +491,7 @@ const MailInboxPage = () => {
                     hover
                     sx={{
                       cursor: "pointer",
-                      fontWeight: isUnread ? 700 : 400,
-                      background: isUnread ? "#fff4f4" : undefined
+                      fontWeight: isUnread ? 700 : 400
                     }}
                     onClick={() => handleMailRowClick(mail)}
                   >

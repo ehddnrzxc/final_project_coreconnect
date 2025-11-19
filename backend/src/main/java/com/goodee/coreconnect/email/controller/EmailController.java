@@ -157,10 +157,12 @@ public class EmailController {
     		@RequestParam("userEmail") String userEmail, /* 이름 명확히 */
     	    @RequestParam(value = "page", defaultValue = "0") int page,
     	    @RequestParam(value = "size", defaultValue = "1") int size,
-    	    @RequestParam(value = "filter", required = false) String filter
+    	    @RequestParam(value = "filter", required = false) String filter,
+    	    @RequestParam(value = "searchType", required = false) String searchType,
+    	    @RequestParam(value = "keyword", required = false) String keyword
     ) {
     	// filter: null or "today"/"unread"
-        Page<EmailResponseDTO> result = emailService.getInbox(userEmail, page, size, filter);
+        Page<EmailResponseDTO> result = emailService.getInbox(userEmail, page, size, filter, searchType, keyword);
         // 안읽은 메일 개수는 별도 API로 조회하므로 여기서는 제거
         return ResponseEntity.ok(ResponseDTO.success(result, "받은메일함 조회 성공"));
     }
@@ -171,10 +173,12 @@ public class EmailController {
     public ResponseEntity<ResponseDTO<Page<EmailResponseDTO>>> getSentbox(
     	@RequestParam("userEmail") String userEmail,
         @RequestParam(value = "page", defaultValue = "0") int page,
-        @RequestParam(value = "size", defaultValue = "1") int size
+        @RequestParam(value = "size", defaultValue = "1") int size,
+        @RequestParam(value = "searchType", required = false) String searchType,
+        @RequestParam(value = "keyword", required = false) String keyword
     ) {
     	log.info("userEmail: {}", userEmail);
-        Page<EmailResponseDTO> result = emailService.getSentbox(userEmail, page, size);
+        Page<EmailResponseDTO> result = emailService.getSentbox(userEmail, page, size, searchType, keyword);
         return ResponseEntity.ok(ResponseDTO.success(result, "보낸메일함 조회 성공"));
     }
 

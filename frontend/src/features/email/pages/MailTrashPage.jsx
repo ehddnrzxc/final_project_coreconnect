@@ -1,24 +1,27 @@
 import React, { useEffect, useState } from "react";
 import {
   Box, Typography, Paper, Table, TableHead, TableBody, TableRow, TableCell,
-  Button, Checkbox, Chip, Pagination, CircularProgress
+  Button, Checkbox, Chip, Pagination, CircularProgress, IconButton, Menu, MenuItem
 } from "@mui/material";
 // import VisibilityIcon from "@mui/icons-material/Visibility"; // 눈모양 제거
 import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { useNavigate } from "react-router-dom";
 import {
   fetchTrashMails,   // 휴지통 메일 목록 조회
   deleteMails,       // "선택 삭제" - 휴지통에서 영구삭제({mailIds:[...]}로 호출)
   emptyTrash         // "휴지통 비우기" - 휴지통 전체 영구삭제
 } from "../api/emailApi";
+import SyncIcon from "@mui/icons-material/Sync";
 import { useContext } from "react";
 import { UserProfileContext } from "../../../App";
 
 const MailTrashPage = () => {
   // 페이지, 사이즈, 총개수, 메일리스트, 선택Set, 로딩상태
   const [page, setPage] = useState(1);
-  const [size] = useState(20);
+  const [size, setSize] = useState(10); // 페이지당 항목 수 (5 또는 10 선택 가능)
   const [total, setTotal] = useState(0);
+  const [sizeMenuAnchor, setSizeMenuAnchor] = useState(null); // 페이지 크기 선택 메뉴
   const [mails, setMails] = useState([]);
   const [selected, setSelected] = useState(new Set());
   const [loading, setLoading] = useState(false);
@@ -70,6 +73,10 @@ const MailTrashPage = () => {
     } finally { setLoading(false); }
   };
   useEffect(() => { load(page); }, [page, size, userEmail]);
+
+  const handleRefresh = () => {
+    load(page);
+  };
 
   // 전체/일부 체크 상태 유틸
   const allChecked = mails.length > 0 && selected.size === mails.length;
@@ -191,6 +198,44 @@ const MailTrashPage = () => {
           >
             휴지통 비우기
           </Button>
+          <IconButton onClick={handleRefresh} disabled={loading} sx={{ ml: 1 }}>
+            <SyncIcon />
+          </IconButton>
+          <Box sx={{ ml: 2, display: 'flex', alignItems: 'center' }}>
+            <Paper 
+              sx={{ display: 'inline-flex', alignItems: 'center', px: 0.5, cursor: 'pointer' }}
+              onClick={(e) => setSizeMenuAnchor(e.currentTarget)}
+            >
+              <Typography sx={{ px: 0.5, fontWeight: 500, fontSize: 15 }}>{size}</Typography>
+              <IconButton size="small"><MoreVertIcon fontSize="small" /></IconButton>
+            </Paper>
+            <Menu
+              anchorEl={sizeMenuAnchor}
+              open={Boolean(sizeMenuAnchor)}
+              onClose={() => setSizeMenuAnchor(null)}
+            >
+              <MenuItem 
+                onClick={() => {
+                  setSize(5);
+                  setPage(1);
+                  setSizeMenuAnchor(null);
+                }}
+                selected={size === 5}
+              >
+                5개씩 보기
+              </MenuItem>
+              <MenuItem 
+                onClick={() => {
+                  setSize(10);
+                  setPage(1);
+                  setSizeMenuAnchor(null);
+                }}
+                selected={size === 10}
+              >
+                10개씩 보기
+              </MenuItem>
+            </Menu>
+          </Box>
         </Box>
 
         {/* 메일 테이블 */}
@@ -212,13 +257,12 @@ const MailTrashPage = () => {
               <TableCell sx={{ fontWeight: 700 }}>제목</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>일자</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>받는사람 메일주소</TableCell>
-              <TableCell align="right" sx={{ fontWeight: 700 }}>상태</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} align="center">
+                <TableCell colSpan={6} align="center">
                   <Box sx={{ py: 4 }}>
                     <CircularProgress />
                   </Box>
@@ -226,7 +270,7 @@ const MailTrashPage = () => {
               </TableRow>
             ) : Array.isArray(mails) && mails.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} align="center">휴지통에 메일이 없습니다.</TableCell>
+                <TableCell colSpan={6} align="center">휴지통에 메일이 없습니다.</TableCell>
               </TableRow>
             ) : (
               mails.map(mail => (
@@ -258,16 +302,6 @@ const MailTrashPage = () => {
                       ))
                       : '-'
                     }
-                  </TableCell>
-                  <TableCell align="right">
-                    <Chip
-                      label={formatMailStatusLabel(mail.emailStatus)}
-                      color={formatMailStatusColor(mail.emailStatus)}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    {/* 액션란 빈 칸 - 눈(상세보기) 아이콘 완전히 제거됨 */}
                   </TableCell>
                 </TableRow>
               ))

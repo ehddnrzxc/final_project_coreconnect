@@ -42,6 +42,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
@@ -103,6 +104,24 @@ public class EmailServiceImpl implements EmailService {
 	private final NotificationService notificationService;
 	private final MailUserVisibilityRepository mailUserVisibilityRepository; // 추가
 	
+	private String normalizeSearchType(String searchType) {
+	    if (!StringUtils.hasText(searchType)) {
+	        return "TITLE_CONTENT";
+	    }
+	    String upper = searchType.trim().toUpperCase();
+	    if (!upper.equals("TITLE") && !upper.equals("CONTENT") && !upper.equals("TITLE_CONTENT")) {
+	        return "TITLE_CONTENT";
+	    }
+	    return upper;
+	}
+
+	private String normalizeKeyword(String keyword) {
+	    if (!StringUtils.hasText(keyword)) {
+	        return null;
+	    }
+	    return keyword.trim();
+	}
+
 	private Long getCurrentUserId() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (principal instanceof CustomUserDetails) {
@@ -133,6 +152,7 @@ public class EmailServiceImpl implements EmailService {
 	    // emailReadYn이 false이거나 null인 경우 모두 처리
 	    if (myRecipientOpt.isPresent()) {
 	        EmailRecipient recipient = myRecipientOpt.get();
+	        Integer recipientId = recipient.getEmailRecipientId();
 	        Boolean currentReadYn = recipient.getEmailReadYn();
 	        // 안읽은 메일인 경우 (false 또는 null)
 	        if (currentReadYn == null || Boolean.FALSE.equals(currentReadYn)) {
@@ -143,8 +163,19 @@ public class EmailServiceImpl implements EmailService {
 	            emailRecipientRepository.save(recipient);
 	            // 즉시 DB에 반영되도록 flush
 	            emailRecipientRepository.flush();
-	            log.info("getEmailDetail: EmailRecipient updated - emailId={}, viewerEmail={}, emailReadYn={} -> true, emailReadAt={}", 
-	                    emailId, viewerEmail, currentReadYn, now);
+	            log.info("getEmailDetail: EmailRecipient updated - emailId={}, viewerEmail={}, recipientId={}, emailReadYn={} -> true, emailReadAt={}", 
+	                    emailId, viewerEmail, recipientId, currentReadYn, now);
+	            
+	            // DB에 실제로 반영되었는지 확인 (디버그 로그)
+	            emailRecipientRepository.findById(recipientId).ifPresent(savedRecipient -> {
+	                Boolean savedReadYn = savedRecipient.getEmailReadYn();
+	                log.info("getEmailDetail: DB 확인 - recipientId={}, 실제 DB의 emailReadYn={}", 
+	                        recipientId, savedReadYn);
+	                if (!Boolean.TRUE.equals(savedReadYn)) {
+	                    log.error("getEmailDetail: ⚠️ 경고 - DB에 emailReadYn이 true로 저장되지 않았습니다! recipientId={}, emailId={}, viewerEmail={}", 
+	                            recipientId, emailId, viewerEmail);
+	                }
+	            });
 	            
 	            // Email 엔티티의 emailReadAt도 업데이트
 	            email.setEmailReadAt(now);
@@ -238,27 +269,29 @@ public class EmailServiceImpl implements EmailService {
 	 * @return Page<EmailResponseDTO>
 	 */
 	@Override
-	public Page<EmailResponseDTO> getInbox(String userEmail, int page, int size, String filter) {
+	public Page<EmailResponseDTO> getInbox(String userEmail, int page, int size, String filter, String searchType, String keyword) {
 	    // 페이징 객체 생성 (page: 0-base)
 	    Pageable pageable = PageRequest.of(page, size);
 	    // TO/CC/BCC 모두 해당(받은메일함이기 때문)
 	    List<String> types = List.of("TO", "CC", "BCC");
 
 	    Page<EmailRecipient> recipientPage; // 실제 받은메일 레코드
+	    String normalizedSearchType = normalizeSearchType(searchType);
+	    String normalizedKeyword = normalizeKeyword(keyword);
 
 	    // 필터별 분기 처리
 	    if ("unread".equalsIgnoreCase(filter)) {
 	        // 안읽은 + 휴지통 제외
-	        recipientPage = emailRecipientRepository.findUnreadInboxExcludingTrash(userEmail, types, pageable);
+	        recipientPage = emailRecipientRepository.findUnreadInboxExcludingTrash(userEmail, types, pageable, normalizedSearchType, normalizedKeyword);
 	    } else if ("today".equalsIgnoreCase(filter)) {
 	        // 오늘 받은 메일(날짜 구간 + 상태 제외)
 	        LocalDate today = LocalDate.now();
 	        LocalDateTime startOfDay = today.atStartOfDay();
 	        LocalDateTime endOfDay = today.plusDays(1).atStartOfDay().minusNanos(1);
-	        recipientPage = emailRecipientRepository.findTodayInboxExcludingTrash(userEmail, types, startOfDay, endOfDay, pageable);
+	        recipientPage = emailRecipientRepository.findTodayInboxExcludingTrash(userEmail, types, startOfDay, endOfDay, pageable, normalizedSearchType, normalizedKeyword);
 	    } else {
 	        // 전체 메일(휴지통/삭제 제외)
-	        recipientPage = emailRecipientRepository.findInboxExcludingTrash(userEmail, types, pageable);
+	        recipientPage = emailRecipientRepository.findInboxExcludingTrash(userEmail, types, pageable, normalizedSearchType, normalizedKeyword);
 	    }
 
 	    // EmailRecipient → Email 엔티티만 추출, 중복 방지
@@ -289,7 +322,7 @@ public class EmailServiceImpl implements EmailService {
 	    return new PageImpl<>(dtoList, pageable, recipientPage.getTotalElements());
 	}
 	@Override
-	public Page<EmailResponseDTO> getSentbox(String userEmail, int page, int size) {
+	public Page<EmailResponseDTO> getSentbox(String userEmail, int page, int size, String searchType, String keyword) {
 		// [1] userEmail(문자열) → senderId(정수) 변환 과정 필요!
 	    User sender = userRepository.findByEmail(userEmail) // 반드시 UserRepository 주입 필요!
 	        .orElseThrow(() -> new IllegalArgumentException("User not found by email: " + userEmail));
@@ -300,7 +333,11 @@ public class EmailServiceImpl implements EmailService {
 	    Pageable pageable = PageRequest.of(page, size, sort);
 
 	    // [3] 정수 senderId 기준으로 보낸 메일 조회 (휴지통/삭제 상태 제외)
-	    Page<com.goodee.coreconnect.email.entity.Email> emailPage = emailRepository.findBySenderIdExcludingTrash(senderId, pageable);
+	    String normalizedSearchType = normalizeSearchType(searchType);
+	    String normalizedKeyword = normalizeKeyword(keyword);
+
+	    Page<com.goodee.coreconnect.email.entity.Email> emailPage =
+	            emailRepository.findBySenderIdExcludingTrash(senderId, pageable, normalizedSearchType, normalizedKeyword);
 
 	    // [4] DTO 변환
 	    List<EmailResponseDTO> dtoList = emailPage.stream().map(email -> {
@@ -659,6 +696,7 @@ public class EmailServiceImpl implements EmailService {
         // emailReadYn이 false이거나 null인 경우 모두 처리
         if (myRecipientOpt.isPresent()) {
             EmailRecipient recipient = myRecipientOpt.get();
+            Integer recipientId = recipient.getEmailRecipientId();
             Boolean currentReadYn = recipient.getEmailReadYn();
             // 안읽은 메일인 경우 (false 또는 null)
             if (currentReadYn == null || Boolean.FALSE.equals(currentReadYn)) {
@@ -669,8 +707,19 @@ public class EmailServiceImpl implements EmailService {
                 emailRecipientRepository.save(recipient);
                 // 즉시 DB에 반영되도록 flush
                 emailRecipientRepository.flush();
-                log.info("markMailAsRead: EmailRecipient updated - emailId={}, userEmail={}, emailReadYn={} -> true, emailReadAt={}", 
-                        emailId, userEmail, currentReadYn, now);
+                log.info("markMailAsRead: EmailRecipient updated - emailId={}, userEmail={}, recipientId={}, emailReadYn={} -> true, emailReadAt={}", 
+                        emailId, userEmail, recipientId, currentReadYn, now);
+                
+                // DB에 실제로 반영되었는지 확인 (디버그 로그)
+                emailRecipientRepository.findById(recipientId).ifPresent(savedRecipient -> {
+                    Boolean savedReadYn = savedRecipient.getEmailReadYn();
+                    log.info("markMailAsRead: DB 확인 - recipientId={}, 실제 DB의 emailReadYn={}", 
+                            recipientId, savedReadYn);
+                    if (!Boolean.TRUE.equals(savedReadYn)) {
+                        log.error("markMailAsRead: ⚠️ 경고 - DB에 emailReadYn이 true로 저장되지 않았습니다! recipientId={}, emailId={}, userEmail={}", 
+                                recipientId, emailId, userEmail);
+                    }
+                });
                 
                 // Email 엔티티의 emailReadAt도 업데이트
                 email.setEmailReadAt(now);
