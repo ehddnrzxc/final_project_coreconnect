@@ -157,6 +157,23 @@ public class ChatMessageController {
 	    // 4. 해당 채널 구독자에게 push (프론트에서 /topic/chat.room.{roomId} 구독 중)
 	    ChatResponseDTO responseDto = ChatResponseDTO.fromEntity(saved);
 	    
+	    // ⭐ unreadCount를 실시간으로 계산하여 설정 (DB 저장값이 아닌 실제 읽지 않은 사람 수)
+	    // 발신자는 이미 readYn=true로 설정되어 있으므로, unreadCount는 참여자수 - 1이어야 함
+	    int realUnreadCount = chatMessageReadStatusRepository.countUnreadByChatId(saved.getId());
+	    
+	    // ⭐ 참여자 수 확인 (디버깅용)
+	    int participantCount = chatRoomUserRepository.findByChatRoomId(req.getRoomId()).size();
+	    log.info("[sendMessage] 메시지 전송 - chatId: {}, unreadCount: {} (실시간 계산), 참여자수: {}, roomId: {}", 
+	            saved.getId(), realUnreadCount, participantCount, req.getRoomId());
+	    
+	    // ⭐ unreadCount가 참여자수 - 1과 일치하는지 확인 (발신자 제외)
+	    if (realUnreadCount != participantCount - 1) {
+	        log.warn("[sendMessage] unreadCount 불일치 - 예상값: {}, 실제값: {}, chatId: {}", 
+	                participantCount - 1, realUnreadCount, saved.getId());
+	    }
+	    
+	    responseDto.setUnreadCount(realUnreadCount);
+	    
 	    // ⭐ senderEmail 명시적으로 설정 (lazy loading 문제 해결)
 	    // fromEntity에서 chat.getSender().getEmail()이 null일 수 있으므로 authUser.getEmail() 직접 설정
 	    responseDto.setSenderEmail(authUser.getEmail());
@@ -197,42 +214,37 @@ public class ChatMessageController {
 	@GetMapping("/{roomId}/users")
 	public ResponseEntity<ResponseDTO<List<ChatUserResponseDTO>>> getChatRoomUsers(@PathVariable("roomId") Integer roomId) {
 		List<ChatRoomUser> chatRoomUsers = chatRoomService.getChatRoomUsers(roomId);
+		// ⭐ S3Service를 파라미터로 전달하여 fromEntity에서 직접 profileImageUrl 변환
 		List<ChatUserResponseDTO> usersDTO = chatRoomUsers.stream()
                 .filter(cru -> cru.getUser() != null)
                 .map(cru -> {
-                    ChatUserResponseDTO dto = ChatUserResponseDTO.fromEntity(cru);
+                    // ⭐ 핵심: S3Service를 파라미터로 전달하여 fromEntity에서 profileImageKey → S3 URL 변환
+                    ChatUserResponseDTO dto = ChatUserResponseDTO.fromEntity(cru, s3Service);
                     
-                    // ⭐ User를 명시적으로 조회하여 Lazy Loading 문제 해결 및 부서/프로필 이미지 정보 설정
+                    // ⭐ 디버깅: DTO 필드 값 확인
                     if (dto != null && cru.getUser() != null) {
-                        // User 엔티티를 명시적으로 조회 (department와 profileImageKey 포함)
-                        User user = userRepository.findById(cru.getUser().getId()).orElse(null);
-                        
-                        if (user != null) {
-                            // ⭐ 부서명 설정 (Lazy Loading 문제 해결)
-                            if (user.getDepartment() != null) {
-                                dto.setDeptName(user.getDepartment().getDeptName());
-                            } else {
-                                dto.setDeptName(null);
-                            }
-                            
-                            // ⭐ 프로필 이미지 URL 설정 (user_profile_image_key 사용)
-                            String profileImageKey = user.getProfileImageKey();
-                            if (profileImageKey != null && !profileImageKey.isBlank()) {
-                                // 프로필 이미지가 있으면 S3 URL 생성
-                                String profileImageUrl = s3Service.getFileUrl(profileImageKey);
-                                log.debug("[getChatRoomUsers] 프로필 이미지 URL 생성 - userId: {}, key: {}, url: {}", 
-                                        user.getId(), profileImageKey, profileImageUrl);
-                                dto.setProfileImageUrl(profileImageUrl);
-                            } else {
-                                // 프로필 이미지가 없으면 빈 문자열 설정 (프론트엔드에서 기본 이니셜 표시)
-                                dto.setProfileImageUrl("");
-                            }
-                        }
+                        User user = cru.getUser();
+                        log.info("[getChatRoomUsers] DTO 생성 완료 - userId: {}, name: {}, email: {}, jobGrade: {}, deptName: {}, profileImageUrl: {}", 
+                                user.getId(), dto.getName(), dto.getEmail(), dto.getJobGrade(), dto.getDeptName(), 
+                                dto.getProfileImageUrl() != null && !dto.getProfileImageUrl().isEmpty() 
+                                    ? dto.getProfileImageUrl().substring(0, Math.min(50, dto.getProfileImageUrl().length())) + "..." 
+                                    : "빈 문자열");
                     }
                     
                     return dto;
                 })
+                .filter(dto -> dto != null) // null 체크
                 .collect(Collectors.toList());
+		
+		// ⚠️ 디버깅: 최종 응답 DTO 리스트 확인
+		log.info("[getChatRoomUsers] 최종 응답 DTO 개수: {}", usersDTO.size());
+		for (ChatUserResponseDTO dto : usersDTO) {
+		    log.info("[getChatRoomUsers] 응답 DTO - id: {}, name: {}, profileImageUrl: {}", 
+		            dto.getId(), dto.getName(), 
+		            dto.getProfileImageUrl() != null && !dto.getProfileImageUrl().isEmpty() 
+		                ? dto.getProfileImageUrl().substring(0, Math.min(50, dto.getProfileImageUrl().length())) + "..." 
+		                : "빈 문자열 또는 null");
+		}
 		
 		return ResponseEntity.ok(ResponseDTO.success(usersDTO, "채팅방 사용자 조회 성공"));
 	}
@@ -266,6 +278,10 @@ public class ChatMessageController {
 	    					chatMessageReadStatusRepository.findByChatIdAndUserId(chat.getId(), user.getId());
 	    			boolean readYn = readStatusOpt.map(ChatMessageReadStatus::getReadYn).orElse(false);
 	    			ChatMessageResponseDTO dto = ChatMessageResponseDTO.fromEntity(chat, readYn);
+	    			
+	    			// ⭐ unreadCount를 실시간으로 계산하여 설정 (DB 저장값이 아닌 실제 읽지 않은 사람 수)
+	    			int realUnreadCount = chatMessageReadStatusRepository.countUnreadByChatId(chat.getId());
+	    			dto.setUnreadCount(realUnreadCount);
 	    			
 	    			// 프로필 이미지 URL 설정 (user_profile_image_key 사용)
 	    			if (dto != null && chat.getSender() != null && chat.getSender().getId() != null) {
@@ -337,6 +353,10 @@ public class ChatMessageController {
 	                chatMessageReadStatusRepository.findByChatIdAndUserId(chat.getId(), userId);
 	            boolean readYn = readStatusOpt.map(ChatMessageReadStatus::getReadYn).orElse(false);
 	            ChatMessageResponseDTO dto = ChatMessageResponseDTO.fromEntity(chat, readYn);
+	            
+	            // ⭐ unreadCount를 실시간으로 계산하여 설정 (DB 저장값이 아닌 실제 읽지 않은 사람 수)
+	            int realUnreadCount = chatMessageReadStatusRepository.countUnreadByChatId(chat.getId());
+	            dto.setUnreadCount(realUnreadCount);
 	            
 	            // 프로필 이미지 URL 설정 (user_profile_image_key 사용)
 	            // sender를 명시적으로 조회하여 profileImageKey 가져오기
@@ -411,6 +431,10 @@ public class ChatMessageController {
 		
 		ChatResponseDTO dto = ChatResponseDTO.fromEntity(replyChat);
 		
+		// ⭐ unreadCount를 실시간으로 계산하여 설정 (DB 저장값이 아닌 실제 읽지 않은 사람 수)
+		int realUnreadCount = chatMessageReadStatusRepository.countUnreadByChatId(replyChat.getId());
+		dto.setUnreadCount(realUnreadCount);
+		
 		// ⭐ senderEmail 명시적으로 설정 (lazy loading 문제 해결)
 		// fromEntity에서 chat.getSender().getEmail()이 null일 수 있으므로 sender.getEmail() 직접 설정
 		dto.setSenderEmail(sender.getEmail());
@@ -471,6 +495,10 @@ public class ChatMessageController {
 				
 		messageFileRepository.save(fileEntity);
 		ChatResponseDTO dto = ChatResponseDTO.fromEntity(chat);
+		
+		// ⭐ unreadCount를 실시간으로 계산하여 설정 (DB 저장값이 아닌 실제 읽지 않은 사람 수)
+		int realUnreadCount = chatMessageReadStatusRepository.countUnreadByChatId(chat.getId());
+		dto.setUnreadCount(realUnreadCount);
 		
 		// ⭐ senderEmail 명시적으로 설정 (lazy loading 문제 해결)
 		// fromEntity에서 chat.getSender().getEmail()이 null일 수 있으므로 sender.getEmail() 직접 설정
@@ -613,6 +641,10 @@ public class ChatMessageController {
         Chat chat = chatRoomService.sendChatMessage(roomId, sender.getId(), req.getContent());
         // 서비스 내에서 알림 발송도 처리
         ChatResponseDTO dto = ChatResponseDTO.fromEntity(chat);
+        
+        // ⭐ unreadCount를 실시간으로 계산하여 설정 (DB 저장값이 아닌 실제 읽지 않은 사람 수)
+        int realUnreadCount = chatMessageReadStatusRepository.countUnreadByChatId(chat.getId());
+        dto.setUnreadCount(realUnreadCount);
         
         // ⭐ senderEmail 명시적으로 설정 (lazy loading 문제 해결)
         // fromEntity에서 chat.getSender().getEmail()이 null일 수 있으므로 sender.getEmail() 직접 설정
@@ -778,13 +810,47 @@ public class ChatMessageController {
     }
 
     // 20. 나에게 온 안읽은 메시지를 채팅방을 접속해서 다 읽으면 채팅방목록에서 안읽은 메시지 개수가 없어지게 만들기
+    // ⭐ 각 메시지의 unreadCount를 -1 감소시키고 WebSocket으로 실시간 업데이트 알림
     @Operation(summary = "나에게 온 안읽은 메시지를 채팅방을 접속해서 다 읽으면 채팅방목록에서 안읽은 메시지 개수가 없어지게 만들기", description = "나에게 온 안읽은 메시지를 채팅방을 접속해서 다 읽으면 채팅방목록에서 안읽은 메시지 개수가 없어지게 만들기")
     @PatchMapping("/rooms/{roomId}/messages/read")
     public ResponseEntity<?> markRoomMessagesAsRead(@PathVariable Integer roomId, @AuthenticationPrincipal CustomUserDetails customUserDetails) {
       String email = customUserDetails.getEmail();
     	User user = userRepository.findByEmail(email).orElseThrow();
     	
-    	chatRoomService.markMessagesAsRead(roomId, user.getId());
+    	// ⭐ 메시지 읽음 처리 및 읽음 처리된 메시지 ID 리스트 반환
+    	List<Integer> readChatIds = chatRoomService.markMessagesAsRead(roomId, user.getId());
+    	
+    	// ⭐ WebSocket을 통해 실시간으로 unreadCount 업데이트 알림
+    	// 각 메시지의 업데이트된 unreadCount를 전송 (발신자에게만 알림)
+    	for (Integer chatId : readChatIds) {
+    	    Optional<Chat> chatOpt = chatRepository.findById(chatId);
+    	    if (chatOpt.isPresent()) {
+    	        Chat chat = chatOpt.get();
+    	        // ⭐ 메시지 발신자 정보 확인
+    	        Integer senderId = chat.getSender() != null ? chat.getSender().getId() : null;
+    	        String senderEmail = chat.getSender() != null ? chat.getSender().getEmail() : null;
+    	        
+    	        // ⭐ unreadCount를 실시간으로 계산 (DB 저장값이 아닌 실제 읽지 않은 사람 수)
+    	        int realUnreadCount = chatMessageReadStatusRepository.countUnreadByChatId(chatId);
+    	        
+    	        // ⭐ unreadCount 업데이트 메시지 전송 (발신자 정보 및 읽은 사람 정보 포함)
+    	        Map<String, Object> updateMessage = new HashMap<>();
+    	        updateMessage.put("type", "UNREAD_COUNT_UPDATE");
+    	        updateMessage.put("chatId", chatId);
+    	        updateMessage.put("unreadCount", realUnreadCount); // ⭐ 실시간 계산된 값 사용
+    	        updateMessage.put("roomId", roomId);
+    	        updateMessage.put("senderId", senderId); // ⭐ 발신자 ID 추가
+    	        updateMessage.put("senderEmail", senderEmail); // ⭐ 발신자 이메일 추가
+    	        updateMessage.put("viewerId", user.getId()); // ⭐ 읽은 사람 ID 추가 (디버깅용)
+    	        updateMessage.put("viewerEmail", email); // ⭐ 읽은 사람 이메일 추가 (디버깅용)
+    	        
+    	        // ⭐ 모든 참여자에게 전송 (모든 참여자가 실시간으로 unreadCount 업데이트)
+    	        messagingTemplate.convertAndSend("/topic/chat.room." + roomId, updateMessage);
+    	        log.info("[markRoomMessagesAsRead] unreadCount 업데이트 알림 전송 - chatId: {}, unreadCount: {} (실시간 계산), senderId: {}, senderEmail: {}", 
+    	                chatId, realUnreadCount, senderId, senderEmail);
+    	    }
+    	}
+    	
     	return ResponseEntity.ok().build();    	
     }
     

@@ -42,7 +42,8 @@ public interface ChatRepository extends JpaRepository<Chat, Integer> {
     List<Chat> findLatestMessageByChatRoomIds(@Param("roomIds") List<Integer> roomIds);
 
     // 6. 채팅방 내에서 특정 메시지의 미읽은 인원 조회 (ChatMessageReadStatus 활용)
-    @Query("SELECT r.chat.id, COUNT(r) FROM ChatMessageReadStatus r WHERE r.chat.chatRoom.id = :roomId AND r.readYn = false GROUP BY r.chat.id")
+    // ⭐ 복합키 사용으로 COUNT(r) 대신 COUNT(1) 사용
+    @Query("SELECT r.chat.id, COUNT(1) FROM ChatMessageReadStatus r WHERE r.chat.chatRoom.id = :roomId AND r.readYn = false GROUP BY r.chat.id")
     List<Object[]> countUnreadByRoomId(@Param("roomId") Integer roomId);
     
     // 7. 각 채팅방의 가장 마지막(최신) 메시지
@@ -85,6 +86,7 @@ public interface ChatRepository extends JpaRepository<Chat, Integer> {
     
     
     // 10. 채팅방 목록 불러올 때 unreadcount 필드 채워서 DTO로 변환
-    @Query("SELECT c.chat.chatRoom.id AS roomId, COUNT(c) AS unreadCount FROM ChatMessageReadStatus c WHERE c.user.id = :userId AND c.readYn = false GROUP BY c.chat.chatRoom.id")
+    // ⭐ 복합키 사용으로 COUNT(c) 대신 COUNT(1) 사용
+    @Query("SELECT c.chat.chatRoom.id AS roomId, COUNT(1) AS unreadCount FROM ChatMessageReadStatus c WHERE c.user.id = :userId AND c.readYn = false GROUP BY c.chat.chatRoom.id")
     List<Object[]> countUnreadMessagesByUserId(@Param("userId") Integer userId);
 }

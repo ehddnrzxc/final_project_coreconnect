@@ -163,6 +163,59 @@ export default function ChatLayout() {
 
   // ---------- 새 메시지 도착 처리 (+ 토스트 알림) ----------
   const handleNewMessage = (msg) => {
+    // ⭐ unreadCount 업데이트 메시지 처리 (다른 참여자가 메시지를 읽었을 때)
+    if (msg.type === "UNREAD_COUNT_UPDATE") {
+      const { chatId, unreadCount, roomId, viewerId, viewerEmail } = msg;
+      
+      // ⭐ 디버깅: UNREAD_COUNT_UPDATE 메시지 수신 확인 (필요시 주석 해제)
+      console.log("📊 [ChatLayout] UNREAD_COUNT_UPDATE 수신:", {
+        chatId,
+        unreadCount,
+        roomId,
+        selectedRoomId,
+        viewerId,
+        viewerEmail,
+        메시지전체: msg
+      });
+      
+      // ⭐ 현재 선택된 방의 메시지 목록에서 해당 메시지의 unreadCount 업데이트
+      // (다른 참여자가 메시지를 읽었을 때 모든 참여자의 화면에서 unreadCount가 -1씩 감소)
+      if (Number(roomId) === Number(selectedRoomId)) {
+        setMessages((prev) => {
+          // ⭐ 이전 상태에서 해당 메시지 찾기
+          const targetMessage = prev.find(m => Number(m.id) === Number(chatId));
+          const previousUnreadCount = targetMessage?.unreadCount;
+          
+          const updated = prev.map((m) =>
+            Number(m.id) === Number(chatId)
+              ? { ...m, unreadCount: unreadCount != null ? unreadCount : 0 }
+              : m
+          );
+          
+          // ⭐ 디버깅: 업데이트된 메시지 확인 (필요시 주석 해제)
+          console.log("📊 [ChatLayout] unreadCount 업데이트 완료:", {
+            chatId,
+            이전unreadCount: previousUnreadCount,
+            새로운unreadCount: unreadCount,
+            업데이트된메시지: updated.find(m => Number(m.id) === Number(chatId)),
+            전체메시지수: updated.length
+          });
+          
+          return updated;
+        });
+      } else {
+        // ⭐ 다른 방의 메시지인 경우 로그만 출력
+        console.log("📊 [ChatLayout] UNREAD_COUNT_UPDATE 수신 (다른 방):", {
+          chatId,
+          unreadCount,
+          roomId,
+          selectedRoomId
+        });
+      }
+      
+      return;
+    }
+    
     // senderEmail로 내 메시지 판단 (백엔드에서 senderEmail 포함)
     // 대소문자/공백 차이를 방지하기 위해 trim().toLowerCase() 적용
     const isMyMessage = 
@@ -172,16 +225,40 @@ export default function ChatLayout() {
     
     if (isMyMessage) {
       if (Number(msg.roomId) === Number(selectedRoomId)) {
-        setMessages((prev) => [...prev, msg]);
+        // ⭐ 내가 보낸 새 메시지의 unreadCount가 있으면 그대로 사용 (백엔드에서 실시간 계산된 값)
+        // unreadCount가 없거나 undefined인 경우 0으로 설정
+        const newMessage = {
+          ...msg,
+          unreadCount: msg.unreadCount != null ? msg.unreadCount : 0
+        };
+        
+        // ⭐ 디버깅: 내가 보낸 메시지의 unreadCount 확인 (필요시 주석 해제)
+        console.log("📨 [ChatLayout] 내가 보낸 메시지 수신:", {
+          messageId: msg.id,
+          unreadCount: newMessage.unreadCount,
+          messageContent: msg.messageContent,
+          메시지전체: newMessage
+        });
+        
+        setMessages((prev) => {
+          const updated = [...prev, newMessage];
+          console.log("📨 [ChatLayout] 내가 보낸 메시지 추가 완료:", {
+            messageId: msg.id,
+            unreadCount: newMessage.unreadCount,
+            전체메시지수: updated.length
+          });
+          return updated;
+        });
       }
       return;
     }
     const roomIdNum = Number(msg.roomId);
-    const foundRoom = Array.isArray(roomList)
+    const foundRoom = Array.isArray(roomList) 
       ? roomList.find(r => r && Number(r.roomId) === roomIdNum)
       : null;
 
-    if (!foundRoom) return;
+    // ⭐ 현재 선택된 방의 메시지인 경우, foundRoom이 없어도 메시지 추가
+    // (roomList가 아직 로드되지 않았거나 업데이트되지 않은 경우에도 메시지 수신 가능)
     if (roomIdNum === Number(selectedRoomId)) {
       // ⭐ 디버깅: 실시간 메시지 수신 시 프로필 이미지 URL 확인 (개발 중 확인용)
       // console.log("📨 [ChatLayout] 실시간 메시지 수신:", {
@@ -189,25 +266,54 @@ export default function ChatLayout() {
       //   senderEmail: msg.senderEmail,
       //   senderProfileImageUrl: msg.senderProfileImageUrl,
       //   profileImageUrl길이: msg.senderProfileImageUrl?.length || 0,
+      //   unreadCount: msg.unreadCount,
       //   전체메시지: msg
       // });
       
-      setMessages((prev) => [...prev, msg]);
-    } else { // 다른 방이면 토스트 알림
-      setToastRooms((prev) => {
-        const filtered = prev.filter(r => Number(r.roomId) !== roomIdNum);
-        const newToast = {
-          roomId: msg.roomId,
-          unreadCount: msg.unreadCount || 1,
-          lastUnreadMessageContent: msg.messageContent,
-          lastUnreadMessageSenderName: msg.senderName,
-          lastUnreadMessageTime: msg.sendAt,
-          roomName: foundRoom.roomName
-        };
-        return [...filtered, newToast].sort(
-          (a, b) => new Date(b.lastUnreadMessageTime) - new Date(a.lastUnreadMessageTime)
-        );
+      // ⭐ 다른 사람이 보낸 새 메시지의 unreadCount가 있으면 그대로 사용 (백엔드에서 실시간 계산된 값)
+      // unreadCount가 없거나 undefined인 경우 0으로 설정
+      const newMessage = {
+        ...msg,
+        unreadCount: msg.unreadCount != null ? msg.unreadCount : 0
+      };
+      
+      // ⭐ 디버깅: 다른 사람이 보낸 메시지의 unreadCount 확인 (필요시 주석 해제)
+      console.log("📨 [ChatLayout] 다른 사람이 보낸 메시지 수신:", {
+        messageId: msg.id,
+        senderName: msg.senderName,
+        senderEmail: msg.senderEmail,
+        unreadCount: newMessage.unreadCount,
+        messageContent: msg.messageContent,
+        메시지전체: newMessage
       });
+      
+      setMessages((prev) => {
+        const updated = [...prev, newMessage];
+        console.log("📨 [ChatLayout] 다른 사람이 보낸 메시지 추가 완료:", {
+          messageId: msg.id,
+          unreadCount: newMessage.unreadCount,
+          전체메시지수: updated.length
+        });
+        return updated;
+      });
+    } else { // 다른 방이면 토스트 알림
+      // ⭐ foundRoom이 없으면 토스트 알림을 생성하지 않음 (roomList에 방이 없을 수 있음)
+      if (foundRoom) {
+        setToastRooms((prev) => {
+          const filtered = prev.filter(r => Number(r.roomId) !== roomIdNum);
+          const newToast = {
+            roomId: msg.roomId,
+            unreadCount: msg.unreadCount || 1,
+            lastUnreadMessageContent: msg.messageContent,
+            lastUnreadMessageSenderName: msg.senderName,
+            lastUnreadMessageTime: msg.sendAt,
+            roomName: foundRoom.roomName
+          };
+          return [...filtered, newToast].sort(
+            (a, b) => new Date(b.lastUnreadMessageTime) - new Date(a.lastUnreadMessageTime)
+          );
+        });
+      }
     }
     // roomList의 해당 방 정보를 최신화하고 정렬
     setRoomList((prevRoomList) => {
@@ -333,10 +439,27 @@ export default function ChatLayout() {
             setTotalPages(pageData.totalPages || 0);
             setHasMore(!pageData.last); // last가 false면 더 있음
             setCurrentPage(0);
+            
+            // ⭐ 채팅방 접속 시 안읽은 메시지들을 읽음 처리
+            // 이렇게 하면 내가 읽은 메시지들의 unreadCount가 -1씩 감소됨
+            try {
+              await markRoomMessagesAsRead(selectedRoomId, accessToken);
+              console.log("[ChatLayout] 채팅방 접속 시 메시지 읽음 처리 완료 - roomId:", selectedRoomId);
+            } catch (error) {
+              console.error("[ChatLayout] 메시지 읽음 처리 실패:", error);
+            }
           } else if (Array.isArray(pageData)) {
             // 기존 형식 (배열) 지원
             setMessages(pageData);
             setHasMore(false);
+            
+            // ⭐ 채팅방 접속 시 안읽은 메시지들을 읽음 처리
+            try {
+              await markRoomMessagesAsRead(selectedRoomId, accessToken);
+              console.log("[ChatLayout] 채팅방 접속 시 메시지 읽음 처리 완료 - roomId:", selectedRoomId);
+            } catch (error) {
+              console.error("[ChatLayout] 메시지 읽음 처리 실패:", error);
+            }
           } else {
             setMessages([]);
             setHasMore(false);
@@ -403,6 +526,19 @@ export default function ChatLayout() {
   const messagesEndRef = useRef(null);
   useEffect(() => {
     if (messagesEndRef.current) messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+  
+  // ⭐ 디버깅: messages 상태 변경 추적 (필요시 주석 해제)
+  useEffect(() => {
+    console.log("📋 [ChatLayout] messages 상태 변경:", {
+      메시지수: messages.length,
+      unreadCount포함메시지: messages.filter(m => m.unreadCount != null && m.unreadCount > 0).map(m => ({
+        id: m.id,
+        unreadCount: m.unreadCount,
+        senderName: m.senderName
+      })),
+      전체메시지unreadCount: messages.map(m => ({ id: m.id, unreadCount: m.unreadCount }))
+    });
   }, [messages]);
 
   // ---------- 읽지 않은 메시지 계산 및 첫 unread 인덱스 ----------

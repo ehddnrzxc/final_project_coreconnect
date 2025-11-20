@@ -57,7 +57,7 @@ public class S3Service {
         URL url = s3Client.utilities().getUrl(request);
         String urlString = url.toString();
         
-        // ⭐ 디버깅: S3 URL 생성 로그 (프로필 이미지 문제 추적용)
+        // 디버깅: S3 URL 생성 로그 (프로필 이미지 문제 추적용)
         // 생성된 URL이 완전한 URL인지 확인 (https://로 시작해야 함)
         log.info("[S3Service] getFileUrl 호출 - key: {}, bucket: {}, 생성된URL: {}", key, bucket, urlString);
         

@@ -49,5 +49,7 @@ export async function createChatRoom(data) {
 // 채팅방 참여자 목록 조회 API
 export async function fetchChatRoomUsers(roomId) {
   const res = await http.get(`/chat/${roomId}/users`);
-  return res.data; // ResponseDTO<List<ChatUserResponseDTO>>
+  // ⭐ ResponseDTO 구조: { status: 200, message: "...", data: List<ChatUserResponseDTO> }
+  // 실제 리스트는 res.data.data에 있음
+  return res.data?.data || res.data || [];
 }

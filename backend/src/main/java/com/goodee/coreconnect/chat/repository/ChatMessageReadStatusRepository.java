@@ -8,19 +8,32 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import com.goodee.coreconnect.chat.entity.ChatMessageReadStatus;
+import com.goodee.coreconnect.chat.entity.ChatMessageReadStatusId; // ⭐ 복합키 클래스 import
 
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
-public interface ChatMessageReadStatusRepository extends JpaRepository<ChatMessageReadStatus, Integer>{
+// ⭐ 복합키 사용으로 ID 타입이 ChatMessageReadStatusId로 변경됨
+public interface ChatMessageReadStatusRepository extends JpaRepository<ChatMessageReadStatus, ChatMessageReadStatusId>{
 	// 1. 채팅 메시지별 미읽은 사용자 목록 조회
     @Query("SELECT r FROM ChatMessageReadStatus r WHERE r.chat.id = :chatId AND r.readYn = false")
     List<ChatMessageReadStatus> findUnreadByChatId(@Param("chatId") Integer chatId);
 
     // 2. 채팅방별로 각 메시지에 대해 미읽은 수 조회 가능
-	@Query("SELECT r.chat.id, COUNT(r) FROM ChatMessageReadStatus r WHERE r.chat.chatRoom.id = :roomId AND r.readYn = false GROUP BY r.chat.id")
+    // ⭐ 복합키 사용으로 COUNT(r) 대신 COUNT(1) 사용
+	@Query("SELECT r.chat.id, COUNT(1) FROM ChatMessageReadStatus r WHERE r.chat.chatRoom.id = :roomId AND r.readYn = false GROUP BY r.chat.id")
 	List<Object[]> countUnreadByRoomId(@Param("roomId") Integer roomId);
-    int countUnreadByChatId(Integer chatId);
+    
+    // ⭐ 특정 메시지(chatId)의 읽지 않은 사람 수 조회 (발신자 제외)
+    // 발신자는 메시지를 보낸 시점에 이미 readYn=true로 설정되므로, 
+    // unreadCount는 발신자를 제외한 참여자 중 읽지 않은 사람 수
+    // 참고: 발신자는 이미 readYn=true이므로 WHERE 조건에서 자동으로 제외됨
+    // 하지만 명시적으로 발신자를 제외하여 일관성 유지
+    // ⭐ 복합키 사용으로 COUNT(r) 대신 COUNT(1) 사용
+    @Query("SELECT COUNT(1) FROM ChatMessageReadStatus r " +
+           "WHERE r.chat.id = :chatId AND r.readYn = false " +
+           "AND r.user.id != (SELECT c.sender.id FROM Chat c WHERE c.id = :chatId)")
+    int countUnreadByChatId(@Param("chatId") Integer chatId);
 
     // 3. 사용자별 미읽은 메시지 조회 
     @Query("SELECT r FROM ChatMessageReadStatus r WHERE r.user.id = :userId AND r.readYn = false")
@@ -28,7 +41,8 @@ public interface ChatMessageReadStatusRepository extends JpaRepository<ChatMessa
     
     
     // 4. 채팅방별 내가 안읽은 메시지 개수
-    @Query("SELECT r.chat.chatRoom.id, COUNT(r) FROM ChatMessageReadStatus r WHERE r.user.id = :userId AND r.readYn = false GROUP BY r.chat.chatRoom.id")
+    // ⭐ 복합키 사용으로 COUNT(r) 대신 COUNT(1) 사용
+    @Query("SELECT r.chat.chatRoom.id, COUNT(1) FROM ChatMessageReadStatus r WHERE r.user.id = :userId AND r.readYn = false GROUP BY r.chat.chatRoom.id")
     List<Object[]> countUnreadByRoomIdForUser(@Param("userId") Integer userId);
     
     // 5. 해당 채팅방의 내가 안읽은 메시지 목록
@@ -49,7 +63,8 @@ public interface ChatMessageReadStatusRepository extends JpaRepository<ChatMessa
     List<ChatMessageReadStatus> fetchUnreadWithSender(@Param("userId") Integer userId);
     
  // 내(userId)가 특정 채팅방(roomId)에서 읽지 않은 개수 집계
-    @Query("SELECT COUNT(r) FROM ChatMessageReadStatus r WHERE r.user.id = :userId AND r.chat.chatRoom.id = :roomId AND r.readYn = false")
+    // ⭐ 복합키 사용으로 COUNT(r) 대신 COUNT(1) 사용
+    @Query("SELECT COUNT(1) FROM ChatMessageReadStatus r WHERE r.user.id = :userId AND r.chat.chatRoom.id = :roomId AND r.readYn = false")
     int countByUserIdAndChatRoomIdAndReadYnFalse(@Param("userId") Integer userId, @Param("roomId") Integer roomId);
 
     // 내(userId) 지정 방(roomId)의 안읽은 메시지 중, 가장 최근 1건
@@ -69,7 +84,8 @@ public interface ChatMessageReadStatusRepository extends JpaRepository<ChatMessa
     
     // 내가 참여중인 모든 채팅방에서 방별 unread 메시지 개수 집계
     // 결과: roomId, unreadCount로 반환 + 방 ID 단위로 내가 안읽은 메시지 개수 그룹핑
-    @Query("SELECT c.chat.chatRoom.id AS roomId, COUNT(c) AS unreadCount FROM ChatMessageReadStatus c WHERE c.user.id = :userId AND c.readYn = false GROUP BY c.chat.chatRoom.id")
+    // ⭐ 복합키 사용으로 COUNT(c) 대신 COUNT(1) 사용
+    @Query("SELECT c.chat.chatRoom.id AS roomId, COUNT(1) AS unreadCount FROM ChatMessageReadStatus c WHERE c.user.id = :userId AND c.readYn = false GROUP BY c.chat.chatRoom.id")
     List<Object[]> countUnreadMessagesByUserId(@Param("userId") Integer userId);
     
     // 올바른 JPA 네이밍 방식 적용!

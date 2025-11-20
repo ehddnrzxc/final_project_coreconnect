@@ -63,7 +63,8 @@ public interface ChatRoomService {
     
     List<ChatRoomSummaryResponseDTO> getChatRoomSummariesByUserId(Integer userId);
 
-    void markMessagesAsRead(Integer roomId, Integer userId);
+    // ⭐ 읽음 처리된 메시지 ID 리스트 반환 (WebSocket 알림용)
+    List<Integer> markMessagesAsRead(Integer roomId, Integer userId);
 
     /** 채팅방에서 현재 접속 중인 인원 id 리스트 반환 */
     List<Integer> getConnectedUserIdsInRoom(Integer roomId);

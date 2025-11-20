@@ -153,67 +153,92 @@ function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbov
               >
                 <Box
                   sx={{
-                    // 밝은 파란색 배경, 파란색 글씨로 스타일링
-                    bgcolor: "#e3f2fd",
-                    color: "#1976d2",
-                    borderRadius: 2,
-                    px: 2,
-                    py: 1.2,
-                    maxWidth: 380,
-                    minWidth: 120,
-                    wordBreak: "break-word",
-                    boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.03)",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 1,
+                    width: "100%",
+                    justifyContent: "flex-end",
                   }}
                 >
-                  {/* 메시지 내용 */}
-                  {msg.messageContent && (
-                    <Typography sx={{ color: "#1976d2" }}>
-                      {msg.messageContent}
+                  {/* ⭐ 안읽은 사람 수 표시 (메시지 왼쪽) */}
+                  {msg.unreadCount != null && msg.unreadCount > 0 && (
+                    <Typography
+                      sx={{
+                        fontSize: 11,
+                        color: "#1976d2",
+                        fontWeight: 600,
+                        alignSelf: "flex-start",
+                        mt: 1.2,
+                      }}
+                    >
+                      {msg.unreadCount}
                     </Typography>
                   )}
+                  
+                  <Box
+                    sx={{
+                      // 밝은 파란색 배경, 파란색 글씨로 스타일링
+                      bgcolor: "#e3f2fd",
+                      color: "#1976d2",
+                      borderRadius: 2,
+                      px: 2,
+                      py: 1.2,
+                      maxWidth: 380,
+                      minWidth: 120,
+                      wordBreak: "break-word",
+                      boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.03)",
+                    }}
+                  >
+                    {/* 메시지 내용 */}
+                    {msg.messageContent && (
+                      <Typography sx={{ color: "#1976d2" }}>
+                        {msg.messageContent}
+                      </Typography>
+                    )}
 
-                  {/* 첨부파일(이미지/파일 링크, 색상은 유지) */}
-                  {msg.fileYn && msg.fileUrl && (
-                    isImageFile(msg.fileUrl) ? (
-                      <Box
-                        component="img"
-                        src={msg.fileUrl}
-                        alt="첨부 이미지"
-                        sx={{
-                          width: "100%",
-                          maxWidth: 280,
-                          borderRadius: 1.5,
-                          border: "1px solid #e1e4eb",
-                          objectFit: "cover",
-                          mt: 1
-                        }}
-                      />
-                    ) : (
-                      <Box
-                        sx={{
-                          bgcolor: "#fff",
-                          border: "1px solid #90caf9",
-                          borderRadius: 1.5,
-                          px: 1.5,
-                          py: 0.8,
-                          mt: 1
-                        }}
-                      >
-                        <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 0.5, color: "#1976d2" }}>
-                          첨부 파일
-                        </Typography>
-                        <Link
-                          href={msg.fileUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          underline="hover"
-                          sx={{ fontSize: 13, wordBreak: "break-all", color: "#1976d2" }}
+                    {/* 첨부파일(이미지/파일 링크, 색상은 유지) */}
+                    {msg.fileYn && msg.fileUrl && (
+                      isImageFile(msg.fileUrl) ? (
+                        <Box
+                          component="img"
+                          src={msg.fileUrl}
+                          alt="첨부 이미지"
+                          sx={{
+                            width: "100%",
+                            maxWidth: 280,
+                            borderRadius: 1.5,
+                            border: "1px solid #e1e4eb",
+                            objectFit: "cover",
+                            mt: 1
+                          }}
+                        />
+                      ) : (
+                        <Box
+                          sx={{
+                            bgcolor: "#fff",
+                            border: "1px solid #90caf9",
+                            borderRadius: 1.5,
+                            px: 1.5,
+                            py: 0.8,
+                            mt: 1
+                          }}
                         >
-                          {decodeURIComponent(msg.fileUrl.split("/").pop()?.split("?")[0] || "파일 다운로드")}
-                        </Link>
-                      </Box>
-                    )
-                  )}
+                          <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 0.5, color: "#1976d2" }}>
+                            첨부 파일
+                          </Typography>
+                          <Link
+                            href={msg.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            underline="hover"
+                            sx={{ fontSize: 13, wordBreak: "break-all", color: "#1976d2" }}
+                          >
+                            {decodeURIComponent(msg.fileUrl.split("/").pop()?.split("?")[0] || "파일 다운로드")}
+                          </Link>
+                        </Box>
+                      )
+                    )}
+                  </Box>
                 </Box>
 
                 {/* 전송 시간 (하단) */}
@@ -307,7 +332,7 @@ function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbov
                 );
               })()}
 
-              <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+              <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-start", flex: 1 }}>
                 {/* 이름(어두운 회색) */}
                 <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#212121", mb: 0.5 }}>
                   {msg.senderName}
@@ -316,65 +341,89 @@ function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbov
 
                 <Box
                   sx={{
-                    bgcolor: "#f5f5f5",
-                    color: "#212121",
-                    borderRadius: 2,
-                    px: 2,
-                    py: 1.2,
-                    maxWidth: 380,
-                    minWidth: 120,
-                    wordBreak: "break-word",
-                    boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.03)",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 1,
+                    width: "100%",
                   }}
                 >
-                  {/* 메시지 내용(어두운 회색) */}
-                  {msg.messageContent && (
-                    <Typography sx={{ color: "#212121" }}>
-                      {msg.messageContent}
-                    </Typography>
-                  )}
+                  <Box
+                    sx={{
+                      bgcolor: "#f5f5f5",
+                      color: "#212121",
+                      borderRadius: 2,
+                      px: 2,
+                      py: 1.2,
+                      maxWidth: 380,
+                      minWidth: 120,
+                      wordBreak: "break-word",
+                      boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.03)",
+                    }}
+                  >
+                    {/* 메시지 내용(어두운 회색) */}
+                    {msg.messageContent && (
+                      <Typography sx={{ color: "#212121" }}>
+                        {msg.messageContent}
+                      </Typography>
+                    )}
 
-                  {/* 첨부파일 (배경색은 유지) */}
-                  {msg.fileYn && msg.fileUrl && (
-                    isImageFile(msg.fileUrl) ? (
-                      <Box
-                        component="img"
-                        src={msg.fileUrl}
-                        alt="첨부 이미지"
-                        sx={{
-                          width: "100%",
-                          maxWidth: 280,
-                          borderRadius: 1.5,
-                          border: "1px solid #bdbdbd",
-                          objectFit: "cover",
-                          mt: 1
-                        }}
-                      />
-                    ) : (
-                      <Box
-                        sx={{
-                          bgcolor: "#eeeeee",
-                          border: "1px solid #ccc",
-                          borderRadius: 1.5,
-                          px: 1.5,
-                          py: 0.8,
-                          mt: 1
-                        }}
-                      >
-                        <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 0.5, color: "#212121" }}>
-                          첨부 파일
-                        </Typography>
-                        <Link
-                          href={msg.fileUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          underline="hover"
-                          sx={{ fontSize: 13, wordBreak: "break-all", color: "#1565c0" }}
+                    {/* 첨부파일 (배경색은 유지) */}
+                    {msg.fileYn && msg.fileUrl && (
+                      isImageFile(msg.fileUrl) ? (
+                        <Box
+                          component="img"
+                          src={msg.fileUrl}
+                          alt="첨부 이미지"
+                          sx={{
+                            width: "100%",
+                            maxWidth: 280,
+                            borderRadius: 1.5,
+                            border: "1px solid #bdbdbd",
+                            objectFit: "cover",
+                            mt: 1
+                          }}
+                        />
+                      ) : (
+                        <Box
+                          sx={{
+                            bgcolor: "#eeeeee",
+                            border: "1px solid #ccc",
+                            borderRadius: 1.5,
+                            px: 1.5,
+                            py: 0.8,
+                            mt: 1
+                          }}
                         >
-                          {decodeURIComponent(msg.fileUrl.split("/").pop()?.split("?")[0] || "파일 다운로드")}
-                        </Link>
-                      </Box>
-                    )
+                          <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 0.5, color: "#212121" }}>
+                            첨부 파일
+                          </Typography>
+                          <Link
+                            href={msg.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            underline="hover"
+                            sx={{ fontSize: 13, wordBreak: "break-all", color: "#1565c0" }}
+                          >
+                            {decodeURIComponent(msg.fileUrl.split("/").pop()?.split("?")[0] || "파일 다운로드")}
+                          </Link>
+                        </Box>
+                      )
+                    )}
+                  </Box>
+                  
+                  {/* ⭐ 안읽은 사람 수 표시 (메시지 오른쪽) */}
+                  {msg.unreadCount != null && msg.unreadCount > 0 && (
+                    <Typography
+                      sx={{
+                        fontSize: 11,
+                        color: "#1976d2",
+                        fontWeight: 600,
+                        alignSelf: "flex-start",
+                        mt: 1.2,
+                      }}
+                    >
+                      {msg.unreadCount}
+                    </Typography>
                   )}
                 </Box>
 

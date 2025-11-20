@@ -4,23 +4,35 @@ import java.time.LocalDateTime;
 
 import com.goodee.coreconnect.user.entity.User;
 
-import jakarta.annotation.Generated;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.IdClass;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+/**
+ * 채팅 메시지 읽음 상태 엔티티
+ * 복합키: (chat_id, user_id)
+ * - 하나의 메시지(chat)에 대해 각 참여자(user)별로 읽음 상태를 관리
+ * - 동일한 메시지에 대해 여러 참여자가 각각의 읽음 상태를 가질 수 있음
+ */
 @Entity
 @Table(name = "chat_message_read_status")
+@IdClass(ChatMessageReadStatusId.class)
 public class ChatMessageReadStatus {
+	// ⭐ 복합키: chat_id와 user_id의 조합이 PK
 	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Integer id;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "chat_message_id", nullable = false)
+	private Chat chat;
+	
+	@Id
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "user_id", nullable = false)
+	private User user;
 
 	// 읽음 여부
 	@Column(name = "chat_message_read_status_read_yn")
@@ -30,15 +42,7 @@ public class ChatMessageReadStatus {
 	@Column(name = "chat_message_read_status_read_at")
 	private LocalDateTime readAt;
 	
-	// N : 1 (메시지)
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "chat_message_id")
-	private Chat chat;
-	
-	// N : 1 (사용자)
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "user_id")
-	private User user;
+	// ⭐ chat과 user는 위의 @Id로 이미 정의됨 (복합키)
 	
 	protected ChatMessageReadStatus() {}
 	
@@ -57,6 +61,21 @@ public class ChatMessageReadStatus {
 		this.readAt = LocalDateTime.now();
 	}
 	
+	// ⭐ 읽음 상태 초기화 (새 메시지 생성 시 사용)
+	public void resetReadStatus() {
+		this.readYn = false;
+		this.readAt = null;
+	}
+	
+	// ⭐ setter 추가 (필요시 사용)
+	public void setReadYn(Boolean readYn) {
+		this.readYn = readYn;
+	}
+	
+	public void setReadAt(LocalDateTime readAt) {
+		this.readAt = readAt;
+	}
+	
 	public Chat getChat() {
         return chat;
     }
@@ -69,9 +88,7 @@ public class ChatMessageReadStatus {
     public LocalDateTime getReadAt() {
         return readAt;
     }
-    public Integer getId() {
-        return id;
-    }
+    // ⭐ 복합키 사용으로 id 필드 제거됨
 	
     public boolean isConsistentReadStatus() {
 	  return (readAt == null && Boolean.FALSE.equals(readYn)) ||
