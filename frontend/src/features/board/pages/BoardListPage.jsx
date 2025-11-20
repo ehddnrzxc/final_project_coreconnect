@@ -266,6 +266,11 @@ const BoardListPage = () => {
                       📌
                     </Typography>
                   )}
+                  {!b.pinned && b.noticeYn && (
+                    <Typography component="span" sx={{ fontSize: 20, mr: 0.5 }}>
+                      📢
+                    </Typography>
+                  )}
                   {b.privateYn && (
                     <Typography component="span" sx={{ fontSize: 19, mr: 0.5 }}>
                       🔒
