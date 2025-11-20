@@ -127,7 +127,15 @@ export default function ScheduleDetailModal({
             {/* 제목 + 공개여부 */}
             <Stack direction="row" alignItems="center" spacing={1}>
               {schedule.visibility === "PRIVATE" && <span>🔒</span>}
-              <Typography variant="h6">{schedule.title}</Typography>
+              <Typography 
+                variant="h6"
+                sx={{
+                  wordBreak: "break-word",
+                  overflowWrap: "break-word",
+                }}
+              >
+                {schedule.title}
+              </Typography>
             </Stack>
 
             {/* 시간 */}
@@ -138,19 +146,43 @@ export default function ScheduleDetailModal({
             <Divider sx={{ my: 2 }} />
 
             {/* 내용 */}
-            <Typography sx={{ whiteSpace: "pre-line" }}>
+            <Typography 
+              sx={{ 
+                whiteSpace: "pre-line",
+                wordBreak: "break-word",
+                overflowWrap: "break-word",
+              }}
+            >
               {schedule.content || "(내용 없음)"}
             </Typography>
 
             {/* 기본 정보 */}
             <Stack spacing={0.5} mt={2}>
-              <Typography variant="body2">
+              <Typography 
+                variant="body2"
+                sx={{
+                  wordBreak: "break-word",
+                  overflowWrap: "break-word",
+                }}
+              >
                 장소: {schedule.location || "-"}
               </Typography>
-              <Typography variant="body2">
+              <Typography 
+                variant="body2"
+                sx={{
+                  wordBreak: "break-word",
+                  overflowWrap: "break-word",
+                }}
+              >
                 회의실: {schedule.meetingRoomName || "-"}
               </Typography>
-              <Typography variant="body2">
+              <Typography 
+                variant="body2"
+                sx={{
+                  wordBreak: "break-word",
+                  overflowWrap: "break-word",
+                }}
+              >
                 카테고리: {schedule.categoryName || "-"}
               </Typography>
               <Typography variant="body2">

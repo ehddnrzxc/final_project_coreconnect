@@ -114,13 +114,23 @@ export default function ScheduleCategoryPanel({ activeCategories, onToggle, onCo
       <Stack spacing={1}>
         {categories.map((cat) => (
           <Stack key={cat.id} direction="row" alignItems="center" justifyContent="space-between">
-            <Stack direction="row" alignItems="center" spacing={1}>
+            <Stack direction="row" alignItems="center" spacing={1} sx={{ flex: 1, minWidth: 0 }}>
               <Checkbox
                 checked={activeCategories.includes(cat.id)}
                 onChange={() => onToggle(cat.id)}
                 sx={{ color: categoryColors[cat.id] || "#999", "&.Mui-checked": { color: categoryColors[cat.id] || "#999" } }}
               />
-              <Typography sx={{ color: categoryColors[cat.id] || "#999", fontSize: 15 }}>
+              <Typography 
+                sx={{ 
+                  color: categoryColors[cat.id] || "#999", 
+                  fontSize: 15,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  flex: 1,
+                  minWidth: 0,
+                }}
+              >
                 {cat.name}
               </Typography>
             </Stack>
