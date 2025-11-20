@@ -19,6 +19,8 @@ import com.goodee.coreconnect.schedule.dto.response.ResponseScheduleDTO;
 import com.goodee.coreconnect.schedule.dto.response.ScheduleDailySummaryDTO;
 import com.goodee.coreconnect.schedule.dto.response.ScheduleMonthlySummaryDTO;
 import com.goodee.coreconnect.schedule.dto.response.SchedulePreviewSummaryDTO;
+import com.goodee.coreconnect.leave.entity.LeaveRequest;
+import com.goodee.coreconnect.leave.repository.LeaveRequestRepository;
 import com.goodee.coreconnect.schedule.entity.MeetingRoom;
 import com.goodee.coreconnect.schedule.entity.Schedule;
 import com.goodee.coreconnect.schedule.entity.ScheduleCategory;
@@ -46,6 +48,7 @@ public class ScheduleServiceImpl implements ScheduleService {
   private final ScheduleCategoryRepository categoryRepository;
   private final ScheduleParticipantRepository scheduleParticipantRepository;
   private final NotificationService notificationService;
+  private final LeaveRequestRepository leaveRequestRepository;
 
 
   /** 일정 생성 */
@@ -63,8 +66,15 @@ public class ScheduleServiceImpl implements ScheduleService {
         ? categoryRepository.findById(dto.getCategoryId()).orElse(null)
         : null;
 
-    // 회의실 중복 예약 방지
-    if (meetingRoom != null) {
+    // LeaveRequest 조회 (휴가 일정인 경우만)
+    LeaveRequest leaveRequest = null;
+    if (dto.getLeaveRequestId() != null) {
+        leaveRequest = leaveRequestRepository.findById(dto.getLeaveRequestId())
+            .orElseThrow(() -> new IllegalArgumentException("휴가를 찾을 수 없습니다."));
+    }
+
+    // 회의실 중복 예약 방지 (휴가 일정은 제외)
+    if (meetingRoom != null && leaveRequest == null) {
       boolean overlap = scheduleRepository.existsOverlappingSchedule(
               meetingRoom,
               dto.getStartDateTime(),
@@ -79,12 +89,14 @@ public class ScheduleServiceImpl implements ScheduleService {
       meetingRoom.changeAvailability(false);
     }
     
-    // OWNER(본인) 일정 겹침 여부 확인
-    boolean ownerHasConflict = scheduleRepository.existsUserOverlappingSchedule(
-        user, dto.getStartDateTime(), dto.getEndDateTime());
+    // OWNER(본인) 일정 겹침 여부 확인 (휴가 일정은 제외)
+    if (leaveRequest == null) {
+        boolean ownerHasConflict = scheduleRepository.existsUserOverlappingSchedule(
+            user, dto.getStartDateTime(), dto.getEndDateTime());
 
-    if (ownerHasConflict) {
-      throw new IllegalArgumentException("본인은 해당 시간대에 이미 다른 일정이 있습니다.");
+        if (ownerHasConflict) {
+          throw new IllegalArgumentException("본인은 해당 시간대에 이미 다른 일정이 있습니다.");
+        }
     }
     
     // 시간 검증 
@@ -94,7 +106,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     }
 
     // 일정 생성
-    Schedule schedule = dto.toEntity(user, meetingRoom, category);
+    Schedule schedule = dto.toEntity(user, meetingRoom, category, leaveRequest);
     Schedule savedSchedule = scheduleRepository.save(schedule);
     
     // 일정 생성자(owner) 자동 등록
@@ -105,8 +117,8 @@ public class ScheduleServiceImpl implements ScheduleService {
     );
     scheduleParticipantRepository.save(owner);
     
-    // 추가 참여자 목록 : MEMBER 등록
-    if (dto.getParticipantIds() != null && !dto.getParticipantIds().isEmpty()) {
+    // 추가 참여자 목록 : MEMBER 등록 (휴가 일정은 참여자 없음)
+    if (dto.getParticipantIds() != null && !dto.getParticipantIds().isEmpty() && leaveRequest == null) {
       for (Integer participantId : dto.getParticipantIds()) {          
         // 본인(OWNER)은 제외
         if (participantId.equals(user.getId())) continue;
@@ -139,15 +151,17 @@ public class ScheduleServiceImpl implements ScheduleService {
       }
     }
     
-    // 본인(OWNER)에게도 알림
-    notificationService.sendNotification(
-            user.getId(),
-            NotificationType.SCHEDULE,
-            "[일정 등록 완료] '" + savedSchedule.getTitle() + "' 일정이 생성되었습니다.",
-            null, null,
-            user.getId(),
-            user.getName()
-    );
+    // 본인(OWNER)에게도 알림 (휴가 일정은 제외)
+    if (leaveRequest == null) {
+        notificationService.sendNotification(
+                user.getId(),
+                NotificationType.SCHEDULE,
+                "[일정 등록 완료] '" + savedSchedule.getTitle() + "' 일정이 생성되었습니다.",
+                null, null,
+                user.getId(),
+                user.getName()
+        );
+    }
 
     return ResponseScheduleDTO.toDTO(savedSchedule);
   }

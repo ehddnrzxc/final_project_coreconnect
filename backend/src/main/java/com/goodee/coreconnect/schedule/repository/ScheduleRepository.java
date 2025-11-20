@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import com.goodee.coreconnect.leave.entity.LeaveRequest;
 import com.goodee.coreconnect.schedule.entity.MeetingRoom;
 import com.goodee.coreconnect.schedule.entity.Schedule;
 import com.goodee.coreconnect.schedule.entity.ScheduleCategory;
@@ -170,5 +171,8 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Integer> {
       @Param("start") LocalDateTime start,
       @Param("end") LocalDateTime end
   );
+
+  /** 휴가 요청으로 생성된 일정 조회 */
+  Optional<Schedule> findByLeaveRequest(LeaveRequest leaveRequest);
 
 }

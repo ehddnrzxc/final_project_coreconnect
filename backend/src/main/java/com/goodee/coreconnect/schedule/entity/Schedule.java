@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.goodee.coreconnect.leave.entity.LeaveRequest;
 import com.goodee.coreconnect.schedule.enums.ScheduleVisibility;
 import com.goodee.coreconnect.user.entity.User;
 
@@ -84,6 +85,11 @@ public class Schedule {
   @OneToMany(mappedBy = "schedule", fetch = FetchType.LAZY)
   private List<ScheduleParticipant> participants = new ArrayList<>();
   
+  /** N:1 (leaveRequest 테이블과 매핑) */
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "leave_req_id")
+  private LeaveRequest leaveRequest;
+  
   
   protected Schedule() {};
   
@@ -95,7 +101,8 @@ public class Schedule {
                                           LocalDateTime start,
                                           LocalDateTime end,
                                           String location,
-                                          ScheduleVisibility visibility) {
+                                          ScheduleVisibility visibility,
+                                          LeaveRequest leaveRequest) {
     Schedule schedule = new Schedule();
     schedule.user = user;
     schedule.meetingRoom = meetingRoom;
@@ -106,6 +113,7 @@ public class Schedule {
     schedule.endDateTime = end;
     schedule.location = location;
     schedule.visibility = visibility != null ? visibility : ScheduleVisibility.PRIVATE;
+    schedule.leaveRequest = leaveRequest;
     schedule.deletedYn = false;
     schedule.createdAt = LocalDateTime.now();
     

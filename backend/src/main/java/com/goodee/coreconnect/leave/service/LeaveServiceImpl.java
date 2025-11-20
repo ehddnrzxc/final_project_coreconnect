@@ -1,6 +1,7 @@
 package com.goodee.coreconnect.leave.service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,7 +24,14 @@ import com.goodee.coreconnect.leave.entity.LeaveRequest;
 import com.goodee.coreconnect.leave.enums.LeaveStatus;
 import com.goodee.coreconnect.leave.enums.LeaveType;
 import com.goodee.coreconnect.leave.repository.LeaveRequestRepository;
+import com.goodee.coreconnect.schedule.dto.request.RequestScheduleDTO;
+import com.goodee.coreconnect.schedule.entity.ScheduleCategory;
+import com.goodee.coreconnect.schedule.enums.ScheduleVisibility;
+import com.goodee.coreconnect.schedule.repository.ScheduleCategoryRepository;
+import com.goodee.coreconnect.schedule.repository.ScheduleRepository;
+import com.goodee.coreconnect.schedule.service.ScheduleService;
 import com.goodee.coreconnect.user.entity.User;
+import com.goodee.coreconnect.user.enums.JobGrade;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -35,6 +43,9 @@ public class LeaveServiceImpl implements LeaveService {
   
   private final UserRepository userRepository;
   private final LeaveRequestRepository leaveRequestRepository;
+  private final ScheduleService scheduleService;
+  private final ScheduleCategoryRepository categoryRepository;
+  private final ScheduleRepository scheduleRepository;
   
   private static final Integer DEFAULT_ANNUAL_LEAVE_DAYS = 15;
 
@@ -58,22 +69,40 @@ public class LeaveServiceImpl implements LeaveService {
                                                          leaveType, 
                                                          reason, 
                                                          document.getId());
-    leaveRequestRepository.save(leave);
+    LeaveRequest savedLeave = leaveRequestRepository.save(leave);
+    
+    // "개인 일정" 카테고리 찾기
+    List<ScheduleCategory> categories = categoryRepository.findAvailableCategories(drafter);
+    ScheduleCategory personalCategory = categories.stream()
+        .filter(c -> "개인 일정".equals(c.getName()) && c.getDefaultYn())
+        .findFirst()
+        .orElseThrow(() -> new IllegalStateException("'개인 일정' 카테고리를 찾을 수 없습니다."));
+    
+    // 일정 생성 (신청 시점, leaveRequest 포함)
+    createScheduleFromLeave(savedLeave, personalCategory);
   }
 
   /** 승인된 휴가 처리 */
   @Override
   public void handleApprovedLeave(Document document, String approvalComment) {
-    leaveRequestRepository.findByDocumentId(document.getId())
-                          .ifPresent(leave -> leave.approve(approvalComment));
+    LeaveRequest leave = leaveRequestRepository.findByDocumentId(document.getId())
+        .orElseThrow(() -> new IllegalArgumentException("휴가를 찾을 수 없습니다."));
     
+    leave.approve(approvalComment);
+    
+    // 일정은 이미 생성되어 있으므로 그대로 유지
   }
 
   /** 반려된 휴가 처리 */
   @Override
   public void handleRejectedLeave(Document document, String rejectComment) {
-    leaveRequestRepository.findByDocumentId(document.getId())
-                          .ifPresent(leave -> leave.reject(rejectComment));
+    LeaveRequest leave = leaveRequestRepository.findByDocumentId(document.getId())
+        .orElseThrow(() -> new IllegalArgumentException("휴가를 찾을 수 없습니다."));
+    
+    leave.reject(rejectComment);
+    
+    // 생성된 일정 삭제
+    deleteScheduleFromLeave(leave);
   }
 
   /** 내 연차정보 요약 */
@@ -192,5 +221,53 @@ public class LeaveServiceImpl implements LeaveService {
           usedDays
       );
     });
+  }
+  
+  /** 휴가로부터 일정 생성 */
+  private void createScheduleFromLeave(LeaveRequest leave, ScheduleCategory category) {
+    LocalDateTime startDateTime = calculateStartDateTime(leave);
+    LocalDateTime endDateTime = calculateEndDateTime(leave);
+    
+    RequestScheduleDTO dto = RequestScheduleDTO.builder()
+        .title(leave.getType().getLabel())
+        .content(leave.getReason())
+        .categoryId(category.getId())
+        .visibility(ScheduleVisibility.PUBLIC)
+        .startDateTime(startDateTime)
+        .endDateTime(endDateTime)
+        .leaveRequestId(leave.getLeaveReqId())
+        .build();
+    
+    scheduleService.createSchedule(dto, leave.getUser().getEmail());
+  }
+  
+  /** 휴가 시작 시간 계산 */
+  private LocalDateTime calculateStartDateTime(LeaveRequest leave) {
+    if (leave.getType() == LeaveType.HALF_DAY_MORNING) {
+        return leave.getStartDate().atTime(9, 0);
+    } else if (leave.getType() == LeaveType.HALF_DAY_AFTERNOON) {
+        return leave.getStartDate().atTime(13, 0);
+    } else {
+        return leave.getStartDate().atTime(0, 0);
+    }
+  }
+  
+  /** 휴가 종료 시간 계산 */
+  private LocalDateTime calculateEndDateTime(LeaveRequest leave) {
+    if (leave.getType() == LeaveType.HALF_DAY_MORNING) {
+        return leave.getStartDate().atTime(12, 0);
+    } else if (leave.getType() == LeaveType.HALF_DAY_AFTERNOON) {
+        return leave.getStartDate().atTime(18, 0);
+    } else {
+        return leave.getEndDate().atTime(23, 59, 59);
+    }
+  }
+  
+  /** 휴가로부터 생성된 일정 삭제 */
+  private void deleteScheduleFromLeave(LeaveRequest leave) {
+    scheduleRepository.findByLeaveRequest(leave)
+        .ifPresent(schedule -> {
+            scheduleService.deleteSchedule(schedule.getId());
+        });
   }
 }
