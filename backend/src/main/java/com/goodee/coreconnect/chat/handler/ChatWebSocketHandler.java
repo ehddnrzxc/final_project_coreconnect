@@ -1,6 +1,7 @@
 package com.goodee.coreconnect.chat.handler;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -34,8 +35,10 @@ import java.util.Objects;
 @Component
 @RequiredArgsConstructor
 public class ChatWebSocketHandler extends TextWebSocketHandler{	
-	// 사용자 ID별 WebSocketSession 관리용 맵
-	public static final Map<Integer, WebSocketSession> userSessions = new ConcurrentHashMap<>();
+	// ⭐ 여러 브라우저/탭 지원: 사용자 ID별 WebSocketSession 리스트 관리
+	// 한 사용자가 여러 브라우저/탭에서 접속할 수 있으므로 List로 관리
+	// 모든 세션이 끊겨야만 "미접속"으로 처리됨
+	public static final Map<Integer, List<WebSocketSession>> userSessions = new ConcurrentHashMap<>();
 	
 	// 채팅방 관련 서비스
     private final ChatRoomService chatRoomService;
@@ -74,12 +77,16 @@ public class ChatWebSocketHandler extends TextWebSocketHandler{
             log.warn("WebSocket 연결에 roomId 없음 - 클라이언트 URI query를 확인하세요.");
         }
 
-        // 세션 맵에 등록 - userSessions에 (userId, session)
+        // ⭐ 세션 맵에 등록 - 여러 브라우저/탭 지원을 위해 List로 관리
         if (userId != null) {
-            userSessions.put(userId, session);
+            // ⭐ 동시성 안전: computeIfAbsent로 리스트 초기화 후 세션 추가
+            userSessions.computeIfAbsent(userId, k -> Collections.synchronizedList(new ArrayList<>()))
+                    .add(session);
             webSocketDeliveryService.registerSession(userId, session);
 
-            log.info("userSessions.put 완료 - userId: {}, roomId: {}", userId, roomId);
+            int sessionCount = userSessions.get(userId).size();
+            log.info("userSessions 세션 추가 완료 - userId: {}, roomId: {}, 현재세션수: {}", 
+                    userId, roomId, sessionCount);
 
             // 방 입장시 안읽은 메시지 읽음 처리
             if (roomId != null) {
@@ -95,10 +102,46 @@ public class ChatWebSocketHandler extends TextWebSocketHandler{
 	public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
 		// 사용자 ID 추출
 		Integer userId = getUserIdFromSession(session);
+		Integer roomId = getRoomIdFromSession(session);
+		String sessionId = session != null ? session.getId() : "null";
+		
+		log.info("[afterConnectionClosed] 세션 종료 시작 - userId: {}, roomId: {}, sessionId: {}, closeStatus: {}", 
+				userId, roomId, sessionId, status);
+		
 		if (userId != null) {
-			// 세션을 맵에 등록
-			userSessions.put(userId, session);
-			webSocketDeliveryService.registerSession(userId, session);
+			// ⭐ 여러 브라우저/탭 지원: 특정 세션만 리스트에서 제거
+			// 모든 세션이 끊겨야만 userId가 완전히 제거됨
+			List<WebSocketSession> sessions = userSessions.get(userId);
+			if (sessions != null && !sessions.isEmpty()) {
+				// ⭐ 세션 ID로 비교하여 정확한 세션만 제거
+				boolean removed = sessions.removeIf(s -> s != null && s.getId().equals(sessionId));
+				
+				if (!removed) {
+					// ⭐ 세션 ID로 찾지 못하면 객체 참조로 제거 시도
+					removed = sessions.remove(session);
+					if (!removed) {
+						log.warn("[afterConnectionClosed] 세션 제거 실패 - userId: {}, sessionId: {}, sessions.size: {}", 
+								userId, sessionId, sessions.size());
+					}
+				}
+				
+				webSocketDeliveryService.unregisterSession(userId, session);
+				
+				// ⭐ 모든 세션이 끊겼으면 userId도 제거
+				if (sessions.isEmpty()) {
+					userSessions.remove(userId);
+					log.info("[afterConnectionClosed] ✅ 모든 세션 제거 완료 - userId: {}, roomId: {}, userId 맵에서도 제거", 
+							userId, roomId);
+				} else {
+					log.info("[afterConnectionClosed] ✅ 세션 제거 완료 - userId: {}, roomId: {}, 남은 세션수: {}, 남은 세션Ids: {}", 
+							userId, roomId, sessions.size(), 
+							sessions.stream().map(s -> s != null ? s.getId() : "null").collect(Collectors.toList()));
+				}
+			} else {
+				log.warn("[afterConnectionClosed] ⚠️ userId: {}의 세션 리스트가 없거나 비어있음", userId);
+			}
+		} else {
+			log.warn("[afterConnectionClosed] ⚠️ userId를 찾을 수 없어 세션 제거 실패 - sessionId: {}", sessionId);
 		}
 	}
 	
@@ -151,11 +194,21 @@ public class ChatWebSocketHandler extends TextWebSocketHandler{
 
 	    String payload = objectMapper.writeValueAsString(dto);
 
-	    // 전체 참가자에게 메시지 push
+	    // ⭐ 전체 참가자에게 메시지 push (여러 브라우저/탭 지원)
 	    for (Integer pid : participantIds) {
-	        WebSocketSession s = userSessions.get(pid);
-	        if (s != null && s.isOpen()) {
-	            s.sendMessage(new TextMessage(payload));
+	        List<WebSocketSession> sessions = userSessions.get(pid);
+	        if (sessions != null) {
+	            // ⭐ 해당 사용자의 모든 세션에 메시지 전송
+	            for (WebSocketSession s : new ArrayList<>(sessions)) { // ConcurrentModificationException 방지
+	                if (s != null && s.isOpen()) {
+	                    try {
+	                        s.sendMessage(new TextMessage(payload));
+	                    } catch (Exception e) {
+	                        log.error("메시지 전송 실패 - userId: {}, sessionId: {}, error: {}", 
+	                                pid, s.getId(), e.getMessage());
+	                    }
+	                }
+	            }
 	        }
 	    }
 
@@ -221,21 +274,171 @@ public class ChatWebSocketHandler extends TextWebSocketHandler{
 		
 	}
 	
+	/**
+	 * 특정 채팅방에 현재 접속 중인 사용자 ID 목록 반환
+	 * ⭐ 여러 브라우저/탭 지원: 한 사용자의 여러 세션 중 하나라도 해당 방에 접속 중이면 "접속 중"으로 판단
+	 * 
+	 * @param roomId 채팅방 ID
+	 * @return 접속 중인 사용자 ID 목록 (발신자 포함, 중복 없음)
+	 */
 	public List<Integer> getConnectedUserIdsInRoom(Integer roomId) {
 	    List<Integer> connectedUserIds = new ArrayList<>();
-	    for (Map.Entry<Integer, WebSocketSession> entry : userSessions.entrySet()) {
+	    int checkedUsers = 0;
+	    int checkedSessions = 0;
+	    int openSessions = 0;
+	    int matchingRoomSessions = 0;
+	    
+	    // ⭐ 여러 브라우저/탭 지원: 각 사용자의 모든 세션을 확인
+	    for (Map.Entry<Integer, List<WebSocketSession>> entry : userSessions.entrySet()) {
 	        Integer userId = entry.getKey();
-	        WebSocketSession session = entry.getValue();
-	        if (session != null && session.isOpen()) {
-	            // roomId와 연결시, session에 roomId 정보가 있다고 가정해야 함!
-	            // 예: session.getAttributes().get("roomId") 등
+	        List<WebSocketSession> sessions = entry.getValue();
+	        checkedUsers++;
+	        
+	        if (sessions == null || sessions.isEmpty()) {
+	            continue;
+	        }
+	        
+	        // ⭐ 해당 사용자의 세션 중 하나라도 해당 방에 접속 중이면 "접속 중"으로 판단
+	        boolean isConnectedToRoom = false;
+	        
+	        for (WebSocketSession session : new ArrayList<>(sessions)) { // ConcurrentModificationException 방지
+	            checkedSessions++;
+	            
+	            // ⭐ 세션이 null이거나 닫혀있으면 제외
+	            if (session == null || !session.isOpen()) {
+	                log.debug("[getConnectedUserIdsInRoom] 세션 제외 - userId: {}, sessionId: {}, isNull: {}, isOpen: {}", 
+	                        userId, session != null ? session.getId() : "null", 
+	                        session == null, session != null && session.isOpen());
+	                continue;
+	            }
+	            
+	            openSessions++;
+	            
+	            // ⭐ 세션의 roomId 속성 확인
 	            Object sessionRoomId = session.getAttributes().get("roomId");
-	            if (sessionRoomId != null && sessionRoomId.equals(roomId)) {
-	                connectedUserIds.add(userId);
+	            
+	            // roomId가 Integer인 경우와 String인 경우 모두 처리
+	            boolean roomMatches = false;
+	            if (sessionRoomId != null) {
+	                if (sessionRoomId instanceof Integer) {
+	                    roomMatches = sessionRoomId.equals(roomId);
+	                } else if (sessionRoomId instanceof String) {
+	                    try {
+	                        roomMatches = Integer.parseInt((String) sessionRoomId) == roomId;
+	                    } catch (NumberFormatException e) {
+	                        log.warn("[getConnectedUserIdsInRoom] roomId 파싱 실패 - userId: {}, sessionRoomId: {}", 
+	                                userId, sessionRoomId);
+	                    }
+	                } else {
+	                    // 숫자로 변환 시도
+	                    try {
+	                        int parsedRoomId = Integer.parseInt(sessionRoomId.toString());
+	                        roomMatches = parsedRoomId == roomId;
+	                    } catch (NumberFormatException e) {
+	                        log.warn("[getConnectedUserIdsInRoom] roomId 변환 실패 - userId: {}, sessionRoomId: {}", 
+	                                userId, sessionRoomId);
+	                    }
+	                }
+	            }
+	            
+	            if (roomMatches) {
+	                isConnectedToRoom = true;
+	                matchingRoomSessions++;
+	                log.debug("[getConnectedUserIdsInRoom] 접속자 발견 - userId: {}, roomId: {}, sessionId: {}", 
+	                        userId, roomId, session.getId());
+	                // ⭐ 하나라도 해당 방에 접속 중이면 중복 체크 없이 추가하고 다음 사용자로
+	                break;
 	            }
 	        }
+	        
+	        // ⭐ 해당 사용자가 해당 방에 접속 중이면 리스트에 추가 (중복 방지)
+	        if (isConnectedToRoom && !connectedUserIds.contains(userId)) {
+	            connectedUserIds.add(userId);
+	        }
 	    }
-	    log.info("Connected users in room {}: {}", roomId, connectedUserIds);
+	    
+	    log.info("[getConnectedUserIdsInRoom] ⭐ 실시간 접속자 조회 완료 - roomId: {}, 전체사용자수: {}, 전체세션수: {}, 열린세션수: {}, 해당방접속세션수: {}, 접속자수: {}, 접속자Ids: {}", 
+	            roomId, checkedUsers, checkedSessions, openSessions, matchingRoomSessions, connectedUserIds.size(), connectedUserIds);
+	    
+	    return connectedUserIds;
+	}
+	
+	/**
+	 * ⭐ 순환 참조 방지: static 메서드로 접속자 조회
+	 * ChatRoomServiceImpl에서 호출할 때 순환 참조를 피하기 위해 static 메서드 제공
+	 * 
+	 * @param roomId 채팅방 ID
+	 * @return 접속 중인 사용자 ID 목록 (발신자 포함, 중복 없음)
+	 */
+	public static List<Integer> getConnectedUserIdsInRoomStatic(Integer roomId) {
+	    List<Integer> connectedUserIds = new ArrayList<>();
+	    int checkedUsers = 0;
+	    int checkedSessions = 0;
+	    int openSessions = 0;
+	    int matchingRoomSessions = 0;
+	    
+	    // ⭐ 여러 브라우저/탭 지원: 각 사용자의 모든 세션을 확인
+	    for (Map.Entry<Integer, List<WebSocketSession>> entry : userSessions.entrySet()) {
+	        Integer userId = entry.getKey();
+	        List<WebSocketSession> sessions = entry.getValue();
+	        checkedUsers++;
+	        
+	        if (sessions == null || sessions.isEmpty()) {
+	            continue;
+	        }
+	        
+	        // ⭐ 해당 사용자의 세션 중 하나라도 해당 방에 접속 중이면 "접속 중"으로 판단
+	        boolean isConnectedToRoom = false;
+	        
+	        for (WebSocketSession session : new ArrayList<>(sessions)) { // ConcurrentModificationException 방지
+	            checkedSessions++;
+	            
+	            // ⭐ 세션이 null이거나 닫혀있으면 제외
+	            if (session == null || !session.isOpen()) {
+	                continue;
+	            }
+	            
+	            openSessions++;
+	            
+	            // ⭐ 세션의 roomId 속성 확인
+	            Object sessionRoomId = session.getAttributes().get("roomId");
+	            
+	            // roomId가 Integer인 경우와 String인 경우 모두 처리
+	            boolean roomMatches = false;
+	            if (sessionRoomId != null) {
+	                if (sessionRoomId instanceof Integer) {
+	                    roomMatches = sessionRoomId.equals(roomId);
+	                } else if (sessionRoomId instanceof String) {
+	                    try {
+	                        roomMatches = Integer.parseInt((String) sessionRoomId) == roomId;
+	                    } catch (NumberFormatException e) {
+	                        // 파싱 실패 시 무시
+	                    }
+	                } else {
+	                    // 숫자로 변환 시도
+	                    try {
+	                        int parsedRoomId = Integer.parseInt(sessionRoomId.toString());
+	                        roomMatches = parsedRoomId == roomId;
+	                    } catch (NumberFormatException e) {
+	                        // 변환 실패 시 무시
+	                    }
+	                }
+	            }
+	            
+	            if (roomMatches) {
+	                isConnectedToRoom = true;
+	                matchingRoomSessions++;
+	                // ⭐ 하나라도 해당 방에 접속 중이면 중복 체크 없이 추가하고 다음 사용자로
+	                break;
+	            }
+	        }
+	        
+	        // ⭐ 해당 사용자가 해당 방에 접속 중이면 리스트에 추가 (중복 방지)
+	        if (isConnectedToRoom && !connectedUserIds.contains(userId)) {
+	            connectedUserIds.add(userId);
+	        }
+	    }
+	    
 	    return connectedUserIds;
 	}
 	

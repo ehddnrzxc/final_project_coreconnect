@@ -28,6 +28,10 @@ public class ChatResponseDTO {
     private Integer roomId;
     private Integer senderId;
     private String senderName;
+    private String senderEmail;
+    private String senderProfileImageUrl;
+    private com.goodee.coreconnect.user.enums.JobGrade senderJobGrade; // ⭐ 발신자 직급
+    private String senderDeptName; // ⭐ 발신자 부서명
     private String notificationType;
     private Integer unreadCount;
 
@@ -43,6 +47,8 @@ public class ChatResponseDTO {
             .roomId(chat.getChatRoom() != null ? chat.getChatRoom().getId() : null)
             .senderId(chat.getSender() != null ? chat.getSender().getId() : null)
             .senderName(chat.getSender() != null ? chat.getSender().getName() : null)
+            .senderEmail(chat.getSender() != null ? chat.getSender().getEmail() : null)
+            .senderProfileImageUrl(null) // Controller에서 S3Service로 변환하여 설정
             .unreadCount(chat.getUnreadCount() != null ? chat.getUnreadCount() : 0)
             .build();
     }

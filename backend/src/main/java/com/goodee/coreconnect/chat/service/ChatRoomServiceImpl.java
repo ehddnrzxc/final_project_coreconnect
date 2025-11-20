@@ -6,6 +6,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.context.ApplicationEventPublisher;
@@ -14,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.socket.WebSocketSession;
 
 import com.goodee.coreconnect.chat.event.NotificationCreatedEvent;
-import com.goodee.coreconnect.chat.handler.ChatWebSocketHandler;
 import com.goodee.coreconnect.common.dto.request.NotificationRequestDTO;
 import com.goodee.coreconnect.common.entity.Notification;
 import com.goodee.coreconnect.common.notification.dto.NotificationPayload; // DTO import 추가
@@ -283,7 +283,8 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 
 	@Override
 	public List<ChatRoomUser> getChatRoomUsers(Integer roomId) {
-		return chatRoomUserRepository.findByChatRoomId(roomId);
+		// ⭐ User와 Department를 함께 조회하여 Lazy Loading 문제 해결
+		return chatRoomUserRepository.findByChatRoomIdWithUser(roomId);
 	}
 
 	@Override
@@ -350,16 +351,161 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 		// 여기에서 ChatMessageReadStatus 저장
 		// 2. 참여자별 읽음 상태 생성 (알림용 Notification 테이블 사용하지 않음)
 	    List<ChatRoomUser> participants = chatRoomUserRepository.findByChatRoomId(roomId);
+	    
+	    // ⭐ 현재 채팅방에 접속 중인 사용자 목록 조회 (실시간 WebSocket 세션 기반)
+	    // 이 값이 정확해야 unreadCount 계산이 정확함!
+	    List<Integer> connectedUserIds = getConnectedUserIdsInRoom(roomId);
+	    
+	    // ⭐ 디버깅: 접속 중인 사용자 상세 정보
+	    log.info("[sendChatMessage] ⭐ 실시간 접속자 조회 - roomId: {}, 접속자수: {}, 접속자Ids: {}", 
+	            roomId, connectedUserIds.size(), connectedUserIds);
+	    
+	    // ⭐ 발신자를 제외한 접속 중인 다른 사용자 수 계산
+	    int connectedOthersCount = (int) connectedUserIds.stream()
+	            .filter(userId -> !userId.equals(sender.getId()))
+	            .count();
+	    
+	    log.info("[sendChatMessage] ⭐ 접속자 분석 - 발신자Id: {}, 전체접속자수: {}, 발신자제외접속자수: {}", 
+	            sender.getId(), connectedUserIds.size(), connectedOthersCount);
+	    
+	    // ⭐ 디버깅: 참여자 목록 확인
+	    log.info("[sendChatMessage] 참여자 목록 조회 - roomId: {}, 참여자수: {}, 발신자Id: {}", 
+	            roomId, participants.size(), sender.getId());
+	    
+	    int savedCount = 0;
+	    int senderReadCount = 0;
+	    int connectedReadCount = 0;
+	    int otherReadCount = 0;
+	    
 	    for (ChatRoomUser cru : participants) {
 	        User participant = cru.getUser();
-	        ChatMessageReadStatus readStatus = ChatMessageReadStatus.create(chat, participant);
-	        // 만약 발신자라면 바로 읽음 처리
-	        if (participant.getId().equals(sender.getId())) {
-	            readStatus.markRead();
+	        
+	        // ⭐ 참여자 정보 확인
+	        if (participant == null) {
+	            log.warn("[sendChatMessage] 참여자 정보가 null입니다 - cru.id: {}", cru.getId());
+	            continue;
 	        }
-	        chatMessageReadStatusRepository.save(readStatus);
+	        
+	        // ⭐ 중복 체크: 이미 해당 chat과 user에 대한 row가 있는지 확인
+	        Optional<ChatMessageReadStatus> existingStatusOpt = chatMessageReadStatusRepository
+	                .findByChatIdAndUserId(chat.getId(), participant.getId());
+	        
+	        ChatMessageReadStatus readStatus;
+	        boolean isNew = false;
+	        
+	        if (existingStatusOpt.isPresent()) {
+	            // ⭐ 이미 존재하는 경우 기존 row 사용 (복합키로 인해 자동으로 update됨)
+	            readStatus = existingStatusOpt.get();
+	            log.debug("[sendChatMessage] 이미 존재하는 ChatMessageReadStatus 발견 - 기존 row 사용 - userId: {}, chatId: {}, readYn: {}", 
+	                    participant.getId(), chat.getId(), readStatus.getReadYn());
+	            // ⭐ 기존 row의 readYn 상태 초기화 (새 메시지이므로)
+	            readStatus.resetReadStatus();
+	        } else {
+	            // ⭐ 새로 생성
+	            readStatus = ChatMessageReadStatus.create(chat, participant);
+	            isNew = true;
+	        }
+	        
+	        boolean isSender = participant.getId().equals(sender.getId());
+	        boolean isConnected = connectedUserIds.contains(participant.getId());
+	        
+	        // ⭐ 발신자이거나 접속 중인 사용자라면 바로 읽음 처리
+	        if (isSender) {
+	            readStatus.markRead();
+	            senderReadCount++;
+	            log.debug("[sendChatMessage] 발신자 읽음 처리 - userId: {}, chatId: {}", 
+	                    participant.getId(), chat.getId());
+	        } else if (isConnected) {
+	            // ⭐ 접속 중인 사용자는 자동으로 읽음 처리 (실시간으로 메시지를 볼 수 있으므로)
+	            readStatus.markRead();
+	            connectedReadCount++;
+	            log.debug("[sendChatMessage] 접속 중인 사용자 읽음 처리 - userId: {}, chatId: {}", 
+	                    participant.getId(), chat.getId());
+	        } else {
+	            // ⭐ 발신자가 아니고 접속 중이 아닌 경우 readYn=false
+	            otherReadCount++;
+	            log.debug("[sendChatMessage] 참여자 읽음 상태 생성 - userId: {}, chatId: {}, readYn: false", 
+	                    participant.getId(), chat.getId());
+	        }
+	        
+	        try {
+	            ChatMessageReadStatus saved = chatMessageReadStatusRepository.save(readStatus);
+	            savedCount++;
+	            log.debug("[sendChatMessage] ChatMessageReadStatus 저장 완료 - userId: {}, chatId: {}, readYn: {}, isNew: {}", 
+	                    participant.getId(), chat.getId(), saved.getReadYn(), isNew);
+	        } catch (Exception e) {
+	            log.error("[sendChatMessage] ChatMessageReadStatus 저장 실패 - userId: {}, chatId: {}, error: {}", 
+	                    participant.getId(), chat.getId(), e.getMessage(), e);
+	            throw e; // 예외를 다시 던져서 트랜잭션 롤백
+	        }
 	    }
-		
+	    
+	    // ⭐ 디버깅: 저장 결과 확인
+	    log.info("[sendChatMessage] ChatMessageReadStatus 저장 완료 - chatId: {}, 총참여자수: {}, 저장된row수: {}, 발신자(readYn=true): {}, 접속중(readYn=true): {}, 미접속(readYn=false): {}", 
+	            chat.getId(), participants.size(), savedCount, senderReadCount, connectedReadCount, otherReadCount);
+	    
+	    // ⭐ 저장된 row 수가 참여자 수와 일치하는지 확인
+	    if (savedCount != participants.size()) {
+	        log.error("[sendChatMessage] ⚠️ 경고: 저장된 row 수가 참여자 수와 일치하지 않습니다! - chatId: {}, 참여자수: {}, 저장된row수: {}", 
+	                chat.getId(), participants.size(), savedCount);
+	    }
+	    
+	    // ⭐ ChatMessageReadStatus 저장 후 즉시 DB에 반영 (flush)
+	    // 이렇게 하면 메시지 전송 후 바로 unreadCount를 계산할 수 있음
+	    chatMessageReadStatusRepository.flush();
+	    
+	    // ⭐ flush 후 실제 DB에 저장된 row 수 확인
+	    // 각 참여자에 대해 row가 생성되었는지 확인
+	    int actualRowCount = 0;
+	    for (ChatRoomUser cru : participants) {
+	        Optional<ChatMessageReadStatus> statusOpt = chatMessageReadStatusRepository
+	                .findByChatIdAndUserId(chat.getId(), cru.getUser().getId());
+	        if (statusOpt.isPresent()) {
+	            actualRowCount++;
+	            ChatMessageReadStatus status = statusOpt.get();
+	            log.debug("[sendChatMessage] DB 확인 - userId: {}, chatId: {}, readYn: {}", 
+	                    cru.getUser().getId(), chat.getId(), status.getReadYn());
+	        } else {
+	            log.error("[sendChatMessage] ⚠️ DB에 row가 없습니다! - userId: {}, chatId: {}", 
+	                    cru.getUser().getId(), chat.getId());
+	        }
+	    }
+	    
+	    log.info("[sendChatMessage] flush 후 실제 DB row 수 확인 - chatId: {}, 실제row수: {}, 예상row수: {}", 
+	            chat.getId(), actualRowCount, participants.size());
+	    
+	    if (actualRowCount != participants.size()) {
+	        log.error("[sendChatMessage] ⚠️ 심각한 문제: flush 후 실제 DB row 수가 참여자 수와 일치하지 않습니다! - chatId: {}, 참여자수: {}, 실제row수: {}", 
+	                chat.getId(), participants.size(), actualRowCount);
+	    }
+	    
+	    // ⭐ unreadCount는 반드시 DB에서 직접 조회한 실제 값 사용!
+	    // 계산된 값이 아닌 실제 DB의 readYn=false row 개수를 사용하여 정합성 보장
+	    chatMessageReadStatusRepository.flush(); // 모든 변경사항을 DB에 반영
+	    
+	    // ⭐ DB에서 실제 readYn=false인 row 개수를 직접 조회
+	    int actualUnreadCount = chatMessageReadStatusRepository.countUnreadByChatId(chat.getId());
+	    
+	    // ⭐ Chat 엔티티에 실제 DB 값 설정
+	    chat.setUnreadCount(actualUnreadCount);
+	    chatRepository.save(chat);
+	    
+	    // ⭐ 디버깅: unreadCount 상세 정보
+	    int totalParticipants = participants.size();
+	    log.info("[sendChatMessage] ⭐ unreadCount DB 조회 완료 - chatId: {}, 참여자수: {}, 발신자: 1, 접속중(발신자제외): {}, DB unreadCount: {}", 
+	            chat.getId(), totalParticipants, connectedOthersCount, actualUnreadCount);
+	    
+	    // ⭐ 검증: 계산값과 DB값 비교 (디버깅용)
+	    int calculatedUnreadCount = totalParticipants - 1 - connectedOthersCount;
+	    if (calculatedUnreadCount < 0) calculatedUnreadCount = 0;
+	    
+	    if (actualUnreadCount != calculatedUnreadCount) {
+	        log.warn("[sendChatMessage] ⚠️ unreadCount 불일치 - 계산값: {}, DB값: {}, chatId: {} (DB값을 사용)", 
+	                calculatedUnreadCount, actualUnreadCount, chat.getId());
+	    } else {
+	        log.info("[sendChatMessage] ✅ unreadCount 일치 - 계산값: {}, DB값: {}, chatId: {}", 
+	                calculatedUnreadCount, actualUnreadCount, chat.getId());
+	    }
 		
 		return chat;
 	}
@@ -440,11 +586,15 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	
 	// 읽음 업데이트
 	// 채팅방에 참여자가 여러명일 떄, 누군가 메시지를 읽거나 메시지를 또 보내면 chat_message_read_status의 이전 메시지들도 읽음 처리와 읽은 시간 업데이트가 되어야 함
+	// ⭐ 각 메시지의 unreadCount를 -1 감소시키는 로직 추가
 	@Transactional
-	public void markMessagesAsRead(Integer roomId, Integer userId) {
+	public List<Integer> markMessagesAsRead(Integer roomId, Integer userId) {
 	    // 1. 해당 채팅방에서 내가 안읽은 메시지 상태 전부 조회
 	    List<ChatMessageReadStatus> unreadStatuses =
 	        chatMessageReadStatusRepository.findUnreadMessagesByRoomIdAndUserId(roomId, userId);
+
+	    // ⭐ 읽음 처리된 메시지 ID 리스트 (unreadCount 업데이트용)
+	    List<Integer> readChatIds = new ArrayList<>();
 
 	    // 2. 상태를 모두 읽음 처리 및 시간 업데이트
 	    for (ChatMessageReadStatus status : unreadStatuses) {
@@ -452,44 +602,68 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	    	if (Boolean.FALSE.equals(status.getReadYn()) && status.getReadAt() == null) {
 	    		status.markRead();// 내부적으로 readYn = true, readAt= now로 세팅
 	    		chatMessageReadStatusRepository.save(status);
+	    		
+	    		// ⭐ 읽음 처리된 메시지 ID 추가
+	    		if (status.getChat() != null && status.getChat().getId() != null) {
+	    			readChatIds.add(status.getChat().getId());
+	    		}
 	    	}
 	    	
 	    	// 불일치 row 강제 동기화 (optional)
 	        if (status.getReadAt() != null && Boolean.FALSE.equals(status.getReadYn())) {
 	            status.markRead();
 	            chatMessageReadStatusRepository.save(status);
+	            
+	            // ⭐ 읽음 처리된 메시지 ID 추가
+	            if (status.getChat() != null && status.getChat().getId() != null) {
+	            	readChatIds.add(status.getChat().getId());
+	            }
 	        }
 	    }
+	    
+	    // ⭐ ChatMessageReadStatus 읽음 처리 후 즉시 DB에 반영 (flush)
+	    // 이렇게 하면 바로 unreadCount를 실시간으로 계산할 수 있음
+	    chatMessageReadStatusRepository.flush();
+	    
+	    // ⭐ 3. 각 메시지의 unreadCount를 -1 감소시키기 (DB 동기화용, 실제로는 실시간 계산값 사용)
+	    for (Integer chatId : readChatIds) {
+	        Optional<Chat> chatOpt = chatRepository.findById(chatId);
+	        if (chatOpt.isPresent()) {
+	            Chat chat = chatOpt.get();
+	            Integer currentUnreadCount = chat.getUnreadCount() != null ? chat.getUnreadCount() : 0;
+	            // unreadCount가 0보다 클 때만 -1 감소
+	            if (currentUnreadCount > 0) {
+	                chat.setUnreadCount(currentUnreadCount - 1);
+	                chatRepository.save(chat);
+	            }
+	        }
+	    }
+	    
+	    // ⭐ 읽음 처리된 메시지 ID 리스트 반환 (WebSocket 알림용)
+	    return readChatIds;
 	}
 
-	/** 채팅방에서 현재 접속 중인 인원 id 리스트 반환 */
+	/**
+	 * 채팅방에서 현재 접속 중인 인원 id 리스트 반환
+	 * ⭐ 실시간 WebSocket 세션 상태를 기반으로 정확한 접속자 수를 반환
+	 * 
+	 * 핵심: afterConnectionClosed에서 userSessions.remove(userId)가 제대로 호출되어야
+	 *       이 메서드가 정확한 실시간 접속자 수를 반환할 수 있음!
+	 * 
+	 * @param roomId 채팅방 ID
+	 * @return 접속 중인 사용자 ID 목록 (발신자 포함)
+	 */
     @Override
     public List<Integer> getConnectedUserIdsInRoom(Integer roomId) {
-        // WebSocketHandler의 userSessions 맵을 주입받거나 싱글톤/컨텍스트에서 가져와야 함
-        // 예시: ChatWebSocketHandler.userSessions 맵을 static으로 선언해서 접근하거나,
-        // 혹은 ChatWebSocketHandler에서 Service로 전달받는 구조로 구현해야 함.
-        // 여기서는 직접 구현 예시 (실제 사용 시 핸들러와 연결 필요)
-        // 실제 구현은 핸들러에서 userSessions 맵을 받아서 아래처럼 처리
-
-        // 아래는 실제 핸들러에서 구현한 코드 참고용
-        // return chatWebSocketHandler.getConnectedUserIdsInRoom(roomId);
-    	log.info("roomId: {}", roomId);
-    	
-    	
-    	List<Integer> connectedUserIds = new ArrayList<>();
-        for (Map.Entry<Integer, WebSocketSession> entry : ChatWebSocketHandler.userSessions.entrySet()) {
-            Integer userId = entry.getKey();
-            WebSocketSession session = entry.getValue();
-            if (session != null && session.isOpen()) {
-                Object sessionRoomId = session.getAttributes().get("roomId");
-                if (sessionRoomId != null && sessionRoomId.equals(roomId)) {
-                    connectedUserIds.add(userId);
-                }
-            }
-        }
-    	
-    	
-        // 만약 의존성 주입/싱글톤으로 userSessions를 접근할 수 없다면, 아래는 스텁
+        // ⭐ 순환 참조 방지: ChatWebSocketHandler의 static 메서드를 직접 호출
+        // ChatWebSocketHandler는 ChatRoomService를 주입받고,
+        // ChatRoomServiceImpl은 ChatWebSocketHandler를 주입받으려고 하면 순환 참조 발생
+        // 따라서 static 메서드를 통해 userSessions에 직접 접근
+        List<Integer> connectedUserIds = com.goodee.coreconnect.chat.handler.ChatWebSocketHandler.getConnectedUserIdsInRoomStatic(roomId);
+        
+        log.info("[ChatRoomService.getConnectedUserIdsInRoom] roomId: {}, 접속자수: {}, 접속자Ids: {}", 
+                roomId, connectedUserIds.size(), connectedUserIds);
+        
         return connectedUserIds;
     }
 
@@ -560,7 +734,22 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         chatRepository.save(chat);
 
         // 반드시 fromEntity를 통해 String sendAt을 넣어준다!
-        return ChatResponseDTO.fromEntity(chat);
+        ChatResponseDTO dto = ChatResponseDTO.fromEntity(chat);
+        
+        // ⭐ senderEmail 명시적으로 설정 (lazy loading 문제 해결)
+        // fromEntity에서 chat.getSender().getEmail()이 null일 수 있으므로 명시적으로 설정
+        // senderId로 User를 조회하여 email 가져오기
+        if (dto != null && senderId != null) {
+            User sender = userRepository.findById(senderId).orElse(null);
+            if (sender != null && sender.getEmail() != null) {
+                dto.setSenderEmail(sender.getEmail());
+                log.debug("[saveChatAndReturnDTO] senderEmail 설정 - userId: {}, email: {}", senderId, sender.getEmail());
+            } else {
+                log.warn("[saveChatAndReturnDTO] senderEmail 설정 실패 - userId: {}, sender가 null이거나 email이 null", senderId);
+            }
+        }
+        
+        return dto;
     }
 
 	@Transactional
@@ -586,6 +775,11 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 		
 		
 		return chats;
+	}
+	
+	@Override
+	public org.springframework.data.domain.Page<Chat> getChatsWithFilesByRoomIdPaged(Integer roomId, org.springframework.data.domain.Pageable pageable) {
+		return chatRepository.findChatsWithFilesByRoomIdPaged(roomId, pageable);
 	}
 
 	@Override

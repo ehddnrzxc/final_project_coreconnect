@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { Box, Avatar, Typography, IconButton } from "@mui/material";
 import PhoneIcon from "@mui/icons-material/Phone";
 import VideoCallIcon from "@mui/icons-material/VideoCall";
@@ -6,14 +6,17 @@ import GroupIcon from "@mui/icons-material/Group";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import ChatMessageList from "./ChatMessageList";
 import ChatMessageInputBox from "./ChatMessageInputBox";
+import ChatRoomParticipantsDialog from "./ChatRoomParticipantsDialog";
 
 // 오른쪽 채팅방 상세패널(상단 Room, 메시지, 입력창)
 function ChatDetailPane({
-  selectedRoom, messages, userName,
-  unreadCount, firstUnreadIdx, formatTime,
-  inputRef, onSend, onFileUpload, socketConnected
+  selectedRoom, messages,
+  unreadCount, firstUnreadIdx, formatTime, // eslint-disable-line no-unused-vars
+  inputRef, onSend, onFileUpload, socketConnected,
+  onScrollTop, isLoadingMore, hasMoreAbove
 }) {
   const messagesEndRef = useRef(null);
+  const [participantsDialogOpen, setParticipantsDialogOpen] = useState(false);
 
   useEffect(() => {
     if (messagesEndRef.current) messagesEndRef.current.scrollIntoView({behavior: "smooth"});
@@ -53,16 +56,21 @@ function ChatDetailPane({
         }}>
           <IconButton><PhoneIcon /></IconButton>
           <IconButton><VideoCallIcon /></IconButton>
-          <IconButton><GroupIcon /></IconButton>
+          <IconButton
+            onClick={() => setParticipantsDialogOpen(true)}
+            title="참여자 목록"
+          >
+            <GroupIcon />
+          </IconButton>
           <IconButton><MoreVertIcon /></IconButton>
         </Box>
       </Box>
       <ChatMessageList
         messages={messages}
-        userName={userName}
-        unreadCount={unreadCount}
-        firstUnreadIdx={firstUnreadIdx}
-        formatTime={formatTime}
+        roomType={selectedRoom.roomType || "group"}
+        onLoadMore={onScrollTop}
+        hasMoreAbove={hasMoreAbove}
+        loadingAbove={isLoadingMore}
       />
       <div ref={messagesEndRef} />
       <ChatMessageInputBox
@@ -70,6 +78,13 @@ function ChatDetailPane({
         onSend={onSend}
         onFileUpload={onFileUpload}
         socketConnected={socketConnected}
+      />
+      
+      {/* 채팅방 참여자 목록 다이얼로그 */}
+      <ChatRoomParticipantsDialog
+        open={participantsDialogOpen}
+        onClose={() => setParticipantsDialogOpen(false)}
+        roomId={selectedRoom?.roomId || selectedRoom?.id}
       />
     </Box>
   );
