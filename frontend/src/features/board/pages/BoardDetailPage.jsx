@@ -321,7 +321,14 @@ const BoardDetailPage = () => {
             size="small"
             sx={{ fontSize: "0.8rem", py: 0.5, px: 1.5 }}
             startIcon={<EditIcon />} // 수정 아이콘
-            onClick={() => navigate(`/board/edit/${board.id}`)} // 수정 페이지로 이동
+            onClick={() =>
+              navigate(`/board/edit/${board.id}`, {
+                state: {
+                  fromCategoryId: location.state?.fromAllBoard ? "" : board.categoryId,
+                  fromAllBoard: location.state?.fromAllBoard ?? false
+                }
+              })
+            }
           >
             수정
           </Button>
@@ -357,9 +364,12 @@ const BoardDetailPage = () => {
           color="text.secondary"
           sx={{
             fontStyle: "italic",
-            minHeight: "330px", // 약 15줄 정도 기본 높이 확보
-            lineHeight: 1.6, // 줄 간격
-            whiteSpace: "pre-wrap", // 줄바꿈(\n) 유지
+            minHeight: "330px",
+            lineHeight: 1.6,
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-all",
+            overflowWrap: "break-word",
+            minWidth: 0,
           }}
         >
           {board.content?.trim() ? board.content : "등록된 내용이 없습니다."}
@@ -580,7 +590,7 @@ const BoardDetailPage = () => {
                           (
                           {r.updatedAt
                             ? `${formatDateTime(r.updatedAt)} · 수정됨`
-                            : formatDateTime(r.createdAt)              
+                            : formatDateTime(r.createdAt)
                           }
                           )
                         </Typography>
@@ -660,7 +670,15 @@ const BoardDetailPage = () => {
                     />
                   ) : (
                     // 일반 모드일 때: 텍스트로 내용 표시
-                    <Typography variant="body2" sx={{ mt: 0.5 }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        mt: 0.5,
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-all",
+                        overflowWrap: "break-word",
+                      }}
+                    >
                       {r.content?.trim() ? r.content : "내용 없음"}
                     </Typography>
                   )}
@@ -829,8 +847,16 @@ const BoardDetailPage = () => {
                       />
                     ) : (
                       // 일반 모드일 때 텍스트 출력
-                      <Typography variant="body2" sx={{ mt: 0.5 }}>
-                        {child.content?.trim() ? child.content : "내용 없음"}
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          mt: 0.5,
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-all",
+                          overflowWrap: "break-word",
+                        }}
+                      >
+                        {r.content?.trim() ? r.content : "내용 없음"}
                       </Typography>
                     )}
                   </Paper>

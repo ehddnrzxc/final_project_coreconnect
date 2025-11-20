@@ -60,7 +60,7 @@ const RecentViewedBoards = () => {
               <React.Fragment key={b.id}>
 
                 <ListItemButton
-                  onClick={() => navigate(`/board/detail/${b.id}`)}
+                  onClick={() => navigate(`/board/detail/${b.id}`, { state: { fromAllBoard: location.pathname === "/board" } })}
                   sx={{
                     py: 0.1,
                     borderRadius: 2,
