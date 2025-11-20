@@ -30,7 +30,7 @@ import {
   saveDraftMail,
   getDraftDetail,
 } from "../api/emailApi";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useContext } from "react";
 import { UserProfileContext } from "../../../App";
 
@@ -52,7 +52,8 @@ function MailWritePage() {
     bccAddresses: [],
     emailTitle: "",
     emailContent: "",
-    attachments: [] // elements: { name, file } for new files OR { name, fileId } for existing draft files
+    attachments: [], // elements: { name, file } for new files OR { name, fileId } for existing draft files
+    replyToEmailId: null // 답장할 원본 메일 ID
   });
   const [reservedAt, setReservedAt] = useState(null); // 예약발송 시각 (dayjs)
   const [sending, setSending] = useState(false);
@@ -68,12 +69,117 @@ function MailWritePage() {
   const [snackMessage, setSnackMessage] = useState("");
 
   const location = useLocation();
+  const navigate = useNavigate();
   const draftId = new URLSearchParams(location.search).get("draftId");
+  const replyData = location.state?.replyData; // 답장 모드 데이터
   const { userProfile } = useContext(UserProfileContext) || {};
   const userEmail = userProfile?.email;
 
+  // 답장 모드일 때 원본 메일 정보 포맷팅 함수
+  const formatOriginalEmailInfo = (originalEmail) => {
+    const formatDate = (date) => {
+      if (!date) return '-';
+      try {
+        const d = typeof date === "string" || typeof date === "number" ? new Date(date) : date;
+        return d.toLocaleString('ko-KR', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      } catch {
+        return '-';
+      }
+    };
+
+    let info = `\n\n`;
+    info += `────────────────────────────────────────\n`;
+    info += `발신자: ${originalEmail.senderName || originalEmail.senderEmail || '-'} <${originalEmail.senderEmail || '-'}>\n`;
+    info += `제목: ${originalEmail.emailTitle || '-'}\n`;
+    info += `일자: ${formatDate(originalEmail.sentTime)}\n`;
+    
+    if (originalEmail.recipientAddresses && originalEmail.recipientAddresses.length > 0) {
+      info += `받는사람: ${originalEmail.recipientAddresses.join(', ')}\n`;
+    }
+    
+    if (originalEmail.ccAddresses && originalEmail.ccAddresses.length > 0) {
+      info += `참조: ${originalEmail.ccAddresses.join(', ')}\n`;
+    }
+    
+    if (originalEmail.bccAddresses && originalEmail.bccAddresses.length > 0) {
+      info += `숨은 참조: ${originalEmail.bccAddresses.join(', ')}\n`;
+    }
+    
+    info += `────────────────────────────────────────\n`;
+    
+    if (originalEmail.emailContent) {
+      info += `\n${originalEmail.emailContent}\n`;
+    }
+    
+    info += `\n답장을 입력하세요\n`;
+    
+    return info;
+  };
+
+  // 답장 모드 초기화
   useEffect(() => {
-    if (draftId && userEmail) {
+    if (replyData && replyData.originalEmail && userEmail) {
+      const original = replyData.originalEmail;
+      
+      // 제목에 "Re: " 추가 (이미 있으면 추가하지 않음)
+      let replyTitle = original.emailTitle || '';
+      if (replyTitle && !replyTitle.startsWith('Re: ') && !replyTitle.startsWith('RE: ')) {
+        replyTitle = `Re: ${replyTitle}`;
+      }
+      
+      // 받는 사람: 원본 메일의 발신자
+      const recipientAddress = original.senderEmail ? [original.senderEmail] : [];
+      
+      // 참조: 원본 메일의 참조 (본인 제외)
+      const ccAddresses = (original.ccAddresses || []).filter(addr => 
+        addr && addr.trim() && addr.toLowerCase() !== userEmail.toLowerCase()
+      );
+      
+      // 숨은 참조: 원본 메일의 숨은 참조 (본인 제외)
+      const bccAddresses = (original.bccAddresses || []).filter(addr => 
+        addr && addr.trim() && addr.toLowerCase() !== userEmail.toLowerCase()
+      );
+      
+      // 원본 메일의 받는 사람 중 본인을 제외한 나머지를 참조에 추가
+      const otherRecipients = (original.recipientAddresses || []).filter(addr => 
+        addr && addr.trim() && 
+        addr.toLowerCase() !== userEmail.toLowerCase() &&
+        addr.toLowerCase() !== original.senderEmail?.toLowerCase()
+      );
+      otherRecipients.forEach(addr => {
+        if (!ccAddresses.includes(addr)) {
+          ccAddresses.push(addr);
+        }
+      });
+      
+      // 메일 내용: 원본 메일 정보 + 답장 입력 안내
+      const replyContent = formatOriginalEmailInfo(original);
+      
+      setForm({
+        emailId: null,
+        recipientAddress: recipientAddress,
+        ccAddresses: ccAddresses,
+        bccAddresses: bccAddresses,
+        emailTitle: replyTitle,
+        emailContent: replyContent,
+        attachments: [],
+        replyToEmailId: original.emailId // 원본 메일 ID 저장
+      });
+      
+      // location.state 초기화 (뒤로가기 시 중복 적용 방지)
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [replyData, userEmail, navigate, location.pathname]);
+
+  // 임시보관함 불러오기
+  useEffect(() => {
+    if (draftId && userEmail && !replyData) {
       getDraftDetail(draftId, userEmail).then(res => {
         const data = res.data.data;
         setForm({
@@ -97,7 +203,7 @@ function MailWritePage() {
         console.warn("getDraftDetail error:", err);
       });
     }
-  }, [draftId, userEmail]);
+  }, [draftId, userEmail, replyData]);
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files || []);
@@ -534,8 +640,16 @@ function MailWritePage() {
             variant="standard"
             fullWidth
             value={form.emailTitle}
-            onChange={e => handleFieldChange("emailTitle", e.target.value)}
-            placeholder="제목"
+            onChange={e => {
+              // ⭐ 제목 최대 100자 제한
+              const value = e.target.value;
+              if (value.length <= 100) {
+                handleFieldChange("emailTitle", value);
+              }
+            }}
+            placeholder="제목 (최대 100자)"
+            inputProps={{ maxLength: 100 }}
+            helperText={`${form.emailTitle.length}/100`}
             sx={{ mr: 2 }}
           />
           <Button size="small" sx={{ minWidth: 50, fontSize: 13 }}>중요!</Button>
@@ -572,12 +686,32 @@ function MailWritePage() {
           <TextField
             label="본문"
             value={form.emailContent}
-            onChange={e => handleFieldChange("emailContent", e.target.value)}
+            onChange={e => {
+              // ⭐ 본문 최대 1000자 제한
+              const value = e.target.value;
+              if (value.length <= 1000) {
+                handleFieldChange("emailContent", value);
+              }
+            }}
             fullWidth
             multiline
             rows={10}
             variant="outlined"
-            placeholder="내용을 입력하세요"
+            placeholder="내용을 입력하세요 (최대 1000자)"
+            inputProps={{ maxLength: 1000 }}
+            helperText={`${form.emailContent.length}/1000`}
+            sx={{
+              "& .MuiInputBase-root": {
+                overflow: "auto",
+                wordBreak: "break-word",
+                whiteSpace: "pre-wrap"
+              },
+              "& .MuiInputBase-input": {
+                overflow: "auto",
+                wordBreak: "break-word",
+                whiteSpace: "pre-wrap"
+              }
+            }}
           />
         </Box>
         <Box sx={{ display: "flex", alignItems: "center", mt: 3 }}>
@@ -605,7 +739,15 @@ function MailWritePage() {
         </Box>
       </Paper>
 
-      <Snackbar open={snackOpen} autoHideDuration={5000} onClose={handleSnackClose}>
+      <Snackbar 
+        open={snackOpen} 
+        autoHideDuration={5000} 
+        onClose={handleSnackClose}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'center'
+        }}
+      >
         <Alert onClose={handleSnackClose} severity={snackSeverity} sx={{ width: '100%' }}>
           {snackMessage}
         </Alert>

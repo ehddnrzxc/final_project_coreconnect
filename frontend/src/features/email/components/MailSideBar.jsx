@@ -99,7 +99,7 @@ const MailSideBar = () => {
               <ListItemButton sx={{ borderRadius: 1, px: 1.3, py: 0.5 }} onClick={goUnreadMailTab}>
                 <ListItemText
                   primary={
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                       <Typography variant="body2" sx={{ lineHeight: 1.5 }}>안읽은 메일</Typography>
                       {unreadCount > 0 && (
                         <Badge

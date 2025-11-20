@@ -322,6 +322,24 @@ public class ChatMessageController {
 	            
 	            log.info("[sendMessage] ⭐⭐⭐ UNREAD_COUNT_UPDATE 브로드캐스트 완료 ⭐⭐⭐ - chatId: {}, unreadCount: {}, topic: {}", 
 	                    saved.getId(), confirmedUnreadCount, topic);
+	            
+	            // ⭐ 3. 채팅방 전체의 unreadCount 업데이트 메시지 브로드캐스트 (채팅방 목록 업데이트용)
+	            // ⭐ 각 참여자별로 자신이 읽지 않은 메시지 수를 계산하여 채팅방 topic으로 브로드캐스트
+	            // ⭐ 프론트엔드에서 자신의 unreadCount를 계산하도록 roomId와 chatId만 전달
+	            // ⭐ 채팅방에 접속 중이 아닌 사용자도 채팅방 목록의 unreadCount를 업데이트할 수 있도록 함
+	            Map<String, Object> roomUnreadCountUpdate = new HashMap<>();
+	            roomUnreadCountUpdate.put("type", "ROOM_UNREAD_COUNT_UPDATE");
+	            roomUnreadCountUpdate.put("roomId", req.getRoomId());
+	            roomUnreadCountUpdate.put("chatId", saved.getId()); // 최신 메시지 ID
+	            roomUnreadCountUpdate.put("senderId", authUser.getId());
+	            roomUnreadCountUpdate.put("senderEmail", authUser.getEmail());
+	            
+	            // ⭐ 채팅방 topic으로 브로드캐스트 (모든 참여자가 받음)
+	            // ⭐ 프론트엔드에서 자신의 unreadCount를 계산하거나, 백엔드 API를 호출하여 가져옴
+	            messagingTemplate.convertAndSend(topic, roomUnreadCountUpdate);
+	            
+	            log.info("[sendMessage] ⭐⭐⭐ ROOM_UNREAD_COUNT_UPDATE 브로드캐스트 완료 ⭐⭐⭐ - roomId: {}, topic: {}", 
+	                    req.getRoomId(), topic);
 	        } else {
 	            log.warn("[sendMessage] ⚠️ saved 또는 saved.getId()가 null이어서 UNREAD_COUNT_UPDATE 브로드캐스트 불가 - saved: {}, saved.getId(): {}", 
 	                    saved, saved != null ? saved.getId() : null);

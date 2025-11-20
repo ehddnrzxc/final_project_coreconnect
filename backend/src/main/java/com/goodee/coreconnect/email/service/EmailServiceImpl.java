@@ -567,7 +567,14 @@ public class EmailServiceImpl implements EmailService {
                 if (rec.getUserId() != null) {
                     try {
                         String title = savedEmail.getEmailTitle() != null ? savedEmail.getEmailTitle() : "(제목 없음)";
-                        String message = "[메일 도착] '" + title + "' 메일이 도착했습니다.";
+                        // ⭐ 제목이 너무 길면 잘라내기 (알림 메시지 최대 길이: 255자)
+                        // "[메일 도착] '" + title + "' 메일이 도착했습니다." 형식이므로 제목은 최대 200자로 제한
+                        String truncatedTitle = title.length() > 200 ? title.substring(0, 200) + "..." : title;
+                        String message = "[메일 도착] '" + truncatedTitle + "' 메일이 도착했습니다.";
+                        // ⭐ 메시지 전체 길이도 255자로 제한
+                        if (message.length() > 255) {
+                            message = message.substring(0, 252) + "...";
+                        }
                         notificationService.sendNotification(
                                 rec.getUserId(),
                                 NotificationType.EMAIL,
@@ -595,7 +602,14 @@ public class EmailServiceImpl implements EmailService {
             if (savedEmail.getSenderId() != null) {
                 try {
                     String title = savedEmail.getEmailTitle() != null ? savedEmail.getEmailTitle() : "(제목 없음)";
-                    String senderMsg = "[이메일 발송 완료] '" + title + "' 이메일이 발송되었습니다.";
+                    // ⭐ 제목이 너무 길면 잘라내기 (알림 메시지 최대 길이: 255자)
+                    // "[이메일 발송 완료] '" + title + "' 이메일이 발송되었습니다." 형식이므로 제목은 최대 200자로 제한
+                    String truncatedTitle = title.length() > 200 ? title.substring(0, 200) + "..." : title;
+                    String senderMsg = "[이메일 발송 완료] '" + truncatedTitle + "' 이메일이 발송되었습니다.";
+                    // ⭐ 메시지 전체 길이도 255자로 제한
+                    if (senderMsg.length() > 255) {
+                        senderMsg = senderMsg.substring(0, 252) + "...";
+                    }
                     notificationService.sendNotification(
                             savedEmail.getSenderId(),
                             NotificationType.EMAIL,
