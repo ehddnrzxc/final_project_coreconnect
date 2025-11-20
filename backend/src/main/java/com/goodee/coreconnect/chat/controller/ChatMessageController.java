@@ -217,31 +217,30 @@ public class ChatMessageController {
 	            return;
 	        }
 	    
-	    // ⭐ unreadCount는 반드시 DB에서 직접 조회한 실제 값 사용!
-	    // Chat 엔티티의 unreadCount가 아닌 실제 DB의 readYn=false row 개수를 사용하여 정합성 보장
-	    int confirmedUnreadCount = chatMessageReadStatusRepository.countUnreadByChatId(saved.getId());
+	    // ⭐ unreadCount 실시간 재계산: 브로드캐스트 직전에 항상 DB에서 최신 값 조회
+	    // sendChatMessage에서 이미 flush 후 최신 값을 가져왔지만, 브로드캐스트 직전에 다시 한 번 확인
+	    // 이렇게 해야 race condition 없이 정확한 unreadCount를 브로드캐스트할 수 있음
+	    int realUnreadCount = chatMessageReadStatusRepository.countUnreadByChatId(saved.getId());
+	    
+	    // ⭐ Chat 엔티티의 unreadCount도 최신 값으로 업데이트 (일관성 유지)
+	    if (saved.getUnreadCount() == null || saved.getUnreadCount() != realUnreadCount) {
+	        saved.setUnreadCount(realUnreadCount);
+	        chatRepository.save(saved);
+	        chatRepository.flush(); // 브로드캐스트 직전에 flush하여 최신 값 확보
+	    }
 	    
 	    // ⭐ 참여자 수 확인 (디버깅용)
 	    int participantCount = chatRoomUserRepository.findByChatRoomId(req.getRoomId()).size();
 	    
 	    // ⭐ 현재 접속 중인 사용자 수 확인 (디버깅용)
 	    List<Integer> connectedUserIds = chatRoomService.getConnectedUserIdsInRoom(req.getRoomId());
-	    int connectedOthersCount = (int) connectedUserIds.stream()
-	            .filter(userId -> !userId.equals(authUser.getId()))
-	            .count();
+	    int connectedUsersCount = connectedUserIds.size();
 	    
-	    log.info("[sendMessage] 메시지 전송 - chatId: {}, 참여자수: {}, 발신자: 1, 접속중(발신자제외): {}, DB unreadCount: {}, roomId: {}", 
-	            saved.getId(), participantCount, connectedOthersCount, confirmedUnreadCount, req.getRoomId());
+	    log.info("[sendMessage] ⭐ unreadCount 실시간 재계산 - chatId: {}, 참여자수: {}, 접속중인사용자수: {}, 실시간unreadCount: {}", 
+	            saved.getId(), participantCount, connectedUsersCount, realUnreadCount);
 	    
-	    // ⭐ 검증: Chat 엔티티의 unreadCount와 DB값 비교 (디버깅용)
-	    int entityUnreadCount = saved.getUnreadCount() != null ? saved.getUnreadCount() : 0;
-	    if (confirmedUnreadCount != entityUnreadCount) {
-	        log.warn("[sendMessage] unreadCount 불일치 - 엔티티값: {}, DB값: {}, chatId: {} (DB값을 사용)", 
-	                entityUnreadCount, confirmedUnreadCount, saved.getId());
-	    }
-	    
-	    // ⭐ DB에서 조회한 실제 값을 DTO에 설정
-	    responseDto.setUnreadCount(confirmedUnreadCount);
+	    // ⭐ 실시간 계산된 값을 DTO에 설정
+	    responseDto.setUnreadCount(realUnreadCount);
 	    
 	    // ⭐ senderEmail 명시적으로 설정 (lazy loading 문제 해결)
 	    // fromEntity에서 chat.getSender().getEmail()이 null일 수 있으므로 authUser.getEmail() 직접 설정
@@ -295,8 +294,38 @@ public class ChatMessageController {
 	            topic, responseDto.getId(), responseDto.getMessageContent());
 	    
 	    try {
+	        // ⭐ 1. 메시지 브로드캐스트 (ChatResponseDTO)
 	        messagingTemplate.convertAndSend(topic, responseDto);
-	        log.info("[sendMessage] 메시지 브로드캐스트 완료 - topic: {}, responseDto.id: {}", topic, responseDto.getId());
+	        log.info("[sendMessage] 메시지 브로드캐스트 완료 - topic: {}, responseDto.id: {}, unreadCount: {}", 
+	                topic, responseDto.getId(), responseDto.getUnreadCount());
+	        
+	        // ⭐ 2. unreadCount 실시간 업데이트 메시지 브로드캐스트 (필수!)
+	        // ⭐ 중요: 메시지 전송 시마다 반드시 UNREAD_COUNT_UPDATE를 브로드캐스트해야 함
+	        // ⭐ 이렇게 하면 같은 채팅방에 계속 머물러 있어도 실시간으로 unreadCount가 업데이트됨
+	        // ⭐ 접속 중인 사용자들이 읽음 처리되었으므로, 모든 참여자가 실시간으로 unreadCount 업데이트를 받아야 함
+	        if (saved != null && saved.getId() != null) {
+	            // ⭐ 브로드캐스트 직전에 다시 한 번 최신 값 확인 (race condition 방지)
+	            int confirmedUnreadCount = chatMessageReadStatusRepository.countUnreadByChatId(saved.getId());
+	            
+	            Map<String, Object> unreadCountUpdate = new HashMap<>();
+	            unreadCountUpdate.put("type", "UNREAD_COUNT_UPDATE");
+	            unreadCountUpdate.put("chatId", saved.getId());
+	            unreadCountUpdate.put("unreadCount", confirmedUnreadCount);
+	            unreadCountUpdate.put("roomId", req.getRoomId());
+	            unreadCountUpdate.put("senderId", authUser.getId());
+	            unreadCountUpdate.put("senderEmail", authUser.getEmail());
+	            
+	            log.info("[sendMessage] ⭐⭐⭐ UNREAD_COUNT_UPDATE 메시지 생성 및 브로드캐스트 시작 ⭐⭐⭐ - chatId: {}, unreadCount: {}, topic: {}, 메시지내용: {}", 
+	                    saved.getId(), confirmedUnreadCount, topic, unreadCountUpdate);
+	            
+	            messagingTemplate.convertAndSend(topic, unreadCountUpdate);
+	            
+	            log.info("[sendMessage] ⭐⭐⭐ UNREAD_COUNT_UPDATE 브로드캐스트 완료 ⭐⭐⭐ - chatId: {}, unreadCount: {}, topic: {}", 
+	                    saved.getId(), confirmedUnreadCount, topic);
+	        } else {
+	            log.warn("[sendMessage] ⚠️ saved 또는 saved.getId()가 null이어서 UNREAD_COUNT_UPDATE 브로드캐스트 불가 - saved: {}, saved.getId(): {}", 
+	                    saved, saved != null ? saved.getId() : null);
+	        }
 	    } catch (Exception e) {
 	        log.error("[sendMessage] 메시지 브로드캐스트 실패 - topic: {}, error: {}", topic, e.getMessage(), e);
 	    }
