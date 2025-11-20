@@ -103,7 +103,7 @@ const BoardLayout = () => {
   // 라우트 변경 시 화면 스크롤을 맨 위로 이동시키는 효과
   // - window.scrollTo는 브라우저 전체 스크롤 기준으로 동작
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" }); 
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }, [location]); // URL(location)이 바뀔 때마다 실행됨
 
   // 좌측: 카테고리 리스트
@@ -127,10 +127,18 @@ const BoardLayout = () => {
 
         {/* 글쓰기 버튼 */}
         <Button
-          variant="contained"
+          variant="outlined"
           fullWidth
-          sx={{ mb: 1 }}
-          onClick={handleWriteClick} // 클릭 시 글쓰기 페이지로 이동
+          size="small"
+          onClick={handleWriteClick}
+          sx={{
+            fontWeight: 700,
+            borderRadius: 2,
+            bgcolor: "#f6f7fc",
+            borderColor: "#e1e3ea",
+            py: 1,
+            mb: 1
+          }}
         >
           글쓰기
         </Button>
@@ -138,11 +146,18 @@ const BoardLayout = () => {
         {/* 관리자 전용 카테고리 관리 버튼 (ADMIN 권한 사용자만 표시됨) */}
         {isAdmin && (
           <Button
-            variant="outlined"
-            color="info"
+            variant="outlined"            
             fullWidth
-            sx={{ mb: 2 }}
-            onClick={() => navigate("/board/category-admin")} // 관리자용 카테고리 관리 페이지로 이동
+            size="small"                  
+            onClick={() => navigate("/board/category-admin")}
+            sx={{
+              fontWeight: 700,            
+              borderRadius: 2,            
+              bgcolor: "#f6f7fc",        
+              borderColor: "#e1e3ea",    
+              py: 1,                      
+              mb: 2                       
+            }}
           >
             카테고리 관리
           </Button>

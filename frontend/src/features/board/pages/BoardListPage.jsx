@@ -178,10 +178,18 @@ const BoardListPage = () => {
             />
 
             <Button
-              variant="contained"
-              color="primary"
+              variant="outlined"
+              size="small"
               onClick={handleSearch}
-              sx={{ minWidth: 70 }}
+              sx={{
+                fontWeight: 700,
+                borderRadius: 2,
+                bgcolor: "#f6f7fc",
+                borderColor: "#e1e3ea",
+                py: 1,
+                px: 2,
+                minWidth: 70,
+              }}
             >
               검색
             </Button>
