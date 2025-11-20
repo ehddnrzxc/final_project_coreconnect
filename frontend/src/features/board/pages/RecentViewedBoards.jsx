@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getRecentViewedBoards } from "../api/boardAPI";
-import { Box, Typography, Paper, List, ListItemButton, ListItemText, Divider, Avatar } from "@mui/material";
+import { Box, Typography, Paper, List, ListItemButton, ListItemText, Divider } from "@mui/material";
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 
 
@@ -35,50 +35,59 @@ const RecentViewedBoards = () => {
   // 화면 렌더링
   return (
     <Box sx={{ width: "100%", mt: 4, textAlign: "center" }}>
-      {/* 섹션 제목 */}
       <Typography variant="h6" sx={{ mb: 1 }}>
         🔍 최근 본 게시글
       </Typography>
 
-      {/* 최근 본 게시글이 없을 때 표시 */}
       {boards.length === 0 ? (
-        <Typography color="text.secondary">
-          최근 본 게시글이 없습니다.
-        </Typography>
+        <Typography color="text.secondary">최근 본 게시글이 없습니다.</Typography>
       ) : (
-        // 최근 본 게시글이 있을 때 목록 표시
         <Paper
           variant="outlined"
           sx={{
-            p: 1,
-            width: "85%",   // 박스 폭
-            mx: "auto",     // 가운데 정렬
+            p: 2,                         // ★ 수정: 패딩 확장
+            width: "85%",                // ★ 수정: 박스 폭 넓힘
+            mx: "auto",
+            borderRadius: 3,             // ★ 수정: 부드러운 모서리
+            boxShadow: "0 2px 8px rgba(0,0,0,0.08)", // ★ 수정: 가벼운 그림자
           }}
         >
           <List>
-            {/* boards 배열을 순회하며 각 게시글을 리스트로 렌더링 */}
             {boards.map((b, idx) => (
               <React.Fragment key={b.id}>
-                {/* 클릭 시 해당 게시글 상세 페이지로 이동 */}
+
                 <ListItemButton
-                  onClick={() => navigate(`/board/detail/${b.id}`)} // 게시글 ID 기반으로 상세 페이지 이동
-                  sx={{ py: 1, "&:hover": { bgcolor: "#f5f5f5" } }} // hover 시 배경색 살짝 변경
+                  onClick={() => navigate(`/board/detail/${b.id}`)}
+                  sx={{
+                    py: 1.5,                       // ★ 수정: 리스트 항목 상하 공간 증가
+                    borderRadius: 2,               // ★ 수정: 항목 각각도 둥글게
+                    transition: "0.15s",           // ★ 추가: 부드러운 hover 애니메이션
+                    "&:hover": {
+                      bgcolor: "#f2f8ff",          // ★ 수정: 은은한 파란 hover
+                      transform: "translateX(4px)" // ★ 추가: 살짝 오른쪽으로 이동
+                    }
+                  }}
                 >
-                  <Avatar
-                    src={b.writerProfileImageUrl || undefined}
-                    sx={{
-                      width: 27,
-                      height: 27,
-                      mr: 1.5
+
+                  {/* ★ 기존 Avatar 제거 → 모던 아이콘으로 교체 */}
+                  <span
+                    style={{
+                      fontSize: "22px",
+                      marginRight: "14px",
+                      opacity: 0.9,
                     }}
-                  />
+                  >
+                    📄
+                  </span>
+
                   <ListItemText
                     primary={b.title}
                     primaryTypographyProps={{
                       sx: {
-                        whiteSpace: "nowrap", // 제목 줄바꿈 금지
-                        overflow: "hidden", // 넘치는 부분 숨김
-                        textOverflow: "ellipsis", // 말줄임표(...)
+                        fontWeight: 600,           // ★ 수정: 제목 Bold 강화
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
                       },
                     }}
                     secondary={`${b.writerName}${b.writerJobGrade ? ` ${b.writerJobGrade}` : ""} · ${formatDate(
@@ -86,15 +95,19 @@ const RecentViewedBoards = () => {
                     )} · 조회수 ${b.viewCount}`}
                     secondaryTypographyProps={{
                       sx: {
-                        whiteSpace: "nowrap",       
-                        overflow: "hidden",        
-                        textOverflow: "ellipsis",  
-                      }
+                        color: "text.secondary",   // ★ 수정: 색 조금 더 흐리게
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      },
                     }}
                   />
                 </ListItemButton>
-                {/* 마지막 항목이 아닐 경우 Divider(구분선) 추가 */}
-                {idx < boards.length - 1 && <Divider />}
+
+                {idx < boards.length - 1 && (
+                  <Divider sx={{ my: 1 }} />  // ★ 수정: Divider 간격 조절
+                )}
+
               </React.Fragment>
             ))}
           </List>
@@ -104,4 +117,4 @@ const RecentViewedBoards = () => {
   );
 };
 
-export default RecentViewedBoards;  // 컴포넌트 내보내기 (다른 페이지에서 import하여 사용 가능)
+export default RecentViewedBoards;

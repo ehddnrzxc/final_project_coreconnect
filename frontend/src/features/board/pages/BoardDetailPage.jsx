@@ -579,8 +579,8 @@ const BoardDetailPage = () => {
                         <Typography component="span" variant="caption" sx={{ color: "text.secondary" }}>
                           (
                           {r.updatedAt
-                            ? `${formatDateTime(r.updatedAt)} · 수정됨`     // ★ 수정된 경우
-                            : formatDateTime(r.createdAt)                   // ★ 최초 작성일
+                            ? `${formatDateTime(r.updatedAt)} · 수정됨`
+                            : formatDateTime(r.createdAt)              
                           }
                           )
                         </Typography>
@@ -757,7 +757,7 @@ const BoardDetailPage = () => {
                           <Typography component="span" variant="caption" sx={{ color: "text.secondary" }}>
                             (
                             {child.updatedAt
-                              ? `${formatDateTime(child.updatedAt)} · 수정됨`   // ★ 수정됨 표기
+                              ? `${formatDateTime(child.updatedAt)} · 수정됨`
                               : formatDateTime(child.createdAt)
                             }
                             )
