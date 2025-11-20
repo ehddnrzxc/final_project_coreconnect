@@ -213,7 +213,7 @@ const BoardWritePage = () => {
         }
 
         showSnack("수정 완료!", "success");
-        navigate(`/board/detail/${boardId}`);
+        navigate("/board", { state: { fromAllBoard: true } });
         return;
       }
 
