@@ -197,6 +197,7 @@ export default function ScheduleCategoryPanel({ activeCategories, onToggle, onCo
           <TextField
             autoFocus
             fullWidth
+            margin="dense" 
             label="카테고리 이름"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
