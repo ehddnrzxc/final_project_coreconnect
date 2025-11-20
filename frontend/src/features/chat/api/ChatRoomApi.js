@@ -24,13 +24,11 @@ export async function fetchUnreadmessages() {
 }
 
 // 채팅바에서 모든 메시지를 읽음처리 (PATCH)
-export const markRoomMessagesAsRead = async (roomId, accessToken) => {
+// ⭐ 쿠키 기반 인증 사용 (http.js에서 withCredentials: true 설정)
+// Authorization 헤더는 불필요하며, 쿠키로 자동 인증됨
+export const markRoomMessagesAsRead = async (roomId) => {
   // PATCH /api/v1/chat/rooms/{roomId}/messages/read
-  const res = await http.patch(
-    `/chat/rooms/${roomId}/messages/read`,
-    null,
-    {headers: {Authorization: `Bearer ${accessToken}`}}
-  );
+  const res = await http.patch(`/chat/rooms/${roomId}/messages/read`);
   return res.data;
 }
 

@@ -548,7 +548,7 @@ export default function ChatLayout() {
   // ---------- 스크롤로 읽음 처리 ----------
   const handleScrollRead = async () => {
     if (selectedRoomId && messages.length > 0) {
-      await markRoomMessagesAsRead(selectedRoomId, accessToken);
+      await markRoomMessagesAsRead(selectedRoomId);
       loadRooms();
     }
   };
@@ -611,7 +611,7 @@ export default function ChatLayout() {
           // ⭐ 채팅방 접속 시 안읽은 메시지들을 읽음 처리
           // 이렇게 하면 내가 읽은 메시지들의 unreadCount가 -1씩 감소됨
           try {
-            await markRoomMessagesAsRead(selectedRoomId, accessToken);
+            await markRoomMessagesAsRead(selectedRoomId);
             console.log("[ChatLayout] 채팅방 접속 시 메시지 읽음 처리 완료 - roomId:", selectedRoomId);
           } catch (error) {
             console.error("[ChatLayout] 메시지 읽음 처리 실패:", error);
@@ -627,7 +627,7 @@ export default function ChatLayout() {
             
             // ⭐ 채팅방 접속 시 안읽은 메시지들을 읽음 처리
             try {
-              await markRoomMessagesAsRead(selectedRoomId, accessToken);
+              await markRoomMessagesAsRead(selectedRoomId);
               console.log("[ChatLayout] 채팅방 접속 시 메시지 읽음 처리 완료 - roomId:", selectedRoomId);
             } catch (error) {
               console.error("[ChatLayout] 메시지 읽음 처리 실패:", error);
