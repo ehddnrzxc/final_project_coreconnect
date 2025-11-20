@@ -12,6 +12,7 @@ import {
   updateScheduleCategory,
   deleteScheduleCategory,
 } from "../api/scheduleAPI";
+import ConfirmDialog from "../../../components/utils/ConfirmDialog";
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 
 const COLOR_PALETTE = [ 
@@ -21,7 +22,7 @@ const COLOR_PALETTE = [
   "#FF8A65","#9575CD","#4FC3F7","#AED581","#FFB300"
 ];
 
-export default function ScheduleCategoryPanel({ activeCategories, onToggle, onColorChange, categoryColors }) {
+export default function ScheduleCategoryPanel({ activeCategories, onToggle, onColorChange, categoryColors, onCategoryDelete }) {
   const [categories, setCategories] = useState([]);
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -32,6 +33,8 @@ export default function ScheduleCategoryPanel({ activeCategories, onToggle, onCo
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState("add"); // "add" | "edit"
   const [inputValue, setInputValue] = useState("");
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState(null);
 
   /** 초기 카테고리 로드 */
   useEffect(() => {
@@ -69,7 +72,7 @@ export default function ScheduleCategoryPanel({ activeCategories, onToggle, onCo
         const created = await createScheduleCategory({ name: inputValue, defaultYn: false });
         setCategories((prev) => [...prev, created]);
 
-        const defaultColor = "#00a0e9";
+        const defaultColor = "#90A4AE";
         onColorChange(created.id, defaultColor);
 
       } else if (dialogMode === "edit" && selectedCategory) {
@@ -89,11 +92,33 @@ export default function ScheduleCategoryPanel({ activeCategories, onToggle, onCo
     }
   };
 
-  /** 삭제 */
-  const handleDelete = async (id) => {
-    await deleteScheduleCategory(id);
-    setCategories((prev) => prev.filter((c) => c.id !== id));
-    };
+  /** 카테고리 삭제 확인 다이얼로그 열기 */
+  const handleDelete = (id) => {
+    setDeleteTargetId(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  /** 카테고리 삭제 실행 */
+  const handleDeleteConfirm = async () => {
+    if (!deleteTargetId) return;
+    
+    try {
+      await deleteScheduleCategory(deleteTargetId);
+      setCategories((prev) => prev.filter((c) => c.id !== deleteTargetId));
+      showSnack("카테고리가 삭제되었습니다", "info");
+      setDeleteConfirmOpen(false);
+      setDeleteTargetId(null);
+      
+      // 부모 컴포넌트에 카테고리 삭제 알림 (일정 목록 갱신용)
+      if (onCategoryDelete) {
+        onCategoryDelete(deleteTargetId);
+      }
+    } catch (err) {
+      showSnack(err.message || "카테고리 삭제 중 오류 발생", "error");
+      setDeleteConfirmOpen(false);
+      setDeleteTargetId(null);
+    }
+  };
 
   /** 렌더링 */
   return (
@@ -114,13 +139,23 @@ export default function ScheduleCategoryPanel({ activeCategories, onToggle, onCo
       <Stack spacing={1}>
         {categories.map((cat) => (
           <Stack key={cat.id} direction="row" alignItems="center" justifyContent="space-between">
-            <Stack direction="row" alignItems="center" spacing={1}>
+            <Stack direction="row" alignItems="center" spacing={1} sx={{ flex: 1, minWidth: 0 }}>
               <Checkbox
                 checked={activeCategories.includes(cat.id)}
                 onChange={() => onToggle(cat.id)}
-                sx={{ color: categoryColors[cat.id] || "#999", "&.Mui-checked": { color: categoryColors[cat.id] || "#999" } }}
+                sx={{ color: categoryColors[cat.id] || "#90A4AE", "&.Mui-checked": { color: categoryColors[cat.id] || "#90A4AE" } }}
               />
-              <Typography sx={{ color: categoryColors[cat.id] || "#999", fontSize: 15 }}>
+              <Typography 
+                sx={{ 
+                  color: categoryColors[cat.id] || "#90A4AE", 
+                  fontSize: 15,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  flex: 1,
+                  minWidth: 0,
+                }}
+              >
                 {cat.name}
               </Typography>
             </Stack>
@@ -187,6 +222,7 @@ export default function ScheduleCategoryPanel({ activeCategories, onToggle, onCo
           <TextField
             autoFocus
             fullWidth
+            margin="dense" 
             label="카테고리 이름"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
@@ -205,6 +241,18 @@ export default function ScheduleCategoryPanel({ activeCategories, onToggle, onCo
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* 카테고리 삭제 확인 다이얼로그 */}
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        title="카테고리 삭제"
+        message="정말 이 카테고리를 삭제하시겠습니까?"
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => {
+          setDeleteConfirmOpen(false);
+          setDeleteTargetId(null);
+        }}
+      />
     </Box>
   );
 }

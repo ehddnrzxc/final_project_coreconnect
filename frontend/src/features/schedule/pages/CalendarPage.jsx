@@ -15,6 +15,7 @@ import { toISO, toLocalDate } from "../../../utils/dateFormat";
 import ScheduleCategoryPanel from "../components/ScheduleCategoryPanel";
 import ScheduleModal from "../components/ScheduleModal";
 import ScheduleDetailModal from "../components/ScheduleDetailModal";
+import ConfirmDialog from "../../../components/utils/ConfirmDialog";
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 import { UserProfileContext } from "../../../App";
 import "./CalendarPage.css";
@@ -30,6 +31,8 @@ export default function CalendarPage() {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailId, setDetailId] = useState(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState(null);
   const calendarRef = useRef(null);
   const [initialView] = useState(() => {
     try {
@@ -177,7 +180,7 @@ export default function CalendarPage() {
 
   // 서버 데이터를 FullCalendar 이벤트 형식으로 변환하는 공통 함수
   const mapScheduleToEvent = (schedule, colors) => {
-    const color = colors[schedule.categoryId] || (schedule.visibility === "PRIVATE" ? "#999999" : "#00a0e9");
+    const color = colors[schedule.categoryId] || (schedule.visibility === "PRIVATE" ? "#999999" : "#90A4AE");
     const startDateStr = toLocalDate(schedule.startDateTime);
     const endDateStr = toLocalDate(schedule.endDateTime);
     const isMultiDay = startDateStr !== endDateStr;
@@ -406,16 +409,37 @@ export default function CalendarPage() {
     }
   };
 
-  /** 일정 삭제 */
-  const handleDelete = async (id) => {
+  /** 카테고리 삭제 시 일정 목록 갱신 */
+  const handleCategoryDelete = async (categoryId) => {
+    // 해당 카테고리의 일정들을 events에서 제거
+    setEvents((prev) => prev.filter((e) => e.categoryId !== categoryId));
+    
+    // 서버에서 최신 일정 목록을 다시 불러와서 동기화
+    await fetchSchedules(categoryColors);
+  };
+
+  /** 일정 삭제 확인 다이얼로그 열기 */
+  const handleDelete = (id) => {
+    setDeleteTargetId(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  /** 일정 삭제 실행 */
+  const handleDeleteConfirm = async () => {
+    if (!deleteTargetId) return;
+    
     try {
-      await deleteSchedule(id);
-      setEvents((prev) => prev.filter((e) => String(e.id) !== String(id)));
+      await deleteSchedule(deleteTargetId);
+      setEvents((prev) => prev.filter((e) => String(e.id) !== String(deleteTargetId)));
       showSnack("일정이 삭제되었습니다", "info");
       setModalOpen(false);
       setDetailOpen(false);
+      setDeleteConfirmOpen(false);
+      setDeleteTargetId(null);
     } catch (err) {
       showSnack(err.message || "삭제 실패", "error");
+      setDeleteConfirmOpen(false);
+      setDeleteTargetId(null);
     }
   };
 
@@ -492,7 +516,7 @@ export default function CalendarPage() {
   const hexToRgba = (hex, alpha = 0.15) => {
     // hex가 undefined이거나 유효하지 않을 때 기본값 사용
     if (!hex || typeof hex !== 'string' || !hex.startsWith('#')) {
-      hex = "#00a0e9"; // 기본 색상
+      hex = "#90A4AE"; // 기본 색상
     }
     const r = parseInt(hex.slice(1, 3), 16);
     const g = parseInt(hex.slice(3, 5), 16);
@@ -504,7 +528,7 @@ export default function CalendarPage() {
   const renderEventContent = (arg) => {
     const event = arg.event.extendedProps;
     const isPrivate = event.visibility === "PRIVATE";
-    const color = event.dotColor || (isPrivate ? "#999999" : "#00a0e9");  
+    const color = event.dotColor || (isPrivate ? "#999999" : "#90A4AE");  
 
     const isTimeView = arg.view.type === "timeGridWeek" || arg.view.type === "timeGridDay";
     
@@ -658,6 +682,7 @@ export default function CalendarPage() {
             onToggle={handleToggleCategory}
             onColorChange={handleColorChange}
             categoryColors={categoryColors}
+            onCategoryDelete={handleCategoryDelete}
           />
         </Box>
       )}
@@ -998,6 +1023,18 @@ export default function CalendarPage() {
             onDelete={handleDelete}
           />
         )}
+
+        {/* 일정 삭제 확인 다이얼로그 */}
+        <ConfirmDialog
+          open={deleteConfirmOpen}
+          title="일정 삭제"
+          message="정말 이 일정을 삭제하시겠습니까?"
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => {
+            setDeleteConfirmOpen(false);
+            setDeleteTargetId(null);
+          }}
+        />
       </Box>
     </Box>
   );
