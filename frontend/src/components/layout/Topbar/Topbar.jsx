@@ -15,6 +15,7 @@ import NotificationsNoneIcon from "@mui/icons-material/NotificationsNone";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import CampaignOutlinedIcon from "@mui/icons-material/CampaignOutlined";
 import NoticeModal from "../../../features/dashboard/components/NoticeModal";
+import GroupwareNoticeModal from "../../../features/notice/components/GroupwareNoticeModal";
 import { useState, useContext, useEffect } from "react";
 import { jobGradeLabel } from "../../../utils/jobGradeUtils";
 import { UserProfileContext } from "../../../App";
@@ -38,6 +39,7 @@ export default function Topbar({ onLogout, themeMode, themeOptions, onThemeChang
       : undefined;
 
   const [noticeOpen, setNoticeOpen] = useState(false);
+  const [groupwareNoticeOpen, setGroupwareNoticeOpen] = useState(false);
   const [profileAnchor, setProfileAnchor] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsView, setSettingsView] = useState("overview");
@@ -50,6 +52,14 @@ export default function Topbar({ onLogout, themeMode, themeOptions, onThemeChang
 
   const handleCloseNotice = () => {
     setNoticeOpen(false);
+  };
+
+  const handleOpenGroupwareNotice = () => {
+    setGroupwareNoticeOpen(true);
+  };
+
+  const handleCloseGroupwareNotice = () => {
+    setGroupwareNoticeOpen(false);
   };
 
   const handleAvatarClick = (e) => {
@@ -215,12 +225,12 @@ export default function Topbar({ onLogout, themeMode, themeOptions, onThemeChang
               </IconButton>
             </Tooltip>
 
-            {/* 공지사항 */}
+            {/* 공지사항 (그룹웨어) */}
             <Tooltip title="공지사항" arrow>
               <IconButton
                 size="small"
-                aria-label="Gifts"
-                onClick={handleOpenNotice}
+                aria-label="공지사항"
+                onClick={handleOpenGroupwareNotice}
                 sx={{ color: "text.primary" }}
               >
                 <CampaignOutlinedIcon />
@@ -283,8 +293,11 @@ export default function Topbar({ onLogout, themeMode, themeOptions, onThemeChang
         theme={theme}
       />
 
-      {/* 공지 모달 */}
+      {/* 공지 모달 (게시판 공지사항) */}
       <NoticeModal open={noticeOpen} onClose={handleCloseNotice} />
+
+      {/* 그룹웨어 공지사항 모달 */}
+      <GroupwareNoticeModal open={groupwareNoticeOpen} onClose={handleCloseGroupwareNotice} />
 
       {/* 알림 팝오버 */}
       <NotificationPopover

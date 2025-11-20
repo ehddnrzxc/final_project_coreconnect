@@ -57,11 +57,31 @@ export default function QuickMenuCard() {
 
   return (
     <Card title="Quick Menu">
-      <Grid container spacing={1.5}>
-        {firstRow.map(renderButton)}
-      </Grid>
-      <Grid container spacing={1.5} sx={{ mt: 1.5 }}>
-        {secondRow.map(renderButton)}
+      <Grid container columnSpacing={2.5} rowSpacing={2.5}>
+        {menuItems.map((item) => (
+          <Grid item xs={4} key={item.label}>
+            <Button
+              component={Link}
+              to={item.path}
+              fullWidth
+              variant="outlined"
+              size="small"
+              sx={{
+                flexDirection: "column",
+                py: 1.2,
+                textTransform: "none",
+                borderRadius: 2,
+                bgcolor: theme.palette.background.secondary,
+                borderColor: "transparent",
+                color: "text.primary",
+                "&:hover": { bgcolor: "action.hover", borderColor: "transparent" },
+              }}
+            >
+              <Box sx={{ fontSize: 24, mb: 0.5, color: "primary.main" }}>{item.icon}</Box>
+              <Typography variant="caption">{item.label}</Typography>
+            </Button>
+          </Grid>
+        ))}
       </Grid>
     </Card>
   );

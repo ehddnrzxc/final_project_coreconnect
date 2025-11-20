@@ -114,6 +114,7 @@ export default function BirthdayCard({ onUserClick }) {
               <Box
                 key={user.userId}
                 onClick={() => onUserClick && onUserClick(user)}
+                data-grid-cancel="true"
                 sx={{
                   display: "flex",
                   alignItems: "center",

@@ -76,6 +76,7 @@ export default function MailListCard() {
           {recentMails.map((mail) => (
             <ListItem
               key={mail.emailId}
+              data-grid-cancel="true"
               sx={{
                 px: 0,
                 py: 1,
