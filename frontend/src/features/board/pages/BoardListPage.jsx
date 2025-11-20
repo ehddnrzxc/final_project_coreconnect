@@ -459,7 +459,13 @@ const BoardListPage = () => {
       </Box>
 
       {/* 오른쪽 사이드 영역: 최근 본 게시글 */}
-      <Box sx={{ flex: 1.2 }}>
+      <Box
+        sx={{
+          width: 340,         // 가로 고정
+          flexShrink: 0,      // 공간 부족해도 줄어들지 않음
+          ml: 3,              // 왼쪽 영역과 간격
+        }}
+      >
         <RecentViewedBoards />
       </Box>
     </Box>

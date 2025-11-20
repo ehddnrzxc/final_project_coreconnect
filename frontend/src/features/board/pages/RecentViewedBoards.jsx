@@ -23,13 +23,17 @@ const RecentViewedBoards = () => {
     })();
   }, []); // 의존성 배열이 비어있으므로 최초 1회만 실행됨 (마운트 시점)
 
-  // 날짜 포맷 변환 함수: ISO 문자열 → 한국 시간대의 짧은 날짜/시간 형식
   const formatDate = (dateStr) => {
-    const d = new Date(dateStr); // 문자열을 Date 객체로 변환
-    return d.toLocaleString("ko-KR", {
-      dateStyle: "short", // "yy. MM. dd" 형식
-      timeStyle: "short", // "HH:mm" 형식
-    });
+    if (!dateStr) return "";
+
+    const d = new Date(dateStr);
+
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mi = String(d.getMinutes()).padStart(2, "0");
+
+    return `${mm}-${dd} ${hh}:${mi}`;
   };
 
   // 화면 렌더링
@@ -45,11 +49,10 @@ const RecentViewedBoards = () => {
         <Paper
           variant="outlined"
           sx={{
-            p: 2,                         // ★ 수정: 패딩 확장
-            width: "85%",                // ★ 수정: 박스 폭 넓힘
+            width: "85%",
             mx: "auto",
-            borderRadius: 3,             // ★ 수정: 부드러운 모서리
-            boxShadow: "0 2px 8px rgba(0,0,0,0.08)", // ★ 수정: 가벼운 그림자
+            borderRadius: 3,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
           }}
         >
           <List>
@@ -59,53 +62,56 @@ const RecentViewedBoards = () => {
                 <ListItemButton
                   onClick={() => navigate(`/board/detail/${b.id}`)}
                   sx={{
-                    py: 1.5,                       // ★ 수정: 리스트 항목 상하 공간 증가
-                    borderRadius: 2,               // ★ 수정: 항목 각각도 둥글게
-                    transition: "0.15s",           // ★ 추가: 부드러운 hover 애니메이션
+                    py: 0.1,
+                    borderRadius: 2,
+                    transition: "0.15s",
                     "&:hover": {
-                      bgcolor: "#f2f8ff",          // ★ 수정: 은은한 파란 hover
-                      transform: "translateX(4px)" // ★ 추가: 살짝 오른쪽으로 이동
+                      bgcolor: "#f2f8ff",
+                      transform: "translateX(4px)"
                     }
                   }}
                 >
 
-                  {/* ★ 기존 Avatar 제거 → 모던 아이콘으로 교체 */}
                   <span
                     style={{
-                      fontSize: "22px",
+                      fontSize: "18px",
                       marginRight: "14px",
                       opacity: 0.9,
                     }}
                   >
-                    📄
+                    {b.pinned || b.noticeYn ? "📢" : "📄"}
                   </span>
 
                   <ListItemText
                     primary={b.title}
                     primaryTypographyProps={{
                       sx: {
-                        fontWeight: 600,           // ★ 수정: 제목 Bold 강화
+                        fontWeight: 600,
+                        lineHeight: 1.2,
                         whiteSpace: "nowrap",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
+                        mb: 0
                       },
                     }}
-                    secondary={`${b.writerName}${b.writerJobGrade ? ` ${b.writerJobGrade}` : ""} · ${formatDate(
+                    secondary={`${formatDate(
                       b.createdAt
-                    )} · 조회수 ${b.viewCount}`}
+                    )}`}
                     secondaryTypographyProps={{
                       sx: {
-                        color: "text.secondary",   // ★ 수정: 색 조금 더 흐리게
+                        color: "text.secondary",
+                        fontSize: "0.75rem",
                         whiteSpace: "nowrap",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
+                        mt: 0
                       },
                     }}
                   />
                 </ListItemButton>
 
                 {idx < boards.length - 1 && (
-                  <Divider sx={{ my: 1 }} />  // ★ 수정: Divider 간격 조절
+                  <Divider sx={{ my: 1 }} />
                 )}
 
               </React.Fragment>
