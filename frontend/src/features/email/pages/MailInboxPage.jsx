@@ -194,6 +194,50 @@ const MailInboxPage = () => {
     }
   };
 
+  // 전달 핸들러
+  const handleForward = async () => {
+    if (selected.size === 0) {
+      setSnack({ open: true, severity: 'warning', message: '전달할 메일을 선택해주세요.' });
+      return;
+    }
+
+    // 선택된 메일 중 첫 번째 메일 사용
+    const selectedMailId = Array.from(selected)[0];
+    const selectedMail = mails.find(m => m.emailId === selectedMailId);
+    
+    if (!selectedMail) {
+      setSnack({ open: true, severity: 'error', message: '선택한 메일을 찾을 수 없습니다.' });
+      return;
+    }
+
+    try {
+      // 메일 상세 정보 가져오기 (cc, bcc 정보 포함)
+      const detailRes = await getEmailDetail(selectedMailId, userEmail);
+      const mailDetail = detailRes?.data?.data || selectedMail;
+
+      // 전달 정보 구성
+      const forwardData = {
+        originalEmail: {
+          emailId: mailDetail.emailId,
+          senderEmail: mailDetail.senderEmail || selectedMail.senderEmail,
+          senderName: mailDetail.senderName || selectedMail.senderName,
+          emailTitle: mailDetail.emailTitle || selectedMail.emailTitle,
+          sentTime: mailDetail.sentTime || mailDetail.emailSentTime || selectedMail.sentTime,
+          recipientAddresses: mailDetail.recipientAddresses || selectedMail.recipientAddresses || [],
+          ccAddresses: mailDetail.ccAddresses || [],
+          bccAddresses: mailDetail.bccAddresses || [],
+          emailContent: mailDetail.emailContent || ''
+        }
+      };
+
+      // 메일쓰기 페이지로 이동 (location.state로 전달 정보 전달)
+      navigate('/email/write', { state: { forwardData } });
+    } catch (err) {
+      console.error("handleForward error", err);
+      setSnack({ open: true, severity: 'error', message: '메일 상세 정보를 가져오는 중 오류가 발생했습니다.' });
+    }
+  };
+
   // 날짜순 정렬 토글 핸들러
   const handleSortByDate = () => {
     setSortOrder(prev => prev === "desc" ? "asc" : "desc");
@@ -595,7 +639,7 @@ const MailInboxPage = () => {
             {/* 삭제(휴지통 이동) */}
             <Button startIcon={<DeleteIcon />} onClick={deleteSelected}>삭제</Button>
             <Button startIcon={<TagIcon />}>태그</Button>
-            <Button startIcon={<ForwardIcon />}>전달</Button>
+            <Button startIcon={<ForwardIcon />} onClick={handleForward}>전달</Button>
             <Button startIcon={<MarkEmailReadIcon />} onClick={markSelectedAsRead}>읽음</Button>
             <Button startIcon={<MoveToInboxIcon />}>이동</Button>
             <Button startIcon={<MoreVertIcon />}>이메일옵션</Button>

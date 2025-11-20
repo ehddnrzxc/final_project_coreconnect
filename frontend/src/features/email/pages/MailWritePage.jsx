@@ -72,11 +72,12 @@ function MailWritePage() {
   const navigate = useNavigate();
   const draftId = new URLSearchParams(location.search).get("draftId");
   const replyData = location.state?.replyData; // 답장 모드 데이터
+  const forwardData = location.state?.forwardData; // 전달 모드 데이터
   const { userProfile } = useContext(UserProfileContext) || {};
   const userEmail = userProfile?.email;
 
-  // 답장 모드일 때 원본 메일 정보 포맷팅 함수
-  const formatOriginalEmailInfo = (originalEmail) => {
+  // 답장/전달 모드일 때 원본 메일 정보 포맷팅 함수
+  const formatOriginalEmailInfo = (originalEmail, mode = 'reply') => {
     const formatDate = (date) => {
       if (!date) return '-';
       try {
@@ -117,7 +118,11 @@ function MailWritePage() {
       info += `\n${originalEmail.emailContent}\n`;
     }
     
-    info += `\n답장을 입력하세요\n`;
+    if (mode === 'forward') {
+      info += `\n전달 메시지를 입력하세요\n`;
+    } else {
+      info += `\n답장을 입력하세요\n`;
+    }
     
     return info;
   };
@@ -159,7 +164,7 @@ function MailWritePage() {
       });
       
       // 메일 내용: 원본 메일 정보 + 답장 입력 안내
-      const replyContent = formatOriginalEmailInfo(original);
+      const replyContent = formatOriginalEmailInfo(original, 'reply');
       
       setForm({
         emailId: null,
@@ -177,9 +182,49 @@ function MailWritePage() {
     }
   }, [replyData, userEmail, navigate, location.pathname]);
 
+  // 전달 모드 초기화
+  useEffect(() => {
+    if (forwardData && forwardData.originalEmail && userEmail) {
+      const original = forwardData.originalEmail;
+      
+      // 제목에 "Fw: " 추가 (이미 있으면 추가하지 않음)
+      let forwardTitle = original.emailTitle || '';
+      if (forwardTitle && !forwardTitle.startsWith('Fw: ') && !forwardTitle.startsWith('Fwd: ') && 
+          !forwardTitle.startsWith('FW: ') && !forwardTitle.startsWith('FWD: ')) {
+        forwardTitle = `Fw: ${forwardTitle}`;
+      }
+      
+      // 받는 사람: 비워둠 (사용자가 직접 입력)
+      const recipientAddress = [];
+      
+      // 참조: 비워둠 (사용자가 선택적으로 추가)
+      const ccAddresses = [];
+      
+      // 숨은 참조: 비워둠 (사용자가 선택적으로 추가)
+      const bccAddresses = [];
+      
+      // 메일 내용: 원본 메일 정보 + 전달 입력 안내
+      const forwardContent = formatOriginalEmailInfo(original, 'forward');
+      
+      setForm({
+        emailId: null,
+        recipientAddress: recipientAddress,
+        ccAddresses: ccAddresses,
+        bccAddresses: bccAddresses,
+        emailTitle: forwardTitle,
+        emailContent: forwardContent,
+        attachments: [],
+        replyToEmailId: null // 전달은 replyToEmailId 없음
+      });
+      
+      // location.state 초기화 (뒤로가기 시 중복 적용 방지)
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [forwardData, userEmail, navigate, location.pathname]);
+
   // 임시보관함 불러오기
   useEffect(() => {
-    if (draftId && userEmail && !replyData) {
+    if (draftId && userEmail && !replyData && !forwardData) {
       getDraftDetail(draftId, userEmail).then(res => {
         const data = res.data.data;
         setForm({
@@ -203,7 +248,7 @@ function MailWritePage() {
         console.warn("getDraftDetail error:", err);
       });
     }
-  }, [draftId, userEmail, replyData]);
+  }, [draftId, userEmail, replyData, forwardData]);
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files || []);
