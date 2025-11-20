@@ -143,4 +143,30 @@ public interface EmailRecipientRepository extends JpaRepository<EmailRecipient, 
         @Param("searchType") String searchType,
         @Param("keyword") String keyword
     );
+
+    // 중요 메일 조회 (수신한 메일 중 중요 표시된 것만)
+    @Query("SELECT r FROM EmailRecipient r " +
+           "WHERE r.emailRecipientAddress = :emailRecipientAddress " +
+           "AND r.emailRecipientType IN :emailRecipientType " +
+           "AND r.email.favoriteStatus = true " +
+           "AND r.email.emailStatus NOT IN ('TRASH', 'DELETED') " +
+           "AND (r.deleted IS NULL OR r.deleted = false) " +
+           "AND (" +
+           "    :keyword IS NULL OR :keyword = '' OR (" +
+           "        (:searchType = 'TITLE' AND LOWER(r.email.emailTitle) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+           "        (:searchType = 'CONTENT' AND LOWER(r.email.emailContent) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+           "        (:searchType = 'TITLE_CONTENT' AND (" +
+           "            LOWER(r.email.emailTitle) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "            LOWER(r.email.emailContent) LIKE LOWER(CONCAT('%', :keyword, '%'))" +
+           "        ))" +
+           "    )" +
+           ") " +
+           "ORDER BY r.email.emailSentTime DESC")
+    Page<EmailRecipient> findFavoriteInboxExcludingTrash(
+        @Param("emailRecipientAddress") String emailRecipientAddress,
+        @Param("emailRecipientType") List<String> emailRecipientType,
+        Pageable pageable,
+        @Param("searchType") String searchType,
+        @Param("keyword") String keyword
+    );
 }

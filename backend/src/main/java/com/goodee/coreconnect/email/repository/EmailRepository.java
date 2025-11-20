@@ -128,11 +128,34 @@ public interface EmailRepository extends JpaRepository<Email, Integer> {
  Page<Email> findTrashEmailsByUserId(@Param("userId") Integer userId, Pageable pageable);
  
  // Spring Data method 이름 기반 쿼리로 간단히 추가합니다.
- Page<Email> findBySenderIdAndEmailStatusAndReservedAtAfter(
+    Page<Email> findBySenderIdAndEmailStatusAndReservedAtAfter(
          Integer senderId,
          EmailStatusEnum emailStatus,
          LocalDateTime now,
          Pageable pageable);
+
+    // 발신한 중요 메일 조회
+    @Query("SELECT e FROM Email e " +
+           "WHERE e.senderId = :senderId " +
+           "AND e.favoriteStatus = true " +
+           "AND e.emailStatus NOT IN ('TRASH', 'DELETED') " +
+           "AND (" +
+           "    :keyword IS NULL OR :keyword = '' OR (" +
+           "        (:searchType = 'TITLE' AND LOWER(e.emailTitle) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+           "        (:searchType = 'CONTENT' AND LOWER(e.emailContent) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+           "        (:searchType = 'TITLE_CONTENT' AND (" +
+           "            LOWER(e.emailTitle) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "            LOWER(e.emailContent) LIKE LOWER(CONCAT('%', :keyword, '%'))" +
+           "        ))" +
+           "    )" +
+           ") " +
+           "ORDER BY e.emailSentTime DESC")
+    Page<Email> findFavoriteSentMails(
+        @Param("senderId") Integer senderId,
+        Pageable pageable,
+        @Param("searchType") String searchType,
+        @Param("keyword") String keyword
+    );
 }
 
 

@@ -24,6 +24,7 @@ import {
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import CancelIcon from "@mui/icons-material/Cancel";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useNavigate } from "react-router-dom";
 import {  fetchScheduledMails } from "../api/emailApi";
 import { useContext } from "react";
@@ -188,7 +189,13 @@ const MailReservedPage = () => {
   };
 
   return (
-    <Box sx={{ p: 4, minHeight: "100vh", bgcolor: "#fafbfd" }}>
+    <Box sx={{ p: 4, minHeight: "100vh", bgcolor: "#fafbfd", position: 'relative' }}>
+      {/* 뒤로가기 버튼 - 상단 구석 */}
+      <Box sx={{ position: 'absolute', top: 16, right: 16, zIndex: 1000 }}>
+        <IconButton onClick={() => navigate(-1)} sx={{ bgcolor: '#fff', boxShadow: 1 }}>
+          <ArrowBackIcon />
+        </IconButton>
+      </Box>
       <Paper elevation={0} sx={{ p: 3, borderRadius: 2 }}>
         <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
           <Typography variant="h5" sx={{ fontWeight: 700 }}>

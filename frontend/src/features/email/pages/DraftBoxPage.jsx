@@ -7,6 +7,7 @@ import {
 import DeleteIcon from "@mui/icons-material/Delete";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import SyncIcon from "@mui/icons-material/Sync";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { fetchDraftbox, deleteDraftMail, fetchDraftCount } from "../api/emailApi"; // ★ fetchDraftCount 추가!
 import { UserProfileContext } from "../../../App";
 import { useNavigate } from "react-router-dom";
@@ -94,7 +95,13 @@ const DraftBoxPage = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: 3, position: 'relative' }}>
+      {/* 뒤로가기 버튼 - 상단 구석 */}
+      <Box sx={{ position: 'absolute', top: 16, right: 16, zIndex: 1000 }}>
+        <IconButton onClick={() => navigate(-1)} sx={{ bgcolor: '#fff', boxShadow: 1 }}>
+          <ArrowBackIcon />
+        </IconButton>
+      </Box>
       <Paper sx={{ p: 3, mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
           <Typography variant="h6" sx={{ fontWeight: 700 }}>

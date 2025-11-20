@@ -12,6 +12,7 @@ import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import SyncIcon from '@mui/icons-material/Sync';
 import ViewListIcon from '@mui/icons-material/ViewList';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { fetchInbox, fetchUnreadCount, moveToTrash, markMailAsRead, getEmailDetail } from '../api/emailApi';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { MailCountContext } from "../../../App"; // 메일 카운트 컨텍스트(사이드바 등 공유)
@@ -522,6 +523,12 @@ const MailInboxPage = () => {
           }} 
         />
       )}
+      {/* 뒤로가기 버튼 - 상단 구석 */}
+      <Box sx={{ position: 'absolute', top: 16, right: 16, zIndex: 1000 }}>
+        <IconButton onClick={() => navigate(-1)} sx={{ bgcolor: '#fff', boxShadow: 1 }}>
+          <ArrowBackIcon />
+        </IconButton>
+      </Box>
       <Paper elevation={0} sx={{ p: 3, borderRadius: 2 }}>
         {/* 상단 타이틀 및 탭/Chip */}
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>

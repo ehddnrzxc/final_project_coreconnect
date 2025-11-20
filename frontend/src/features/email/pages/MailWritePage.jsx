@@ -23,6 +23,8 @@ import DraftsOutlinedIcon from "@mui/icons-material/DraftsOutlined";
 import ContactsIcon from "@mui/icons-material/Contacts";
 import StarOutlineIcon from "@mui/icons-material/StarOutline";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import CancelIcon from "@mui/icons-material/Cancel";
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
 import dayjs from "dayjs";
 import {
@@ -487,7 +489,25 @@ function MailWritePage() {
   };
 
   return (
-    <Box sx={{ py: 3, px: 4 }}>
+    <Box sx={{ py: 3, px: 4, position: 'relative' }}>
+      {/* 취소 및 뒤로가기 버튼 - 상단 구석 */}
+      <Box sx={{ position: 'absolute', top: 16, right: 16, zIndex: 1000, display: 'flex', gap: 1 }}>
+        <Button
+          variant="outlined"
+          startIcon={<CancelIcon />}
+          onClick={() => {
+            if (window.confirm('작성 중인 메일을 취소하시겠습니까?')) {
+              navigate(-1);
+            }
+          }}
+          sx={{ bgcolor: '#fff', boxShadow: 1 }}
+        >
+          취소
+        </Button>
+        <IconButton onClick={() => navigate(-1)} sx={{ bgcolor: '#fff', boxShadow: 1 }}>
+          <ArrowBackIcon />
+        </IconButton>
+      </Box>
       <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
         <Typography variant="h5" fontWeight={700} sx={{ mr: 2 }}>
           메일쓰기
