@@ -60,6 +60,7 @@ export default function RecentBoardsCard() {
           {recentBoards.map((board) => (
             <ListItem
               key={board.id}
+              data-grid-cancel="true"
               sx={{
                 display: "list-item",
                 px: 0,

@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.goodee.coreconnect.user.dto.request.UserDetailProfileUpdateRequestDTO;
+import com.goodee.coreconnect.user.dto.response.BirthdayUserDTO;
 import com.goodee.coreconnect.user.dto.response.OrganizationUserResponseDTO;
 import com.goodee.coreconnect.user.dto.response.UserDTO;
 import com.goodee.coreconnect.user.dto.response.UserDetailProfileDTO;
@@ -41,4 +42,7 @@ public interface UserService {
   
   /** 프로필 정보 수정 */
   void updateDetailProfileInfo(String email, UserDetailProfileUpdateRequestDTO requestDTO);
+  
+  /** 특정 월의 생일자 목록 조회 */
+  List<BirthdayUserDTO> getBirthdayUsers(Integer year, Integer month);
 }

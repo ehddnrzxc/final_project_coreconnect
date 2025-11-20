@@ -240,6 +240,7 @@ export default function ProfileCard() {
           />
           <Box
             component="label"
+            data-grid-cancel="true"
             sx={{
               display: "inline-flex",
               alignItems: "center",
