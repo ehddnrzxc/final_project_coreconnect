@@ -18,6 +18,19 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, Integer> {
     boolean existsByEmail(String email);
     Optional<User> findByEmail(String email);
+    
+    /**
+     * ⭐ Department를 함께 로드하여 LazyInitializationException 방지
+     * @param email 사용자 이메일
+     * @return Department가 함께 로드된 User Optional
+     */
+    @Query("""
+        SELECT u FROM User u
+        LEFT JOIN FETCH u.department
+        WHERE u.email = :email
+        """)
+    Optional<User> findByEmailWithDepartment(@Param("email") String email);
+    
     Long countByStatus(Status status);
     
     @Query("""
@@ -27,6 +40,18 @@ public interface UserRepository extends JpaRepository<User, Integer> {
         ORDER BY d.deptOrderNo, u.name
         """)
     List<User> findAllForOrganization();
+    
+    /**
+     * ⭐ Department를 함께 로드하여 LazyInitializationException 방지
+     * @param id 사용자 ID
+     * @return Department가 함께 로드된 User Optional
+     */
+    @Query("""
+        SELECT u FROM User u
+        LEFT JOIN FETCH u.department
+        WHERE u.id = :id
+        """)
+    Optional<User> findByIdWithDepartment(@Param("id") Integer id);
     
     /**
      * 특정 연도로 시작하는 사번 중 최대값 조회 (동시성 처리를 위한 락 사용)

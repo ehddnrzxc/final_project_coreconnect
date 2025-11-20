@@ -333,11 +333,60 @@ function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbov
               })()}
 
               <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-start", flex: 1 }}>
-                {/* 이름(어두운 회색) */}
-                <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#212121", mb: 0.5 }}>
-                  {msg.senderName}
-                  {roomType === "group" && msg.senderTitle ? ` (${msg.senderTitle})` : ""}
-                </Typography>
+                {/* 이름 / 직급 / 부서 - 한 줄에 표시 */}
+                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, flexWrap: "wrap", mb: 0.5 }}>
+                  <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#212121", display: "inline-block" }}>
+                    {msg.senderName || "이름 없음"}
+                  </Typography>
+                  {msg.senderJobGrade && (
+                    <>
+                      <Typography sx={{ fontSize: 13, color: "#666", display: "inline-block" }}>/</Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: "text.secondary",
+                          bgcolor: "action.selected",
+                          px: 1,
+                          py: 0.25,
+                          borderRadius: 1,
+                          fontSize: 12,
+                          display: "inline-block",
+                        }}
+                      >
+                        {(() => {
+                          const gradeMap = {
+                            INTERN: "인턴",
+                            STAFF: "사원",
+                            ASSISTANT_MANAGER: "대리",
+                            MANAGER: "과장",
+                            DEPUTY_GENERAL_MANAGER: "차장",
+                            GENERAL_MANAGER: "부장",
+                            DIRECTOR: "이사",
+                            EXECUTIVE_DIRECTOR: "상무",
+                            VICE_PRESIDENT: "전무",
+                            PRESIDENT: "대표",
+                          };
+                          return gradeMap[msg.senderJobGrade] || msg.senderJobGrade;
+                        })()}
+                      </Typography>
+                    </>
+                  )}
+                  {msg.senderDeptName && (
+                    <>
+                      <Typography sx={{ fontSize: 13, color: "#666", display: "inline-block" }}>/</Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: "primary.main",
+                          fontSize: 12,
+                          display: "inline-block",
+                        }}
+                      >
+                        {msg.senderDeptName}
+                      </Typography>
+                    </>
+                  )}
+                </Box>
 
                 <Box
                   sx={{

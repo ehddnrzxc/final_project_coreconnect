@@ -8,7 +8,8 @@ import StarBorderIcon from "@mui/icons-material/StarBorder";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { useNavigate } from "react-router-dom";
 import { MailCountContext } from "../../../App";
-import { emptyTrash, fetchDraftCount } from "../api/emailApi"; // ★ fetchDraftCount 추가!
+import { emptyTrash } from "../api/emailApi";
+import MailWriteButton from "./ui/MailWriteButton";
 
 const MailSideBar = () => {
   const navigate = useNavigate();
@@ -74,21 +75,7 @@ const MailSideBar = () => {
         </IconButton>
       </Box>
       <Box sx={{ mb: 1 }}>
-        <Button
-          variant="outlined"
-          fullWidth
-          size="small"
-          onClick={() => navigate("/email/write")}
-          sx={{
-            fontWeight: 700,
-            borderRadius: 2,
-            bgcolor: "#f6f7fc",
-            borderColor: "#e1e3ea",
-            py: 1,
-          }}
-        >
-          메일쓰기
-        </Button>
+        <MailWriteButton />
       </Box>
       <Box sx={{ flex: 1, overflowY: "auto" }}>
         {/* 즐겨찾기 */}

@@ -30,6 +30,8 @@ public class ChatResponseDTO {
     private String senderName;
     private String senderEmail;
     private String senderProfileImageUrl;
+    private com.goodee.coreconnect.user.enums.JobGrade senderJobGrade; // ⭐ 발신자 직급
+    private String senderDeptName; // ⭐ 발신자 부서명
     private String notificationType;
     private Integer unreadCount;
 

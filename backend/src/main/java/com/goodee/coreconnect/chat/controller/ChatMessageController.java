@@ -115,77 +115,144 @@ public class ChatMessageController {
 	 */
 	@Operation(summary = "채팅 메시지 전송", description = "채팅 메시지를 전송하고 알림을 생성합니다.")
 	@MessageMapping("/chat.sendMessage") // 프론트에서 /app/chat.sendMessage로 메시지 전송 (STOMP)
+	@org.springframework.transaction.annotation.Transactional // ⭐ LazyInitializationException 방지: 트랜잭션 유지
 	public void sendMessage(
 	        @Payload SendMessageRequestDTO req,
 	        SimpMessageHeaderAccessor headerAccessor
 	) {
-	    // WebSocket 세션에서 사용자 이메일 가져오기 (WebSocketAuthInterceptor에서 설정)
-	    Map<String, Object> sessionAttributes = headerAccessor.getSessionAttributes();
-	    if (sessionAttributes == null) {
-	        log.warn("[ChatMessageController] sendMessage - 세션 attributes가 null입니다.");
-	        return;
-	    }
-	    String email = (String) sessionAttributes.get("wsUserEmail");
-	    if (email == null || email.isBlank()) {
-	        log.warn("[ChatMessageController] sendMessage - 세션에 사용자 이메일이 없습니다.");
-	        return;
-	    }
-
-	    // 1. 인증 사용자 체크 (프론트에서 senderId가 아닌, 인증 객체에서 반드시 가져오기)
-	    User authUser = userRepository.findByEmail(email).orElse(null);
-	    if (authUser == null) {
-	        // 에러 핸들: 로그인 필요하면 메시지 또는 별도 알림
-	        // 실시간 시스템에서는 프론트에 Error 메시지 브로드캐스트하거나 로그로 대체
-	        return;
-	    }
-
-	    // 2. 유효성 체크 (roomId, content)
-	    if (req == null || req.getRoomId() == null || req.getContent() == null || req.getContent().trim().isEmpty()) {
-	        // 에러 핸들: 필수 데이터 누락
-	        // 역시 실시간에서는 Fronend로 임의 알림/로그 가능
-	        return;
-	    }
-
-	    // ⭐️ 3. DB 저장 - 반드시 인증 정보에서 senderId 사용!
-	    //    (보안상 프론트에서 senderId를 보내지 않음, 무조건 서버 측에서 로그인 사용자의 id 사용)
-	    Chat saved = chatRoomService.sendChatMessage(
-	        req.getRoomId(),
-	        authUser.getId(),    // <-- ★ authUser.getId()로 senderId 대체!
-	        req.getContent()
-	    );
-
-	    // 4. 해당 채널 구독자에게 push (프론트에서 /topic/chat.room.{roomId} 구독 중)
-	    ChatResponseDTO responseDto = ChatResponseDTO.fromEntity(saved);
+	    // ⭐ 함수 진입 로그 (최우선 확인)
+	    log.info("🔥 [sendMessage] ========== 함수 진입 ========== - req: {}, headerAccessor: {}", 
+	            req, headerAccessor != null ? "not null" : "null");
 	    
-	    // ⭐ unreadCount를 실시간으로 계산하여 설정 (DB 저장값이 아닌 실제 읽지 않은 사람 수)
-	    // 발신자는 이미 readYn=true로 설정되어 있으므로, unreadCount는 참여자수 - 1이어야 함
-	    int realUnreadCount = chatMessageReadStatusRepository.countUnreadByChatId(saved.getId());
+	    try {
+	        log.info("[sendMessage] 메시지 수신 시작 - req: {}", req);
+	        
+	        // WebSocket 세션에서 사용자 이메일 가져오기 (WebSocketAuthInterceptor에서 설정)
+	        Map<String, Object> sessionAttributes = headerAccessor.getSessionAttributes();
+	        if (sessionAttributes == null) {
+	            log.warn("[ChatMessageController] sendMessage - 세션 attributes가 null입니다.");
+	            return;
+	        }
+	        String email = (String) sessionAttributes.get("wsUserEmail");
+	        if (email == null || email.isBlank()) {
+	            log.warn("[ChatMessageController] sendMessage - 세션에 사용자 이메일이 없습니다.");
+	            return;
+	        }
+	        log.info("[sendMessage] 사용자 이메일 확인 - email: {}", email);
+
+	        // 1. 인증 사용자 체크 (프론트에서 senderId가 아닌, 인증 객체에서 반드시 가져오기)
+	        // ⭐ LazyInitializationException 방지: Department를 함께 로드하는 메서드 사용
+	        User authUser = userRepository.findByEmailWithDepartment(email).orElse(null);
+	        if (authUser == null) {
+	            log.error("[ChatMessageController] sendMessage - 사용자를 찾을 수 없습니다. email: {}", email);
+	            return;
+	        }
+	        
+	        // ⭐ Department 정보를 즉시 추출하여 변수에 저장 (LazyInitializationException 방지)
+	        // @MessageMapping 메서드에서 @Transactional이 제대로 작동하지 않을 수 있으므로
+	        // 조회 직후 즉시 Department 정보를 추출
+	        String deptName = null;
+	        String profileImageKey = null;
+	        try {
+	            if (authUser.getDepartment() != null) {
+	                // ⭐ Department 프록시를 즉시 초기화하여 변수에 저장
+	                deptName = authUser.getDepartment().getDeptName();
+	                log.debug("[sendMessage] Department 정보 추출 완료 - deptName: {}", deptName);
+	            }
+	            // ⭐ 프로필 이미지 키도 미리 추출
+	            profileImageKey = authUser.getProfileImageKey();
+	        } catch (org.hibernate.LazyInitializationException e) {
+	            log.error("[sendMessage] LazyInitializationException 발생 - Department 접근 실패: {}", e.getMessage(), e);
+	            deptName = null;
+	        } catch (Exception e) {
+	            log.warn("[sendMessage] 사용자 정보 추출 중 예외 발생 (무시하고 계속 진행): {}", e.getMessage());
+	            deptName = null;
+	        }
+	        
+	        log.info("[sendMessage] 인증 사용자 확인 - userId: {}, email: {}, deptName: {}", 
+	                authUser.getId(), authUser.getEmail(), deptName);
+
+	        // 2. 유효성 체크 (roomId, content)
+	        if (req == null || req.getRoomId() == null || req.getContent() == null || req.getContent().trim().isEmpty()) {
+	            log.warn("[ChatMessageController] sendMessage - 필수 데이터 누락 - req: {}, roomId: {}, content: {}", 
+	                    req, req != null ? req.getRoomId() : null, req != null ? req.getContent() : null);
+	            return;
+	        }
+	        log.info("[sendMessage] 유효성 체크 통과 - roomId: {}, content 길이: {}", req.getRoomId(), req.getContent().length());
+
+	        //  3. DB 저장 - 반드시 인증 정보에서 senderId 사용!
+	        //    (보안상 프론트에서 senderId를 보내지 않음, 무조건 서버 측에서 로그인 사용자의 id 사용)
+	        Chat saved = chatRoomService.sendChatMessage(
+	            req.getRoomId(),
+	            authUser.getId(),    // <-- ★ authUser.getId()로 senderId 대체!
+	            req.getContent()
+	        );
+	        
+	        if (saved == null) {
+	            log.error("[sendMessage] 메시지 저장 실패 - roomId: {}, senderId: {}, content: {}", 
+	                    req.getRoomId(), authUser.getId(), req.getContent());
+	            return;
+	        }
+	        log.info("[sendMessage] 메시지 저장 성공 - chatId: {}, roomId: {}, senderId: {}", 
+	                saved.getId(), req.getRoomId(), authUser.getId());
+
+	        // 4. 해당 채널 구독자에게 push (프론트에서 /topic/chat.room.{roomId} 구독 중)
+	        // ⭐ LazyInitializationException 방지: fromEntity() 대신 직접 DTO 생성
+	        // saved.getSender()는 LAZY이므로 Department 접근 시 에러 발생 가능
+	        // 이미 Department가 로드된 authUser를 사용하여 DTO 생성
+	        ChatResponseDTO responseDto = new ChatResponseDTO();
+	        responseDto.setId(saved.getId());
+	        responseDto.setMessageContent(saved.getMessageContent());
+	        responseDto.setSendAt(saved.getSendAt() != null ? saved.getSendAt().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")) : null);
+	        responseDto.setFileYn(saved.getFileYn());
+	        responseDto.setFileUrl(saved.getFileUrl());
+	        responseDto.setRoomId(saved.getChatRoom() != null ? saved.getChatRoom().getId() : null);
+	        responseDto.setSenderId(authUser.getId());
+	        responseDto.setSenderName(authUser.getName());
+	        responseDto.setSenderEmail(authUser.getEmail());
+	        
+	        if (responseDto == null) {
+	            log.error("[sendMessage] responseDto가 null입니다 - chatId: {}, roomId: {}", 
+	                    saved.getId(), req.getRoomId());
+	            return;
+	        }
+	    
+	    // ⭐ unreadCount는 반드시 DB에서 직접 조회한 실제 값 사용!
+	    // Chat 엔티티의 unreadCount가 아닌 실제 DB의 readYn=false row 개수를 사용하여 정합성 보장
+	    int confirmedUnreadCount = chatMessageReadStatusRepository.countUnreadByChatId(saved.getId());
 	    
 	    // ⭐ 참여자 수 확인 (디버깅용)
 	    int participantCount = chatRoomUserRepository.findByChatRoomId(req.getRoomId()).size();
-	    log.info("[sendMessage] 메시지 전송 - chatId: {}, unreadCount: {} (실시간 계산), 참여자수: {}, roomId: {}", 
-	            saved.getId(), realUnreadCount, participantCount, req.getRoomId());
 	    
-	    // ⭐ unreadCount가 참여자수 - 1과 일치하는지 확인 (발신자 제외)
-	    if (realUnreadCount != participantCount - 1) {
-	        log.warn("[sendMessage] unreadCount 불일치 - 예상값: {}, 실제값: {}, chatId: {}", 
-	                participantCount - 1, realUnreadCount, saved.getId());
+	    // ⭐ 현재 접속 중인 사용자 수 확인 (디버깅용)
+	    List<Integer> connectedUserIds = chatRoomService.getConnectedUserIdsInRoom(req.getRoomId());
+	    int connectedOthersCount = (int) connectedUserIds.stream()
+	            .filter(userId -> !userId.equals(authUser.getId()))
+	            .count();
+	    
+	    log.info("[sendMessage] 메시지 전송 - chatId: {}, 참여자수: {}, 발신자: 1, 접속중(발신자제외): {}, DB unreadCount: {}, roomId: {}", 
+	            saved.getId(), participantCount, connectedOthersCount, confirmedUnreadCount, req.getRoomId());
+	    
+	    // ⭐ 검증: Chat 엔티티의 unreadCount와 DB값 비교 (디버깅용)
+	    int entityUnreadCount = saved.getUnreadCount() != null ? saved.getUnreadCount() : 0;
+	    if (confirmedUnreadCount != entityUnreadCount) {
+	        log.warn("[sendMessage] unreadCount 불일치 - 엔티티값: {}, DB값: {}, chatId: {} (DB값을 사용)", 
+	                entityUnreadCount, confirmedUnreadCount, saved.getId());
 	    }
 	    
-	    responseDto.setUnreadCount(realUnreadCount);
+	    // ⭐ DB에서 조회한 실제 값을 DTO에 설정
+	    responseDto.setUnreadCount(confirmedUnreadCount);
 	    
 	    // ⭐ senderEmail 명시적으로 설정 (lazy loading 문제 해결)
 	    // fromEntity에서 chat.getSender().getEmail()이 null일 수 있으므로 authUser.getEmail() 직접 설정
 	    responseDto.setSenderEmail(authUser.getEmail());
 	    
-	    // ⭐ 프로필 이미지 URL 설정 (user_profile_image_key 사용)
-	    // sender를 다시 조회하여 profileImageKey 가져오기
-	    // 프로필 이미지가 없어도 항상 senderProfileImageUrl 필드를 설정 (null이 아닌 빈 문자열 또는 URL)
-	    User senderUser = userRepository.findById(authUser.getId()).orElse(null);
-	    if (senderUser != null) {
-	        String profileImageKey = senderUser.getProfileImageKey();
+	    // ⭐ 프로필 이미지 URL, 직급, 부서명 설정 (user_profile_image_key 사용)
+	    // ⭐ deptName과 profileImageKey는 이미 위에서 추출했으므로 재사용
+	    // ⭐ authUser 객체에 직접 접근하지 않고 미리 추출한 값 사용
+	    if (authUser != null) {
 	        log.debug("[sendMessage] 프로필 이미지 설정 - userId: {}, email: {}, profileImageKey: {}", 
-	                senderUser.getId(), senderUser.getEmail(), profileImageKey);
+	                authUser.getId(), authUser.getEmail(), profileImageKey);
 	        
 	        if (profileImageKey != null && !profileImageKey.isBlank()) {
 	            // 프로필 이미지가 있으면 S3 URL 생성
@@ -195,13 +262,64 @@ public class ChatMessageController {
 	        } else {
 	            // 프로필 이미지가 없으면 빈 문자열 설정 (프론트엔드에서 기본 이니셜 표시)
 	            log.warn("[sendMessage] 프로필 이미지 없음 - userId: {}, email: {}, profileImageKey가 null 또는 빈 문자열", 
-	                    senderUser.getId(), senderUser.getEmail());
+	                    authUser.getId(), authUser.getEmail());
 	            responseDto.setSenderProfileImageUrl("");
 	        }
+	        
+	        // ⭐ 직급 설정 (authUser에서 직접 가져오기 - JobGrade는 enum이므로 lazy loading 없음)
+	        responseDto.setSenderJobGrade(authUser.getJobGrade());
+	        
+	        // ⭐ 부서명 설정 (미리 추출한 값 사용)
+	        responseDto.setSenderDeptName(deptName != null ? deptName : "");
+	        log.debug("[sendMessage] 부서명 설정 완료 - deptName: {}", deptName);
 	    } else {
-	        log.error("[sendMessage] senderUser를 찾을 수 없음 - userId: {}", authUser.getId());
+	        log.error("[sendMessage] authUser를 찾을 수 없음");
 	    }
-	    messagingTemplate.convertAndSend("/topic/chat.room." + req.getRoomId(), responseDto);
+	    
+	    // ⭐ 메시지 브로드캐스트
+	    String topic = "/topic/chat.room." + req.getRoomId();
+	    
+	    // ⭐ responseDto null 체크
+	    if (responseDto == null) {
+	        log.error("[sendMessage] 브로드캐스트 전 responseDto가 null입니다 - topic: {}", topic);
+	        return;
+	    }
+	    
+	    // ⭐ 필수 필드 확인
+	    if (responseDto.getId() == null) {
+	        log.error("[sendMessage] responseDto.id가 null입니다 - topic: {}, responseDto: {}", topic, responseDto);
+	        return;
+	    }
+	    
+	    log.info("[sendMessage] 메시지 브로드캐스트 시작 - topic: {}, responseDto.id: {}, responseDto.messageContent: {}", 
+	            topic, responseDto.getId(), responseDto.getMessageContent());
+	    
+	    try {
+	        messagingTemplate.convertAndSend(topic, responseDto);
+	        log.info("[sendMessage] 메시지 브로드캐스트 완료 - topic: {}, responseDto.id: {}", topic, responseDto.getId());
+	    } catch (Exception e) {
+	        log.error("[sendMessage] 메시지 브로드캐스트 실패 - topic: {}, error: {}", topic, e.getMessage(), e);
+	    }
+	    
+	    } catch (Exception e) {
+	        log.error("🔥 [sendMessage] ========== 예외 발생 ========== - req: {}, error: {}, stackTrace: {}", 
+	                req, e.getMessage(), e);
+	        e.printStackTrace(); // 스택 트레이스 출력
+	        
+	        // ⭐ 예외 발생 시 프론트엔드에 에러 알림 전송 (선택사항)
+	        try {
+	            if (req != null && req.getRoomId() != null) {
+	                String errorTopic = "/topic/chat.room." + req.getRoomId();
+	                Map<String, Object> errorMessage = new HashMap<>();
+	                errorMessage.put("type", "ERROR");
+	                errorMessage.put("message", "메시지 전송 중 오류가 발생했습니다: " + e.getMessage());
+	                messagingTemplate.convertAndSend(errorTopic, errorMessage);
+	                log.info("[sendMessage] 에러 메시지 브로드캐스트 완료 - topic: {}", errorTopic);
+	            }
+	        } catch (Exception broadcastError) {
+	            log.error("[sendMessage] 에러 메시지 브로드캐스트 실패: {}", broadcastError.getMessage());
+	        }
+	    }
 	    // 보통 REST ResponseEntity를 반환하지 않고 void로 처리 (비동기 WebSocket용)
 	    // 필요하다면 별도의 Error 메시지를 특정 유저에게만 전송하도록 커스텀도 가능
 	}
@@ -287,7 +405,8 @@ public class ChatMessageController {
 	    			if (dto != null && chat.getSender() != null && chat.getSender().getId() != null) {
 	    			    // ⭐ senderEmail 명시적으로 설정 (lazy loading 문제 해결)
 	    			    // fromEntity에서 chat.getSender().getEmail()이 null일 수 있으므로 userRepository로 명시적으로 조회
-	    			    User senderUser = userRepository.findById(chat.getSender().getId()).orElse(null);
+	    			    // ⭐ LazyInitializationException 방지: Department를 함께 로드하는 메서드 사용
+	    			    User senderUser = userRepository.findByIdWithDepartment(chat.getSender().getId()).orElse(null);
 	    			    if (senderUser != null && senderUser.getEmail() != null) {
 	    			        dto.setSenderEmail(senderUser.getEmail());
 	    			        log.debug("[getMyChatMessages] senderEmail 설정 - userId: {}, email: {}", 
@@ -307,6 +426,16 @@ public class ChatMessageController {
 	    			    } else {
 	    			        // 프로필 이미지가 없으면 빈 문자열 설정 (프론트엔드에서 기본 이니셜 표시)
 	    			        dto.setSenderProfileImageUrl("");
+	    			    }
+	    			    
+	    			    // ⭐ 직급 설정
+	    			    dto.setSenderJobGrade(senderUser.getJobGrade());
+	    			    
+	    			    // ⭐ 부서명 설정
+	    			    if (senderUser.getDepartment() != null) {
+	    			        dto.setSenderDeptName(senderUser.getDepartment().getDeptName());
+	    			    } else {
+	    			        dto.setSenderDeptName("");
 	    			    }
 	    			}
 	    			
@@ -341,7 +470,9 @@ public class ChatMessageController {
 	            throw new ChatNotFoundException("roomId: " + roomId + " 채팅방이 없습니다.");
 	        }
 
-	        chatRoomService.updateUnreadCountForMessages(roomId);
+	        // ⭐ updateUnreadCountForMessages 호출 제거
+	        // 메시지 조회 시 접속 중인 사용자의 모든 메시지를 읽음 처리하면 안 됨
+	        // unreadCount는 각 메시지별로 DB에서 직접 조회하여 사용
 
 	        // 페이징 처리
 	        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
@@ -361,7 +492,8 @@ public class ChatMessageController {
 	            // 프로필 이미지 URL 설정 (user_profile_image_key 사용)
 	            // sender를 명시적으로 조회하여 profileImageKey 가져오기
 	            if (dto != null && chat.getSender() != null && chat.getSender().getId() != null) {
-	                User senderUser = userRepository.findById(chat.getSender().getId()).orElse(null);
+	                // ⭐ LazyInitializationException 방지: Department를 함께 로드하는 메서드 사용
+	                User senderUser = userRepository.findByIdWithDepartment(chat.getSender().getId()).orElse(null);
 	                if (senderUser != null) {
 	                    // ⭐ senderEmail 명시적으로 설정 (lazy loading 문제 해결)
 	                    // fromEntity에서 chat.getSender().getEmail()이 null일 수 있으므로 senderUser.getEmail() 직접 설정
@@ -377,6 +509,16 @@ public class ChatMessageController {
 	                    } else {
 	                        // 프로필 이미지가 없으면 빈 문자열 설정 (프론트엔드에서 기본 이니셜 표시)
 	                        dto.setSenderProfileImageUrl("");
+	                    }
+	                    
+	                    // ⭐ 직급 설정
+	                    dto.setSenderJobGrade(senderUser.getJobGrade());
+	                    
+	                    // ⭐ 부서명 설정
+	                    if (senderUser.getDepartment() != null) {
+	                        dto.setSenderDeptName(senderUser.getDepartment().getDeptName());
+	                    } else {
+	                        dto.setSenderDeptName("");
 	                    }
 	                }
 	            }
@@ -420,19 +562,19 @@ public class ChatMessageController {
 	@PostMapping("/{roomId}/messages/reply")
 	public ResponseEntity<ResponseDTO<ChatResponseDTO>> replyToMessage(@PathVariable("roomId") Integer roomId, @AuthenticationPrincipal CustomUserDetails user, @RequestBody ReplyMessageRequestDTO req) {
 		String email = user.getEmail();
-	  User sender = userRepository.findByEmail(email).orElseThrow();
+	  // ⭐ LazyInitializationException 방지: Department를 함께 로드하는 메서드 사용
+	  User sender = userRepository.findByEmailWithDepartment(email).orElseThrow();
 		Chat replyChat = chatRoomService.sendChatMessage(roomId, sender.getId(), req.getReplyContent());
 		if (replyChat == null) {
 			ChatResponseDTO.fromEntity(replyChat);
 		}
 		
-		// 답신 메시지 저장 후 미읽은 인원 수 DB 업데이트
-		chatRoomService.updateUnreadCountForMessages(roomId);
-		
+		// ⭐ unreadCount는 sendChatMessage에서 실시간 접속자 수를 기반으로 계산되어 Chat 엔티티에 설정됨
+		// 공식: unreadCount = (참여자 전체 - 발신자 - 접속중인 다른 사용자)
 		ChatResponseDTO dto = ChatResponseDTO.fromEntity(replyChat);
 		
-		// ⭐ unreadCount를 실시간으로 계산하여 설정 (DB 저장값이 아닌 실제 읽지 않은 사람 수)
-		int realUnreadCount = chatMessageReadStatusRepository.countUnreadByChatId(replyChat.getId());
+		// ⭐ sendChatMessage에서 계산된 unreadCount 사용
+		int realUnreadCount = replyChat.getUnreadCount() != null ? replyChat.getUnreadCount() : 0;
 		dto.setUnreadCount(realUnreadCount);
 		
 		// ⭐ senderEmail 명시적으로 설정 (lazy loading 문제 해결)
@@ -450,6 +592,16 @@ public class ChatMessageController {
 		        // 프로필 이미지가 없으면 빈 문자열 설정 (프론트엔드에서 기본 이니셜 표시)
 		        dto.setSenderProfileImageUrl("");
 		    }
+		    
+		    // ⭐ 직급 설정
+		    dto.setSenderJobGrade(sender.getJobGrade());
+		    
+		    // ⭐ 부서명 설정
+		    if (sender.getDepartment() != null) {
+		        dto.setSenderDeptName(sender.getDepartment().getDeptName());
+		    } else {
+		        dto.setSenderDeptName("");
+		    }
 		}
 		return ResponseEntity.status(HttpStatus.CREATED).body(ResponseDTO.success(dto, "답신 메시지 저장 성공"));		
 	}
@@ -463,7 +615,8 @@ public class ChatMessageController {
 	@PostMapping("/{roomId}/messages/file")
 	public ResponseEntity<ResponseDTO<ChatResponseDTO>> uploadFileMessage(@PathVariable("roomId") Integer roomId, @AuthenticationPrincipal CustomUserDetails user, @RequestParam("file") MultipartFile uploadFile) throws java.io.IOException {
 		String email = user.getEmail();
-	  User sender = userRepository.findByEmail(email).orElseThrow();
+	  // ⭐ LazyInitializationException 방지: Department를 함께 로드하는 메서드 사용
+	  User sender = userRepository.findByEmailWithDepartment(email).orElseThrow();
 		String s3Key;
 		String fileUrl;
 		
@@ -490,14 +643,13 @@ public class ChatMessageController {
 					.body(ResponseDTO.internalError("파일 메시지 저장 실패"));
 		}
 		
-		// 메시지 저장 후 미읽은 인원 수 DB 업데이트
-		chatRoomService.updateUnreadCountForMessages(roomId);
-				
+		// ⭐ unreadCount는 sendChatMessage에서 실시간 접속자 수를 기반으로 계산되어 Chat 엔티티에 설정됨
+		// 공식: unreadCount = (참여자 전체 - 발신자 - 접속중인 다른 사용자)
 		messageFileRepository.save(fileEntity);
 		ChatResponseDTO dto = ChatResponseDTO.fromEntity(chat);
 		
-		// ⭐ unreadCount를 실시간으로 계산하여 설정 (DB 저장값이 아닌 실제 읽지 않은 사람 수)
-		int realUnreadCount = chatMessageReadStatusRepository.countUnreadByChatId(chat.getId());
+		// ⭐ sendChatMessage에서 계산된 unreadCount 사용
+		int realUnreadCount = chat.getUnreadCount() != null ? chat.getUnreadCount() : 0;
 		dto.setUnreadCount(realUnreadCount);
 		
 		// ⭐ senderEmail 명시적으로 설정 (lazy loading 문제 해결)
@@ -517,6 +669,16 @@ public class ChatMessageController {
 		    } else {
 		        // 프로필 이미지가 없으면 빈 문자열 설정 (프론트엔드에서 기본 이니셜 표시)
 		        dto.setSenderProfileImageUrl("");
+		    }
+		    
+		    // ⭐ 직급 설정
+		    dto.setSenderJobGrade(sender.getJobGrade());
+		    
+		    // ⭐ 부서명 설정
+		    if (sender.getDepartment() != null) {
+		        dto.setSenderDeptName(sender.getDepartment().getDeptName());
+		    } else {
+		        dto.setSenderDeptName("");
 		    }
 		}
 		return ResponseEntity.status(HttpStatus.CREATED).body(ResponseDTO.success(dto, "파일/이미지 업로드 성공"));
@@ -637,13 +799,15 @@ public class ChatMessageController {
             @RequestBody SendMessageRequestDTO req
     ) {
         String email = user.getEmail();
-        User sender = userRepository.findByEmail(email).orElseThrow();
+        // ⭐ LazyInitializationException 방지: Department를 함께 로드하는 메서드 사용
+        User sender = userRepository.findByEmailWithDepartment(email).orElseThrow();
         Chat chat = chatRoomService.sendChatMessage(roomId, sender.getId(), req.getContent());
         // 서비스 내에서 알림 발송도 처리
         ChatResponseDTO dto = ChatResponseDTO.fromEntity(chat);
         
-        // ⭐ unreadCount를 실시간으로 계산하여 설정 (DB 저장값이 아닌 실제 읽지 않은 사람 수)
-        int realUnreadCount = chatMessageReadStatusRepository.countUnreadByChatId(chat.getId());
+        // ⭐ unreadCount는 sendChatMessage에서 실시간 접속자 수를 기반으로 계산되어 Chat 엔티티에 설정됨
+        // 공식: unreadCount = (참여자 전체 - 발신자 - 접속중인 다른 사용자)
+        int realUnreadCount = chat.getUnreadCount() != null ? chat.getUnreadCount() : 0;
         dto.setUnreadCount(realUnreadCount);
         
         // ⭐ senderEmail 명시적으로 설정 (lazy loading 문제 해결)
@@ -665,6 +829,16 @@ public class ChatMessageController {
                 log.warn("[sendChatMessageAndNotify] 프로필 이미지 없음 - userId: {}, email: {}, profileImageKey가 null 또는 빈 문자열", 
                         sender.getId(), sender.getEmail());
                 dto.setSenderProfileImageUrl("");
+            }
+            
+            // ⭐ 직급 설정
+            dto.setSenderJobGrade(sender.getJobGrade());
+            
+            // ⭐ 부서명 설정
+            if (sender.getDepartment() != null) {
+                dto.setSenderDeptName(sender.getDepartment().getDeptName());
+            } else {
+                dto.setSenderDeptName("");
             }
         }
         return ResponseEntity.status(HttpStatus.CREATED).body(ResponseDTO.success(dto, "메시지 전송 및 알림 발송 성공"));
@@ -764,7 +938,8 @@ public class ChatMessageController {
         		    // ⭐ senderEmail 명시적으로 설정 (lazy loading 문제 해결)
         		    if (dto != null && status.getChat() != null && status.getChat().getSender() != null 
         		        && status.getChat().getSender().getId() != null) {
-        		        User senderUser = userRepository.findById(status.getChat().getSender().getId()).orElse(null);
+        		        // ⭐ LazyInitializationException 방지: Department를 함께 로드하는 메서드 사용
+        		        User senderUser = userRepository.findByIdWithDepartment(status.getChat().getSender().getId()).orElse(null);
         		        if (senderUser != null && senderUser.getEmail() != null) {
         		            dto.setSenderEmail(senderUser.getEmail());
         		            log.debug("[getUnreadChatMessages] senderEmail 설정 - userId: {}, email: {}", 
