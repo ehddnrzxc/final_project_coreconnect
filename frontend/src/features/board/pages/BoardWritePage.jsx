@@ -189,6 +189,11 @@ const BoardWritePage = () => {
       return;
     }
 
+    if (!form.title.trim()) {
+      showSnack("제목을 입력해주세요.", "error");
+      return;
+    }
+
     try {
       // 수정 모드
       if (boardId) {

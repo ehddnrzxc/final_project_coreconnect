@@ -577,7 +577,12 @@ const BoardDetailPage = () => {
                         {r.writerName || "익명"}
                         {r.writerJobGrade ? ` ${r.writerJobGrade}` : ""}
                         <Typography component="span" variant="caption" sx={{ color: "text.secondary" }}>
-                          ({formatDateTime(r.createdAt)})
+                          (
+                          {r.updatedAt
+                            ? `${formatDateTime(r.updatedAt)} · 수정됨`
+                            : formatDateTime(r.createdAt)              
+                          }
+                          )
                         </Typography>
                       </Typography>
                     </Stack>
@@ -750,7 +755,12 @@ const BoardDetailPage = () => {
                           ↳ {child.writerName}
                           {child.writerJobGrade ? ` ${child.writerJobGrade}` : ""}
                           <Typography component="span" variant="caption" sx={{ color: "text.secondary" }}>
-                            ({formatDateTime(child.createdAt)})
+                            (
+                            {child.updatedAt
+                              ? `${formatDateTime(child.updatedAt)} · 수정됨`
+                              : formatDateTime(child.createdAt)
+                            }
+                            )
                           </Typography>
                         </Typography>
                       </Stack>
