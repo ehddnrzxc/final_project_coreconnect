@@ -154,19 +154,28 @@ const BoardWritePage = () => {
 
   // 파일 선택 (append 방식)
   const handleFileSelect = (e) => {
-    const newFiles = Array.from(e.target.files).filter(f => !!f);;
+    const selectedFiles = Array.from(e.target.files);
 
-    // 기존 파일 유지 + 새 파일 append
-    // 새 파일도 기존과 동일한 구조(type/new, name, size, file)로 맞춰줌
-    const wrapped = newFiles.map((file) => ({
-      type: "new", // 신규 파일 표시
-      file, // 실제 File 객체 보관
+    // 파일명 최대 길이 설정
+    const MAX_NAME_LENGTH = 50;
+
+    for (const file of selectedFiles) {
+      if (file.name.length > MAX_NAME_LENGTH) {
+        showSnack(`파일명은 ${MAX_NAME_LENGTH}자를 넘을 수 없습니다.`, "error");
+        return; // 해당 파일 업로드 취소
+      }
+    }
+
+    const newFiles = selectedFiles.map((file) => ({
+      type: "new",
+      file,
       name: file.name,
       size: file.size,
     }));
 
-    setFiles((prev) => [...prev, ...wrapped]);
+    setFiles((prev) => [...prev, ...newFiles]);
   };
+
 
   // 개별 파일 취소
   const removeFile = (idx) => {
