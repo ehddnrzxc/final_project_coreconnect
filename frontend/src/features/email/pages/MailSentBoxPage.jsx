@@ -6,14 +6,11 @@ import {
 import SearchIcon from '@mui/icons-material/Search';
 import ReplyIcon from '@mui/icons-material/Reply';
 import DeleteIcon from '@mui/icons-material/Delete';
-import TagIcon from '@mui/icons-material/LocalOffer';
 import ForwardIcon from '@mui/icons-material/Forward';
 import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
-import MoveToInboxIcon from '@mui/icons-material/MoveToInbox';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import SyncIcon from '@mui/icons-material/Sync';
 import ViewListIcon from '@mui/icons-material/ViewList';
-import DraftsIcon from '@mui/icons-material/Drafts';
 
 import { fetchSentbox, moveToTrash } from '../api/emailApi';
 import { useNavigate } from 'react-router-dom';
@@ -226,16 +223,12 @@ const MailSentBoxPage = () => {
           <ButtonGroup variant="text" sx={{ gap: 1 }}>
             <Button startIcon={<ReplyIcon />}>답장</Button>
             <Button startIcon={<DeleteIcon />} onClick={handleDeleteSelected}>삭제</Button>
-            <Button startIcon={<TagIcon />}>태그</Button>
             <Button startIcon={<ForwardIcon />}>전달</Button>
             <Button startIcon={<MarkEmailReadIcon />}>읽음</Button>
-            <Button startIcon={<MoveToInboxIcon />}>이동</Button>
-            <Button startIcon={<MoreVertIcon />}>이메일옵션</Button>
           </ButtonGroup>
           <Box sx={{ flex: 1 }} />
           <IconButton><ViewListIcon /></IconButton>
           <IconButton onClick={handleRefresh}><SyncIcon /></IconButton>
-          <IconButton><DraftsIcon /></IconButton>
           <Paper 
             sx={{ ml: 1, display: "inline-flex", alignItems: "center", px: 0.5, cursor: 'pointer' }}
             onClick={(e) => setSizeMenuAnchor(e.currentTarget)}
