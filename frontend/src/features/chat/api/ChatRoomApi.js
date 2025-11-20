@@ -45,3 +45,9 @@ export async function createChatRoom(data) {
   // ResponseDTO로 감싸져 있으면 res.data.data, 아니면 res.data
   return res.data; // { id, roomName, roomType, ... } 또는 { data: { id, ... } }
 }
+
+// 채팅방 참여자 목록 조회 API
+export async function fetchChatRoomUsers(roomId) {
+  const res = await http.get(`/chat/${roomId}/users`);
+  return res.data; // ResponseDTO<List<ChatUserResponseDTO>>
+}

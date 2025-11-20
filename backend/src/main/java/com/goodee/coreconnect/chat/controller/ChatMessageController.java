@@ -199,7 +199,39 @@ public class ChatMessageController {
 		List<ChatRoomUser> chatRoomUsers = chatRoomService.getChatRoomUsers(roomId);
 		List<ChatUserResponseDTO> usersDTO = chatRoomUsers.stream()
                 .filter(cru -> cru.getUser() != null)
-                .map(ChatUserResponseDTO::fromEntity)
+                .map(cru -> {
+                    ChatUserResponseDTO dto = ChatUserResponseDTO.fromEntity(cru);
+                    
+                    // ⭐ User를 명시적으로 조회하여 Lazy Loading 문제 해결 및 부서/프로필 이미지 정보 설정
+                    if (dto != null && cru.getUser() != null) {
+                        // User 엔티티를 명시적으로 조회 (department와 profileImageKey 포함)
+                        User user = userRepository.findById(cru.getUser().getId()).orElse(null);
+                        
+                        if (user != null) {
+                            // ⭐ 부서명 설정 (Lazy Loading 문제 해결)
+                            if (user.getDepartment() != null) {
+                                dto.setDeptName(user.getDepartment().getDeptName());
+                            } else {
+                                dto.setDeptName(null);
+                            }
+                            
+                            // ⭐ 프로필 이미지 URL 설정 (user_profile_image_key 사용)
+                            String profileImageKey = user.getProfileImageKey();
+                            if (profileImageKey != null && !profileImageKey.isBlank()) {
+                                // 프로필 이미지가 있으면 S3 URL 생성
+                                String profileImageUrl = s3Service.getFileUrl(profileImageKey);
+                                log.debug("[getChatRoomUsers] 프로필 이미지 URL 생성 - userId: {}, key: {}, url: {}", 
+                                        user.getId(), profileImageKey, profileImageUrl);
+                                dto.setProfileImageUrl(profileImageUrl);
+                            } else {
+                                // 프로필 이미지가 없으면 빈 문자열 설정 (프론트엔드에서 기본 이니셜 표시)
+                                dto.setProfileImageUrl("");
+                            }
+                        }
+                    }
+                    
+                    return dto;
+                })
                 .collect(Collectors.toList());
 		
 		return ResponseEntity.ok(ResponseDTO.success(usersDTO, "채팅방 사용자 조회 성공"));

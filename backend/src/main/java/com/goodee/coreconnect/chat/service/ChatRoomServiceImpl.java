@@ -283,7 +283,8 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 
 	@Override
 	public List<ChatRoomUser> getChatRoomUsers(Integer roomId) {
-		return chatRoomUserRepository.findByChatRoomId(roomId);
+		// ⭐ User와 Department를 함께 조회하여 Lazy Loading 문제 해결
+		return chatRoomUserRepository.findByChatRoomIdWithUser(roomId);
 	}
 
 	@Override
