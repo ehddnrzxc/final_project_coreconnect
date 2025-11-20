@@ -8,9 +8,11 @@ export async function fetchChatRoomsLatest() {
   return res.data;
 }
 
-// 채팅방별 전체 메시지 (roomId 기준)
-export async function fetchChatRoomMessages(roomId) {
-  const res = await http.get(`/chat/${roomId}/messages`);
+// 채팅방별 전체 메시지 (roomId 기준) - 페이징 지원
+export async function fetchChatRoomMessages(roomId, page = 0, size = 20) {
+  const res = await http.get(`/chat/${roomId}/messages`, {
+    params: { page, size }
+  });
   return res.data;
 }
 

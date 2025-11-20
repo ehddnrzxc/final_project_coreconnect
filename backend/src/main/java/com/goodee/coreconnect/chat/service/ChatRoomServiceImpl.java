@@ -587,6 +587,11 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 		
 		return chats;
 	}
+	
+	@Override
+	public org.springframework.data.domain.Page<Chat> getChatsWithFilesByRoomIdPaged(Integer roomId, org.springframework.data.domain.Pageable pageable) {
+		return chatRepository.findChatsWithFilesByRoomIdPaged(roomId, pageable);
+	}
 
 	@Override
 	public boolean existsRoom(Integer roomId) {

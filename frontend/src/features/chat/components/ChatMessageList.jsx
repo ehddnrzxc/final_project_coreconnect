@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import { Box, Typography, Link, Avatar } from "@mui/material";
 
 const isImageFile = (url = "") => {
@@ -31,11 +31,78 @@ const MessageBubble = ({ children, isMine }) => (
   </Box>
 );
 
-function ChatMessageList({ messages, userName, roomType = "group" }) {
+function ChatMessageList({ messages, userName, roomType = "group", onScrollTop, isLoadingMore }) {
+  const scrollContainerRef = useRef(null);
+  const messagesStartRef = useRef(null);
+  const previousMessagesLengthRef = useRef(0);
+  const isScrollingToTopRef = useRef(false);
+  
+  // 스크롤 이벤트 핸들러
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    
+    const handleScroll = () => {
+      // 스크롤이 맨 위에 가까워지면 이전 메시지 로딩
+      if (container.scrollTop < 50 && onScrollTop && !isLoadingMore) {
+        isScrollingToTopRef.current = true;
+        onScrollTop();
+      }
+    };
+    
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [onScrollTop, isLoadingMore]);
+  
+  // 메시지가 추가/변경될 때 스크롤 위치 조정
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || !messages) return;
+    
+    const currentLength = messages.length;
+    const previousLength = previousMessagesLengthRef.current;
+    
+    // 이전 메시지가 앞에 추가된 경우 (무한 스크롤)
+    if (currentLength > previousLength && isScrollingToTopRef.current) {
+      const previousScrollHeight = container.scrollHeight;
+      const previousScrollTop = container.scrollTop;
+      
+      // DOM 업데이트 후 스크롤 위치 복원
+      setTimeout(() => {
+        const newScrollHeight = container.scrollHeight;
+        const heightDifference = newScrollHeight - previousScrollHeight;
+        container.scrollTop = previousScrollTop + heightDifference;
+        isScrollingToTopRef.current = false;
+      }, 50);
+    } 
+    // 새 메시지가 뒤에 추가된 경우 (최신 메시지) 또는 첫 로딩
+    else if (currentLength !== previousLength) {
+      const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+      if (isNearBottom || previousLength === 0) {
+        setTimeout(() => {
+          container.scrollTop = container.scrollHeight;
+        }, 100);
+      }
+    }
+    
+    previousMessagesLengthRef.current = currentLength;
+  }, [messages]);
+  
   // 메시지가 하나도 없는 경우: "아직 메시지가 없습니다" 안내
   if (!messages || messages.length === 0) {
     return (
-      <Box sx={{ mb: 2, minHeight: 320, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <Box 
+        ref={scrollContainerRef}
+        sx={{ 
+          mb: 2, 
+          height: "calc(100vh - 200px)",
+          maxHeight: "600px",
+          overflowY: "auto",
+          display: "flex", 
+          alignItems: "center", 
+          justifyContent: "center" 
+        }}
+      >
         <Typography sx={{ color: "text.disabled", fontSize: 16, textAlign: "center" }}>
           아직 메시지가 없습니다.<br />
           메시지를 입력해 대화를 시작해보세요.
@@ -43,8 +110,25 @@ function ChatMessageList({ messages, userName, roomType = "group" }) {
       </Box>
     );
   }
+  
   return (
-    <Box sx={{ mb: 2, minHeight: 320 }}>
+    <Box 
+      ref={scrollContainerRef}
+      sx={{ 
+        mb: 2, 
+        height: "calc(100vh - 200px)",
+        maxHeight: "600px",
+        overflowY: "auto",
+        px: 2,
+        py: 1
+      }}
+    >
+      {isLoadingMore && (
+        <Box sx={{ textAlign: "center", py: 1 }}>
+          <Typography sx={{ color: "text.secondary", fontSize: 12 }}>이전 메시지 불러오는 중...</Typography>
+        </Box>
+      )}
+      <div ref={messagesStartRef} />
       {messages.map((msg, idx) => {
         const isMine = msg.senderName === userName;
         const displayName = msg.senderName || (isMine ? userName || "나" : "상대방");

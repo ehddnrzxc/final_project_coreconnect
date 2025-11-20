@@ -69,6 +69,12 @@ export default function ChatLayout() {
   const inputRef = useRef(); // 입력창 관리 ref
 
   const [socketConnected, setSocketConnected] = useState(false); // 소켓 연결 상태
+  
+  // 페이징 관련 상태
+  const [currentPage, setCurrentPage] = useState(0); // 현재 페이지 (0부터 시작)
+  const [hasMore, setHasMore] = useState(true); // 더 불러올 메시지가 있는지
+  const [isLoadingMore, setIsLoadingMore] = useState(false); // 이전 메시지 로딩 중인지
+  const [totalPages, setTotalPages] = useState(0); // 전체 페이지 수
 
   // ---------- 읽지 않은 채팅방 개수 계산 ----------
   const unreadRoomCount = Array.isArray(roomList)
@@ -277,20 +283,74 @@ export default function ChatLayout() {
     loadRooms();
   }, []);
 
-  // ---------- 채팅방 선택시 메시지 로딩 ----------
+  // ---------- 채팅방 선택시 메시지 로딩 (최신 메시지부터) ----------
   useEffect(() => {
     async function loadMessages() {
       if (selectedRoomId) {
-        const res = await fetchChatRoomMessages(selectedRoomId);
-        if (res && Array.isArray(res.data)) {
-          setMessages(res.data);
+        // 채팅방이 변경되면 페이징 상태 초기화
+        setCurrentPage(0);
+        setHasMore(true);
+        setIsLoadingMore(false);
+        
+        const res = await fetchChatRoomMessages(selectedRoomId, 0, 20);
+        if (res && res.data) {
+          // ResponseDTO 구조: { status, message, data: Page<ChatMessageResponseDTO> }
+          const pageData = res.data.data || res.data; // res.data.data가 Page 객체
+          if (pageData && Array.isArray(pageData.content)) {
+            // 최신 메시지부터 내림차순으로 받아오므로 역순으로 정렬하여 오름차순으로 표시
+            const sortedMessages = [...pageData.content].reverse();
+            setMessages(sortedMessages);
+            setTotalPages(pageData.totalPages || 0);
+            setHasMore(!pageData.last); // last가 false면 더 있음
+            setCurrentPage(0);
+          } else if (Array.isArray(pageData)) {
+            // 기존 형식 (배열) 지원
+            setMessages(pageData);
+            setHasMore(false);
+          } else {
+            setMessages([]);
+            setHasMore(false);
+          }
         } else {
           setMessages([]);
+          setHasMore(false);
         }
+      } else {
+        setMessages([]);
+        setHasMore(false);
       }
     }
     loadMessages();
   }, [selectedRoomId]);
+  
+  // ---------- 이전 메시지 로딩 (무한 스크롤) ----------
+  const handleLoadMoreMessages = async () => {
+    if (!selectedRoomId || isLoadingMore || !hasMore) return;
+    
+    setIsLoadingMore(true);
+    try {
+      const nextPage = currentPage + 1;
+      const res = await fetchChatRoomMessages(selectedRoomId, nextPage, 20);
+      
+      if (res && res.data) {
+        // ResponseDTO 구조: { status, message, data: Page<ChatMessageResponseDTO> }
+        const pageData = res.data.data || res.data; // res.data.data가 Page 객체
+        if (pageData && Array.isArray(pageData.content)) {
+          // 이전 메시지를 앞에 추가 (오름차순 유지)
+          // pageData.content는 내림차순이므로 역순으로 정렬
+          const newMessages = [...pageData.content].reverse();
+          setMessages(prev => [...newMessages, ...prev]);
+          setTotalPages(pageData.totalPages || 0);
+          setHasMore(!pageData.last);
+          setCurrentPage(nextPage);
+        }
+      }
+    } catch (error) {
+      console.error("이전 메시지 로딩 실패:", error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
 
   // ---------- STOMP 기반 채팅방 소켓 연결관리 ----------
   useEffect(() => {
@@ -356,6 +416,8 @@ export default function ChatLayout() {
             onSend={handleSend}
             onFileUpload={handleFileUpload}
             socketConnected={socketConnected}
+            onScrollTop={handleLoadMoreMessages}
+            isLoadingMore={isLoadingMore}
           />
         </Box>
       </Box>

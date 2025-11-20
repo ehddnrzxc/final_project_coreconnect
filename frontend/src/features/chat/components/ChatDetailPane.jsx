@@ -11,7 +11,8 @@ import ChatMessageInputBox from "./ChatMessageInputBox";
 function ChatDetailPane({
   selectedRoom, messages, userName,
   unreadCount, firstUnreadIdx, formatTime,
-  inputRef, onSend, onFileUpload, socketConnected
+  inputRef, onSend, onFileUpload, socketConnected,
+  onScrollTop, isLoadingMore
 }) {
   const messagesEndRef = useRef(null);
 
@@ -60,9 +61,12 @@ function ChatDetailPane({
       <ChatMessageList
         messages={messages}
         userName={userName}
+        roomType={selectedRoom.roomType || "group"}
         unreadCount={unreadCount}
         firstUnreadIdx={firstUnreadIdx}
         formatTime={formatTime}
+        onScrollTop={onScrollTop}
+        isLoadingMore={isLoadingMore}
       />
       <div ref={messagesEndRef} />
       <ChatMessageInputBox

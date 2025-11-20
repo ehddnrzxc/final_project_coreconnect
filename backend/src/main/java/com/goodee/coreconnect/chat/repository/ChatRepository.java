@@ -2,6 +2,8 @@ package com.goodee.coreconnect.chat.repository;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -54,6 +56,13 @@ public interface ChatRepository extends JpaRepository<Chat, Integer> {
     		"WHERE c.chatRoom.id = :roomId " + 
     	   "ORDER BY c.sendAt ASC")
     List<Chat> findAllChatsWithFilesByRoomId(@Param("roomId") Integer roomId);
+    
+    // 8-1. 채팅방에서 메시지를 페이징으로 불러올때 파일이 있는 경우 파일들도 함께 조회 (최신 메시지부터)
+    @Query("SELECT DISTINCT c FROM Chat c " + 
+    	   "LEFT JOIN FETCH c.messageFiles " + 
+    		"WHERE c.chatRoom.id = :roomId " + 
+    	   "ORDER BY c.sendAt DESC")
+    Page<Chat> findChatsWithFilesByRoomIdPaged(@Param("roomId") Integer roomId, Pageable pageable);
     
 
     /** 

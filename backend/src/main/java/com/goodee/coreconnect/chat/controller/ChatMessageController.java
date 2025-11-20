@@ -214,12 +214,14 @@ public class ChatMessageController {
 	
 	
 	/**
-	 * 5. 내가 접속한 채팅방에 모든 메시지 날짜 오름차순 조회
+	 * 5. 내가 접속한 채팅방에 모든 메시지 날짜 오름차순 조회 (페이징 지원)
 	 * 
 	 * */
 	@GetMapping("/{roomId}/messages")
-	public ResponseEntity<ResponseDTO<List<ChatMessageResponseDTO>>> getChatRoomMessagesByChatRoomId(
+	public ResponseEntity<ResponseDTO<org.springframework.data.domain.Page<ChatMessageResponseDTO>>> getChatRoomMessagesByChatRoomId(
 	    @PathVariable("roomId") Integer roomId,
+	    @RequestParam(value = "page", defaultValue = "0") int page,
+	    @RequestParam(value = "size", defaultValue = "20") int size,
 	    @AuthenticationPrincipal CustomUserDetails customUserDetails) {
 	    System.out.println("여기 들어옴=============================");
 	    try {
@@ -235,26 +237,21 @@ public class ChatMessageController {
 
 	        chatRoomService.updateUnreadCountForMessages(roomId);
 
-	        List<Chat> messages = chatRoomService.getChatsWithFilesByRoomId(roomId);
+	        // 페이징 처리
+	        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+	        org.springframework.data.domain.Page<Chat> chatPage = chatRoomService.getChatsWithFilesByRoomIdPaged(roomId, pageable);
 
-	        List<ChatMessageResponseDTO> dtoMessages;
-	        if (messages == null || messages.isEmpty()) {
-	            dtoMessages = Collections.emptyList(); // 메시지 없으면 200 OK + 빈 배열
-	        } else {
-	            dtoMessages = messages.stream()
-	                .map(chat -> {
-	                    Optional<ChatMessageReadStatus> readStatusOpt =
-	                        chatMessageReadStatusRepository.findByChatIdAndUserId(chat.getId(), userId);
-	                    boolean readYn = readStatusOpt.map(ChatMessageReadStatus::getReadYn).orElse(false);
-	                    return ChatMessageResponseDTO.fromEntity(chat, readYn);
-	                })
-	                .collect(Collectors.toList());
-	        }
+	        // DTO 변환
+	        org.springframework.data.domain.Page<ChatMessageResponseDTO> dtoPage = chatPage.map(chat -> {
+	            Optional<ChatMessageReadStatus> readStatusOpt =
+	                chatMessageReadStatusRepository.findByChatIdAndUserId(chat.getId(), userId);
+	            boolean readYn = readStatusOpt.map(ChatMessageReadStatus::getReadYn).orElse(false);
+	            return ChatMessageResponseDTO.fromEntity(chat, readYn);
+	        });
 
-	        System.out.println("messages: " + messages);
-	        System.out.println("dtoMessages: " + dtoMessages);
+	        System.out.println("messages page: " + chatPage.getNumber() + ", total: " + chatPage.getTotalElements());
 
-	        return ResponseEntity.ok(ResponseDTO.success(dtoMessages, "채팅방 메시지 오름차순 조회 성공"));
+	        return ResponseEntity.ok(ResponseDTO.success(dtoPage, "채팅방 메시지 페이징 조회 성공"));
 	    } catch (Exception e) {
 	        e.printStackTrace();  // 실제 서버 콘솔에서 이 라인으로 에러 내용 확인
 	        throw e; // 예외를 다시 던짐(원래 응답 흐름 보존)
