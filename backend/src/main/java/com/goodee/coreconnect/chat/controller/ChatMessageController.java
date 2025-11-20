@@ -161,13 +161,28 @@ public class ChatMessageController {
 	    // fromEntity에서 chat.getSender().getEmail()이 null일 수 있으므로 authUser.getEmail() 직접 설정
 	    responseDto.setSenderEmail(authUser.getEmail());
 	    
-	    // 프로필 이미지 URL 설정 (user_profile_image_key 사용)
+	    // ⭐ 프로필 이미지 URL 설정 (user_profile_image_key 사용)
 	    // sender를 다시 조회하여 profileImageKey 가져오기
+	    // 프로필 이미지가 없어도 항상 senderProfileImageUrl 필드를 설정 (null이 아닌 빈 문자열 또는 URL)
 	    User senderUser = userRepository.findById(authUser.getId()).orElse(null);
-	    if (senderUser != null && senderUser.getProfileImageKey() != null 
-	        && !senderUser.getProfileImageKey().isBlank()) {
-	        String profileImageUrl = s3Service.getFileUrl(senderUser.getProfileImageKey());
-	        responseDto.setSenderProfileImageUrl(profileImageUrl);
+	    if (senderUser != null) {
+	        String profileImageKey = senderUser.getProfileImageKey();
+	        log.debug("[sendMessage] 프로필 이미지 설정 - userId: {}, email: {}, profileImageKey: {}", 
+	                senderUser.getId(), senderUser.getEmail(), profileImageKey);
+	        
+	        if (profileImageKey != null && !profileImageKey.isBlank()) {
+	            // 프로필 이미지가 있으면 S3 URL 생성
+	            String profileImageUrl = s3Service.getFileUrl(profileImageKey);
+	            log.info("[sendMessage] 프로필 이미지 URL 생성 성공 - key: {}, url: {}", profileImageKey, profileImageUrl);
+	            responseDto.setSenderProfileImageUrl(profileImageUrl);
+	        } else {
+	            // 프로필 이미지가 없으면 빈 문자열 설정 (프론트엔드에서 기본 이니셜 표시)
+	            log.warn("[sendMessage] 프로필 이미지 없음 - userId: {}, email: {}, profileImageKey가 null 또는 빈 문자열", 
+	                    senderUser.getId(), senderUser.getEmail());
+	            responseDto.setSenderProfileImageUrl("");
+	        }
+	    } else {
+	        log.error("[sendMessage] senderUser를 찾을 수 없음 - userId: {}", authUser.getId());
 	    }
 	    messagingTemplate.convertAndSend("/topic/chat.room." + req.getRoomId(), responseDto);
 	    // 보통 REST ResponseEntity를 반환하지 않고 void로 처리 (비동기 WebSocket용)
@@ -221,17 +236,29 @@ public class ChatMessageController {
 	    			ChatMessageResponseDTO dto = ChatMessageResponseDTO.fromEntity(chat, readYn);
 	    			
 	    			// 프로필 이미지 URL 설정 (user_profile_image_key 사용)
-	    			if (dto != null && chat.getSender() != null) {
+	    			if (dto != null && chat.getSender() != null && chat.getSender().getId() != null) {
 	    			    // ⭐ senderEmail 명시적으로 설정 (lazy loading 문제 해결)
-	    			    // fromEntity에서 chat.getSender().getEmail()이 null일 수 있으므로 명시적으로 설정
-	    			    if (chat.getSender().getEmail() != null) {
-	    			        dto.setSenderEmail(chat.getSender().getEmail());
+	    			    // fromEntity에서 chat.getSender().getEmail()이 null일 수 있으므로 userRepository로 명시적으로 조회
+	    			    User senderUser = userRepository.findById(chat.getSender().getId()).orElse(null);
+	    			    if (senderUser != null && senderUser.getEmail() != null) {
+	    			        dto.setSenderEmail(senderUser.getEmail());
+	    			        log.debug("[getMyChatMessages] senderEmail 설정 - userId: {}, email: {}", 
+	    			                senderUser.getId(), senderUser.getEmail());
+	    			    } else {
+	    			        log.warn("[getMyChatMessages] senderEmail 설정 실패 - chat.getSender().getId(): {}, senderUser가 null이거나 email이 null", 
+	    			                chat.getSender().getId());
 	    			    }
 	    			    
-	    			    if (chat.getSender().getProfileImageKey() != null 
-	    			        && !chat.getSender().getProfileImageKey().isBlank()) {
-	    			        String profileImageUrl = s3Service.getFileUrl(chat.getSender().getProfileImageKey());
+	    			    // ⭐ 프로필 이미지 URL 설정 (user_profile_image_key 사용)
+	    			    // 프로필 이미지가 없어도 항상 senderProfileImageUrl 필드를 설정 (null이 아닌 빈 문자열 또는 URL)
+	    			    String profileImageKey = senderUser.getProfileImageKey();
+	    			    if (profileImageKey != null && !profileImageKey.isBlank()) {
+	    			        // 프로필 이미지가 있으면 S3 URL 생성
+	    			        String profileImageUrl = s3Service.getFileUrl(profileImageKey);
 	    			        dto.setSenderProfileImageUrl(profileImageUrl);
+	    			    } else {
+	    			        // 프로필 이미지가 없으면 빈 문자열 설정 (프론트엔드에서 기본 이니셜 표시)
+	    			        dto.setSenderProfileImageUrl("");
 	    			    }
 	    			}
 	    			
@@ -288,10 +315,16 @@ public class ChatMessageController {
 	                    // fromEntity에서 chat.getSender().getEmail()이 null일 수 있으므로 senderUser.getEmail() 직접 설정
 	                    dto.setSenderEmail(senderUser.getEmail());
 	                    
+	                    // ⭐ 프로필 이미지 URL 설정 (user_profile_image_key 사용)
+	                    // 프로필 이미지가 없어도 항상 senderProfileImageUrl 필드를 설정 (null이 아닌 빈 문자열 또는 URL)
 	                    if (senderUser.getProfileImageKey() != null 
 	                        && !senderUser.getProfileImageKey().isBlank()) {
+	                        // 프로필 이미지가 있으면 S3 URL 생성
 	                        String profileImageUrl = s3Service.getFileUrl(senderUser.getProfileImageKey());
 	                        dto.setSenderProfileImageUrl(profileImageUrl);
+	                    } else {
+	                        // 프로필 이미지가 없으면 빈 문자열 설정 (프론트엔드에서 기본 이니셜 표시)
+	                        dto.setSenderProfileImageUrl("");
 	                    }
 	                }
 	            }
@@ -350,11 +383,17 @@ public class ChatMessageController {
 		// fromEntity에서 chat.getSender().getEmail()이 null일 수 있으므로 sender.getEmail() 직접 설정
 		dto.setSenderEmail(sender.getEmail());
 		
-		// 프로필 이미지 URL 설정 (user_profile_image_key 사용)
-		if (sender != null && sender.getProfileImageKey() != null 
-		    && !sender.getProfileImageKey().isBlank()) {
-		    String profileImageUrl = s3Service.getFileUrl(sender.getProfileImageKey());
-		    dto.setSenderProfileImageUrl(profileImageUrl);
+		// ⭐ 프로필 이미지 URL 설정 (user_profile_image_key 사용)
+		// 프로필 이미지가 없어도 항상 senderProfileImageUrl 필드를 설정 (null이 아닌 빈 문자열 또는 URL)
+		if (sender != null) {
+		    if (sender.getProfileImageKey() != null && !sender.getProfileImageKey().isBlank()) {
+		        // 프로필 이미지가 있으면 S3 URL 생성
+		        String profileImageUrl = s3Service.getFileUrl(sender.getProfileImageKey());
+		        dto.setSenderProfileImageUrl(profileImageUrl);
+		    } else {
+		        // 프로필 이미지가 없으면 빈 문자열 설정 (프론트엔드에서 기본 이니셜 표시)
+		        dto.setSenderProfileImageUrl("");
+		    }
 		}
 		return ResponseEntity.status(HttpStatus.CREATED).body(ResponseDTO.success(dto, "답신 메시지 저장 성공"));		
 	}
@@ -407,11 +446,18 @@ public class ChatMessageController {
 		
 		// fileUrl도 DTO에 포함
 		dto.setFileUrl(fileUrl);
-		// 프로필 이미지 URL 설정 (user_profile_image_key 사용)
-		if (sender != null && sender.getProfileImageKey() != null 
-		    && !sender.getProfileImageKey().isBlank()) {
-		    String profileImageUrl = s3Service.getFileUrl(sender.getProfileImageKey());
-		    dto.setSenderProfileImageUrl(profileImageUrl);
+		
+		// ⭐ 프로필 이미지 URL 설정 (user_profile_image_key 사용)
+		// 프로필 이미지가 없어도 항상 senderProfileImageUrl 필드를 설정 (null이 아닌 빈 문자열 또는 URL)
+		if (sender != null) {
+		    if (sender.getProfileImageKey() != null && !sender.getProfileImageKey().isBlank()) {
+		        // 프로필 이미지가 있으면 S3 URL 생성
+		        String profileImageUrl = s3Service.getFileUrl(sender.getProfileImageKey());
+		        dto.setSenderProfileImageUrl(profileImageUrl);
+		    } else {
+		        // 프로필 이미지가 없으면 빈 문자열 설정 (프론트엔드에서 기본 이니셜 표시)
+		        dto.setSenderProfileImageUrl("");
+		    }
 		}
 		return ResponseEntity.status(HttpStatus.CREATED).body(ResponseDTO.success(dto, "파일/이미지 업로드 성공"));
 	}
@@ -540,11 +586,22 @@ public class ChatMessageController {
         // fromEntity에서 chat.getSender().getEmail()이 null일 수 있으므로 sender.getEmail() 직접 설정
         dto.setSenderEmail(sender.getEmail());
         
-        // 프로필 이미지 URL 설정 (user_profile_image_key 사용)
-        if (sender != null && sender.getProfileImageKey() != null 
-            && !sender.getProfileImageKey().isBlank()) {
-            String profileImageUrl = s3Service.getFileUrl(sender.getProfileImageKey());
-            dto.setSenderProfileImageUrl(profileImageUrl);
+        // ⭐ 프로필 이미지 URL 설정 (user_profile_image_key 사용)
+        // 프로필 이미지가 없어도 항상 senderProfileImageUrl 필드를 설정 (null이 아닌 빈 문자열 또는 URL)
+        if (sender != null) {
+            String profileImageKey = sender.getProfileImageKey();
+            if (profileImageKey != null && !profileImageKey.isBlank()) {
+                // 프로필 이미지가 있으면 S3 URL 생성
+                String profileImageUrl = s3Service.getFileUrl(profileImageKey);
+                log.info("[sendChatMessageAndNotify] 프로필 이미지 URL 생성 성공 - userId: {}, key: {}, url: {}", 
+                        sender.getId(), profileImageKey, profileImageUrl);
+                dto.setSenderProfileImageUrl(profileImageUrl);
+            } else {
+                // 프로필 이미지가 없으면 빈 문자열 설정 (프론트엔드에서 기본 이니셜 표시)
+                log.warn("[sendChatMessageAndNotify] 프로필 이미지 없음 - userId: {}, email: {}, profileImageKey가 null 또는 빈 문자열", 
+                        sender.getId(), sender.getEmail());
+                dto.setSenderProfileImageUrl("");
+            }
         }
         return ResponseEntity.status(HttpStatus.CREATED).body(ResponseDTO.success(dto, "메시지 전송 및 알림 발송 성공"));
     }
@@ -637,7 +694,31 @@ public class ChatMessageController {
 
         List<ChatMessageResponseDTO> unreadMessages = unreadStatuses.stream()
         		// 각 ChatMessageReadStatus에 대해 메시지 객체와 내 읽음 여부 getReadYn()를 함께 전달
-        		.map(status -> ChatMessageResponseDTO.fromEntity(status.getChat(), status.getReadYn()))
+        		.map(status -> {
+        		    ChatMessageResponseDTO dto = ChatMessageResponseDTO.fromEntity(status.getChat(), status.getReadYn());
+        		    
+        		    // ⭐ senderEmail 명시적으로 설정 (lazy loading 문제 해결)
+        		    if (dto != null && status.getChat() != null && status.getChat().getSender() != null 
+        		        && status.getChat().getSender().getId() != null) {
+        		        User senderUser = userRepository.findById(status.getChat().getSender().getId()).orElse(null);
+        		        if (senderUser != null && senderUser.getEmail() != null) {
+        		            dto.setSenderEmail(senderUser.getEmail());
+        		            log.debug("[getUnreadChatMessages] senderEmail 설정 - userId: {}, email: {}", 
+        		                    senderUser.getId(), senderUser.getEmail());
+        		        }
+        		        
+        		        // ⭐ 프로필 이미지 URL 설정
+        		        String profileImageKey = senderUser.getProfileImageKey();
+        		        if (profileImageKey != null && !profileImageKey.isBlank()) {
+        		            String profileImageUrl = s3Service.getFileUrl(profileImageKey);
+        		            dto.setSenderProfileImageUrl(profileImageUrl);
+        		        } else {
+        		            dto.setSenderProfileImageUrl("");
+        		        }
+        		    }
+        		    
+        		    return dto;
+        		})
         		.collect(Collectors.toList());
 
         // 최종 응답 구성 (프론트에 roomsWithUnread를 활용)

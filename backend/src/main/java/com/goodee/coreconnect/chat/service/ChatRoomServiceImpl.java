@@ -560,7 +560,22 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         chatRepository.save(chat);
 
         // 반드시 fromEntity를 통해 String sendAt을 넣어준다!
-        return ChatResponseDTO.fromEntity(chat);
+        ChatResponseDTO dto = ChatResponseDTO.fromEntity(chat);
+        
+        // ⭐ senderEmail 명시적으로 설정 (lazy loading 문제 해결)
+        // fromEntity에서 chat.getSender().getEmail()이 null일 수 있으므로 명시적으로 설정
+        // senderId로 User를 조회하여 email 가져오기
+        if (dto != null && senderId != null) {
+            User sender = userRepository.findById(senderId).orElse(null);
+            if (sender != null && sender.getEmail() != null) {
+                dto.setSenderEmail(sender.getEmail());
+                log.debug("[saveChatAndReturnDTO] senderEmail 설정 - userId: {}, email: {}", senderId, sender.getEmail());
+            } else {
+                log.warn("[saveChatAndReturnDTO] senderEmail 설정 실패 - userId: {}, sender가 null이거나 email이 null", senderId);
+            }
+        }
+        
+        return dto;
     }
 
 	@Transactional

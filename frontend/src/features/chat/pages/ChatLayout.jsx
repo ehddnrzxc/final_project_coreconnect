@@ -183,6 +183,15 @@ export default function ChatLayout() {
 
     if (!foundRoom) return;
     if (roomIdNum === Number(selectedRoomId)) {
+      // ⭐ 디버깅: 실시간 메시지 수신 시 프로필 이미지 URL 확인 (개발 중 확인용)
+      // console.log("📨 [ChatLayout] 실시간 메시지 수신:", {
+      //   senderName: msg.senderName,
+      //   senderEmail: msg.senderEmail,
+      //   senderProfileImageUrl: msg.senderProfileImageUrl,
+      //   profileImageUrl길이: msg.senderProfileImageUrl?.length || 0,
+      //   전체메시지: msg
+      // });
+      
       setMessages((prev) => [...prev, msg]);
     } else { // 다른 방이면 토스트 알림
       setToastRooms((prev) => {
@@ -307,6 +316,19 @@ export default function ChatLayout() {
           if (pageData && Array.isArray(pageData.content)) {
             // 최신 메시지부터 내림차순으로 받아오므로 역순으로 정렬하여 오름차순으로 표시
             const sortedMessages = [...pageData.content].reverse();
+            
+            // ⭐ 디버깅: 메시지 수신 시 프로필 이미지 URL 확인 (개발 중 확인용)
+            // console.log("📨 [ChatLayout] 메시지 로드 완료:", {
+            //   메시지수: sortedMessages.length,
+            //   첫번째메시지: sortedMessages[0],
+            //   프로필이미지URL들: sortedMessages.map(m => ({
+            //     senderName: m.senderName,
+            //     senderEmail: m.senderEmail,
+            //     senderProfileImageUrl: m.senderProfileImageUrl,
+            //     profileImageUrl길이: m.senderProfileImageUrl?.length || 0
+            //   }))
+            // });
+            
             setMessages(sortedMessages);
             setTotalPages(pageData.totalPages || 0);
             setHasMore(!pageData.last); // last가 false면 더 있음

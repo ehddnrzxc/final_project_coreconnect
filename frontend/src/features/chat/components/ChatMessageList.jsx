@@ -67,6 +67,14 @@ function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbov
         </Box>
       ) : (
         // 메시지 목록 map
+        // ⭐ 디버깅: 첫 번째 메시지의 구조 확인 (개발 중 확인용)
+        // messages.length > 0 && console.log("📨 [ChatMessageList] 첫 번째 메시지 구조:", {
+        //   전체메시지수: messages.length,
+        //   첫번째메시지: messages[0],
+        //   senderProfileImageUrl: messages[0]?.senderProfileImageUrl,
+        //   senderEmail: messages[0]?.senderEmail,
+        //   senderName: messages[0]?.senderName
+        // }),
         messages.map((msg, idx) => {
           // ⭐ 내 메시지 판별 로직
           // 1순위: senderEmail로 비교 (가장 정확함) - 백엔드에서 항상 포함하도록 수정됨
@@ -106,6 +114,29 @@ function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbov
               isMine: isMine
             });
           }
+          
+          // ⚠️ 디버깅용 콘솔 로그 (senderProfileImageUrl이 없거나 빈 문자열일 때 출력)
+          // 프로필 이미지가 제대로 설정되지 않았을 때 확인용
+          // 개발 중에만 활성화 (필요시 주석 해제)
+          // if (!msg.senderProfileImageUrl || msg.senderProfileImageUrl.trim() === '') {
+          //   console.warn("⚠️ MSG에 senderProfileImageUrl이 없거나 빈 문자열입니다:", {
+          //     senderName: msg.senderName,
+          //     senderEmail: msg.senderEmail,
+          //     senderProfileImageUrl: msg.senderProfileImageUrl,
+          //     senderId: msg.senderId,
+          //     messageId: msg.id,
+          //     전체메시지: msg,
+          //     note: "프로필 이미지가 없으면 기본 이니셜이 표시됩니다. DB의 user_profile_image_key를 확인하세요."
+          //   });
+          // } else {
+          //   // 프로필 이미지 URL이 있을 때도 확인 (개발 중)
+          //   console.log("✅ 프로필 이미지 URL 있음:", {
+          //     senderName: msg.senderName,
+          //     senderEmail: msg.senderEmail,
+          //     senderProfileImageUrl: msg.senderProfileImageUrl,
+          //     url길이: msg.senderProfileImageUrl.length
+          //   });
+          // }
 
           // ========== 내가 보낸 메시지 (오른쪽, 이름 없음, 파란 테마) ==========
           if (isMine) {
@@ -204,26 +235,77 @@ function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbov
                 mb: 2,
               }}
             >
-              {/* 프로필 아바타 - user_profile_image_key에서 가져온 이미지 표시 */}
-              <Avatar
-                src={msg.senderProfileImageUrl ? msg.senderProfileImageUrl : undefined}
-                sx={{
-                  bgcolor: "#bdbdbd",
-                  width: 36,
-                  height: 36,
-                  fontSize: 16,
-                  fontWeight: 700,
-                  color: "#212121",
-                }}
-                imgProps={{
-                  onError: (e) => {
-                    // 이미지 로드 실패 시 fallback 처리
-                    e.target.style.display = 'none';
-                  }
-                }}
-              >
-                {(!msg.senderProfileImageUrl || msg.senderProfileImageUrl.trim() === '') && (msg.senderName?.[0]?.toUpperCase() || "?")}
-              </Avatar>
+              {/* ⭐ 프로필 아바타 - user_profile_image_key에서 가져온 이미지 표시 */}
+              {/* 
+                프로필 이미지 표시 로직:
+                1. msg.senderProfileImageUrl이 유효한 URL이면 이미지 표시
+                2. 없거나 빈 문자열이면 기본 이니셜 표시
+                3. 이미지 로드 실패 시 자동으로 이니셜 표시
+              */}
+              {(() => {
+                // ⭐ 디버깅: 실제로 Avatar에 전달되는 URL 확인
+                const profileImageUrl = msg.senderProfileImageUrl && msg.senderProfileImageUrl.trim() !== '' 
+                  ? msg.senderProfileImageUrl 
+                  : undefined;
+                
+                // ⚠️ 디버깅 로그 (개발 중 확인용 - 필요시 주석 해제)
+                // console.log("💡 [ChatMessageList] Avatar src 설정:", {
+                //   senderName: msg.senderName,
+                //   senderEmail: msg.senderEmail,
+                //   senderProfileImageUrl: msg.senderProfileImageUrl,
+                //   profileImageUrl: profileImageUrl,
+                //   url타입: typeof profileImageUrl,
+                //   url길이: profileImageUrl?.length || 0,
+                //   url시작: profileImageUrl?.substring(0, 20) || "없음",
+                //   isCompleteUrl: profileImageUrl?.startsWith("http://") || profileImageUrl?.startsWith("https://"),
+                //   messageId: msg.id
+                // });
+                
+                return (
+                  <Avatar
+                    src={profileImageUrl}
+                    sx={{
+                      bgcolor: "#bdbdbd",
+                      width: 36,
+                      height: 36,
+                      fontSize: 16,
+                      fontWeight: 700,
+                      color: "#212121",
+                    }}
+                    imgProps={{
+                      onError: (e) => {
+                        // ⚠️ 이미지 로드 실패 시 fallback 처리 (이니셜 표시)
+                        // 이미지가 로드되지 않으면 Avatar의 children(이니셜)이 자동으로 표시됨
+                        e.target.style.display = 'none';
+                        console.error("❌ [ChatMessageList] 프로필 이미지 로드 실패:", {
+                          senderName: msg.senderName,
+                          senderEmail: msg.senderEmail,
+                          profileImageUrl: msg.senderProfileImageUrl,
+                          실제src값: e.target.src,
+                          messageId: msg.id,
+                          note: "이미지 URL을 브라우저에서 직접 열어보세요. 403 에러면 S3 권한 문제입니다."
+                        });
+                      },
+                      onLoad: () => {
+                        // ✅ 이미지 로드 성공 시 디버깅 로그
+                        console.log("✅ [ChatMessageList] 프로필 이미지 로드 성공:", {
+                          senderName: msg.senderName,
+                          profileImageUrl: msg.senderProfileImageUrl,
+                          실제로드된URL: profileImageUrl
+                        });
+                      }
+                    }}
+                  >
+                    {/* 
+                      프로필 이미지가 없거나 빈 문자열일 때 기본 이니셜 표시
+                      - senderName의 첫 글자를 대문자로 변환
+                      - senderName이 없으면 "?" 표시
+                    */}
+                    {(!msg.senderProfileImageUrl || msg.senderProfileImageUrl.trim() === '') && 
+                      (msg.senderName?.[0]?.toUpperCase() || "?")}
+                  </Avatar>
+                );
+              })()}
 
               <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
                 {/* 이름(어두운 회색) */}
