@@ -291,6 +291,7 @@ const BoardListPage = () => {
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
+                        minWidth: 0,
                       }}
                     >
                       {b.title}
@@ -308,6 +309,9 @@ const BoardListPage = () => {
                         display: "-webkit-box",
                         WebkitLineClamp: 1,
                         WebkitBoxOrient: "vertical",
+                        wordBreak: "break-word",    // 영어 단어 줄바꿈 핵심
+                        overflowWrap: "break-word", // 길게 이어진 텍스트 박스 밖으로 못 나가게
+                        minWidth: 0,                // flex 아이템 관련(“필요하면 너 마음대로 줄바꿈 해도 된다.”)
                       }}
                     >
                       {b.content}

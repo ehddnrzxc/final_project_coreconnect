@@ -324,7 +324,14 @@ const BoardWritePage = () => {
             multiline
             rows={8}
             fullWidth
-            sx={{ mb: 1 }}
+            sx={{
+              mb: 1,
+              "& textarea": {
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-all",
+                overflowWrap: "break-word",
+              }
+            }}
             value={form.content}
             onChange={handleChange}
           />
