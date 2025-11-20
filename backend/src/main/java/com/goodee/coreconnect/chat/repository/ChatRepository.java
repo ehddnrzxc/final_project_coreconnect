@@ -17,8 +17,8 @@ public interface ChatRepository extends JpaRepository<Chat, Integer> {
     // 1. 채팅방의 모든 메시지
     List<Chat> findByChatRoomId(Integer id);
 
-    // 2. 여러 채팅방의 모든 메시지
-    @Query("SELECT c FROM Chat c WHERE c.chatRoom.id IN :roomIds")
+    // 2. 여러 채팅방의 모든 메시지 (sender도 함께 로드)
+    @Query("SELECT c FROM Chat c LEFT JOIN FETCH c.sender WHERE c.chatRoom.id IN :roomIds")
     List<Chat> findByChatRoomIds(@Param("roomIds") List<Integer> roomIds);
 
     // 3. 채팅방의 모든 메시지(오름차순)
@@ -53,13 +53,16 @@ public interface ChatRepository extends JpaRepository<Chat, Integer> {
     // 8. 채팅방에서 메시지를 불러올때 파일이 있는 경우 파일들도 함께 조회
     @Query("SELECT DISTINCT c FROM Chat c " + 
     	   "LEFT JOIN FETCH c.messageFiles " + 
+    	   "LEFT JOIN FETCH c.sender " +
     		"WHERE c.chatRoom.id = :roomId " + 
     	   "ORDER BY c.sendAt ASC")
     List<Chat> findAllChatsWithFilesByRoomId(@Param("roomId") Integer roomId);
     
     // 8-1. 채팅방에서 메시지를 페이징으로 불러올때 파일이 있는 경우 파일들도 함께 조회 (최신 메시지부터)
+    // sender도 함께 JOIN FETCH하여 user_profile_image_key를 가져올 수 있도록 함
     @Query("SELECT DISTINCT c FROM Chat c " + 
     	   "LEFT JOIN FETCH c.messageFiles " + 
+    	   "LEFT JOIN FETCH c.sender " +
     		"WHERE c.chatRoom.id = :roomId " + 
     	   "ORDER BY c.sendAt DESC")
     Page<Chat> findChatsWithFilesByRoomIdPaged(@Param("roomId") Integer roomId, Pageable pageable);

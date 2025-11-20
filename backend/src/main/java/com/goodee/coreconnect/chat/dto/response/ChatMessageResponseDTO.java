@@ -27,6 +27,8 @@ public class ChatMessageResponseDTO {
 	private Integer roomId;
 	private Integer senderId;
 	private String senderName;
+	private String senderEmail;
+	private String senderProfileImageUrl;
 	private Integer unreadCount;
 	private String roomName;
 	private Boolean readYn;
@@ -52,6 +54,8 @@ public class ChatMessageResponseDTO {
                 .roomName(chat.getChatRoom() != null ? chat.getChatRoom().getRoomName() : null)
                 .senderId(chat.getSender() != null ? chat.getSender().getId() : null)
                 .senderName(chat.getSender() != null ? chat.getSender().getName() : null)
+                .senderEmail(chat.getSender() != null ? chat.getSender().getEmail() : null)
+                .senderProfileImageUrl(null) // Controller에서 S3Service로 변환하여 설정
                 .unreadCount(chat.getUnreadCount() != null ? chat.getUnreadCount() : 0)
                 .readYn(readYn) // ✨ 3. DTO에 포함!
                 .build();

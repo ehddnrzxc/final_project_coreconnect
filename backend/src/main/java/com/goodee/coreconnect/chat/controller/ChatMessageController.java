@@ -155,7 +155,21 @@ public class ChatMessageController {
 	    );
 
 	    // 4. 해당 채널 구독자에게 push (프론트에서 /topic/chat.room.{roomId} 구독 중)
-	    messagingTemplate.convertAndSend("/topic/chat.room." + req.getRoomId(), ChatResponseDTO.fromEntity(saved));
+	    ChatResponseDTO responseDto = ChatResponseDTO.fromEntity(saved);
+	    
+	    // ⭐ senderEmail 명시적으로 설정 (lazy loading 문제 해결)
+	    // fromEntity에서 chat.getSender().getEmail()이 null일 수 있으므로 authUser.getEmail() 직접 설정
+	    responseDto.setSenderEmail(authUser.getEmail());
+	    
+	    // 프로필 이미지 URL 설정 (user_profile_image_key 사용)
+	    // sender를 다시 조회하여 profileImageKey 가져오기
+	    User senderUser = userRepository.findById(authUser.getId()).orElse(null);
+	    if (senderUser != null && senderUser.getProfileImageKey() != null 
+	        && !senderUser.getProfileImageKey().isBlank()) {
+	        String profileImageUrl = s3Service.getFileUrl(senderUser.getProfileImageKey());
+	        responseDto.setSenderProfileImageUrl(profileImageUrl);
+	    }
+	    messagingTemplate.convertAndSend("/topic/chat.room." + req.getRoomId(), responseDto);
 	    // 보통 REST ResponseEntity를 반환하지 않고 void로 처리 (비동기 WebSocket용)
 	    // 필요하다면 별도의 Error 메시지를 특정 유저에게만 전송하도록 커스텀도 가능
 	}
@@ -204,7 +218,24 @@ public class ChatMessageController {
 	    			Optional<ChatMessageReadStatus> readStatusOpt = 
 	    					chatMessageReadStatusRepository.findByChatIdAndUserId(chat.getId(), user.getId());
 	    			boolean readYn = readStatusOpt.map(ChatMessageReadStatus::getReadYn).orElse(false);
-	    			return ChatMessageResponseDTO.fromEntity(chat, readYn); // chat + readYn -> DTO 반환
+	    			ChatMessageResponseDTO dto = ChatMessageResponseDTO.fromEntity(chat, readYn);
+	    			
+	    			// 프로필 이미지 URL 설정 (user_profile_image_key 사용)
+	    			if (dto != null && chat.getSender() != null) {
+	    			    // ⭐ senderEmail 명시적으로 설정 (lazy loading 문제 해결)
+	    			    // fromEntity에서 chat.getSender().getEmail()이 null일 수 있으므로 명시적으로 설정
+	    			    if (chat.getSender().getEmail() != null) {
+	    			        dto.setSenderEmail(chat.getSender().getEmail());
+	    			    }
+	    			    
+	    			    if (chat.getSender().getProfileImageKey() != null 
+	    			        && !chat.getSender().getProfileImageKey().isBlank()) {
+	    			        String profileImageUrl = s3Service.getFileUrl(chat.getSender().getProfileImageKey());
+	    			        dto.setSenderProfileImageUrl(profileImageUrl);
+	    			    }
+	    			}
+	    			
+	    			return dto;
 	    		})
 	    		.collect(Collectors.toList());
 
@@ -246,7 +277,26 @@ public class ChatMessageController {
 	            Optional<ChatMessageReadStatus> readStatusOpt =
 	                chatMessageReadStatusRepository.findByChatIdAndUserId(chat.getId(), userId);
 	            boolean readYn = readStatusOpt.map(ChatMessageReadStatus::getReadYn).orElse(false);
-	            return ChatMessageResponseDTO.fromEntity(chat, readYn);
+	            ChatMessageResponseDTO dto = ChatMessageResponseDTO.fromEntity(chat, readYn);
+	            
+	            // 프로필 이미지 URL 설정 (user_profile_image_key 사용)
+	            // sender를 명시적으로 조회하여 profileImageKey 가져오기
+	            if (dto != null && chat.getSender() != null && chat.getSender().getId() != null) {
+	                User senderUser = userRepository.findById(chat.getSender().getId()).orElse(null);
+	                if (senderUser != null) {
+	                    // ⭐ senderEmail 명시적으로 설정 (lazy loading 문제 해결)
+	                    // fromEntity에서 chat.getSender().getEmail()이 null일 수 있으므로 senderUser.getEmail() 직접 설정
+	                    dto.setSenderEmail(senderUser.getEmail());
+	                    
+	                    if (senderUser.getProfileImageKey() != null 
+	                        && !senderUser.getProfileImageKey().isBlank()) {
+	                        String profileImageUrl = s3Service.getFileUrl(senderUser.getProfileImageKey());
+	                        dto.setSenderProfileImageUrl(profileImageUrl);
+	                    }
+	                }
+	            }
+	            
+	            return dto;
 	        });
 
 	        System.out.println("messages page: " + chatPage.getNumber() + ", total: " + chatPage.getTotalElements());
@@ -295,6 +345,17 @@ public class ChatMessageController {
 		chatRoomService.updateUnreadCountForMessages(roomId);
 		
 		ChatResponseDTO dto = ChatResponseDTO.fromEntity(replyChat);
+		
+		// ⭐ senderEmail 명시적으로 설정 (lazy loading 문제 해결)
+		// fromEntity에서 chat.getSender().getEmail()이 null일 수 있으므로 sender.getEmail() 직접 설정
+		dto.setSenderEmail(sender.getEmail());
+		
+		// 프로필 이미지 URL 설정 (user_profile_image_key 사용)
+		if (sender != null && sender.getProfileImageKey() != null 
+		    && !sender.getProfileImageKey().isBlank()) {
+		    String profileImageUrl = s3Service.getFileUrl(sender.getProfileImageKey());
+		    dto.setSenderProfileImageUrl(profileImageUrl);
+		}
 		return ResponseEntity.status(HttpStatus.CREATED).body(ResponseDTO.success(dto, "답신 메시지 저장 성공"));		
 	}
 	
@@ -339,8 +400,19 @@ public class ChatMessageController {
 				
 		messageFileRepository.save(fileEntity);
 		ChatResponseDTO dto = ChatResponseDTO.fromEntity(chat);
+		
+		// ⭐ senderEmail 명시적으로 설정 (lazy loading 문제 해결)
+		// fromEntity에서 chat.getSender().getEmail()이 null일 수 있으므로 sender.getEmail() 직접 설정
+		dto.setSenderEmail(sender.getEmail());
+		
 		// fileUrl도 DTO에 포함
 		dto.setFileUrl(fileUrl);
+		// 프로필 이미지 URL 설정 (user_profile_image_key 사용)
+		if (sender != null && sender.getProfileImageKey() != null 
+		    && !sender.getProfileImageKey().isBlank()) {
+		    String profileImageUrl = s3Service.getFileUrl(sender.getProfileImageKey());
+		    dto.setSenderProfileImageUrl(profileImageUrl);
+		}
 		return ResponseEntity.status(HttpStatus.CREATED).body(ResponseDTO.success(dto, "파일/이미지 업로드 성공"));
 	}
 	
@@ -463,6 +535,17 @@ public class ChatMessageController {
         Chat chat = chatRoomService.sendChatMessage(roomId, sender.getId(), req.getContent());
         // 서비스 내에서 알림 발송도 처리
         ChatResponseDTO dto = ChatResponseDTO.fromEntity(chat);
+        
+        // ⭐ senderEmail 명시적으로 설정 (lazy loading 문제 해결)
+        // fromEntity에서 chat.getSender().getEmail()이 null일 수 있으므로 sender.getEmail() 직접 설정
+        dto.setSenderEmail(sender.getEmail());
+        
+        // 프로필 이미지 URL 설정 (user_profile_image_key 사용)
+        if (sender != null && sender.getProfileImageKey() != null 
+            && !sender.getProfileImageKey().isBlank()) {
+            String profileImageUrl = s3Service.getFileUrl(sender.getProfileImageKey());
+            dto.setSenderProfileImageUrl(profileImageUrl);
+        }
         return ResponseEntity.status(HttpStatus.CREATED).body(ResponseDTO.success(dto, "메시지 전송 및 알림 발송 성공"));
     }
 

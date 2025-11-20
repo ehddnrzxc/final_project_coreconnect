@@ -57,6 +57,7 @@ function getUserName() {
 
 export default function ChatLayout() {
   // ---------- 상태 변수 ----------
+  const { userProfile } = useContext(UserProfileContext) || {};
   const [roomList, setRoomList] = useState([]); // 전체 채팅방 목록
   const [selectedRoomId, setSelectedRoomId] = useState(null); // 현재 선택된 방ID
   const [messages, setMessages] = useState([]); // 현재 방 메시지 목록
@@ -162,7 +163,14 @@ export default function ChatLayout() {
 
   // ---------- 새 메시지 도착 처리 (+ 토스트 알림) ----------
   const handleNewMessage = (msg) => {
-    if (msg.senderName === userName) {
+    // senderEmail로 내 메시지 판단 (백엔드에서 senderEmail 포함)
+    // 대소문자/공백 차이를 방지하기 위해 trim().toLowerCase() 적용
+    const isMyMessage = 
+      msg.senderEmail && 
+      userProfile?.email && 
+      msg.senderEmail.trim().toLowerCase() === userProfile.email.trim().toLowerCase();
+    
+    if (isMyMessage) {
       if (Number(msg.roomId) === Number(selectedRoomId)) {
         setMessages((prev) => [...prev, msg]);
       }
@@ -408,7 +416,6 @@ export default function ChatLayout() {
             selectedRoom={Array.isArray(roomList)
               ? roomList.find(r => r && r.roomId === selectedRoomId) : null}
             messages={messages}
-            userName={userName}
             unreadCount={unreadCount}
             firstUnreadIdx={firstUnreadIdx}
             formatTime={formatTime}
@@ -418,6 +425,7 @@ export default function ChatLayout() {
             socketConnected={socketConnected}
             onScrollTop={handleLoadMoreMessages}
             isLoadingMore={isLoadingMore}
+            hasMoreAbove={hasMore}
           />
         </Box>
       </Box>

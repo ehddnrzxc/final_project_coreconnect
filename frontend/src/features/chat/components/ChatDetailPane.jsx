@@ -9,10 +9,10 @@ import ChatMessageInputBox from "./ChatMessageInputBox";
 
 // 오른쪽 채팅방 상세패널(상단 Room, 메시지, 입력창)
 function ChatDetailPane({
-  selectedRoom, messages, userName,
-  unreadCount, firstUnreadIdx, formatTime,
+  selectedRoom, messages,
+  unreadCount, firstUnreadIdx, formatTime, // eslint-disable-line no-unused-vars
   inputRef, onSend, onFileUpload, socketConnected,
-  onScrollTop, isLoadingMore
+  onScrollTop, isLoadingMore, hasMoreAbove
 }) {
   const messagesEndRef = useRef(null);
 
@@ -60,13 +60,10 @@ function ChatDetailPane({
       </Box>
       <ChatMessageList
         messages={messages}
-        userName={userName}
         roomType={selectedRoom.roomType || "group"}
-        unreadCount={unreadCount}
-        firstUnreadIdx={firstUnreadIdx}
-        formatTime={formatTime}
-        onScrollTop={onScrollTop}
-        isLoadingMore={isLoadingMore}
+        onLoadMore={onScrollTop}
+        hasMoreAbove={hasMoreAbove}
+        loadingAbove={isLoadingMore}
       />
       <div ref={messagesEndRef} />
       <ChatMessageInputBox
