@@ -301,10 +301,22 @@ const BoardWritePage = () => {
             label="제목"
             name="title"
             fullWidth
-            sx={{ mb: 2 }}
+            sx={{ mb: 1 }}
             value={form.title}
             onChange={handleChange}
+            inputProps={{ maxLength: 50 }}
           />
+
+          <Box
+            sx={{
+              textAlign: "right",
+              fontSize: "0.8rem",
+              color: form.title.length >= 50 ? "red" : "gray",
+              mb: 2
+            }}
+          >
+            {form.title.length}/50
+          </Box>
 
           <TextField
             label="내용"

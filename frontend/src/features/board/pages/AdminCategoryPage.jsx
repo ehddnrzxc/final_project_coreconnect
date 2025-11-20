@@ -157,11 +157,27 @@ const AdminCategoryPage = () => {
               label="카테고리명"
               size="small"
               value={newCategory.name}
-              onChange={(e) =>
-                setNewCategory((prev) => ({ ...prev, name: e.target.value }))
-              }
+              inputProps={{ maxLength: 20 }}
+              onChange={(e) => {
+                let val = e.target.value;
+                if (val.length > 20) val = val.slice(0, 20); // 20자 초과 자동 자름
+                setNewCategory((prev) => ({
+                  ...prev,
+                  name: val,
+                }));
+              }}
               sx={{ minWidth: 220 }}
             />
+
+            <Box
+              sx={{
+                fontSize: "0.75rem",
+                color: newCategory.name.length >= 20 ? "red" : "gray",
+                ml: 1,
+              }}
+            >
+              {newCategory.name.length}/20
+            </Box>
             {/* 순서번호 입력 필드 */}
             <TextField
               label="순서번호"
