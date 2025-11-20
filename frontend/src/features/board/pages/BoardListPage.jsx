@@ -201,11 +201,9 @@ const BoardListPage = () => {
               })
             }
             sx={{
-              bgcolor: b.pinned
-                ? "primary.main"
-                : b.noticeYn
-                  ? "#d9d9d9"
-                  : "white",
+              bgcolor: b.pinned || b.noticeYn
+                ? "#d9d9d9"
+                : "white",
               border: "1px solid #e0e0e0",
               borderRadius: 1,
               mb: 1.2,
@@ -216,11 +214,9 @@ const BoardListPage = () => {
               alignItems: "flex-start",
               boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
               "&:hover": {
-                bgcolor: b.pinned
-                  ? "primary.light"
-                  : b.noticeYn
-                    ? "#e0e0e0"
-                    : "#fafafa",
+                bgcolor: b.pinned || b.noticeYn
+                  ? "#e0e0e0"
+                  : "#fafafa",
               },
             }}
           >
