@@ -17,7 +17,7 @@ import CampaignOutlinedIcon from "@mui/icons-material/CampaignOutlined";
 import NoticeModal from "../../../features/dashboard/components/NoticeModal";
 import GroupwareNoticeModal from "../../../features/notice/components/GroupwareNoticeModal";
 import { useState, useContext, useEffect } from "react";
-import { jobGradeLabel } from "../../../utils/jobGradeUtils";
+import { getJobGradeLabel } from "../../../components/utils/labelUtils";
 import { UserProfileContext } from "../../../App";
 import { getUnreadNotificationSummary } from "../../../features/notification/api/notificationAPI";
 import logoImage from "../../../assets/coreconnect-logo.png";
@@ -107,7 +107,7 @@ export default function Topbar({ onLogout, themeMode, themeOptions, onThemeChang
     return () => clearInterval(interval);
   }, [notificationAnchor]);
 
-  const displayedJobGrade = jobGradeLabel(userProfile?.jobGrade) || "";
+  const displayedJobGrade = getJobGradeLabel(userProfile?.jobGrade) || "";
   const displayedDept = userProfile?.deptName || "-";
   const displayedEmail = userProfile?.email || "";
 

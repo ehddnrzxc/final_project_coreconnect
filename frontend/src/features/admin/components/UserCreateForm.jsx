@@ -65,10 +65,43 @@ export default function UserCreateForm() {
       });
   }, [showSnack]);
 
+  /** 전화번호 포맷팅 함수 (숫자만 받아서 하이픈 추가 - UI 표시용) */
+  const formatPhoneNumber = (phone) => {
+    if (!phone) return "";
+    // 숫자만 추출
+    const numbers = phone.replace(/\D/g, "");
+    
+    // 길이에 따라 하이픈 추가
+    if (numbers.length <= 3) {
+      return numbers;
+    } else if (numbers.length <= 7) {
+      // 010-1234
+      return `${numbers.slice(0, 3)}-${numbers.slice(3)}`;
+    } else if (numbers.length <= 10) {
+      // 02-1234-5678 또는 031-123-4567
+      if (numbers.startsWith("02")) {
+        return `${numbers.slice(0, 2)}-${numbers.slice(2, 6)}-${numbers.slice(6)}`;
+      } else {
+        return `${numbers.slice(0, 3)}-${numbers.slice(3, 6)}-${numbers.slice(6)}`;
+      }
+    } else {
+      // 010-1234-5678 (11자리)
+      return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`;
+    }
+  };
+
   /** ─ 입력 변경 핸들러 ─ */
   const onChange = (e) => {
     const { name, value } = e.target;
-    setForm((f) => ({ ...f, [name]: value }));
+    
+    // 전화번호 필드인 경우 숫자만 허용하여 저장
+    if (name === "phone") {
+      // 숫자만 추출하여 저장 (하이픈은 UI 표시용으로만 사용)
+      const numbersOnly = value.replace(/\D/g, "");
+      setForm((f) => ({ ...f, [name]: numbersOnly }));
+    } else {
+      setForm((f) => ({ ...f, [name]: value }));
+    }
   };
 
   /** ─ 폼 제출 ─ */
@@ -84,7 +117,8 @@ export default function UserCreateForm() {
       email: form.email.trim(),
       name: form.name.trim(),
       tempPassword: form.tempPassword,
-      phone: form.phone.trim() || undefined,
+      // 전화번호는 숫자만 저장 (하이픈 제거)
+      phone: form.phone ? form.phone.replace(/\D/g, "") : undefined,
       role: form.role,
       jobGrade: form.jobGrade,
       ...(form.deptId ? { deptId: Number(form.deptId) } : {}), // 부서를 선택한 경우에만 추가 
@@ -181,11 +215,14 @@ export default function UserCreateForm() {
                 <TextField
                   label="전화번호"
                   name="phone"
-                  value={form.phone}
+                  value={formatPhoneNumber(form.phone)}
                   onChange={onChange}
                   fullWidth
                   size="medium"
-                  placeholder="전화번호를 입력하세요."
+                  placeholder="숫자만 입력하세요 (예: 01012345678)"
+                  inputProps={{
+                    maxLength: 13, // 010-1234-5678 형식 최대 길이
+                  }}
                 />
 
                 <FormControl fullWidth size="medium">

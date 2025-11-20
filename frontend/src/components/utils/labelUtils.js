@@ -1,5 +1,3 @@
-import React from 'react';
-
 export const JOB_GRADE_LABELS = {
   INTERN: "인턴",
   STAFF: "사원",
@@ -43,3 +41,4 @@ export const NOTIFICATION_TYPE_LABELS = {
 export const getJobGradeLabel = key => JOB_GRADE_LABELS[key] || key;
 export const getLeaveRequestLabel = key => LEAVE_REQUEST_LABELS[key] || key;
 export const getNotificationTypeLabel = type => NOTIFICATION_TYPE_LABELS[type] || "알림";
+

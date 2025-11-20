@@ -7,6 +7,7 @@ import com.goodee.coreconnect.user.enums.Status;
 /** 관리자용 사용자 정보 수정 요청 DTO */
 public record UpdateUserReqDTO(
     String name,
+    String email,
     String phone,
     Integer deptId,
     Role role,

@@ -23,7 +23,7 @@ import {
   getMyDeptBoardCategoryId,
 } from "../api/dashboardAPI";
 import { UserProfileContext } from "../../../App";
-import { jobGradeLabel } from "../../../utils/jobGradeUtils";
+import { getJobGradeLabel } from "../../../components/utils/labelUtils";
 
 export default function ProfileCard() {
   const [loading, setLoading] = useState(false);
@@ -41,7 +41,7 @@ export default function ProfileCard() {
 
   const email = userProfile?.email || "";
   const displayName = userProfile?.name || "";
-  const grade = userProfile?.jobGrade ? jobGradeLabel(userProfile.jobGrade) : "";
+  const grade = userProfile?.jobGrade ? getJobGradeLabel(userProfile.jobGrade) : "";
   const deptName = userProfile?.deptName || "";
 
   /** 오늘 일정 */

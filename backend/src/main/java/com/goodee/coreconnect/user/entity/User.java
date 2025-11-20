@@ -195,6 +195,13 @@ public class User {
         this.phone = newPhone;
     }
     
+    /** 이메일 변경 */
+    public void changeEmail(String newEmail) {
+        if (newEmail != null && !newEmail.isBlank()) {
+            this.email = newEmail;
+        }
+    }
+    
     /** 이름 변경 */
     public void changeName(String newName) {
         if (newName != null && !newName.isBlank()) {

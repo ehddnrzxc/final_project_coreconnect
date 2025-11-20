@@ -11,7 +11,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { formatTime } from "../../../../utils/TimeUtils";
-import { getNotificationTypeLabel } from "../../../utils/labelUtils";
+import { getNotificationTypeLabel } from "../../../../components/utils/labelUtils";
 import {
   getUnreadNotificationSummary,
   getUnreadNotificationsExceptLatest,

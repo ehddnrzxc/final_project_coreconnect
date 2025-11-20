@@ -63,7 +63,7 @@ public class AccountLogServiceImpl implements AccountLogService {
     @Transactional(readOnly = true)
     public Page<AccountLogResponseDTO> getAllLogs(Pageable pageable) {
         return accountLogRepository.findAllByOrderByActionTimeDesc(pageable)
-            .map(AccountLogResponseDTO::fromEntity);
+            .map(AccountLogResponseDTO::toDTO);
     }
     
     /** 특정 사용자의 로그인 이력 조회 */
@@ -71,7 +71,7 @@ public class AccountLogServiceImpl implements AccountLogService {
     @Transactional(readOnly = true)
     public Page<AccountLogResponseDTO> getLogsByUserEmail(String email, Pageable pageable) {
         return accountLogRepository.findByUserEmailOrderByActionTimeDesc(email, pageable)
-            .map(AccountLogResponseDTO::fromEntity);
+            .map(AccountLogResponseDTO::toDTO);
     }
     
     /** 특정 액션 타입의 로그인 이력 조회 */
@@ -79,7 +79,7 @@ public class AccountLogServiceImpl implements AccountLogService {
     @Transactional(readOnly = true)
     public Page<AccountLogResponseDTO> getLogsByActionType(LogActionType actionType, Pageable pageable) {
         return accountLogRepository.findByActionTypeOrderByActionTimeDesc(actionType, pageable)
-            .map(AccountLogResponseDTO::fromEntity);
+            .map(AccountLogResponseDTO::toDTO);
     }
     
     /** 특정 사용자의 특정 액션 타입 로그인 이력 조회 */
@@ -87,7 +87,7 @@ public class AccountLogServiceImpl implements AccountLogService {
     @Transactional(readOnly = true)
     public Page<AccountLogResponseDTO> getLogsByUserEmailAndActionType(String email, LogActionType actionType, Pageable pageable) {
         return accountLogRepository.findByUserEmailAndActionTypeOrderByActionTimeDesc(email, actionType, pageable)
-            .map(AccountLogResponseDTO::fromEntity);
+            .map(AccountLogResponseDTO::toDTO);
     }
 }
 

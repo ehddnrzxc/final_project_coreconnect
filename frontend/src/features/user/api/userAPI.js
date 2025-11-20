@@ -18,7 +18,7 @@ export async function uploadMyProfileImage(file) {
 }
 
 // 관리자용 사원 리스트 조회
-export const getAdminUsers = () => http.get("/user").then(res => res.data);
+export const getAdminUsers = () => http.get("/admin/users").then(res => res.data);
 
 // 조직도/사용자 조회
 export const getOrganizationChart = () => http.get("/user/organization");
