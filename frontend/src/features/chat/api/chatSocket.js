@@ -73,30 +73,66 @@ export function connectStomp(roomId, onMessage, onConnect, onError) {
         subscription.unsubscribe();
       }
       // /topic/chat.room.{roomId} 구독 (방의 메시지만 구독)
-      console.log('🔥 [ChatSocket] 새 구독 시작 - topic:', `/topic/chat.room.${roomId}`);
+      const subscribeTimestamp = new Date().toISOString();
+      console.log('🔥 [ChatSocket] ========== 새 구독 시작 ==========', {
+        timestamp: subscribeTimestamp,
+        topic: `/topic/chat.room.${roomId}`,
+        roomId: roomId,
+        기존구독존재여부: subscription != null
+      });
+      
       subscription = stompClient.subscribe(
         `/topic/chat.room.${roomId}`,
         (msg) => {
-          console.log(`🔥 [ChatSocket] ========== 메시지 수신 ========== - topic: /topic/chat.room.${roomId}`, {
+          const receiveTimestamp = new Date().toISOString();
+          console.log(`🔥 [ChatSocket] ========== STOMP 메시지 수신 ==========`, {
+            timestamp: receiveTimestamp,
+            topic: `/topic/chat.room.${roomId}`,
             destination: msg.destination,
             body: msg.body,
             bodyLength: msg.body ? msg.body.length : 0,
-            headers: msg.headers
+            headers: msg.headers,
+            subscriptionId: subscription?.id
           });
           try {
             const payload = JSON.parse(msg.body);  // 메시지 파싱
             console.log(`🔥 [ChatSocket] 메시지 파싱 성공:`, {
+              timestamp: receiveTimestamp,
               id: payload.id,
+              type: payload.type || "일반메시지",
               roomId: payload.roomId,
               senderName: payload.senderName,
               senderEmail: payload.senderEmail,
               messageContent: payload.messageContent,
-              전체payload: payload
+              unreadCount: payload.unreadCount,
+              chatId: payload.chatId, // UNREAD_COUNT_UPDATE용
+              전체payload: payload,
+              type값: payload.type,
+              type타입: typeof payload.type,
+              UNREAD_COUNT_UPDATE여부: payload.type === "UNREAD_COUNT_UPDATE"
             });
-            console.log(`🔥 [ChatSocket] onMessage 콜백 호출 전`);
+            
+            // ⭐ UNREAD_COUNT_UPDATE 메시지 특별 로그
+            if (payload.type === "UNREAD_COUNT_UPDATE") {
+              console.log("📊 [ChatSocket] ⭐⭐⭐ UNREAD_COUNT_UPDATE 메시지 수신! ⭐⭐⭐", {
+                timestamp: receiveTimestamp,
+                chatId: payload.chatId,
+                unreadCount: payload.unreadCount,
+                roomId: payload.roomId,
+                전체payload: payload
+              });
+            }
+            console.log(`🔥 [ChatSocket] onMessage 콜백 호출 전:`, {
+              timestamp: receiveTimestamp,
+              onMessage존재여부: onMessage != null
+            });
             if (onMessage) {
               onMessage(payload);       // 파싱 성공시 콜백
-              console.log(`🔥 [ChatSocket] onMessage 콜백 호출 완료`);
+              console.log(`🔥 [ChatSocket] onMessage 콜백 호출 완료:`, {
+                timestamp: receiveTimestamp,
+                messageId: payload.id,
+                messageType: payload.type || "일반메시지"
+              });
             } else {
               console.error(`🔥 [ChatSocket] onMessage 콜백이 없습니다!`);
             }

@@ -38,6 +38,7 @@ import com.goodee.coreconnect.chat.repository.ChatRepository;
 import com.goodee.coreconnect.chat.repository.ChatRoomRepository;
 import com.goodee.coreconnect.chat.repository.ChatRoomUserRepository;
 import com.goodee.coreconnect.chat.repository.MessageFileRepository;
+import com.goodee.coreconnect.chat.handler.ChatWebSocketHandler;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
@@ -352,21 +353,17 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 		// 2. 참여자별 읽음 상태 생성 (알림용 Notification 테이블 사용하지 않음)
 	    List<ChatRoomUser> participants = chatRoomUserRepository.findByChatRoomId(roomId);
 	    
+	    // ⭐ 정책: "발신자 + 접속 중인 사용자는 모두 읽음 처리, 나머지는 unread"
+	    // 실시간 채팅방에 접속해 있는 사용자들은 메시지를 바로 볼 수 있으므로 읽음 처리
+	    
 	    // ⭐ 현재 채팅방에 접속 중인 사용자 목록 조회 (실시간 WebSocket 세션 기반)
-	    // 이 값이 정확해야 unreadCount 계산이 정확함!
+	    // ⭐ userId 기준 접속자 집계: 같은 userId의 여러 브라우저/탭은 1명으로 집계
+	    log.info("🔥 [sendChatMessage] ========== 접속자 조회 시작 ========== roomId: {}", roomId);
 	    List<Integer> connectedUserIds = getConnectedUserIdsInRoom(roomId);
 	    
 	    // ⭐ 디버깅: 접속 중인 사용자 상세 정보
-	    log.info("[sendChatMessage] ⭐ 실시간 접속자 조회 - roomId: {}, 접속자수: {}, 접속자Ids: {}", 
+	    log.info("🔥 [sendChatMessage] ⭐ 실시간 접속자 조회 (userId 기준) - roomId: {}, 접속자수: {}, 접속자Ids: {}", 
 	            roomId, connectedUserIds.size(), connectedUserIds);
-	    
-	    // ⭐ 발신자를 제외한 접속 중인 다른 사용자 수 계산
-	    int connectedOthersCount = (int) connectedUserIds.stream()
-	            .filter(userId -> !userId.equals(sender.getId()))
-	            .count();
-	    
-	    log.info("[sendChatMessage] ⭐ 접속자 분석 - 발신자Id: {}, 전체접속자수: {}, 발신자제외접속자수: {}", 
-	            sender.getId(), connectedUserIds.size(), connectedOthersCount);
 	    
 	    // ⭐ 디버깅: 참여자 목록 확인
 	    log.info("[sendChatMessage] 참여자 목록 조회 - roomId: {}, 참여자수: {}, 발신자Id: {}", 
@@ -406,11 +403,12 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	            isNew = true;
 	        }
 	        
+	        // ⭐ 정책: 발신자 + 접속 중인 사용자는 모두 읽음 처리, 나머지는 unread
 	        boolean isSender = participant.getId().equals(sender.getId());
 	        boolean isConnected = connectedUserIds.contains(participant.getId());
 	        
-	        // ⭐ 발신자이거나 접속 중인 사용자라면 바로 읽음 처리
 	        if (isSender) {
+	            // ⭐ 발신자는 읽음 처리
 	            readStatus.markRead();
 	            senderReadCount++;
 	            log.debug("[sendChatMessage] 발신자 읽음 처리 - userId: {}, chatId: {}", 
@@ -479,33 +477,34 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	                chat.getId(), participants.size(), actualRowCount);
 	    }
 	    
-	    // ⭐ unreadCount는 반드시 DB에서 직접 조회한 실제 값 사용!
-	    // 계산된 값이 아닌 실제 DB의 readYn=false row 개수를 사용하여 정합성 보장
-	    chatMessageReadStatusRepository.flush(); // 모든 변경사항을 DB에 반영
+	    // ⭐ unreadCount 계산: 브로드캐스트 직전에 항상 DB에서 최신 값 조회
+	    // 정책: "발신자 + 접속 중인 사용자는 모두 읽음 처리, 나머지는 unread"
+	    // ⭐ 중요: flush 후 실제 DB에서 countUnreadByChatId로 최신 값을 가져와야 함
+	    // 이렇게 해야 race condition 없이 정확한 unreadCount를 브로드캐스트할 수 있음
 	    
-	    // ⭐ DB에서 실제 readYn=false인 row 개수를 직접 조회
-	    int actualUnreadCount = chatMessageReadStatusRepository.countUnreadByChatId(chat.getId());
+	    // ⭐ ChatMessageReadStatus 저장 및 flush 완료 후, 실제 DB에서 최신 unreadCount 조회
+	    int confirmedUnreadCount = chatMessageReadStatusRepository.countUnreadByChatId(chat.getId());
 	    
-	    // ⭐ Chat 엔티티에 실제 DB 값 설정
-	    chat.setUnreadCount(actualUnreadCount);
+	    // ⭐ 참여자 수 및 접속자 수 확인 (디버깅용)
+	    int totalParticipants = participants.size();
+	    int connectedUsersCount = connectedUserIds.size(); // 현재 접속 중인 사용자 수 (발신자 포함)
+	    
+	    // ⭐ unreadCount는 0 이상이어야 함
+	    if (confirmedUnreadCount < 0) {
+	        log.warn("[sendChatMessage] ⚠️ unreadCount가 음수입니다! - 총참여자수: {}, 접속중인사용자수: {}, unreadCount: {}", 
+	                totalParticipants, connectedUsersCount, confirmedUnreadCount);
+	        confirmedUnreadCount = 0;
+	    }
+	    
+	    log.info("[sendChatMessage] ⭐ unreadCount 최신 DB 조회 (flush 후) - chatId: {}, 총참여자수: {}, 접속중인사용자수: {}, 최신unreadCount: {}", 
+	            chat.getId(), totalParticipants, connectedUsersCount, confirmedUnreadCount);
+	    
+	    // ⭐ Chat 엔티티에 최신 DB 값 설정
+	    chat.setUnreadCount(confirmedUnreadCount);
 	    chatRepository.save(chat);
 	    
-	    // ⭐ 디버깅: unreadCount 상세 정보
-	    int totalParticipants = participants.size();
-	    log.info("[sendChatMessage] ⭐ unreadCount DB 조회 완료 - chatId: {}, 참여자수: {}, 발신자: 1, 접속중(발신자제외): {}, DB unreadCount: {}", 
-	            chat.getId(), totalParticipants, connectedOthersCount, actualUnreadCount);
-	    
-	    // ⭐ 검증: 계산값과 DB값 비교 (디버깅용)
-	    int calculatedUnreadCount = totalParticipants - 1 - connectedOthersCount;
-	    if (calculatedUnreadCount < 0) calculatedUnreadCount = 0;
-	    
-	    if (actualUnreadCount != calculatedUnreadCount) {
-	        log.warn("[sendChatMessage] ⚠️ unreadCount 불일치 - 계산값: {}, DB값: {}, chatId: {} (DB값을 사용)", 
-	                calculatedUnreadCount, actualUnreadCount, chat.getId());
-	    } else {
-	        log.info("[sendChatMessage] ✅ unreadCount 일치 - 계산값: {}, DB값: {}, chatId: {}", 
-	                calculatedUnreadCount, actualUnreadCount, chat.getId());
-	    }
+	    // ⭐ Chat 엔티티 저장 후 flush (일관성 유지)
+	    chatRepository.flush();
 		
 		return chat;
 	}

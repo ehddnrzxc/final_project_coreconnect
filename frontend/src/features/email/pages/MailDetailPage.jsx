@@ -23,6 +23,15 @@ function formatBytes(bytes) {
   return +(bytes / Math.pow(1024, i)).toFixed(1) + ' ' + sizes[i];
 }
 
+// 상태에 따라 라벨 한글 변환 함수 (메일 상태 표시에 사용)
+function getStatusLabel(emailStatus) {
+  if (emailStatus === "SENT") return "발신완료";
+  if (emailStatus === "FAILED" || emailStatus === "FAIL" || emailStatus === "BOUNCE") return "발신실패";
+  if (emailStatus === "TRASH") return "휴지통";
+  if (emailStatus === "DELETED") return "삭제됨";
+  return emailStatus;
+}
+
 function MailDetailPage() {
   const { emailId } = useParams();
   const navigate = useNavigate();
@@ -85,7 +94,7 @@ function MailDetailPage() {
           <Typography variant="h5" sx={{ fontWeight: 700, flex: 1 }}>{mailDetail.emailTitle}</Typography>
           {mailDetail.emailStatus && (
             <Chip
-              label={mailDetail.emailStatus}
+              label={getStatusLabel(mailDetail.emailStatus)}
               color={mailDetail.emailStatus === "SENT" ? "success" : mailDetail.emailStatus === "FAILED" ? "error" : "default"}
               size="small"
               sx={{ fontWeight: 500 }}

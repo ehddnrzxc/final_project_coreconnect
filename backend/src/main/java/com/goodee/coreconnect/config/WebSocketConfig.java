@@ -54,9 +54,22 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
             @Override
             public Message<?> preSend(Message<?> message, MessageChannel channel) {
                 Object destination = message.getHeaders().get("simpDestination");
-                log.info("🔥 [WebSocketConfig] ========== STOMP 메시지 수신 ========== - destination: {}, headers: {}", 
-                        destination, 
-                        message.getHeaders());
+                String messageType = message.getHeaders().get("simpMessageType") != null ? 
+                        message.getHeaders().get("simpMessageType").toString() : "UNKNOWN";
+                
+                // ⭐ SEND 메시지 (메시지 전송)에 대한 특별 로그
+                if (destination != null && destination.toString().startsWith("/app/")) {
+                    log.info("🔥🔥🔥 [WebSocketConfig] ⭐⭐⭐ SEND 메시지 수신 (메시지 전송) ⭐⭐⭐ - destination: {}, messageType: {}, headers: {}", 
+                            destination, messageType, message.getHeaders());
+                    // ⭐ 메시지 본문도 로그 출력 (디버깅용)
+                    Object payload = message.getPayload();
+                    if (payload != null) {
+                        log.info("🔥🔥🔥 [WebSocketConfig] SEND 메시지 본문: {}", payload);
+                    }
+                } else {
+                    log.info("🔥 [WebSocketConfig] ========== STOMP 메시지 수신 ========== - destination: {}, messageType: {}, headers: {}", 
+                            destination, messageType, message.getHeaders());
+                }
                 return message;
             }
         });

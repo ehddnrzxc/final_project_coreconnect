@@ -99,13 +99,35 @@ const MailSideBar = () => {
               <ListItemButton sx={{ borderRadius: 1, px: 1.3, py: 0.5 }} onClick={goUnreadMailTab}>
                 <ListItemText
                   primary={
-                    <Box sx={{ display: "flex", alignItems: "center" }}>
-                      <Typography variant="body2">안읽은 메일</Typography>
-                      <Badge
-                        color="error"
-                        badgeContent={unreadCount}
-                        sx={{ "& .MuiBadge-badge": { fontSize: 12, height: 18, minWidth: 20, borderRadius: 9, ml: 1 } }}
-                      />
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Typography variant="body2" sx={{ lineHeight: 1.5 }}>안읽은 메일</Typography>
+                      {unreadCount > 0 && (
+                        <Badge
+                          color="error"
+                          badgeContent={unreadCount}
+                          anchorOrigin={{
+                            vertical: 'top',
+                            horizontal: 'right',
+                          }}
+                          sx={{ 
+                            flexShrink: 0,
+                            display: "flex",
+                            alignItems: "center",
+                            "& .MuiBadge-badge": { 
+                              fontSize: 12, 
+                              height: 18, 
+                              minWidth: 20, 
+                              borderRadius: 9,
+                              position: "relative",
+                              top: 0,
+                              right: 0,
+                              transform: "none",
+                            } 
+                          }}
+                        >
+                          <Box sx={{ width: 0, height: 0 }} />
+                        </Badge>
+                      )}
                     </Box>
                   }
                 />
@@ -140,13 +162,35 @@ const MailSideBar = () => {
               >
                 <ListItemText
                   primary={
-                    <Box sx={{ display: "flex", alignItems: "center" }}>
-                      <Typography variant="body2">받은메일함</Typography>
-                      <Badge
-                        color="primary"
-                        badgeContent={unreadCount}
-                        sx={{ "& .MuiBadge-badge": { fontSize: 12, height: 18, minWidth: 20, borderRadius: 9, ml: 1 } }}
-                      />
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Typography variant="body2" sx={{ lineHeight: 1.5 }}>받은메일함</Typography>
+                      {unreadCount > 0 && (
+                        <Badge
+                          color="primary"
+                          badgeContent={unreadCount}
+                          anchorOrigin={{
+                            vertical: 'top',
+                            horizontal: 'right',
+                          }}
+                          sx={{ 
+                            flexShrink: 0,
+                            display: "flex",
+                            alignItems: "center",
+                            "& .MuiBadge-badge": { 
+                              fontSize: 12, 
+                              height: 18, 
+                              minWidth: 20, 
+                              borderRadius: 9,
+                              position: "relative",
+                              top: 0,
+                              right: 0,
+                              transform: "none",
+                            } 
+                          }}
+                        >
+                          <Box sx={{ width: 0, height: 0 }} />
+                        </Badge>
+                      )}
                     </Box>
                   }
                 />
