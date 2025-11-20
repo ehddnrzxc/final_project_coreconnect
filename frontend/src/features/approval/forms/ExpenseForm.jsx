@@ -39,11 +39,12 @@ const ExpenseForm = ({ formData, onFormChange }) => {
   const handlePurposeChange = e => {
     const { name, value } = e.target;
 
-    if (value.length > 100) {
-      value = value.slice(0, 100);
+    let processedValue = value;
+    if (processedValue.length > 100) {
+      processedValue = processedValue.slice(0, 100);
     }
 
-    const valToSend = value === ''? ' ' : value;
+    const valToSend = processedValue === ''? ' ' : processedValue;
 
     onFormChange({
       target: {

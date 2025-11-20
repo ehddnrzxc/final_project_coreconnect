@@ -63,12 +63,6 @@ public class UserController {
       return ResponseEntity.ok(userList);
     }
     
-    /** 사용자 목록 조회 */
-    @GetMapping
-    public List<UserDTO> findAllUsers() {
-      return userService.findAllUsers();
-    }
-    
     /** 사용자 로그인 정보로부터 사용자의 정보를 가져오는 API */
     @GetMapping("/profile-info")
     public ResponseEntity<UserDTO> getCurrentUser(

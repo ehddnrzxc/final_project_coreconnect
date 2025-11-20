@@ -178,6 +178,19 @@ export default function BirthdayCard({ onUserClick }) {
               onChange={(event, value) => setPage(value)}
               size="small"
               color="primary"
+              sx={{
+                "& .MuiPaginationItem-root": {
+                  bgcolor: "transparent",
+                  "&.Mui-selected": {
+                    bgcolor: "transparent",
+                    color: "primary.main",
+                    fontWeight: 600,
+                  },
+                  "&:hover": {
+                    bgcolor: "transparent",
+                  },
+                },
+              }}
             />
           </Box>
         )}

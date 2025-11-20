@@ -17,7 +17,6 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import ListIcon from "@mui/icons-material/List";
 
 import {
   getAllNoticesList,
@@ -178,7 +177,7 @@ export default function GroupwareNoticeModal({ open, onClose }) {
               borderColor: "divider",
             }}
           >
-            <Typography variant="h5" sx={{ fontWeight: 600 }}>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
               공지사항
             </Typography>
           </Box>
@@ -203,9 +202,9 @@ export default function GroupwareNoticeModal({ open, onClose }) {
                   <ListItemText
                     primary={
                       <Typography
-                        variant="body1"
+                        variant="body2"
                         sx={{
-                          fontWeight: selectedCategory === category ? 600 : 400,
+                          fontSize: "0.875rem",
                         }}
                       >
                         {label}
@@ -422,10 +421,15 @@ export default function GroupwareNoticeModal({ open, onClose }) {
                 >
                   <Button
                     variant="outlined"
-                    startIcon={<ListIcon />}
                     onClick={handleBackToList}
                     sx={{
                       px: 4,
+                      borderColor: "grey.400",
+                      color: "grey.700",
+                      "&:hover": {
+                        borderColor: "grey.500",
+                        backgroundColor: "grey.50",
+                      },
                     }}
                   >
                     목록
