@@ -1,21 +1,19 @@
-import React, { useEffect, useState, useContext, useRef } from 'react';
+import React, { useEffect, useState, useContext, useRef, useMemo } from 'react';
 import {
   Box, Typography, Paper, Table, TableHead, TableBody, TableRow, TableCell,
   IconButton, ButtonGroup, Button, InputBase, Divider, Checkbox, Chip, Pagination, Badge, Tabs, Tab,
-  Snackbar, Alert, Menu, MenuItem, Select
+  Snackbar, Alert, Menu, MenuItem, Select, LinearProgress
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import ReportIcon from '@mui/icons-material/Report';
 import ReplyIcon from '@mui/icons-material/Reply';
 import DeleteIcon from '@mui/icons-material/Delete';
-import TagIcon from '@mui/icons-material/LocalOffer';
 import ForwardIcon from '@mui/icons-material/Forward';
 import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
-import MoveToInboxIcon from '@mui/icons-material/MoveToInbox';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import SyncIcon from '@mui/icons-material/Sync';
 import ViewListIcon from '@mui/icons-material/ViewList';
-import { fetchInbox, fetchUnreadCount, moveToTrash, markMailAsRead } from '../api/emailApi';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { fetchInbox, fetchUnreadCount, moveToTrash, markMailAsRead, getEmailDetail } from '../api/emailApi';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { MailCountContext } from "../../../App"; // 메일 카운트 컨텍스트(사이드바 등 공유)
 import { UserProfileContext } from "../../../App";
@@ -35,6 +33,8 @@ const MailInboxPage = () => {
   const [searchType, setSearchType] = useState("TITLE_CONTENT");
   const [appliedSearchType, setAppliedSearchType] = useState("TITLE_CONTENT");
   const [appliedKeyword, setAppliedKeyword] = useState("");
+  const [sortOrder, setSortOrder] = useState("desc"); // 날짜 정렬 순서: "desc" (내림차순, 최신순), "asc" (오름차순, 오래된순)
+  const [isRefreshing, setIsRefreshing] = useState(false); // 새로고침 로딩 상태
   const pendingReadIdsRef = useRef(new Set());
   const { userProfile } = useContext(UserProfileContext) || {};
   const userEmail = userProfile?.email;
@@ -130,10 +130,136 @@ const MailInboxPage = () => {
     }
   };
 
-  const handleRefresh = () => {
-    loadInbox(1, size, tab);
-    loadUnreadCount();
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        loadInbox(1, size, tab),
+        loadUnreadCount()
+      ]);
+    } catch (err) {
+      console.error("handleRefresh error", err);
+      setSnack({ open: true, severity: 'error', message: '메일 목록 새로고침 중 오류가 발생했습니다.' });
+    } finally {
+      // 로딩바가 잠깐 보이도록 최소 시간 대기 (UX 개선)
+      setTimeout(() => {
+        setIsRefreshing(false);
+      }, 300);
+    }
   };
+
+  // 답장 핸들러
+  const handleReply = async () => {
+    if (selected.size === 0) {
+      setSnack({ open: true, severity: 'warning', message: '답장할 메일을 선택해주세요.' });
+      return;
+    }
+
+    // 선택된 메일 중 첫 번째 메일 사용
+    const selectedMailId = Array.from(selected)[0];
+    const selectedMail = mails.find(m => m.emailId === selectedMailId);
+    
+    if (!selectedMail) {
+      setSnack({ open: true, severity: 'error', message: '선택한 메일을 찾을 수 없습니다.' });
+      return;
+    }
+
+    try {
+      // 메일 상세 정보 가져오기 (cc, bcc 정보 포함)
+      const detailRes = await getEmailDetail(selectedMailId, userEmail);
+      const mailDetail = detailRes?.data?.data || selectedMail;
+
+      // 답장 정보 구성
+      const replyData = {
+        originalEmail: {
+          emailId: mailDetail.emailId,
+          senderEmail: mailDetail.senderEmail || selectedMail.senderEmail,
+          senderName: mailDetail.senderName || selectedMail.senderName,
+          emailTitle: mailDetail.emailTitle || selectedMail.emailTitle,
+          sentTime: mailDetail.sentTime || mailDetail.emailSentTime || selectedMail.sentTime,
+          recipientAddresses: mailDetail.recipientAddresses || selectedMail.recipientAddresses || [],
+          ccAddresses: mailDetail.ccAddresses || [],
+          bccAddresses: mailDetail.bccAddresses || [],
+          emailContent: mailDetail.emailContent || ''
+        }
+      };
+
+      // 메일쓰기 페이지로 이동 (location.state로 답장 정보 전달)
+      navigate('/email/write', { state: { replyData } });
+    } catch (err) {
+      console.error("handleReply error", err);
+      setSnack({ open: true, severity: 'error', message: '메일 상세 정보를 가져오는 중 오류가 발생했습니다.' });
+    }
+  };
+
+  // 전달 핸들러
+  const handleForward = async () => {
+    if (selected.size === 0) {
+      setSnack({ open: true, severity: 'warning', message: '전달할 메일을 선택해주세요.' });
+      return;
+    }
+
+    // 선택된 메일 중 첫 번째 메일 사용
+    const selectedMailId = Array.from(selected)[0];
+    const selectedMail = mails.find(m => m.emailId === selectedMailId);
+    
+    if (!selectedMail) {
+      setSnack({ open: true, severity: 'error', message: '선택한 메일을 찾을 수 없습니다.' });
+      return;
+    }
+
+    try {
+      // 메일 상세 정보 가져오기 (cc, bcc 정보 포함)
+      const detailRes = await getEmailDetail(selectedMailId, userEmail);
+      const mailDetail = detailRes?.data?.data || selectedMail;
+
+      // 전달 정보 구성
+      const forwardData = {
+        originalEmail: {
+          emailId: mailDetail.emailId,
+          senderEmail: mailDetail.senderEmail || selectedMail.senderEmail,
+          senderName: mailDetail.senderName || selectedMail.senderName,
+          emailTitle: mailDetail.emailTitle || selectedMail.emailTitle,
+          sentTime: mailDetail.sentTime || mailDetail.emailSentTime || selectedMail.sentTime,
+          recipientAddresses: mailDetail.recipientAddresses || selectedMail.recipientAddresses || [],
+          ccAddresses: mailDetail.ccAddresses || [],
+          bccAddresses: mailDetail.bccAddresses || [],
+          emailContent: mailDetail.emailContent || ''
+        }
+      };
+
+      // 메일쓰기 페이지로 이동 (location.state로 전달 정보 전달)
+      navigate('/email/write', { state: { forwardData } });
+    } catch (err) {
+      console.error("handleForward error", err);
+      setSnack({ open: true, severity: 'error', message: '메일 상세 정보를 가져오는 중 오류가 발생했습니다.' });
+    }
+  };
+
+  // 날짜순 정렬 토글 핸들러
+  const handleSortByDate = () => {
+    setSortOrder(prev => prev === "desc" ? "asc" : "desc");
+  };
+
+  // 메일 목록을 날짜순으로 정렬
+  const sortedMails = useMemo(() => {
+    if (!Array.isArray(mails) || mails.length === 0) return mails;
+    
+    const sorted = [...mails].sort((a, b) => {
+      const dateA = a.sentTime ? new Date(a.sentTime).getTime() : 0;
+      const dateB = b.sentTime ? new Date(b.sentTime).getTime() : 0;
+      
+      if (sortOrder === "asc") {
+        // 오름차순: 오래된 메일부터
+        return dateA - dateB;
+      } else {
+        // 내림차순: 최신 메일부터 (기본값)
+        return dateB - dateA;
+      }
+    });
+    
+    return sorted;
+  }, [mails, sortOrder]);
 
   const handleSearchSubmit = (e) => {
     if (e) e.preventDefault();
@@ -227,6 +353,73 @@ const MailInboxPage = () => {
     });
   };
 
+  // 선택된 메일들 읽음 처리
+  const markSelectedAsRead = async () => {
+    const ids = Array.from(selected);
+    if (ids.length === 0) {
+      setSnack({ open: true, severity: 'warning', message: '읽음 처리할 메일을 선택하세요.' });
+      return;
+    }
+    if (!userEmail) {
+      setSnack({ open: true, severity: 'error', message: '사용자 정보를 찾을 수 없습니다.' });
+      return;
+    }
+
+    try {
+      // 선택된 메일들 중 안읽은 메일만 필터링
+      const unreadMails = mails.filter(mail => 
+        ids.includes(mail.emailId) && 
+        (mail.emailReadYn === false || mail.emailReadYn === null || mail.emailReadYn === undefined)
+      );
+      
+      if (unreadMails.length === 0) {
+        setSnack({ open: true, severity: 'info', message: '선택한 메일은 이미 읽음 처리된 메일입니다.' });
+        return;
+      }
+
+      // 각 메일을 읽음 처리
+      const readPromises = unreadMails.map(mail => markMailAsRead(mail.emailId, userEmail));
+      await Promise.all(readPromises);
+
+      // 안읽은 메일 탭인 경우 읽음 처리된 메일들을 목록에서 즉시 제거 (Optimistic Update)
+      if (tab === "unread") {
+        const readMailIds = new Set(unreadMails.map(m => m.emailId));
+        readMailIds.forEach(id => pendingReadIdsRef.current.add(id));
+        setMails(prev => prev.filter(m => !readMailIds.has(m.emailId)));
+        setTotal(prev => Math.max(0, prev - readMailIds.size));
+      }
+
+      // 선택 상태 초기화
+      setSelected(new Set());
+      
+      setSnack({ 
+        open: true, 
+        severity: 'success', 
+        message: `${unreadMails.length}개의 메일을 읽음 처리했습니다.` 
+      });
+
+      // DB 반영 후 목록 새로고침 (안읽은 메일 탭인 경우)
+      if (tab === "unread") {
+        setTimeout(async () => {
+          try {
+            await loadInbox(page, size, "unread");
+            await loadUnreadCount();
+          } catch (err) {
+            console.error("loadInbox error after mark as read", err);
+          }
+        }, 800);
+      } else {
+        // 다른 탭에서는 안읽은 메일 개수만 업데이트
+        setTimeout(async () => {
+          await loadUnreadCount();
+        }, 500);
+      }
+    } catch (err) {
+      console.error('markSelectedAsRead error', err);
+      setSnack({ open: true, severity: 'error', message: '메일 읽음 처리 중 오류가 발생했습니다.' });
+    }
+  };
+
   // 선택된 메일들 휴지통으로 이동 (moveToTrash 호출)
   const deleteSelected = async () => {
     const ids = Array.from(selected);
@@ -316,7 +509,26 @@ const MailInboxPage = () => {
 
   // 렌더링
   return (
-    <Box sx={{ p: 4, minHeight: "100vh", bgcolor: "#fafbfd" }}>
+    <Box sx={{ p: 4, minHeight: "100vh", bgcolor: "#fafbfd", position: 'relative' }}>
+      {/* 로딩바 - 상단 고정 */}
+      {isRefreshing && (
+        <LinearProgress 
+          sx={{ 
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 1300,
+            height: 4
+          }} 
+        />
+      )}
+      {/* 뒤로가기 버튼 - 상단 구석 */}
+      <Box sx={{ position: 'absolute', top: 16, right: 16, zIndex: 1000 }}>
+        <IconButton onClick={() => navigate(-1)} sx={{ bgcolor: '#fff', boxShadow: 1 }}>
+          <ArrowBackIcon />
+        </IconButton>
+      </Box>
       <Paper elevation={0} sx={{ p: 3, borderRadius: 2 }}>
         {/* 상단 타이틀 및 탭/Chip */}
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
@@ -391,9 +603,25 @@ const MailInboxPage = () => {
             <Tab
               value="unread"
               label={
-                <Badge badgeContent={unreadCount} color="error">
-                  안읽은 메일
-                </Badge>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                  <Typography component="span">안읽은 메일</Typography>
+                  {unreadCount > 0 && (
+                    <Badge 
+                      badgeContent={unreadCount} 
+                      color="error"
+                      sx={{
+                        "& .MuiBadge-badge": {
+                          fontSize: 11,
+                          height: 16,
+                          minWidth: 16,
+                          borderRadius: 8,
+                        }
+                      }}
+                    >
+                      <Box sx={{ width: 0, height: 0 }} />
+                    </Badge>
+                  )}
+                </Box>
               }
             />
           </Tabs>
@@ -410,20 +638,17 @@ const MailInboxPage = () => {
             onChange={(e) => { e.stopPropagation(); toggleSelectAll(); }}
           />
           <ButtonGroup variant="text" sx={{ gap: 1 }}>
-            <Button startIcon={<ReportIcon />}>스팸신고</Button>
-            <Button startIcon={<ReplyIcon />}>답장</Button>
+            <Button startIcon={<ReplyIcon />} onClick={handleReply}>답장</Button>
             {/* 삭제(휴지통 이동) */}
             <Button startIcon={<DeleteIcon />} onClick={deleteSelected}>삭제</Button>
-            <Button startIcon={<TagIcon />}>태그</Button>
-            <Button startIcon={<ForwardIcon />}>전달</Button>
-            <Button startIcon={<MarkEmailReadIcon />}>읽음</Button>
-            <Button startIcon={<MoveToInboxIcon />}>이동</Button>
-            <Button startIcon={<MoreVertIcon />}>이메일옵션</Button>
+            <Button startIcon={<ForwardIcon />} onClick={handleForward}>전달</Button>
+            <Button startIcon={<MarkEmailReadIcon />} onClick={markSelectedAsRead}>읽음</Button>
           </ButtonGroup>
           <Box sx={{ flex: 1 }} />
-          <IconButton><ViewListIcon /></IconButton>
+          <IconButton onClick={handleSortByDate} title={sortOrder === "desc" ? "날짜순 내림차순 (최신순)" : "날짜순 오름차순 (오래된순)"}>
+            <ViewListIcon />
+          </IconButton>
           <IconButton onClick={handleRefresh}><SyncIcon /></IconButton>
-          <IconButton><MoreVertIcon /></IconButton>
           <Paper 
             sx={{ ml: 1, display: 'inline-flex', alignItems: 'center', px: 0.5, cursor: 'pointer' }}
             onClick={(e) => setSizeMenuAnchor(e.currentTarget)}
@@ -468,19 +693,18 @@ const MailInboxPage = () => {
               <TableCell sx={{ fontWeight: 700 }}>발신자</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>제목</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>일자</TableCell>
-              <TableCell sx={{ fontWeight: 700 }}>받는사람</TableCell>
               <TableCell align="right" sx={{ fontWeight: 700 }}>상태</TableCell>
               <TableCell sx={{ fontWeight: 700 }}></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {/* 메일이 없을 때 안내 */}
-            {Array.isArray(mails) && mails.length === 0 ? (
+            {Array.isArray(sortedMails) && sortedMails.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} align="center">받은 메일이 없습니다.</TableCell>
+                <TableCell colSpan={6} align="center">받은 메일이 없습니다.</TableCell>
               </TableRow>
             ) : (
-              mails.map(mail => {
+              sortedMails.map(mail => {
                 const id = mail.emailId;
                 const checked = selected.has(id);
                 // 안읽음 처리 (fontWeight, bg)
@@ -509,11 +733,6 @@ const MailInboxPage = () => {
                     </TableCell>
                     <TableCell>{mail.emailTitle}</TableCell>
                     <TableCell>{formatSentTime(mail.sentTime)}</TableCell>
-                    <TableCell sx={{ fontSize: 13 }}>
-                      {Array.isArray(mail.recipientAddresses)
-                        ? mail.recipientAddresses.join(', ')
-                        : ''}
-                    </TableCell>
                     <TableCell align="right">
                       <Chip
                         label={formatMailStatusLabel(mail.emailStatus)}

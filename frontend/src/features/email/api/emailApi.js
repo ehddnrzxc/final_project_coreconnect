@@ -35,6 +35,10 @@ export const getEmailDetail = (emailId, userEmail) => {
 export const markMailAsRead = (emailId, userEmail) =>
   http.patch(`/email/${emailId}/read`, { userEmail });
 
+// 메일 중요 표시 토글 API (PATCH)
+export const toggleFavoriteStatus = (emailId, userEmail) =>
+  http.patch(`/email/${emailId}/favorite`, { userEmail });
+
 // 파일 다운로드 (첨부파일)
 export const downloadAttachment = (fileId, fileName) => {
   return http.get(`/email/file/download/${fileId}`, { responseType: 'blob' }).then(res => {
@@ -162,4 +166,15 @@ export async function fetchScheduledMails(userEmail, page = 0, size = 10) {
   });
   return res.data;
 }
+
+// 중요 메일 목록 조회
+export const fetchFavoriteMails = (
+  userEmail, page, size,
+  searchType = null, keyword = null
+) => {
+  const params = { userEmail, page, size };
+  if (searchType) params.searchType = searchType;
+  if (keyword && keyword.trim().length > 0) params.keyword = keyword.trim();
+  return http.get('/email/favorite', { params });
+};
 

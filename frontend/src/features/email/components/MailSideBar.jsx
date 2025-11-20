@@ -88,7 +88,7 @@ const MailSideBar = () => {
           </Box>
           <List dense sx={{ p: 0 }}>
             <ListItem disableGutters sx={{ py: 0.5, px: 0 }}>
-              <ListItemButton sx={{ borderRadius: 1, px: 1.3, py: 0.5 }}>
+              <ListItemButton sx={{ borderRadius: 1, px: 1.3, py: 0.5 }} onClick={() => navigate("/email/favorite")}>
                 <Box sx={{ display: "inline-block", pr: 0.7 }}>
                   <StarBorderIcon fontSize="small" />
                 </Box>
@@ -99,7 +99,7 @@ const MailSideBar = () => {
               <ListItemButton sx={{ borderRadius: 1, px: 1.3, py: 0.5 }} onClick={goUnreadMailTab}>
                 <ListItemText
                   primary={
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                       <Typography variant="body2" sx={{ lineHeight: 1.5 }}>안읽은 메일</Typography>
                       {unreadCount > 0 && (
                         <Badge

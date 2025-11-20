@@ -54,6 +54,7 @@ import com.goodee.coreconnect.email.dto.request.EmailSendRequestDTO;
 import com.goodee.coreconnect.email.dto.response.DeleteMailsResponse;
 import com.goodee.coreconnect.email.dto.response.EmailResponseDTO;
 import com.goodee.coreconnect.email.dto.response.EmailResponseDTO.AttachmentDTO;
+import com.goodee.coreconnect.email.entity.Email;
 import com.goodee.coreconnect.email.entity.EmailFile;
 import com.goodee.coreconnect.email.entity.EmailRecipient;
 import com.goodee.coreconnect.email.entity.MailUserVisibility;
@@ -72,13 +73,13 @@ import com.goodee.coreconnect.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-// SendGrid 관련 import (중복/불필요한 alias 제거)
+// SendGrid 관련 import
 import com.sendgrid.*;
-import com.sendgrid.helpers.mail.objects.Email; // SendGrid용 Email 클래스!
 import com.sendgrid.helpers.mail.Mail;
 import com.sendgrid.helpers.mail.objects.Personalization;
 import com.sendgrid.helpers.mail.objects.Content;
 import com.sendgrid.helpers.mail.objects.Attachments;
+// ⭐ SendGrid의 Email import 제거 - 엔티티 Email과 충돌 방지
 
 /**
  * 이메일 발송, 답신, 수신 등 SendGrid 연동 서비스 
@@ -567,7 +568,14 @@ public class EmailServiceImpl implements EmailService {
                 if (rec.getUserId() != null) {
                     try {
                         String title = savedEmail.getEmailTitle() != null ? savedEmail.getEmailTitle() : "(제목 없음)";
-                        String message = "[메일 도착] '" + title + "' 메일이 도착했습니다.";
+                        // ⭐ 제목이 너무 길면 잘라내기 (알림 메시지 최대 길이: 255자)
+                        // "[메일 도착] '" + title + "' 메일이 도착했습니다." 형식이므로 제목은 최대 200자로 제한
+                        String truncatedTitle = title.length() > 200 ? title.substring(0, 200) + "..." : title;
+                        String message = "[메일 도착] '" + truncatedTitle + "' 메일이 도착했습니다.";
+                        // ⭐ 메시지 전체 길이도 255자로 제한
+                        if (message.length() > 255) {
+                            message = message.substring(0, 252) + "...";
+                        }
                         notificationService.sendNotification(
                                 rec.getUserId(),
                                 NotificationType.EMAIL,
@@ -595,7 +603,14 @@ public class EmailServiceImpl implements EmailService {
             if (savedEmail.getSenderId() != null) {
                 try {
                     String title = savedEmail.getEmailTitle() != null ? savedEmail.getEmailTitle() : "(제목 없음)";
-                    String senderMsg = "[이메일 발송 완료] '" + title + "' 이메일이 발송되었습니다.";
+                    // ⭐ 제목이 너무 길면 잘라내기 (알림 메시지 최대 길이: 255자)
+                    // "[이메일 발송 완료] '" + title + "' 이메일이 발송되었습니다." 형식이므로 제목은 최대 200자로 제한
+                    String truncatedTitle = title.length() > 200 ? title.substring(0, 200) + "..." : title;
+                    String senderMsg = "[이메일 발송 완료] '" + truncatedTitle + "' 이메일이 발송되었습니다.";
+                    // ⭐ 메시지 전체 길이도 255자로 제한
+                    if (senderMsg.length() > 255) {
+                        senderMsg = senderMsg.substring(0, 252) + "...";
+                    }
                     notificationService.sendNotification(
                             savedEmail.getSenderId(),
                             NotificationType.EMAIL,
@@ -735,6 +750,36 @@ public class EmailServiceImpl implements EmailService {
         }
         // 이미 읽은 경우나 못찾은 경우
         return false;
+    }
+
+    @Override
+    @Transactional
+    public boolean toggleFavoriteStatus(Integer emailId, String userEmail) {
+        // 메일을 조회하고, 발신자이거나 수신자인지 확인
+        Email email = emailRepository.findById(emailId)
+                .orElseThrow(() -> new IllegalArgumentException("메일이 존재하지 않습니다." + emailId));
+
+        // 발신자인지 확인
+        boolean isSender = email.getSenderEmail().equals(userEmail);
+        
+        // 수신자인지 확인
+        boolean isRecipient = emailRecipientRepository.findByEmail(email).stream()
+                .anyMatch(r -> userEmail.equals(r.getEmailRecipientAddress()));
+
+        if (!isSender && !isRecipient) {
+            throw new IllegalArgumentException("해당 메일의 발신자 또는 수신자가 아닙니다.");
+        }
+
+        // 중요 표시 토글
+        boolean currentStatus = email.getFavoriteStatus() != null && email.getFavoriteStatus();
+        email.setFavoriteStatus(!currentStatus);
+        emailRepository.save(email);
+        emailRepository.flush();
+
+        log.info("toggleFavoriteStatus: Email favoriteStatus toggled - emailId={}, userEmail={}, favoriteStatus={} -> {}", 
+                emailId, userEmail, currentStatus, !currentStatus);
+
+        return !currentStatus;
     }
 
 	@Override
@@ -1366,6 +1411,69 @@ public class EmailServiceImpl implements EmailService {
 	    }
 
 	    return pageResult.map(this::toEmailResponseDTO);
+	}
+
+	@Override
+	public Page<EmailResponseDTO> getFavoriteMails(String userEmail, int page, int size, String searchType, String keyword) {
+	    // 페이징 객체 생성 (page: 0-base)
+	    Pageable pageable = PageRequest.of(page, size);
+	    List<String> types = List.of("TO", "CC", "BCC");
+	    
+	    String normalizedSearchType = normalizeSearchType(searchType);
+	    String normalizedKeyword = normalizeKeyword(keyword);
+	    
+	    // 1. 수신한 중요 메일 조회
+	    Page<EmailRecipient> recipientPage = emailRecipientRepository.findFavoriteInboxExcludingTrash(
+	        userEmail, types, pageable, normalizedSearchType, normalizedKeyword
+	    );
+	    
+	    // 2. 발신한 중요 메일 조회
+	    User sender = userRepository.findByEmail(userEmail)
+	        .orElseThrow(() -> new IllegalArgumentException("User not found by email: " + userEmail));
+	    Integer senderId = sender.getId();
+	    
+	    Sort sort = Sort.by(Sort.Direction.DESC, "emailSentTime");
+	    Pageable senderPageable = PageRequest.of(page, size, sort);
+	    
+	    // 발신한 중요 메일 조회
+	    Page<Email> sentPage = emailRepository.findFavoriteSentMails(
+	        senderId, senderPageable, normalizedSearchType, normalizedKeyword
+	    );
+	    
+	    // 수신한 중요 메일을 Email 엔티티로 변환
+	    List<Email> receivedEmails = recipientPage.stream()
+	        .map(EmailRecipient::getEmail)
+	        .distinct()
+	        .collect(Collectors.toList());
+	    
+	    // 발신한 중요 메일 목록
+	    List<Email> sentEmails = sentPage.getContent();
+	    
+	    // 두 목록을 합치고 중복 제거 (emailId 기준)
+	    Map<Integer, Email> emailMap = new HashMap<>();
+	    receivedEmails.forEach(email -> emailMap.put(email.getEmailId(), email));
+	    sentEmails.forEach(email -> emailMap.put(email.getEmailId(), email));
+	    
+	    // 최신순으로 정렬
+	    List<Email> allFavoriteEmails = emailMap.values().stream()
+	        .sorted(Comparator.comparing(Email::getEmailSentTime, Comparator.nullsLast(Comparator.reverseOrder())))
+	        .collect(Collectors.toList());
+	    
+	    // 페이징 처리
+	    int start = (int) pageable.getOffset();
+	    int end = Math.min((start + pageable.getPageSize()), allFavoriteEmails.size());
+	    List<Email> pagedEmails = start < allFavoriteEmails.size() ? 
+	        allFavoriteEmails.subList(start, end) : Collections.emptyList();
+	    
+	    // Email 엔티티를 DTO로 변환
+	    List<EmailResponseDTO> dtoList = pagedEmails.stream()
+	        .map(this::toEmailResponseDTO)
+	        .collect(Collectors.toList());
+	    
+	    // 전체 개수는 수신 + 발신 (중복 제거 후)
+	    long totalElements = emailMap.size();
+	    
+	    return new PageImpl<>(dtoList, pageable, totalElements);
 	}
 
 	/**

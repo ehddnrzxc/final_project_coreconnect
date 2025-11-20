@@ -67,11 +67,16 @@ export function connectStomp(roomId, onMessage, onConnect, onError) {
     reconnectDelay: 5000,                         // 자동 재연결(ms)
     onConnect: () => {                            // 연결 성공 콜백
       console.log('🔥 [ChatSocket] [STOMP] 연결 성공 - roomId:', roomId);
-      // 기존 구독 해제 (이중 수신 방지)
-      if (subscription) {
-        console.log('🔥 [ChatSocket] 기존 구독 해제');
-        subscription.unsubscribe();
+      // ⭐ 기존 구독 해제 (이중 수신 방지) - 안전하게 처리
+      if (subscription && subscription.id) {
+        try {
+          console.log('🔥 [ChatSocket] 기존 구독 해제:', subscription.id);
+          subscription.unsubscribe();
+        } catch (e) {
+          console.warn('🔥 [ChatSocket] 구독 해제 중 예외 (무시):', e);
+        }
       }
+      subscription = null; // ⭐ 명시적으로 null 설정
       // /topic/chat.room.{roomId} 구독 (방의 메시지만 구독)
       const subscribeTimestamp = new Date().toISOString();
       console.log('🔥 [ChatSocket] ========== 새 구독 시작 ==========', {
@@ -182,24 +187,47 @@ export function connectStomp(roomId, onMessage, onConnect, onError) {
 
 /**
  * 현재 연결 및 구독을 해제하는 함수
+ * ⭐ Promise를 반환하여 해제 완료를 보장 (구독 중복 방지)
+ * @returns {Promise<void>} 해제 완료 Promise
  */
 export function disconnectStomp() {
-  console.log('🔥 [ChatSocket] disconnectStomp 호출');
-  try {
-    if (subscription) {
-      console.log('🔥 [ChatSocket] 구독 해제');
-      subscription.unsubscribe(); // 구독 해제
+  return new Promise((resolve) => {
+    console.log('🔥 [ChatSocket] disconnectStomp 호출');
+    try {
+      if (subscription) {
+        console.log('🔥 [ChatSocket] 구독 해제');
+        try {
+          subscription.unsubscribe(); // 구독 해제
+        } catch (e) {
+          console.warn('🔥 [ChatSocket] 구독 해제 중 예외 (무시):', e);
+        }
+        subscription = null;
+      }
+      if (stompClient) {
+        console.log('🔥 [ChatSocket] STOMP 클라이언트 연결 해제');
+        try {
+          stompClient.deactivate();    // STOMP 클라이언트 연결 해제
+        } catch (e) {
+          console.warn('🔥 [ChatSocket] 클라이언트 해제 중 예외 (무시):', e);
+        }
+        // ⭐ deactivate 완료 대기 (비동기 처리)
+        setTimeout(() => {
+          stompClient = null;
+          console.log('🔥 [ChatSocket] disconnectStomp 완료 - stompClient를 null로 설정');
+          resolve();
+        }, 100);
+      } else {
+        console.log('🔥 [ChatSocket] disconnectStomp 완료 - stompClient가 이미 null');
+        resolve();
+      }
+    } catch (e) {
+      console.error('🔥 [ChatSocket] disconnectStomp 예외:', e);
+      // ⭐ 에러가 나도 계속 진행
+      stompClient = null;
+      subscription = null;
+      resolve();
     }
-    if (stompClient) {
-      console.log('🔥 [ChatSocket] STOMP 클라이언트 연결 해제');
-      stompClient.deactivate();    // STOMP 클라이언트 연결 해제
-    }
-  } catch (e) {
-    console.error('🔥 [ChatSocket] disconnectStomp 예외:', e);
-  }
-  console.log('🔥 [ChatSocket] disconnectStomp 완료 - stompClient를 null로 설정');
-  stompClient = null;
-  subscription = null;
+  });
 }
 
 /**
