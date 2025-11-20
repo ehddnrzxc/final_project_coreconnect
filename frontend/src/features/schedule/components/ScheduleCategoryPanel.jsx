@@ -12,6 +12,7 @@ import {
   updateScheduleCategory,
   deleteScheduleCategory,
 } from "../api/scheduleAPI";
+import ConfirmDialog from "../../../components/utils/ConfirmDialog";
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 
 const COLOR_PALETTE = [ 
@@ -21,7 +22,7 @@ const COLOR_PALETTE = [
   "#FF8A65","#9575CD","#4FC3F7","#AED581","#FFB300"
 ];
 
-export default function ScheduleCategoryPanel({ activeCategories, onToggle, onColorChange, categoryColors }) {
+export default function ScheduleCategoryPanel({ activeCategories, onToggle, onColorChange, categoryColors, onCategoryDelete }) {
   const [categories, setCategories] = useState([]);
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -32,6 +33,8 @@ export default function ScheduleCategoryPanel({ activeCategories, onToggle, onCo
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState("add"); // "add" | "edit"
   const [inputValue, setInputValue] = useState("");
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState(null);
 
   /** 초기 카테고리 로드 */
   useEffect(() => {
@@ -89,11 +92,33 @@ export default function ScheduleCategoryPanel({ activeCategories, onToggle, onCo
     }
   };
 
-  /** 삭제 */
-  const handleDelete = async (id) => {
-    await deleteScheduleCategory(id);
-    setCategories((prev) => prev.filter((c) => c.id !== id));
-    };
+  /** 카테고리 삭제 확인 다이얼로그 열기 */
+  const handleDelete = (id) => {
+    setDeleteTargetId(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  /** 카테고리 삭제 실행 */
+  const handleDeleteConfirm = async () => {
+    if (!deleteTargetId) return;
+    
+    try {
+      await deleteScheduleCategory(deleteTargetId);
+      setCategories((prev) => prev.filter((c) => c.id !== deleteTargetId));
+      showSnack("카테고리가 삭제되었습니다", "info");
+      setDeleteConfirmOpen(false);
+      setDeleteTargetId(null);
+      
+      // 부모 컴포넌트에 카테고리 삭제 알림 (일정 목록 갱신용)
+      if (onCategoryDelete) {
+        onCategoryDelete(deleteTargetId);
+      }
+    } catch (err) {
+      showSnack(err.message || "카테고리 삭제 중 오류 발생", "error");
+      setDeleteConfirmOpen(false);
+      setDeleteTargetId(null);
+    }
+  };
 
   /** 렌더링 */
   return (
@@ -216,6 +241,18 @@ export default function ScheduleCategoryPanel({ activeCategories, onToggle, onCo
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* 카테고리 삭제 확인 다이얼로그 */}
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        title="카테고리 삭제"
+        message="정말 이 카테고리를 삭제하시겠습니까?"
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => {
+          setDeleteConfirmOpen(false);
+          setDeleteTargetId(null);
+        }}
+      />
     </Box>
   );
 }
