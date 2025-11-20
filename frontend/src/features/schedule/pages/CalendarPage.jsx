@@ -177,7 +177,7 @@ export default function CalendarPage() {
 
   // 서버 데이터를 FullCalendar 이벤트 형식으로 변환하는 공통 함수
   const mapScheduleToEvent = (schedule, colors) => {
-    const color = colors[schedule.categoryId] || (schedule.visibility === "PRIVATE" ? "#999999" : "#00a0e9");
+    const color = colors[schedule.categoryId] || (schedule.visibility === "PRIVATE" ? "#999999" : "#90A4AE");
     const startDateStr = toLocalDate(schedule.startDateTime);
     const endDateStr = toLocalDate(schedule.endDateTime);
     const isMultiDay = startDateStr !== endDateStr;
@@ -492,7 +492,7 @@ export default function CalendarPage() {
   const hexToRgba = (hex, alpha = 0.15) => {
     // hex가 undefined이거나 유효하지 않을 때 기본값 사용
     if (!hex || typeof hex !== 'string' || !hex.startsWith('#')) {
-      hex = "#00a0e9"; // 기본 색상
+      hex = "#90A4AE"; // 기본 색상
     }
     const r = parseInt(hex.slice(1, 3), 16);
     const g = parseInt(hex.slice(3, 5), 16);
@@ -504,7 +504,7 @@ export default function CalendarPage() {
   const renderEventContent = (arg) => {
     const event = arg.event.extendedProps;
     const isPrivate = event.visibility === "PRIVATE";
-    const color = event.dotColor || (isPrivate ? "#999999" : "#00a0e9");  
+    const color = event.dotColor || (isPrivate ? "#999999" : "#90A4AE");  
 
     const isTimeView = arg.view.type === "timeGridWeek" || arg.view.type === "timeGridDay";
     

@@ -69,7 +69,7 @@ export default function ScheduleCategoryPanel({ activeCategories, onToggle, onCo
         const created = await createScheduleCategory({ name: inputValue, defaultYn: false });
         setCategories((prev) => [...prev, created]);
 
-        const defaultColor = "#00a0e9";
+        const defaultColor = "#90A4AE";
         onColorChange(created.id, defaultColor);
 
       } else if (dialogMode === "edit" && selectedCategory) {
@@ -118,11 +118,11 @@ export default function ScheduleCategoryPanel({ activeCategories, onToggle, onCo
               <Checkbox
                 checked={activeCategories.includes(cat.id)}
                 onChange={() => onToggle(cat.id)}
-                sx={{ color: categoryColors[cat.id] || "#999", "&.Mui-checked": { color: categoryColors[cat.id] || "#999" } }}
+                sx={{ color: categoryColors[cat.id] || "#90A4AE", "&.Mui-checked": { color: categoryColors[cat.id] || "#90A4AE" } }}
               />
               <Typography 
                 sx={{ 
-                  color: categoryColors[cat.id] || "#999", 
+                  color: categoryColors[cat.id] || "#90A4AE", 
                   fontSize: 15,
                   overflow: "hidden",
                   textOverflow: "ellipsis",
