@@ -321,7 +321,14 @@ const BoardDetailPage = () => {
             size="small"
             sx={{ fontSize: "0.8rem", py: 0.5, px: 1.5 }}
             startIcon={<EditIcon />} // 수정 아이콘
-            onClick={() => navigate(`/board/edit/${board.id}`)} // 수정 페이지로 이동
+            onClick={() =>
+              navigate(`/board/edit/${board.id}`, {
+                state: {
+                  fromCategoryId: location.state?.fromAllBoard ? "" : board.categoryId,
+                  fromAllBoard: location.state?.fromAllBoard ?? false
+                }
+              })
+            }
           >
             수정
           </Button>

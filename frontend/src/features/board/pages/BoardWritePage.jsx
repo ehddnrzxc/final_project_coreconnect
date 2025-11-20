@@ -3,7 +3,7 @@ import { Box, Button, TextField, Typography, Checkbox, FormControlLabel, Select,
 import CloseIcon from "@mui/icons-material/Close";
 import DownloadIcon from "@mui/icons-material/Download";
 import DescriptionIcon from "@mui/icons-material/Description";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { createBoard, getBoardDetail, updateBoard } from "../api/boardAPI";
 import { uploadFiles, getFilesByBoard, deleteFilesBulk } from "../api/boardFileAPI";
 import { getAllCategories } from "../api/boardCategoryAPI";
@@ -24,6 +24,11 @@ const BoardWritePage = () => {
     pinned: false,
   });
   const [categories, setCategories] = useState([]);
+
+  const location = useLocation();
+  const fromCategoryId = location.state?.fromCategoryId || "";
+  const fromAllBoard = location.state?.fromAllBoard || false;
+
 
   //  파일 관련 상태 
   const [files, setFiles] = useState([]);
@@ -206,23 +211,31 @@ const BoardWritePage = () => {
     try {
       // 수정 모드
       if (boardId) {
-        await updateBoard(boardId, form); // 게시글 기본 정보 업데이트
+        await updateBoard(boardId, form);
 
-        // 수정 시 삭제된 기존 파일들 처리
         if (deletedExistingFiles.length > 0) {
           await deleteFilesBulk(deletedExistingFiles);
         }
 
-        const uploadList = files // 새로 추가된 파일만 업로드
-          .filter((f) => f.type === "new" && f.file) // 기존 파일 제외
-          .map((f) => f.file); // File 객체만 추출
+        const uploadList = files
+          .filter((f) => f.type === "new" && f.file)
+          .map((f) => f.file);
 
         if (uploadList.length > 0) {
           await uploadFiles(boardId, uploadList);
         }
 
         showSnack("수정 완료!", "success");
-        navigate("/board", { state: { fromAllBoard: true } });
+
+        // 추가된 분기 로직
+        if (fromAllBoard) {
+          navigate("/board");
+        } else if (fromCategoryId) {
+          navigate(`/board/${fromCategoryId}`);
+        } else {
+          navigate("/board");
+        }
+
         return;
       }
 
