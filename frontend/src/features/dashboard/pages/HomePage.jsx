@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Container, Grid } from "@mui/material";
 import AttendanceCard from "../components/AttendanceCard";
 import ProfileCard from "../components/ProfileCard";
@@ -7,8 +7,23 @@ import QuickMenuCard from "../components/QuickMenuCard";
 import RecentBoardsCard from "../components/RecentBoardsCard";
 import CalendarCard from "../components/CalendarCard";
 import RecentNotificationsCard from "../components/RecentNotificationsCard";
+import BirthdayCard from "../components/BirthdayCard";
+import UserProfileModal from "../../../components/user/UserProfileModal";
 
 export default function HomePage() {
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+
+  const handleUserClick = (user) => {
+    setSelectedUser(user);
+    setProfileModalOpen(true);
+  };
+
+  const handleCloseProfileModal = () => {
+    setProfileModalOpen(false);
+    setSelectedUser(null);
+  };
+
   return (
     <Container maxWidth={false} sx={{ py: 3, px: 3 }}>
       <Grid container spacing={3}>
@@ -23,6 +38,10 @@ export default function HomePage() {
         {/* 근태 */}
         <Grid item xs={12} md={4}>
           <AttendanceCard />
+        </Grid>
+        {/* 생일 카드 */}
+        <Grid item xs={12} md={4}>
+          <BirthdayCard onUserClick={handleUserClick} />
         </Grid>
         {/* Quick Menu */}
         <Grid item xs={12} md={4}>
@@ -41,6 +60,13 @@ export default function HomePage() {
           <RecentNotificationsCard />
         </Grid>
       </Grid>
+
+      {/* 프로필 모달 */}
+      <UserProfileModal
+        open={profileModalOpen}
+        onClose={handleCloseProfileModal}
+        user={selectedUser}
+      />
     </Container>
   );
 }

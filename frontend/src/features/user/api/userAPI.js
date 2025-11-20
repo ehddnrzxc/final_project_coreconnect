@@ -56,3 +56,11 @@ export async function updateDetailProfileInfo(profileData) {
   const res = await http.put("/user/detail-profile", profileData);
   return res.data;
 }
+
+// 생일자 목록 조회
+export async function getBirthdayUsers(year, month) {
+  const res = await http.get("/user/birthdays", {
+    params: { year, month },
+  });
+  return res.data;
+}

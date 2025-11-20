@@ -13,6 +13,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.goodee.coreconnect.common.service.S3Service;
 import com.goodee.coreconnect.user.dto.request.UserDetailProfileUpdateRequestDTO;
+import com.goodee.coreconnect.user.dto.response.BirthdayUserDTO;
 import com.goodee.coreconnect.user.dto.response.OrganizationUserResponseDTO;
 import com.goodee.coreconnect.user.dto.response.UserDTO;
 import com.goodee.coreconnect.user.dto.response.UserDetailProfileDTO;
@@ -184,6 +185,33 @@ public class UserServiceImpl implements UserService {
     );
     
     userDetailProfileRepository.save(profile);
+  }
+  
+  /** 특정 월의 생일자 목록 조회 */
+  @Override
+  @Transactional(readOnly = true)
+  public List<BirthdayUserDTO> getBirthdayUsers(Integer year, Integer month) {
+    List<UserDetailProfile> profiles = userDetailProfileRepository.findByBirthdayMonth(month);
+    
+    return profiles.stream()
+        .map(profile -> {
+          User user = profile.getUser();
+          String imageUrl = "";
+          if (user.getProfileImageKey() != null && !user.getProfileImageKey().isBlank()) {
+            imageUrl = s3Service.getFileUrl(user.getProfileImageKey());
+          }
+          
+          return new BirthdayUserDTO(
+              user.getId(),
+              user.getName(),
+              user.getEmail(),
+              user.getDepartment() != null ? user.getDepartment().getDeptName() : null,
+              imageUrl,
+              profile.getBirthday(),
+              user.getEmployeeNumber()
+          );
+        })
+        .toList();
   }
   
 }

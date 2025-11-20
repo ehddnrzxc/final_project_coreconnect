@@ -18,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
 import com.goodee.coreconnect.user.dto.request.ChangePasswordRequestDTO;
 import com.goodee.coreconnect.user.dto.request.UserDetailProfileUpdateRequestDTO;
+import com.goodee.coreconnect.user.dto.response.BirthdayUserDTO;
 import com.goodee.coreconnect.user.dto.response.OrganizationUserResponseDTO;
 import com.goodee.coreconnect.user.dto.response.UserDTO;
 import com.goodee.coreconnect.user.dto.response.UserDetailProfileDTO;
@@ -78,6 +79,15 @@ public class UserController {
       return ResponseEntity.ok(dto);
     }
     
+    /** 이메일로 사용자 정보 조회 */
+    @GetMapping("/by-email")
+    public ResponseEntity<UserDTO> getUserByEmail(
+      @RequestParam String email
+    ) {
+      UserDTO dto = userService.getProfile(email);
+      return ResponseEntity.ok(dto);
+    }
+    
     /** 비밀번호 변경 */
     @PutMapping("/password")
     public ResponseEntity<Void> changePassword(
@@ -114,6 +124,16 @@ public class UserController {
       String email = user.getEmail();
       userService.updateDetailProfileInfo(email, request);
       return ResponseEntity.ok("프로필 정보가 수정되었습니다.");
+    }
+    
+    /** 생일자 목록 조회 */
+    @GetMapping("/birthdays")
+    public ResponseEntity<List<BirthdayUserDTO>> getBirthdayUsers(
+      @RequestParam Integer year,
+      @RequestParam Integer month
+    ) {
+      List<BirthdayUserDTO> birthdays = userService.getBirthdayUsers(year, month);
+      return ResponseEntity.ok(birthdays);
     }
     
     
