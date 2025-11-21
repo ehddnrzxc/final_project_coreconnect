@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import {
   Box, Button, List, ListItem, ListItemButton, ListItemText, Typography,
   IconButton, Chip, Badge
@@ -18,12 +18,23 @@ const MailSideBar = () => {
   const navigate = useNavigate();
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   // context 값 받아오기: draftCount, unreadCount, …, refreshDraftCount 등
+  const mailCountContext = useContext(MailCountContext);
   const {
     draftCount = 0,
     unreadCount = 0,
     refreshDraftCount = () => {},
     refreshUnreadCount = () => {},
-  } = useContext(MailCountContext) || {};
+  } = mailCountContext || {};
+  
+  // 디버깅: context 값 확인
+  useEffect(() => {
+    console.log("[MailSideBar] MailCountContext 값:", {
+      mailCountContext,
+      unreadCount,
+      draftCount,
+      hasContext: !!mailCountContext
+    });
+  }, [mailCountContext, unreadCount, draftCount]);
 
   // ★ 이 부분에서 임시보관함 카운트를 동기화(앱 마운트/리프레시 시)
   useEffect(() => {
@@ -109,7 +120,7 @@ const MailSideBar = () => {
                   primary={
                     <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                       <Typography variant="body2" sx={{ lineHeight: 1.5 }}>안읽은 메일</Typography>
-                      {unreadCount > 0 && (
+                      {unreadCount != null && unreadCount > 0 && (
                         <Badge
                           color="error"
                           badgeContent={unreadCount}
@@ -172,7 +183,7 @@ const MailSideBar = () => {
                   primary={
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                       <Typography variant="body2" sx={{ lineHeight: 1.5 }}>받은메일함</Typography>
-                      {unreadCount > 0 && (
+                      {unreadCount != null && unreadCount > 0 && (
                         <Badge
                           color="primary"
                           badgeContent={unreadCount}

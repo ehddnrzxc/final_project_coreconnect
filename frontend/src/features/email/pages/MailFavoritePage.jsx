@@ -45,8 +45,8 @@ function getStatusColor(emailStatus) {
 */
 const MailFavoritePage = () => {
   // UserProfileContext에서 userProfile을 가져와 이메일을 추출
-  const context = useContext(UserProfileContext);
-  const userEmail = context?.userProfile?.email || null;
+  const { userProfile } = useContext(UserProfileContext) || {};
+  const userEmail = userProfile?.email;
 
   // 상태 정의: 메일 목록, 페이징, 선택 등
   const [search, setSearch] = useState('');

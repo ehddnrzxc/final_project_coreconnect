@@ -191,7 +191,22 @@ export default function ChatLayout() {
     
     // ⭐ unreadCount 업데이트 메시지 처리 (다른 참여자가 메시지를 읽었을 때)
     // ⭐ 중요: msg.type이 정확히 "UNREAD_COUNT_UPDATE"인지 확인
+    // ⭐ 중요: 자신이 보낸 메시지인 경우 unreadCount를 업데이트하지 않음
     if (msg && msg.type === "UNREAD_COUNT_UPDATE") {
+      // ⭐ 자신이 보낸 메시지인지 확인
+      const isMyMessage = msg.senderEmail && userProfile?.email && 
+                          msg.senderEmail.trim().toLowerCase() === userProfile.email.trim().toLowerCase();
+      
+      if (isMyMessage) {
+        console.log("📊 [ChatLayout] UNREAD_COUNT_UPDATE 무시 - 자신이 보낸 메시지:", {
+          chatId: msg.chatId,
+          roomId: msg.roomId,
+          senderEmail: msg.senderEmail,
+          myEmail: userProfile?.email
+        });
+        return; // 자신이 보낸 메시지는 unreadCount를 업데이트하지 않음
+      }
+      
       console.log("📊 [ChatLayout] ⭐ UNREAD_COUNT_UPDATE 조건 만족! 처리 시작");
       const { chatId, unreadCount, roomId, viewerId, viewerEmail } = msg;
       
@@ -340,7 +355,22 @@ export default function ChatLayout() {
     // ⭐ ROOM_UNREAD_COUNT_UPDATE 메시지 처리 (채팅방 목록의 unreadCount 업데이트용)
     // ⭐ 백엔드에서 새로운 메시지가 왔을 때 채팅방 목록의 unreadCount를 업데이트하기 위해 브로드캐스트
     // ⭐ 자신이 해당 채팅방에 접속 중이 아닌 경우, 채팅방 목록의 unreadCount를 증가시켜야 함
+    // ⭐ 중요: 자신이 보낸 메시지인 경우 채팅방 목록의 unreadCount를 업데이트하지 않음
     if (msg && msg.type === "ROOM_UNREAD_COUNT_UPDATE") {
+      // ⭐ 자신이 보낸 메시지인지 확인
+      const isMyMessage = msg.senderEmail && userProfile?.email && 
+                          msg.senderEmail.trim().toLowerCase() === userProfile.email.trim().toLowerCase();
+      
+      if (isMyMessage) {
+        console.log("📊 [ChatLayout] ROOM_UNREAD_COUNT_UPDATE 무시 - 자신이 보낸 메시지:", {
+          roomId: msg.roomId,
+          chatId: msg.chatId,
+          senderEmail: msg.senderEmail,
+          myEmail: userProfile?.email
+        });
+        return; // 자신이 보낸 메시지는 채팅방 목록의 unreadCount를 업데이트하지 않음
+      }
+      
       console.log("📊 [ChatLayout] ⭐ ROOM_UNREAD_COUNT_UPDATE 조건 만족! 처리 시작");
       const { roomId, chatId } = msg;
       
@@ -468,6 +498,34 @@ export default function ChatLayout() {
           });
           return updated;
         });
+        
+        // ⭐ 자신이 보낸 메시지인 경우에도 채팅방 목록의 메시지 내용과 시간을 업데이트해야 함
+        // ⭐ 현재 선택된 방에서 메시지를 보낸 경우에도 채팅방 목록에 반영되어야 함
+        const roomIdNum = Number(msg.roomId);
+        setRoomList((prevRoomList) => {
+          const updated = prevRoomList.map(room => {
+            if (Number(room.roomId) === roomIdNum) {
+              // ⭐ 자신이 보낸 메시지는 unreadCount를 유지하지만, 메시지 내용과 시간은 업데이트
+              return {
+                ...room,
+                lastMessageContent: msg.messageContent,
+                lasMessageTime: msg.sendAt,
+                fileYn: msg.fileYn,
+                sendAt: msg.sendAt,
+                // ⭐ unreadCount는 유지 (자신이 보낸 메시지는 읽음 처리되므로)
+                unreadCount: room.unreadCount || 0
+              };
+            }
+            return room;
+          });
+          return sortRoomList(updated);
+        });
+        
+        console.log("📨 [ChatLayout] 자신이 보낸 메시지 - 채팅방 목록 업데이트 완료:", {
+          roomId: roomIdNum,
+          messageContent: msg.messageContent,
+          sendAt: msg.sendAt
+        });
       }
       return;
     }
@@ -554,6 +612,33 @@ export default function ChatLayout() {
           });
           return updated;
       });
+      
+      // ⭐ 현재 선택된 방에서 다른 사람이 보낸 메시지인 경우에도 채팅방 목록의 메시지 내용과 시간을 업데이트해야 함
+      setRoomList((prevRoomList) => {
+        const updated = prevRoomList.map(room => {
+          if (Number(room.roomId) === roomIdNum) {
+            // ⭐ 현재 선택된 방이므로 unreadCount는 업데이트하지 않지만, 메시지 내용과 시간은 업데이트
+            return {
+              ...room,
+              lastMessageContent: msg.messageContent,
+              lasMessageTime: msg.sendAt,
+              fileYn: msg.fileYn,
+              sendAt: msg.sendAt,
+              // ⭐ 현재 선택된 방이므로 unreadCount는 유지 (이미 읽고 있으므로)
+              unreadCount: room.unreadCount || 0
+            };
+          }
+          return room;
+        });
+        return sortRoomList(updated);
+      });
+      
+      console.log("📨 [ChatLayout] 현재 선택된 방의 다른 사람 메시지 - 채팅방 목록 업데이트 완료:", {
+        roomId: roomIdNum,
+        messageContent: msg.messageContent,
+        sendAt: msg.sendAt,
+        senderName: msg.senderName
+      });
     } else { // 다른 방이면 토스트 알림
       // ⭐ foundRoom이 없으면 토스트 알림을 생성하지 않음 (roomList에 방이 없을 수 있음)
       if (foundRoom) {
@@ -576,20 +661,38 @@ export default function ChatLayout() {
     // ⭐ roomList의 해당 방 정보를 최신화하고 정렬
     // ⭐ 중요: 자신이 해당 채팅방에 접속 중이 아닌 경우 (다른 방이거나 선택된 방이 없는 경우)
     //          채팅방 목록의 unreadCount를 증가시켜야 함
+    // ⭐ 중요: 자신이 보낸 메시지인 경우에도 메시지 내용과 시간은 업데이트되어야 함
     setRoomList((prevRoomList) => {
       const updated = prevRoomList.map(room => {
         if (Number(room.roomId) === roomIdNum) {
-          // ⭐ 현재 선택된 방이 아닌 경우에만 unreadCount 증가
-          // (현재 선택된 방이면 이미 메시지를 보고 있으므로 읽음 처리됨)
+          // ⭐ 현재 선택된 방인지 확인
           const isCurrentlySelected = Number(selectedRoomId) === roomIdNum;
-          const currentUnreadCount = room.unreadCount || 0;
           
-          // ⭐ 자신이 보낸 메시지가 아니고, 현재 선택된 방이 아닌 경우 unreadCount 증가
+          // ⭐ 자신이 보낸 메시지인지 확인
           const isMyMessage = msg.senderEmail && userProfile?.email && 
                               msg.senderEmail.trim().toLowerCase() === userProfile.email.trim().toLowerCase();
           
+          const currentUnreadCount = room.unreadCount || 0;
           let newUnreadCount = currentUnreadCount;
-          if (!isMyMessage && !isCurrentlySelected) {
+          
+          // ⭐ 자신이 보낸 메시지인 경우: unreadCount를 업데이트하지 않음 (발신자는 읽음 처리되므로)
+          if (isMyMessage) {
+            // ⭐ 자신이 보낸 메시지는 unreadCount를 유지
+            // 백엔드에서 이미 발신자는 readYn=true로 설정했으므로, 채팅방 목록의 unreadCount는 변경하지 않음
+            newUnreadCount = currentUnreadCount;
+            console.log("📨 [ChatLayout] 자신이 보낸 메시지 - unreadCount 유지, 메시지 내용/시간 업데이트:", {
+              roomId: roomIdNum,
+              roomName: room.roomName,
+              unreadCount: newUnreadCount,
+              messageContent: msg.messageContent,
+              sendAt: msg.sendAt,
+              isMyMessage: true,
+              isCurrentlySelected
+            });
+          } 
+          // ⭐ 현재 선택된 방이 아닌 경우에만 unreadCount 증가
+          // (현재 선택된 방이면 이미 메시지를 보고 있으므로 읽음 처리됨)
+          else if (!isCurrentlySelected) {
             // ⭐ 새로운 메시지가 왔으므로 unreadCount 증가
             // 백엔드에서 받은 unreadCount가 있으면 그것을 사용하고, 없으면 +1
             newUnreadCount = msg.unreadCount != null ? Number(msg.unreadCount) : currentUnreadCount + 1;
@@ -598,15 +701,26 @@ export default function ChatLayout() {
               roomName: room.roomName,
               이전unreadCount: currentUnreadCount,
               새로운unreadCount: newUnreadCount,
-              isMyMessage,
-              isCurrentlySelected,
+              isMyMessage: false,
+              isCurrentlySelected: false,
               msgUnreadCount: msg.unreadCount
             });
-          } else if (msg.unreadCount != null) {
-            // ⭐ 백엔드에서 받은 unreadCount가 있으면 그것을 사용 (더 정확함)
+          } 
+          // ⭐ 현재 선택된 방인 경우: 백엔드에서 받은 unreadCount가 있으면 그것을 사용
+          else if (msg.unreadCount != null) {
             newUnreadCount = Number(msg.unreadCount);
+            console.log("📨 [ChatLayout] 현재 선택된 방의 메시지 - unreadCount 업데이트:", {
+              roomId: roomIdNum,
+              roomName: room.roomName,
+              이전unreadCount: currentUnreadCount,
+              새로운unreadCount: newUnreadCount,
+              isMyMessage: false,
+              isCurrentlySelected: true,
+              msgUnreadCount: msg.unreadCount
+            });
           }
           
+          // ⭐ 중요: 자신이 보낸 메시지인 경우에도 메시지 내용과 시간은 항상 업데이트되어야 함
           return {
             ...room,
             lastMessageContent: msg.messageContent,

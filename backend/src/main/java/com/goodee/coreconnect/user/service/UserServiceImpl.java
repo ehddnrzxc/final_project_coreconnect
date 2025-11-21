@@ -115,9 +115,35 @@ public class UserServiceImpl implements UserService {
   @Transactional(readOnly = true)
   public List<OrganizationUserResponseDTO> getOrganizationChart() {
     List<User> users = userRepository.findAllForOrganization();
-    return users.stream()
-        .map(user -> OrganizationUserResponseDTO.fromEntity(user, s3Service))
+    System.out.println("[UserServiceImpl.getOrganizationChart] 전체 사용자 수: " + users.size());
+    
+    List<OrganizationUserResponseDTO> result = users.stream()
+        .map(user -> {
+          OrganizationUserResponseDTO dto = OrganizationUserResponseDTO.fromEntity(user, s3Service);
+          // 변환 결과 확인
+          if (dto != null && dto.getProfileImageUrl() != null && !dto.getProfileImageUrl().isBlank()) {
+            System.out.println("[UserServiceImpl.getOrganizationChart] ✅ 프로필 이미지 URL 생성 성공 - userId: " + 
+                             user.getId() + ", name: " + user.getName() + ", url: " + 
+                             dto.getProfileImageUrl().substring(0, Math.min(50, dto.getProfileImageUrl().length())) + "...");
+          } else {
+            System.out.println("[UserServiceImpl.getOrganizationChart] ⚠️ 프로필 이미지 URL 없음 - userId: " + 
+                             user.getId() + ", name: " + user.getName() + ", profileImageKey: " + user.getProfileImageKey());
+          }
+          return dto;
+        })
         .collect(Collectors.toList());
+    
+    // 프로필 이미지가 있는 사용자 수 확인
+    long usersWithImage = result.stream()
+        .filter(dto -> dto != null && dto.getProfileImageUrl() != null && 
+                      !dto.getProfileImageUrl().isBlank() && 
+                      dto.getProfileImageUrl().startsWith("http"))
+        .count();
+    
+    System.out.println("[UserServiceImpl.getOrganizationChart] 프로필 이미지 통계 - 전체: " + result.size() + 
+                      ", 이미지 있음: " + usersWithImage + ", 이미지 없음: " + (result.size() - usersWithImage));
+    
+    return result;
   }
 
   /** 이메일로 사용자 엔티티를 조회 */
