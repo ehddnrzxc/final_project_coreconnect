@@ -21,26 +21,22 @@ public class NotificationAsyncService {
     private final NotificationRepository notificationRepository;
 
     @Async   // 비동기 실행 지점
-    public void sendNoticeAsync(
-            List<Integer> receiverIds,
-            NotificationType type,
-            String message,
-            Integer senderId,
-            String senderName
+    public void sendNoticeAsync(List<Integer> receiverIds,
+                                 NotificationType type,
+                                 String message,
+                                 Integer senderId,
+                                 String senderName
     ) {
         // 기존 BoardServiceImpl 안에서 처리하던 로직과 동일하게 실행
-        notificationService.sendNotificationToUsers(
-                receiverIds,
-                type,
-                message,
-                null,
-                null,
-                senderId,
-                senderName
-        );
+        notificationService.sendNotificationToUsers(receiverIds,
+                                                    type,
+                                                    message,
+                                                    null,
+                                                    null,
+                                                    senderId,
+                                                    senderName);
 
         // 전송 상태 업데이트
-        notificationRepository.findBySenderId(senderId)
-                .forEach(n -> n.markSent(java.time.LocalDateTime.now()));
+        notificationRepository.findBySenderId(senderId).forEach(n -> n.markSent(java.time.LocalDateTime.now()));
     }
 }
