@@ -622,46 +622,47 @@ export default function ChatLayout() {
     });
   };
 
-  // ---------- 파일 업로드 ----------
-  const handleFileUpload = async (e) => {
-    const files = e.target.files;
+  // ---------- 파일 업로드 (다중 파일 지원) ----------
+  const handleFileUpload = async (files) => {
     if (!files || files.length === 0 || !selectedRoomId) return;
-    const file = files[0];
-    const formData = new FormData();
-    formData.append("file", file);
-    try {
-      const res = await fetch(`/api/v1/chat/${selectedRoomId}/messages/file`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: formData
-      });
-      if (!res.ok) throw new Error("파일 업로드 실패");
-      const result = await res.json();
-      const chatMessage = result.data;
-      
-      // ⭐ 중복 메시지 체크: 이미 같은 ID의 메시지가 있으면 추가하지 않음
-      setMessages((prev) => {
-        const exists = prev.some(m => {
-          const mId = m?.id;
-          const newId = chatMessage?.id;
-          if (mId == null || newId == null) return false;
-          return Number(mId) === Number(newId);
+    
+    // 각 파일을 개별적으로 업로드
+    for (const file of files) {
+      const formData = new FormData();
+      formData.append("file", file);
+      try {
+        const res = await fetch(`/api/v1/chat/${selectedRoomId}/messages/file`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: formData
         });
-        if (exists) {
-          console.log("📨 [ChatLayout] 중복 메시지 무시 (파일 업로드):", {
-            messageId: chatMessage.id,
-            messageContent: chatMessage.messageContent
+        if (!res.ok) throw new Error("파일 업로드 실패");
+        const result = await res.json();
+        const chatMessage = result.data;
+        
+        // ⭐ 중복 메시지 체크: 이미 같은 ID의 메시지가 있으면 추가하지 않음
+        setMessages((prev) => {
+          const exists = prev.some(m => {
+            const mId = m?.id;
+            const newId = chatMessage?.id;
+            if (mId == null || newId == null) return false;
+            return Number(mId) === Number(newId);
           });
-          return prev;
-        }
-        return [...prev, chatMessage];
-      });
-    } catch (err) {
-      alert("파일 업로드에 실패했습니다: " + err.message);
+          if (exists) {
+            console.log("📨 [ChatLayout] 중복 메시지 무시 (파일 업로드):", {
+              messageId: chatMessage.id,
+              messageContent: chatMessage.messageContent
+            });
+            return prev;
+          }
+          return [...prev, chatMessage];
+        });
+      } catch (err) {
+        alert(`파일 업로드에 실패했습니다 (${file.name}): ${err.message}`);
+      }
     }
-    e.target.value = "";
   };
 
   // ---------- 메시지 보내기 ----------
@@ -864,6 +865,17 @@ export default function ChatLayout() {
     if (!selectedRoomId || isLoadingMore || !hasMore) return;
     
     setIsLoadingMore(true);
+    
+    // 스크롤 위치 저장을 위한 ref (ChatMessageList에서 접근 가능하도록)
+    const scrollContainerRef = document.querySelector('.chat-message-list-container');
+    let scrollHeightBefore = 0;
+    let scrollTopBefore = 0;
+    
+    if (scrollContainerRef) {
+      scrollHeightBefore = scrollContainerRef.scrollHeight;
+      scrollTopBefore = scrollContainerRef.scrollTop;
+    }
+    
     try {
       const nextPage = currentPage + 1;
       const res = await fetchChatRoomMessages(selectedRoomId, nextPage, 20);

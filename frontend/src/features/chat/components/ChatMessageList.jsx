@@ -1,6 +1,7 @@
-import React, { useRef, useEffect, useContext } from "react";
+import React, { useRef, useEffect, useContext, useState } from "react";
 import { Box, Typography, Link, Avatar } from "@mui/material";
 import { UserProfileContext } from "../../../App";
+import ImageCarouselDialog from "./ImageCarouselDialog";
 
 // 첨부파일 유형 이미지 감지
 const isImageFile = (url = "") => {
@@ -17,30 +18,100 @@ const formatTime = (time) => {
   return date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
 };
 
-function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbove, loadingAbove }) {
+function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbove, loadingAbove, onMessagesLoaded }) {
   // 👇 로그인 정보 받기!
   const { userProfile } = useContext(UserProfileContext) || {};
   const userEmail = userProfile?.email;
   
   const scrollRef = useRef();
+  const [carouselOpen, setCarouselOpen] = useState(false);
+  const [carouselImages, setCarouselImages] = useState([]);
+  const [carouselStartIndex, setCarouselStartIndex] = useState(0);
+  const [firstUnreadIndex, setFirstUnreadIndex] = useState(-1);
+  const [showUnreadMarker, setShowUnreadMarker] = useState(false);
+  const previousMessagesLengthRef = useRef(messages.length);
+  const scrollPositionRef = useRef({ scrollHeight: 0, scrollTop: 0 });
 
-  // 무한 스크롤(위로 올릴 때 loadMore)
+  // 무한 스크롤(위로 올릴 때 loadMore) - 스크롤 위치 유지
   const handleScroll = () => {
     const el = scrollRef.current;
-    if (!el || !onLoadMore || !hasMoreAbove || loadingAbove) return;
-    if (el.scrollTop <= 24) onLoadMore && onLoadMore();
+    if (!el) return;
+    
+    // 이전 메시지 로드 (무한 스크롤)
+    if (onLoadMore && hasMoreAbove && !loadingAbove && el.scrollTop <= 24) {
+      // 현재 스크롤 위치와 높이 저장
+      scrollPositionRef.current = {
+        scrollHeight: el.scrollHeight,
+        scrollTop: el.scrollTop,
+      };
+      
+      // 이전 메시지 로드
+      onLoadMore();
+    }
+    
+    // 안읽은 메시지 마커 표시/숨김 처리
+    if (firstUnreadIndex >= 0) {
+      const scrollTop = el.scrollTop;
+      const scrollHeight = el.scrollHeight;
+      const clientHeight = el.clientHeight;
+      
+      // 스크롤을 맨 아래까지 내렸으면 마커 숨김
+      if (scrollTop + clientHeight >= scrollHeight - 10) {
+        setShowUnreadMarker(false);
+      } else {
+        setShowUnreadMarker(true);
+      }
+    }
   };
+  
+  // 메시지가 추가되었을 때 스크롤 위치 복원
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || loadingAbove) return;
+    
+    // 이전 메시지가 추가된 경우 (메시지 수가 증가하고 스크롤이 위쪽에 있을 때)
+    const messagesIncreased = messages.length > previousMessagesLengthRef.current;
+    const isScrolledToTop = el.scrollTop < 100;
+    
+    if (messagesIncreased && isScrolledToTop && scrollPositionRef.current.scrollHeight > 0) {
+      const newScrollHeight = el.scrollHeight;
+      const heightDiff = newScrollHeight - scrollPositionRef.current.scrollHeight;
+      
+      // 스크롤 위치 복원
+      setTimeout(() => {
+        if (el) {
+          el.scrollTop = scrollPositionRef.current.scrollTop + heightDiff;
+          scrollPositionRef.current = { scrollHeight: 0, scrollTop: 0 }; // 초기화
+        }
+      }, 0);
+    }
+    
+    previousMessagesLengthRef.current = messages.length;
+  }, [messages.length, loadingAbove]);
+
+  // 첫 번째 안읽은 메시지 인덱스 찾기
+  useEffect(() => {
+    const unreadIdx = messages.findIndex((msg) => msg.readYn === false);
+    setFirstUnreadIndex(unreadIdx);
+    setShowUnreadMarker(unreadIdx >= 0);
+  }, [messages]);
 
   // 새 메시지 오면 항상 맨 아래로 스크롤
   useEffect(() => {
     const el = scrollRef.current;
-    if (el && messages.length > 0) el.scrollTop = el.scrollHeight;
-  }, [messages]);
+    if (el && messages.length > 0) {
+      // 안읽은 메시지가 없을 때만 자동 스크롤
+      if (firstUnreadIndex < 0) {
+        el.scrollTop = el.scrollHeight;
+      }
+    }
+  }, [messages, firstUnreadIndex]);
 
   return (
     <Box
       ref={scrollRef}
       onScroll={handleScroll}
+      className="chat-message-list-container"
       sx={{
         // 채팅 영역을 고정 높이로, 내부 스크롤 적용
         height: "55vh",
@@ -55,6 +126,32 @@ function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbov
       {/* 로딩 상태 표시 (무한스크롤용) */}
       {loadingAbove && (
         <Box sx={{ textAlign: "center", py: 1, color: "#889" }}>불러오는 중...</Box>
+      )}
+
+      {/* 안읽은 메시지 마커 */}
+      {showUnreadMarker && firstUnreadIndex >= 0 && (
+        <Box
+          sx={{
+            textAlign: "center",
+            py: 2,
+            px: 2,
+            position: "sticky",
+            top: 0,
+            zIndex: 10,
+            bgcolor: "#fafbff",
+            borderBottom: "1px solid #e3e8ef",
+          }}
+        >
+          <Typography
+            sx={{
+              fontSize: 13,
+              color: "#666",
+              fontWeight: 500,
+            }}
+          >
+            여기서부터 안읽은 메시지입니다
+          </Typography>
+        </Box>
       )}
 
       {/* 메시지가 없을 때 안내 */}
@@ -203,13 +300,27 @@ function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbov
                           component="img"
                           src={msg.fileUrl}
                           alt="첨부 이미지"
+                          onClick={() => {
+                            // 현재 메시지의 이미지들을 포함한 모든 이미지 URL 수집
+                            const imageUrls = messages
+                              .filter(m => m.fileYn && m.fileUrl && isImageFile(m.fileUrl))
+                              .map(m => m.fileUrl);
+                            const currentIndex = imageUrls.indexOf(msg.fileUrl);
+                            setCarouselImages(imageUrls);
+                            setCarouselStartIndex(currentIndex >= 0 ? currentIndex : 0);
+                            setCarouselOpen(true);
+                          }}
                           sx={{
                             width: "100%",
                             maxWidth: 280,
                             borderRadius: 1.5,
                             border: "1px solid #e1e4eb",
                             objectFit: "cover",
-                            mt: 1
+                            mt: 1,
+                            cursor: "pointer",
+                            "&:hover": {
+                              opacity: 0.8,
+                            },
                           }}
                         />
                       ) : (
@@ -228,10 +339,18 @@ function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbov
                           </Typography>
                           <Link
                             href={msg.fileUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              // 파일 다운로드
+                              const link = document.createElement("a");
+                              link.href = msg.fileUrl;
+                              link.download = decodeURIComponent(msg.fileUrl.split("/").pop()?.split("?")[0] || "파일");
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                            }}
                             underline="hover"
-                            sx={{ fontSize: 13, wordBreak: "break-all", color: "#1976d2" }}
+                            sx={{ fontSize: 13, wordBreak: "break-all", color: "#1976d2", cursor: "pointer" }}
                           >
                             {decodeURIComponent(msg.fileUrl.split("/").pop()?.split("?")[0] || "파일 다운로드")}
                           </Link>
@@ -423,13 +542,27 @@ function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbov
                           component="img"
                           src={msg.fileUrl}
                           alt="첨부 이미지"
+                          onClick={() => {
+                            // 현재 메시지의 이미지들을 포함한 모든 이미지 URL 수집
+                            const imageUrls = messages
+                              .filter(m => m.fileYn && m.fileUrl && isImageFile(m.fileUrl))
+                              .map(m => m.fileUrl);
+                            const currentIndex = imageUrls.indexOf(msg.fileUrl);
+                            setCarouselImages(imageUrls);
+                            setCarouselStartIndex(currentIndex >= 0 ? currentIndex : 0);
+                            setCarouselOpen(true);
+                          }}
                           sx={{
                             width: "100%",
                             maxWidth: 280,
                             borderRadius: 1.5,
                             border: "1px solid #bdbdbd",
                             objectFit: "cover",
-                            mt: 1
+                            mt: 1,
+                            cursor: "pointer",
+                            "&:hover": {
+                              opacity: 0.8,
+                            },
                           }}
                         />
                       ) : (
@@ -448,10 +581,18 @@ function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbov
                           </Typography>
                           <Link
                             href={msg.fileUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              // 파일 다운로드
+                              const link = document.createElement("a");
+                              link.href = msg.fileUrl;
+                              link.download = decodeURIComponent(msg.fileUrl.split("/").pop()?.split("?")[0] || "파일");
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                            }}
                             underline="hover"
-                            sx={{ fontSize: 13, wordBreak: "break-all", color: "#1565c0" }}
+                            sx={{ fontSize: 13, wordBreak: "break-all", color: "#1565c0", cursor: "pointer" }}
                           >
                             {decodeURIComponent(msg.fileUrl.split("/").pop()?.split("?")[0] || "파일 다운로드")}
                           </Link>
@@ -485,6 +626,14 @@ function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbov
           );
         })
       )}
+      
+      {/* 이미지 캐러셀 다이얼로그 */}
+      <ImageCarouselDialog
+        open={carouselOpen}
+        onClose={() => setCarouselOpen(false)}
+        images={carouselImages}
+        currentIndex={carouselStartIndex}
+      />
     </Box>
   );
 }

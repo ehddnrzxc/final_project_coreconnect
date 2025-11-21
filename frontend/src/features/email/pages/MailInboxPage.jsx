@@ -2,7 +2,7 @@ import React, { useEffect, useState, useContext, useRef, useMemo } from 'react';
 import {
   Box, Typography, Paper, Table, TableHead, TableBody, TableRow, TableCell,
   IconButton, ButtonGroup, Button, InputBase, Divider, Checkbox, Chip, Pagination, Badge, Tabs, Tab,
-  Snackbar, Alert, Menu, MenuItem, Select, LinearProgress
+  Menu, MenuItem, Select, LinearProgress
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ReplyIcon from '@mui/icons-material/Reply';
@@ -17,8 +17,10 @@ import { fetchInbox, fetchUnreadCount, moveToTrash, markMailAsRead, getEmailDeta
 import { useNavigate, useLocation } from 'react-router-dom';
 import { MailCountContext } from "../../../App"; // 메일 카운트 컨텍스트(사이드바 등 공유)
 import { UserProfileContext } from "../../../App";
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 
 const MailInboxPage = () => {
+  const { showSnack } = useSnackbarContext();
   // 상태변수 선언
   const [tab, setTab] = useState("all"); // 전체/오늘/안읽음
   const [search, setSearch] = useState('');
@@ -29,7 +31,6 @@ const MailInboxPage = () => {
   const [mails, setMails] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0); // Chip/Badge
   const [selected, setSelected] = useState(new Set());
-  const [snack, setSnack] = useState({ open: false, severity: 'info', message: '' });
   const [searchType, setSearchType] = useState("TITLE_CONTENT");
   const [appliedSearchType, setAppliedSearchType] = useState("TITLE_CONTENT");
   const [appliedKeyword, setAppliedKeyword] = useState("");
@@ -139,7 +140,7 @@ const MailInboxPage = () => {
       ]);
     } catch (err) {
       console.error("handleRefresh error", err);
-      setSnack({ open: true, severity: 'error', message: '메일 목록 새로고침 중 오류가 발생했습니다.' });
+      showSnack('메일 목록 새로고침 중 오류가 발생했습니다.', 'error');
     } finally {
       // 로딩바가 잠깐 보이도록 최소 시간 대기 (UX 개선)
       setTimeout(() => {
@@ -151,7 +152,7 @@ const MailInboxPage = () => {
   // 답장 핸들러
   const handleReply = async () => {
     if (selected.size === 0) {
-      setSnack({ open: true, severity: 'warning', message: '답장할 메일을 선택해주세요.' });
+      showSnack('답장할 메일을 선택해주세요.', 'warning');
       return;
     }
 
@@ -160,7 +161,7 @@ const MailInboxPage = () => {
     const selectedMail = mails.find(m => m.emailId === selectedMailId);
     
     if (!selectedMail) {
-      setSnack({ open: true, severity: 'error', message: '선택한 메일을 찾을 수 없습니다.' });
+      showSnack('선택한 메일을 찾을 수 없습니다.', 'error');
       return;
     }
 
@@ -188,14 +189,14 @@ const MailInboxPage = () => {
       navigate('/email/write', { state: { replyData } });
     } catch (err) {
       console.error("handleReply error", err);
-      setSnack({ open: true, severity: 'error', message: '메일 상세 정보를 가져오는 중 오류가 발생했습니다.' });
+      showSnack('메일 상세 정보를 가져오는 중 오류가 발생했습니다.', 'error');
     }
   };
 
   // 전달 핸들러
   const handleForward = async () => {
     if (selected.size === 0) {
-      setSnack({ open: true, severity: 'warning', message: '전달할 메일을 선택해주세요.' });
+      showSnack('전달할 메일을 선택해주세요.', 'warning');
       return;
     }
 
@@ -204,7 +205,7 @@ const MailInboxPage = () => {
     const selectedMail = mails.find(m => m.emailId === selectedMailId);
     
     if (!selectedMail) {
-      setSnack({ open: true, severity: 'error', message: '선택한 메일을 찾을 수 없습니다.' });
+      showSnack('선택한 메일을 찾을 수 없습니다.', 'error');
       return;
     }
 
@@ -232,7 +233,7 @@ const MailInboxPage = () => {
       navigate('/email/write', { state: { forwardData } });
     } catch (err) {
       console.error("handleForward error", err);
-      setSnack({ open: true, severity: 'error', message: '메일 상세 정보를 가져오는 중 오류가 발생했습니다.' });
+      showSnack('메일 상세 정보를 가져오는 중 오류가 발생했습니다.', 'error');
     }
   };
 
@@ -357,11 +358,11 @@ const MailInboxPage = () => {
   const markSelectedAsRead = async () => {
     const ids = Array.from(selected);
     if (ids.length === 0) {
-      setSnack({ open: true, severity: 'warning', message: '읽음 처리할 메일을 선택하세요.' });
+      showSnack('읽음 처리할 메일을 선택하세요.', 'warning');
       return;
     }
     if (!userEmail) {
-      setSnack({ open: true, severity: 'error', message: '사용자 정보를 찾을 수 없습니다.' });
+      showSnack('사용자 정보를 찾을 수 없습니다.', 'error');
       return;
     }
 
@@ -373,7 +374,7 @@ const MailInboxPage = () => {
       );
       
       if (unreadMails.length === 0) {
-        setSnack({ open: true, severity: 'info', message: '선택한 메일은 이미 읽음 처리된 메일입니다.' });
+        showSnack('선택한 메일은 이미 읽음 처리된 메일입니다.', 'info');
         return;
       }
 
@@ -392,11 +393,7 @@ const MailInboxPage = () => {
       // 선택 상태 초기화
       setSelected(new Set());
       
-      setSnack({ 
-        open: true, 
-        severity: 'success', 
-        message: `${unreadMails.length}개의 메일을 읽음 처리했습니다.` 
-      });
+      showSnack(`${unreadMails.length}개의 메일을 읽음 처리했습니다.`, 'success');
 
       // DB 반영 후 목록 새로고침 (안읽은 메일 탭인 경우)
       if (tab === "unread") {
@@ -416,7 +413,7 @@ const MailInboxPage = () => {
       }
     } catch (err) {
       console.error('markSelectedAsRead error', err);
-      setSnack({ open: true, severity: 'error', message: '메일 읽음 처리 중 오류가 발생했습니다.' });
+      showSnack('메일 읽음 처리 중 오류가 발생했습니다.', 'error');
     }
   };
 
@@ -424,14 +421,14 @@ const MailInboxPage = () => {
   const deleteSelected = async () => {
     const ids = Array.from(selected);
     if (ids.length === 0) {
-      setSnack({ open: true, severity: 'warning', message: '삭제할 메일을 선택하세요.' });
+      showSnack('삭제할 메일을 선택하세요.', 'warning');
       return;
     }
     if (!window.confirm(`선택한 ${ids.length}개의 메일을 휴지통으로 이동하시겠습니까?`)) return;
 
     try {
       await moveToTrash(ids); // 휴지통으로 이동
-      setSnack({ open: true, severity: 'success', message: `${ids.length}개의 메일을 휴지통으로 이동했습니다.` });
+      showSnack(`${ids.length}개의 메일을 휴지통으로 이동했습니다.`, 'success');
       setSelected(prev => {
         const s = new Set(prev);
         ids.forEach(id => s.delete(id));
@@ -441,7 +438,7 @@ const MailInboxPage = () => {
       await loadUnreadCount();// 언리드카운트까지 새로고침
     } catch (err) {
       console.error('deleteSelected error', err);
-      setSnack({ open: true, severity: 'error', message: '메일 삭제 중 오류가 발생했습니다.' });
+      showSnack('메일 삭제 중 오류가 발생했습니다.', 'error');
     }
   };
 
@@ -502,7 +499,7 @@ const MailInboxPage = () => {
       navigate(`/email/${mail.emailId}`);   // 상세 페이지 이동
     } catch (err) {
       console.error("markMailAsRead error:", err);
-      setSnack({ open: true, severity: 'error', message: "메일 읽음처리 중 오류" });
+      showSnack("메일 읽음처리 중 오류", 'error');
       navigate(`/email/${mail.emailId}`);
     }
   };
@@ -759,17 +756,6 @@ const MailInboxPage = () => {
           />
         </Box>
       </Paper>
-      {/* 알림 Snackbar */}
-      <Snackbar
-        open={snack.open}
-        autoHideDuration={4000}
-        onClose={() => setSnack(prev => ({ ...prev, open: false }))}
-        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-      >
-        <Alert severity={snack.severity} onClose={() => setSnack(prev => ({ ...prev, open: false }))} sx={{ width: '100%' }}>
-          {snack.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 };
