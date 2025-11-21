@@ -27,34 +27,34 @@ public class AccountLogServiceImpl implements AccountLogService {
     /** 로그인 이력 저장 */
     @Override
     @Transactional
-    public void saveLog(User user, LogActionType actionType, String ipAddress) {
+    public void saveLog(User user, LogActionType actionType, String ipv4, String ipv6) {
         try {
-            AccountLog accountLog = AccountLog.createAccountLog(user, actionType, ipAddress);
+            AccountLog accountLog = AccountLog.createAccountLog(user, actionType, ipv4, ipv6);
             accountLogRepository.save(accountLog);
-            log.debug("계정 로그 저장 완료: user={}, actionType={}, ip={}", 
-                user.getEmail(), actionType, ipAddress);
+            log.debug("계정 로그 저장 완료: user={}, actionType={}, ipv4={}, ipv6={}", 
+                user.getEmail(), actionType, ipv4, ipv6);
         } catch (Exception e) {
-            log.error("계정 로그 저장 실패: user={}, actionType={}, ip={}", 
-                user != null ? user.getEmail() : "null", actionType, ipAddress, e);
+            log.error("계정 로그 저장 실패: user={}, actionType={}, ipv4={}, ipv6={}", 
+                user != null ? user.getEmail() : "null", actionType, ipv4, ipv6, e);
         }
     }
     
     /** 로그인 실패 이력 저장 */
     @Override
     @Transactional
-    public void saveLoginFailLog(String email, String ipAddress) {
+    public void saveLoginFailLog(String email, String ipv4, String ipv6) {
         try {
             User user = userRepository.findByEmail(email).orElse(null);
             
             if (user != null) {
-                AccountLog accountLog = AccountLog.createAccountLog(user, LogActionType.FAIL, ipAddress);
+                AccountLog accountLog = AccountLog.createAccountLog(user, LogActionType.FAIL, ipv4, ipv6);
                 accountLogRepository.save(accountLog);
-                log.debug("로그인 실패 로그 저장 완료: user={}, ip={}", email, ipAddress);
+                log.debug("로그인 실패 로그 저장 완료: user={}, ipv4={}, ipv6={}", email, ipv4, ipv6);
             } else {
-                log.debug("존재하지 않는 사용자 로그인 시도: email={}, ip={}", email, ipAddress);
+                log.debug("존재하지 않는 사용자 로그인 시도: email={}, ipv4={}, ipv6={}", email, ipv4, ipv6);
             }
         } catch (Exception e) {
-            log.error("로그인 실패 로그 저장 실패: email={}, ip={}", email, ipAddress, e);
+            log.error("로그인 실패 로그 저장 실패: email={}, ipv4={}, ipv6={}", email, ipv4, ipv6, e);
         }
     }
     

@@ -61,19 +61,21 @@ public class AuthController {
       // 요청값 받기
       String email = req.email();
       String password = req.password();
-      String ipAddress = IpAddressUtil.getClientIpAddress(request);
+      
+      // IPv4와 IPv6 분리 추출
+      IpAddressUtil.IpAddressPair ipPair = IpAddressUtil.getClientIpAddressPair(request);
       
       // 이메일로 사용자 조회
       User user = userRepository.findByEmail(email).orElse(null);
       if (user == null) { 
         // 로그인 실패 이력 저장 (사용자가 존재하지 않음)
-        accountLogService.saveLoginFailLog(email, ipAddress);
+        accountLogService.saveLoginFailLog(email, ipPair.getIpv4(), ipPair.getIpv6());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build(); 
       }
       // 비밀번호 비교 (BCrypt)
       if (!passwordEncoder.matches(password, user.getPassword())) {
         // 로그인 실패 이력 저장 (비밀번호 오류)
-        accountLogService.saveLoginFailLog(email, ipAddress);
+        accountLogService.saveLoginFailLog(email, ipPair.getIpv4(), ipPair.getIpv6());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
       }
 
@@ -83,7 +85,7 @@ public class AuthController {
       // 토큰 생성
       String access = jwt.createAccess(email, role, JwtConstants.ACCESS_TOKEN_MINUTES);   
       String refresh = jwt.createRefresh(email, role, JwtConstants.REFRESH_TOKEN_DAYS);        
-      
+        
       // Access Token 쿠키 (HttpOnly)
       ResponseCookie accessCookie = ResponseCookie.from("access_token", access)
           .httpOnly(true)
@@ -106,7 +108,7 @@ public class AuthController {
       res.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
       // 로그인 성공 이력 저장
-      accountLogService.saveLog(user, LogActionType.LOGIN, ipAddress);
+      accountLogService.saveLog(user, LogActionType.LOGIN, ipPair.getIpv4(), ipPair.getIpv6());
 
       // 응답 데이터 (사용자 정보)
       LoginResponseDTO response = new LoginResponseDTO(
@@ -150,8 +152,8 @@ public class AuthController {
       // 토큰 재발급 이력 저장
       User user = userRepository.findByEmail(email).orElse(null);
       if (user != null) {
-        String ipAddress = IpAddressUtil.getClientIpAddress(request);
-        accountLogService.saveLog(user, LogActionType.REFRESH, ipAddress);
+        IpAddressUtil.IpAddressPair ipPair = IpAddressUtil.getClientIpAddressPair(request);
+        accountLogService.saveLog(user, LogActionType.REFRESH, ipPair.getIpv4(), ipPair.getIpv6());
       }
       
       return ResponseEntity.noContent().build();
@@ -193,8 +195,8 @@ public class AuthController {
     if (userDetails != null) {
       User user = userRepository.findByEmail(userDetails.getEmail()).orElse(null);
       if (user != null) {
-        String ipAddress = IpAddressUtil.getClientIpAddress(request);
-        accountLogService.saveLog(user, LogActionType.LOGOUT, ipAddress);
+        IpAddressUtil.IpAddressPair ipPair = IpAddressUtil.getClientIpAddressPair(request);
+        accountLogService.saveLog(user, LogActionType.LOGOUT, ipPair.getIpv4(), ipPair.getIpv6());
       }
     }
 

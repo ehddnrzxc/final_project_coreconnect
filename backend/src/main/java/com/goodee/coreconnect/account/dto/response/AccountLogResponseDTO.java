@@ -12,7 +12,8 @@ public record AccountLogResponseDTO(
     String userName,
     LogActionType actionType,
     LocalDateTime actionTime,
-    String ipAddress
+    String ipv4,
+    String ipv6
 ) {
     public static AccountLogResponseDTO toDTO(AccountLog log) {
         return new AccountLogResponseDTO(
@@ -21,7 +22,8 @@ public record AccountLogResponseDTO(
             log.getUser().getName(),
             log.getActionType(),
             log.getActionTime(),
-            log.getIpAddress()
+            log.getIpv4() != null && !log.getIpv4().isEmpty() ? log.getIpv4() : "-",
+            log.getIpv6() != null && !log.getIpv6().isEmpty() ? log.getIpv6() : "-"
         );
     }
 }

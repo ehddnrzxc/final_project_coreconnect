@@ -16,16 +16,18 @@ public interface AccountLogService {
      * 로그인 이력 저장
      * @param user 사용자
      * @param actionType 로그 액션 타입 (LOGIN, LOGOUT, FAIL, REFRESH)
-     * @param ipAddress IP 주소
+     * @param ipv4 IPv4 주소
+     * @param ipv6 IPv6 주소
      */
-    void saveLog(User user, LogActionType actionType, String ipAddress);
+    void saveLog(User user, LogActionType actionType, String ipv4, String ipv6);
     
     /**
      * 로그인 실패 이력 저장 (사용자가 null일 수 있음)
      * @param email 이메일 (사용자가 존재하지 않을 수 있음)
-     * @param ipAddress IP 주소
+     * @param ipv4 IPv4 주소
+     * @param ipv6 IPv6 주소
      */
-    void saveLoginFailLog(String email, String ipAddress);
+    void saveLoginFailLog(String email, String ipv4, String ipv6);
     
     /**
      * 모든 로그인 이력 조회

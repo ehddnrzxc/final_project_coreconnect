@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
 import com.goodee.coreconnect.user.dto.request.ChangePasswordRequestDTO;
@@ -40,6 +42,37 @@ public class UserController {
     public ResponseEntity<String> uploadProfileImage(
             @AuthenticationPrincipal CustomUserDetails user, 
             @RequestParam("file") MultipartFile file) throws IOException {
+        
+        // 파일이 비어있는지 확인
+        if (file == null || file.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "파일이 선택되지 않았습니다.");
+        }
+        
+        // 파일 크기 검증 (5MB = 5 * 1024 * 1024 bytes)
+        long maxSize = 5 * 1024 * 1024; // 5MB
+        if (file.getSize() > maxSize) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "파일 크기는 5MB 이하여야 합니다.");
+        }
+        
+        // 허용된 이미지 형식 검증
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미지 파일만 업로드 가능합니다.");
+        }
+        
+        // 구체적인 이미지 형식 검증
+        String[] allowedTypes = {"image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"};
+        boolean isAllowedType = false;
+        for (String allowedType : allowedTypes) {
+            if (allowedType.equals(contentType)) {
+                isAllowedType = true;
+                break;
+            }
+        }
+        
+        if (!isAllowedType) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지원하는 이미지 형식은 JPG, PNG, GIF, WEBP입니다.");
+        }
         
         String email = user.getEmail();
         userService.updateProfileImage(email, file);
