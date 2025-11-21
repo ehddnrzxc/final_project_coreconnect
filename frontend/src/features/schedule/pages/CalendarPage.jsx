@@ -385,22 +385,11 @@ export default function CalendarPage() {
     try {
       if (isEdit && selectedEvent) {
         const updated = await updateSchedule(selectedEvent.id, formData);
-        const updatedEvent = mapScheduleToEvent(updated, categoryColors);
-        
-        setEvents((prev) =>
-          prev.map((e) => {
-            // ID 타입 불일치 문제 해결: String 변환으로 비교
-            if (String(e.id) === String(selectedEvent.id)) {
-              return updatedEvent;
-            }
-            return e;
-          })
-        );
+        await fetchSchedules(categoryColors);
         showSnack("일정이 수정되었습니다", "success");
       } else {
         const created = await createSchedule(formData);
-        const newEvent = mapScheduleToEvent(created, categoryColors);
-        setEvents((prev) => [...prev, newEvent]);
+        await fetchSchedules(categoryColors);
         showSnack("일정이 등록되었습니다", "success");
       }
       setModalOpen(false);

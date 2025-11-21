@@ -109,12 +109,12 @@ public class MeetingRoomServiceImpl implements MeetingRoomService {
   /** 특정 시간대에 해당 회의실이 예약 가능한지 검사 */
   @Override
   @Transactional(readOnly = true)
-  public boolean isMeetingRoomAvailable(Integer meetingRoomId, LocalDateTime start, LocalDateTime end) {
+  public boolean isMeetingRoomAvailable(Integer meetingRoomId, LocalDateTime start, LocalDateTime end, Integer scheduleId) {
     MeetingRoom meetingRoom = meetingRoomRepository.findById(meetingRoomId)
             .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회의실입니다."));
 
     // ScheduleRepository에서 겹치는 일정이 있는지 확인
-    boolean overlap = scheduleRepository.existsOverlappingSchedule(meetingRoom, start, end);
+    boolean overlap = scheduleRepository.existsOverlappingSchedule(meetingRoom, start, end, scheduleId);
 
     // false → 예약 가능 / true → 예약 불가능
     return !overlap;
@@ -122,14 +122,14 @@ public class MeetingRoomServiceImpl implements MeetingRoomService {
   
   @Override
   @Transactional(readOnly = true)
-  public List<MeetingRoomDTO> getAvailableRooms(LocalDateTime start, LocalDateTime end) {
+  public List<MeetingRoomDTO> getAvailableRooms(LocalDateTime start, LocalDateTime end, Integer scheduleId) {
     // 전체 회의실 중 deletedYn = false인 것만 조회
     List<MeetingRoom> allRooms = meetingRoomRepository.findByDeletedYn(false);
 
     // 각 회의실마다 겹치는 일정이 있는지 검사
     return allRooms.stream()
             .filter(room -> {
-                boolean overlap = scheduleRepository.existsOverlappingSchedule(room, start, end);
+                boolean overlap = scheduleRepository.existsOverlappingSchedule(room, start, end, scheduleId);
                 return !overlap; // 겹침이 없으면 예약 가능
             })
             .map(MeetingRoomDTO::toDTO)

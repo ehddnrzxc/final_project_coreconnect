@@ -78,7 +78,8 @@ public class ScheduleServiceImpl implements ScheduleService {
       boolean overlap = scheduleRepository.existsOverlappingSchedule(
               meetingRoom,
               dto.getStartDateTime(),
-              dto.getEndDateTime()
+              dto.getEndDateTime(),
+              null
       );
 
       if (overlap) {
@@ -215,21 +216,12 @@ public class ScheduleServiceImpl implements ScheduleService {
       boolean overlap = scheduleRepository.existsOverlappingSchedule(
               newMeetingRoom,
               dto.getStartDateTime(),
-              dto.getEndDateTime()
+              dto.getEndDateTime(),
+              schedule.getId()
       );
 
-      // 단, 자기 자신(same id)은 제외해야 함
       if (overlap) {
-        
-        // 기존 일정이 동일 회의실 및 동일 시간대면 예외로 판단하지 않음
-        boolean sameRoomSameTime =
-                 newMeetingRoom.equals(oldMeetingRoom)
-                 && schedule.getStartDateTime().equals(dto.getStartDateTime())
-                 && schedule.getEndDateTime().equals(dto.getEndDateTime());
-
-        if (!sameRoomSameTime) {
-          throw new IllegalArgumentException("해당 시간대에 이미 예약된 회의실입니다.");
-        }
+        throw new IllegalArgumentException("해당 시간대에 이미 예약된 회의실입니다.");
       }
     }
 

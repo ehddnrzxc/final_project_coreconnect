@@ -551,6 +551,17 @@ export default function ScheduleModal({
     checkParticipantsAvailability();
   }, [form.participantIds, form.startDateTime, form.endDateTime, form.isAllDay, scheduleId]);
 
+  const filteredAvailabilityMap = useMemo(() => {
+    if (!availabilityMap) return {};
+    const currentIds = new Set(form.participantIds.map((id) => String(id)));
+    return Object.entries(availabilityMap).reduce((acc, [userId, schedules]) => {
+      if (currentIds.has(String(userId))) {
+        acc[userId] = schedules;
+      }
+      return acc;
+    }, {});
+  }, [availabilityMap, form.participantIds]);
+
   /** 회의실 선택 시 시간대 기반으로 가용성 조회 */
   const handleRoomSelectOpen = async () => {
     if (!form.startDateTime || !form.endDateTime) {
@@ -561,7 +572,7 @@ export default function ScheduleModal({
     try {
       const start = toBackendFormat(form.startDateTime);
       const end = toBackendFormat(form.endDateTime);
-      const availableRooms = await getAvailableMeetingRooms(start, end);
+      const availableRooms = await getAvailableMeetingRooms(start, end, scheduleId);
 
       setMeetingRooms((prev) =>
         prev.map((room) => {
@@ -688,7 +699,7 @@ export default function ScheduleModal({
     }
     
     // 기존 로직: availabilityMap 확인
-    const schedules = availabilityMap[userId];
+    const schedules = filteredAvailabilityMap[userId];
     return Array.isArray(schedules) && schedules.length > 0 ? "busy" : "free";
   };
 
@@ -771,7 +782,7 @@ export default function ScheduleModal({
     if (isSameDay) {
       // 같은 날짜: 시작 시간 이후만 허용
       const startHour = Number(form.startTimeHour || 9);
-      return hours.filter(h => h > startHour);
+      return hours.filter(h => h >= startHour);
     }
     // 다른 날짜: 모든 시간 허용
     return hours;
@@ -1031,7 +1042,7 @@ export default function ScheduleModal({
             />
 
             {/* 참석자 중 일정 겹치는 사람 있을 때 경고 */}
-            {Object.values(availabilityMap).some((arr) => arr && arr.length > 0) && (
+            {Object.values(filteredAvailabilityMap).some((arr) => arr && arr.length > 0) && (
               <Alert severity="warning">
                 일부 참석자는 이미 해당 날짜에 다른 일정이 있습니다.
               </Alert>
@@ -1343,7 +1354,7 @@ export default function ScheduleModal({
         <Box sx={{width: "auto", minWidth: 720, borderLeft: "1px solid #ddd", overflowY: "auto", overflowX: "hidden", backgroundColor: "#fafafa"}}>
           <AttendeeTimelinePanel
             users={selectedUsers}
-            availabilityMap={availabilityMap}
+            availabilityMap={filteredAvailabilityMap}
             startDateTime={form.startDateTime || null}
             endDateTime={form.endDateTime || null}
           />
