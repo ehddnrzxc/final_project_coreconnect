@@ -12,7 +12,6 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.goodee.coreconnect.chat.repository.NotificationRepository;
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
 import com.goodee.coreconnect.common.notification.service.NotificationService;
 import com.goodee.coreconnect.leave.entity.LeaveRequest;
@@ -79,7 +78,8 @@ public class ScheduleServiceImpl implements ScheduleService {
       boolean overlap = scheduleRepository.existsOverlappingSchedule(
               meetingRoom,
               dto.getStartDateTime(),
-              dto.getEndDateTime()
+              dto.getEndDateTime(),
+              null
       );
 
       if (overlap) {
@@ -218,21 +218,12 @@ public class ScheduleServiceImpl implements ScheduleService {
       boolean overlap = scheduleRepository.existsOverlappingSchedule(
               newMeetingRoom,
               dto.getStartDateTime(),
-              dto.getEndDateTime()
+              dto.getEndDateTime(),
+              schedule.getId()
       );
 
-      // 단, 자기 자신(same id)은 제외해야 함
       if (overlap) {
-        
-        // 기존 일정이 동일 회의실 및 동일 시간대면 예외로 판단하지 않음
-        boolean sameRoomSameTime =
-                 newMeetingRoom.equals(oldMeetingRoom)
-                 && schedule.getStartDateTime().equals(dto.getStartDateTime())
-                 && schedule.getEndDateTime().equals(dto.getEndDateTime());
-
-        if (!sameRoomSameTime) {
-          throw new IllegalArgumentException("해당 시간대에 이미 예약된 회의실입니다.");
-        }
+        throw new IllegalArgumentException("해당 시간대에 이미 예약된 회의실입니다.");
       }
     }
 
@@ -462,14 +453,15 @@ public class ScheduleServiceImpl implements ScheduleService {
       List<Integer> userIds,
       LocalDate date,
       LocalDateTime start,
-      LocalDateTime end
+      LocalDateTime end,
+      Integer scheduleId
   ) {
     LocalDateTime startTime = (start != null) ? start : date.atStartOfDay();
     LocalDateTime endTime = (end != null) ? end : date.atTime(23, 59, 59);
 
     Map<Integer, List<ResponseScheduleDTO>> result = new HashMap<>();
     for (Integer userId : userIds) {
-        List<Schedule> schedules = scheduleRepository.findOverlappingSchedules(userId, startTime, endTime);
+        List<Schedule> schedules = scheduleRepository.findOverlappingSchedules(userId, startTime, endTime, scheduleId);
         result.put(userId, schedules.stream()
             .map(ResponseScheduleDTO::toDTO)
             .toList());

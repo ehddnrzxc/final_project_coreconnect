@@ -235,7 +235,7 @@ export const checkRoomAvailable = async (id, start, end, scheduleId = null) => {
 };
 
 /** 특정 시간대 예약 가능한 회의실 조회 */
-export const getAvailableMeetingRooms = async (start, end) => {
+export const getAvailableMeetingRooms = async (start, end, scheduleId = null) => {
   try {
     const normalizedStart = toBackendFormat(start);
     const normalizedEnd = toBackendFormat(end);
@@ -244,7 +244,10 @@ export const getAvailableMeetingRooms = async (start, end) => {
       throw new Error("시작 시간 또는 종료 시간 형식이 올바르지 않습니다.");
     }
     
-    const res = await http.get("/meetingRooms/available", { params: { start: normalizedStart, end: normalizedEnd } });
+    const params = { start: normalizedStart, end: normalizedEnd };
+    if (scheduleId) params.scheduleId = scheduleId;
+    
+    const res = await http.get("/meetingRooms/available", { params });
     return res.data.availableRooms;
   } catch (err) {
     const message = err.response?.data || err.message || "예약 가능한 회의실을 불러올 수 없습니다.";

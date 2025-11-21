@@ -116,12 +116,13 @@ public class ScheduleController {
       @RequestParam("userIds") List<Integer> userIds,
       @RequestParam(value = "date", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date,
       @RequestParam(value = "start", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime start,
-      @RequestParam(value = "end", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime end
+      @RequestParam(value = "end", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime end,
+      @RequestParam(value = "scheduleId", required = false) Integer scheduleId
   ) {
       // start/end가 없으면 하루 단위 기본 조회
       LocalDate baseDate = (date != null) ? date : LocalDate.now();
       Map<Integer, List<ResponseScheduleDTO>> result =
-          scheduleService.getUsersAvailability(userIds, baseDate, start, end);
+          scheduleService.getUsersAvailability(userIds, baseDate, start, end, scheduleId);
       return ResponseEntity.ok(result);
   }
 

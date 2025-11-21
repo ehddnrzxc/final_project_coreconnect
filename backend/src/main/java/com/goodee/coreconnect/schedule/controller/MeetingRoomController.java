@@ -86,9 +86,10 @@ public class MeetingRoomController {
   public ResponseEntity<?> checkAvailability(
       @RequestParam("id") Integer meetingRoomId,
       @RequestParam("start") @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime start,
-      @RequestParam("end") @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime end) {
+      @RequestParam("end") @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime end,
+      @RequestParam(value = "scheduleId", required = false) Integer scheduleId) {
     
-    boolean available = meetingRoomService.isMeetingRoomAvailable(meetingRoomId, start, end);
+    boolean available = meetingRoomService.isMeetingRoomAvailable(meetingRoomId, start, end, scheduleId);
 
     return ResponseEntity.ok(Map.of(
             "meetingRoomId", meetingRoomId,
@@ -103,9 +104,10 @@ public class MeetingRoomController {
   @GetMapping("/available")
   public ResponseEntity<?> getAvailableRooms(      
       @RequestParam("start") @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime start,
-      @RequestParam("end") @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime end) {
+      @RequestParam("end") @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime end,
+      @RequestParam(value = "scheduleId", required = false) Integer scheduleId) {
 
-    List<MeetingRoomDTO> availableRooms = meetingRoomService.getAvailableRooms(start, end);
+    List<MeetingRoomDTO> availableRooms = meetingRoomService.getAvailableRooms(start, end, scheduleId);
 
     return ResponseEntity.ok(Map.of(
             "start", start,
