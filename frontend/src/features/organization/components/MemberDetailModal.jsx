@@ -85,9 +85,6 @@ const MemberDetailModal = ({ open, member, onClose, onCloseDrawer }) => {
         {/* 이름 + 직급 */}
         <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }}>
           {member.name} {member.jobGrade ? ` ${getJobGradeLabel(member.jobGrade)}` : ""}
-           <span style={{ fontWeight: 500, color: "#666" }}>
-            {member.jobGrade || ""}
-          </span>
         </Typography>
 
         {/* 부서 경로 */}
