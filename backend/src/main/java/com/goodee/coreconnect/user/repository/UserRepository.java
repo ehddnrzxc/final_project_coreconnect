@@ -54,6 +54,18 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     Optional<User> findByIdWithDepartment(@Param("id") Integer id);
     
     /**
+     * ⭐ 모든 사용자를 Department와 함께 로드하여 LazyInitializationException 방지
+     * 채팅방 초대용 사용자 목록 조회에 사용
+     * @return Department가 함께 로드된 User 리스트
+     */
+    @Query("""
+        SELECT DISTINCT u FROM User u
+        LEFT JOIN FETCH u.department
+        ORDER BY u.name
+        """)
+    List<User> findAllWithDepartment();
+    
+    /**
      * 특정 연도로 시작하는 사번 중 최대값 조회 (동시성 처리를 위한 락 사용)
      * @param yearPrefix 연도 4자리 (예: "2024")
      * @return 최대 사번의 마지막 3자리 숫자, 없으면 0

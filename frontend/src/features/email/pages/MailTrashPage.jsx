@@ -16,8 +16,11 @@ import {
 import SyncIcon from "@mui/icons-material/Sync";
 import { useContext } from "react";
 import { UserProfileContext } from "../../../App";
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
+import ConfirmDialog from "../../../components/utils/ConfirmDialog";
 
 const MailTrashPage = () => {
+  const { showSnack } = useSnackbarContext();
   // 페이지, 사이즈, 총개수, 메일리스트, 선택Set, 로딩상태
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(10); // 페이지당 항목 수 (5 또는 10 선택 가능)
@@ -26,6 +29,8 @@ const MailTrashPage = () => {
   const [mails, setMails] = useState([]);
   const [selected, setSelected] = useState(new Set());
   const [loading, setLoading] = useState(false);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null); // 'empty' or 'delete'
   const { userProfile } = useContext(UserProfileContext) || {};
   const userEmail = userProfile?.email;
   const navigate = useNavigate();
@@ -96,42 +101,48 @@ const MailTrashPage = () => {
    * 휴지통 비우기: 선택된 메일 있으면 deleteMails({ mailIds })로 영구삭제,
    * 없으면 전체 비우기(영구삭제)
    */
-  const handleEmptyTrash = async () => {
-    if (!window.confirm("휴지통을 완전히 비우시겠습니까?\n(선택된 경우엔 선택한 메일만, 아니면 전체입니다!)")) return;
+  const handleEmptyTrash = () => {
+    if (selected.size > 0) {
+      setConfirmAction('delete');
+      setConfirmDialogOpen(true);
+    } else {
+      setConfirmAction('empty');
+      setConfirmDialogOpen(true);
+    }
+  };
+
+  const handleConfirmAction = async () => {
+    setConfirmDialogOpen(false);
     setLoading(true);
     try {
-      if (selected.size > 0) {
+      if (confirmAction === 'delete' && selected.size > 0) {
         const ids = Array.from(selected);
-        await deleteMails({ mailIds: ids }); 
-      } else {
+        await deleteMails({ mailIds: ids });
+        showSnack(`${ids.length}개의 메일을 영구 삭제했습니다.`, 'success');
+      } else if (confirmAction === 'empty') {
         await emptyTrash();
+        showSnack("휴지통이 비워졌습니다.", 'success');
       }
       setPage(1);
       await load(1);
       setSelected(new Set());
     } catch (err) {
-      alert("휴지통 비우기/삭제 중 오류 발생!"); setLoading(false);
+      showSnack("휴지통 비우기/삭제 중 오류 발생!", 'error');
+      setLoading(false);
     } finally {
       setLoading(false);
+      setConfirmAction(null);
     }
   };
 
   // 선택 삭제(휴지통에서 영구삭제)
-  const handleDeleteSelected = async () => {
+  const handleDeleteSelected = () => {
     if (selected.size === 0) {
-      alert("삭제할 메일을 선택해 주세요.");
+      showSnack("삭제할 메일을 선택해 주세요.", 'warning');
       return;
     }
-    if (!window.confirm("선택한 메일을 완전히 삭제하시겠습니까? (복구 불가)")) return;
-    setLoading(true);
-    try {
-      await deleteMails({ mailIds: Array.from(selected) });
-      await load(page);
-      setSelected(new Set());
-    } catch (err) {
-      alert("선택 삭제 중 오류가 발생했습니다.");
-      setLoading(false);
-    } finally { setLoading(false); }
+    setConfirmAction('delete');
+    setConfirmDialogOpen(true);
   };
 
   // 날짜 포맷 함수
@@ -326,6 +337,21 @@ const MailTrashPage = () => {
           />
         </Box>
       </Paper>
+      
+      <ConfirmDialog
+        open={confirmDialogOpen}
+        title={confirmAction === 'empty' ? "휴지통 비우기" : "메일 영구 삭제"}
+        message={
+          confirmAction === 'empty' 
+            ? "휴지통을 완전히 비우시겠습니까? (복구 불가)"
+            : `선택한 ${selected.size}개의 메일을 완전히 삭제하시겠습니까? (복구 불가)`
+        }
+        onConfirm={handleConfirmAction}
+        onCancel={() => {
+          setConfirmDialogOpen(false);
+          setConfirmAction(null);
+        }}
+      />
     </Box>
   );
 };
