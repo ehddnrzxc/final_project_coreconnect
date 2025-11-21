@@ -12,15 +12,16 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.goodee.coreconnect.chat.repository.NotificationRepository;
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
 import com.goodee.coreconnect.common.notification.service.NotificationService;
+import com.goodee.coreconnect.leave.entity.LeaveRequest;
+import com.goodee.coreconnect.leave.repository.LeaveRequestRepository;
 import com.goodee.coreconnect.schedule.dto.request.RequestScheduleDTO;
 import com.goodee.coreconnect.schedule.dto.response.ResponseScheduleDTO;
 import com.goodee.coreconnect.schedule.dto.response.ScheduleDailySummaryDTO;
 import com.goodee.coreconnect.schedule.dto.response.ScheduleMonthlySummaryDTO;
 import com.goodee.coreconnect.schedule.dto.response.SchedulePreviewSummaryDTO;
-import com.goodee.coreconnect.leave.entity.LeaveRequest;
-import com.goodee.coreconnect.leave.repository.LeaveRequestRepository;
 import com.goodee.coreconnect.schedule.entity.MeetingRoom;
 import com.goodee.coreconnect.schedule.entity.Schedule;
 import com.goodee.coreconnect.schedule.entity.ScheduleCategory;
@@ -49,6 +50,7 @@ public class ScheduleServiceImpl implements ScheduleService {
   private final ScheduleParticipantRepository scheduleParticipantRepository;
   private final NotificationService notificationService;
   private final LeaveRequestRepository leaveRequestRepository;
+  private final NotificationRepository notificationRepository;
 
 
   /** 일정 생성 */
@@ -148,6 +150,8 @@ public class ScheduleServiceImpl implements ScheduleService {
                 user.getId(),
                 user.getName()
         );
+        notificationRepository.findBySenderId(user.getId())
+        .forEach(n -> n.markSent(LocalDateTime.now()));
       }
     }
     
@@ -161,6 +165,8 @@ public class ScheduleServiceImpl implements ScheduleService {
                 user.getId(),
                 user.getName()
         );
+        notificationRepository.findBySenderId(user.getId())
+        .forEach(n -> n.markSent(LocalDateTime.now()));
     }
 
     return ResponseScheduleDTO.toDTO(savedSchedule);
@@ -312,6 +318,8 @@ public class ScheduleServiceImpl implements ScheduleService {
                   schedule.getUser().getId(),
                   schedule.getUser().getName()
           );
+          notificationRepository.findBySenderId(schedule.getUser().getId())
+          .forEach(n -> n.markSent(LocalDateTime.now()));
         }
       }
     }
@@ -327,7 +335,9 @@ public class ScheduleServiceImpl implements ScheduleService {
                 null, null,
                 schedule.getUser().getId(),
                 schedule.getUser().getName()
-        );   
+        );
+        notificationRepository.findBySenderId(schedule.getUser().getId())
+        .forEach(n -> n.markSent(LocalDateTime.now()));
     }
         
     return ResponseScheduleDTO.toDTO(schedule);

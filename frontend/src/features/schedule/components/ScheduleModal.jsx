@@ -22,6 +22,7 @@ import {
   Radio,
   FormControlLabel,
   Checkbox,
+  ListSubheader,
 } from "@mui/material";
 import { toBackendFormat, toISO, toDateTimeLocal, fromDateTimeLocal } from "../../../utils/dateFormat";
 import {
@@ -35,6 +36,7 @@ import {
 import AttendeeTimelinePanel from "../components/AttendeeTimelinePanel";
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 import { UserProfileContext } from "../../../App";
+import logoImage from "../../../assets/coreconnect-logo.png";
 
 export default function ScheduleModal({
   open,
@@ -919,6 +921,7 @@ export default function ScheduleModal({
             <Autocomplete
               multiple
               options={users}
+              groupBy={(option) => option.deptName || "소속 없음"}
               getOptionLabel={(option) => `${option.name} (${option.email})`}
               value={selectedUsers}
               onChange={(e, selected) =>
@@ -927,35 +930,101 @@ export default function ScheduleModal({
                   participantIds: selected.map((s) => s.id),
                 }))
               }
-              renderTags={(selected, getTagProps) =>
-                selected.map((option, index) => {
-                  const status = getParticipantStatus(option.id);
-                  let label, color;
-                  
-                  if (status === "participating") {
-                    label = `${option.name} 🟦 참여중`;
-                    color = "info";
-                  } else if (status === "busy") {
-                    label = `${option.name} 🟥 바쁨`;
-                    color = "error";
-                  } else {
-                    label = `${option.name} 🟩 가능`;
-                    color = "success";
-                  }
-                  
-                  // getTagProps에서 key를 분리하여 직접 전달 (React key prop 경고 해결)
-                  const { key, ...tagProps } = getTagProps({ index });
-                  
-                  return (
-                    <Chip
-                      key={key || option.id}
-                      label={label}
-                      color={color}
-                      {...tagProps}
-                    />
-                  );
-                })
-              }
+              renderGroup={(params) => {
+                const { key, group, children } = params;
+                const deptName = group;
+                const deptUsers = users.filter((u) => (u.deptName || "소속 없음") === deptName);
+                const deptUserCount = deptUsers.length;
+                
+                return (
+                  <li key={key}>
+                    <ListSubheader
+                      component="div"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // 해당 부서의 모든 사용자 찾기
+                        // 이미 선택된 사용자 제외하고 추가
+                        const newUsers = deptUsers.filter(
+                          (u) => !selectedUsers.some((s) => s.id === u.id)
+                        );
+                        if (newUsers.length > 0) {
+                          setForm((prev) => ({
+                            ...prev,
+                            participantIds: [
+                              ...prev.participantIds,
+                              ...newUsers.map((u) => u.id),
+                            ],
+                          }));
+                        }
+                      }}
+                      sx={{
+                        backgroundColor: "#e0e0e0",
+                        color: "#666666",
+                        fontWeight: 400,
+                        fontSize: "1rem",
+                        cursor: "pointer",
+                        "&:hover": {
+                          backgroundColor: "#d0d0d0",
+                        },
+                        py: 0.5,
+                        px: 1,
+                        minHeight: "auto",
+                        lineHeight: 1.5,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 0.5,
+                      }}
+                    >
+                      <Box
+                        component="img"
+                        src={logoImage}
+                        alt="코어커넥트 로고"
+                        sx={{
+                          height: 16,
+                          width: "auto",
+                          objectFit: "contain",
+                        }}
+                      />
+                      {deptName} ({deptUserCount}명) - 클릭하여 전체 선택
+                    </ListSubheader>
+                    {children}
+                  </li>
+                );
+              }}
+              renderValue={(selected) => (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {selected.map((option) => {
+                    const status = getParticipantStatus(option.id);
+                    let label, color;
+                    
+                    if (status === "participating") {
+                      label = `${option.name} 🟦 참여중`;
+                      color = "info";
+                    } else if (status === "busy") {
+                      label = `${option.name} 🟥 바쁨`;
+                      color = "error";
+                    } else {
+                      label = `${option.name} 🟩 가능`;
+                      color = "success";
+                    }
+                    
+                    return (
+                      <Chip
+                        key={option.id}
+                        label={label}
+                        color={color}
+                        onDelete={(e) => {
+                          e.stopPropagation();
+                          setForm((prev) => ({
+                            ...prev,
+                            participantIds: prev.participantIds.filter((id) => id !== option.id),
+                          }));
+                        }}
+                      />
+                    );
+                  })}
+                </Box>
+              )}
               renderInput={(params) => (
                 <TextField {...params} label="참여자 초대" placeholder="검색 후 선택" />
               )}
@@ -1283,7 +1352,7 @@ export default function ScheduleModal({
 
       {/* 하단 버튼 (항상 고정) */}
       <DialogActions sx={{ borderTop: "1px solid #ddd", p: 2 }}>
-        {isEdit && (
+        {isEdit && initialData?.userEmail === currentUserEmail && (
           <Button color="error" onClick={() => onDelete(initialData.id)}>
             삭제
           </Button>
