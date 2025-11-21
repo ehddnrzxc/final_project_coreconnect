@@ -129,7 +129,7 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
         }
 
         // 알림 저장 + 실시간 푸시는 NotificationService에서 일원화
-        notificationService.sendNotification(recipientId, type, msg, null, null, senderId, senderName);
+        notificationService.sendNotification(recipientId, type, msg, null, null, senderId, senderName, null);
     }
 
     /**

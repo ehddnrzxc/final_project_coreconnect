@@ -27,10 +27,13 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .addInterceptors(webSocketAuthInterceptor) // WebSocket 인증 인터셉터 추가
                 .withSockJS(); // 필요하다면 SockJS 지원도 추가
         log.info("🔥 [WebSocketConfig] /ws/chat 엔드포인트 등록 완료");
-        // registry.addEndpoint("/ws/notification") ... 도 가능
+        
+        // 알림 WebSocket 엔드포인트 (native WebSocket 지원)
         registry.addEndpoint("/ws/notification")
-        .setAllowedOrigins("http://localhost:5173")
-        .withSockJS();
+                .setAllowedOrigins("http://localhost:5173", "http://13.125.225.211:5173", "http://13.125.225.211")
+                .addInterceptors(webSocketAuthInterceptor) // WebSocket 인증 인터셉터 추가
+                .withSockJS(); // SockJS 지원 (프론트엔드에서 native WebSocket도 사용 가능)
+        log.info("🔥 [WebSocketConfig] /ws/notification 엔드포인트 등록 완료 (인증 인터셉터 포함)");
         log.info("🔥 [WebSocketConfig] STOMP 엔드포인트 등록 완료");
     }
     

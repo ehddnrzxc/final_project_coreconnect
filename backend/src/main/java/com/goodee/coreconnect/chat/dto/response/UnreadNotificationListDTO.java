@@ -24,6 +24,9 @@ public class UnreadNotificationListDTO {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime sentAt;
     private String notificationType;
+    private Integer documentId; // APPROVAL 타입 알림의 경우 결재 문서 ID
+    private Integer boardId; // NOTICE 타입 알림의 경우 게시글 ID
+    private Integer scheduleId; // SCHEDULE 타입 알림의 경우 일정 ID
 
     // 엔티티 → DTO 변환
     public static UnreadNotificationListDTO from(Notification n) {
@@ -34,6 +37,9 @@ public class UnreadNotificationListDTO {
             .receiverName(n.getUser() != null ? n.getUser().getName() : null)
             .sentAt(n.getNotificationSentAt())
             .notificationType(n.getNotificationType() != null ? n.getNotificationType().name() : null)
+            .documentId(n.getDocument() != null ? n.getDocument().getId() : null)
+            .boardId(n.getBoard() != null ? n.getBoard().getId() : null)
+            .scheduleId(n.getSchedule() != null ? n.getSchedule().getId() : null)
             .build();
     
 	}

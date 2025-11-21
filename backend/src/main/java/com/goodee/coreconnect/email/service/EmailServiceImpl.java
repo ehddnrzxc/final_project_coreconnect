@@ -583,7 +583,8 @@ public class EmailServiceImpl implements EmailService {
                                 null,
                                 null,
                                 savedEmail.getSenderId(),
-                                senderName
+                                senderName,
+                                null
                         );
 
                         // mark emailIsAlarmSent true to avoid duplicate alarms
@@ -618,7 +619,8 @@ public class EmailServiceImpl implements EmailService {
                             null,
                             null,
                             savedEmail.getSenderId(),
-                            senderName
+                            senderName,
+                            null
                     );
                 } catch (Exception ex) {
                     log.warn("[sendEmail] failed to notify sender id={}, err={}", savedEmail.getSenderId(), ex.getMessage(), ex);

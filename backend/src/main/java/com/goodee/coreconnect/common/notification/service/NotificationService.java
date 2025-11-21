@@ -10,11 +10,15 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.goodee.coreconnect.board.entity.Board;
+import com.goodee.coreconnect.board.repository.BoardRepository;
 import com.goodee.coreconnect.chat.dto.response.NotificationReadResponseDTO;
 import com.goodee.coreconnect.chat.repository.NotificationRepository;
 import com.goodee.coreconnect.common.entity.Notification;
 import com.goodee.coreconnect.common.notification.dto.NotificationPayload;
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
+import com.goodee.coreconnect.schedule.entity.Schedule;
+import com.goodee.coreconnect.schedule.repository.ScheduleRepository;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
@@ -34,6 +38,8 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final BoardRepository boardRepository;
+    private final ScheduleRepository scheduleRepository;
     private final WebSocketDeliveryService webSocketDeliveryService;
     private final ObjectMapper objectMapper;
     //private final ObjectProvider<StringRedisTemplate> redisTemplateProvider;
@@ -54,8 +60,14 @@ public class NotificationService {
         Integer chatId,
         Integer roomId,
         Integer senderId,
-        String senderName
+        String senderName,
+        Integer scheduleId
     ) {
+        // 로그 추가: scheduleId 전달 확인
+        if (type == NotificationType.SCHEDULE) {
+            log.info("[NotificationService] sendNotification 호출: type=SCHEDULE, scheduleId={}, message={}", scheduleId, message);
+        }
+        
         if (recipientId == null) {
             log.warn("[NotificationService] recipientId가 null입니다. 알림 전송 중단.");
             return;
@@ -77,8 +89,24 @@ public class NotificationService {
             roomId = null;
         }
 
+        // scheduleId가 있으면 Schedule 엔티티 조회
+        Schedule schedule = null;
+        if (scheduleId != null) {
+            try {
+                schedule = scheduleRepository.findById(scheduleId)
+                    .orElse(null); // schedule이 없어도 알림은 전송
+                if (schedule == null) {
+                    log.warn("[NotificationService] scheduleId={}에 해당하는 Schedule을 찾을 수 없습니다.", scheduleId);
+                } else {
+                    log.info("[NotificationService] scheduleId={}에 해당하는 Schedule을 찾았습니다. 제목: {}", scheduleId, schedule.getTitle());
+                }
+            } catch (Exception e) {
+                log.error("[NotificationService] scheduleId={} 조회 중 오류 발생", scheduleId, e);
+            }
+        }
+
         Notification notification = Notification.createNotification(
-            recipient, type, message, null, null, false, false, false,
+            recipient, type, message, null, null, null, schedule, false, false, false,
             LocalDateTime.now(), null, sender
         );
         notificationRepository.save(notification);
@@ -133,7 +161,9 @@ public class NotificationService {
         Integer chatId,
         Integer roomId,
         Integer senderId,
-        String senderName
+        String senderName,
+        Integer boardId,
+        Integer scheduleId
     ) {
         if (senderId == null) {
             log.warn("[NotificationService] senderId가 null입니다. 여러명 알림 중단.");
@@ -145,6 +175,38 @@ public class NotificationService {
             log.warn("[NotificationService] recipientIds가 비어있습니다. 중단.");
             return;
         }
+        // boardId가 있으면 Board 엔티티 조회
+        Board board = null;
+        if (boardId != null) {
+            try {
+                board = boardRepository.findById(boardId)
+                    .orElse(null); // board가 없어도 알림은 전송
+                if (board == null) {
+                    log.warn("[NotificationService] boardId={}에 해당하는 Board를 찾을 수 없습니다.", boardId);
+                } else {
+                    log.info("[NotificationService] boardId={}에 해당하는 Board를 찾았습니다. 제목: {}", boardId, board.getTitle());
+                }
+            } catch (Exception e) {
+                log.error("[NotificationService] boardId={} 조회 중 오류 발생", boardId, e);
+            }
+        }
+        
+        // scheduleId가 있으면 Schedule 엔티티 조회
+        Schedule schedule = null;
+        if (scheduleId != null) {
+            try {
+                schedule = scheduleRepository.findById(scheduleId)
+                    .orElse(null); // schedule이 없어도 알림은 전송
+                if (schedule == null) {
+                    log.warn("[NotificationService] scheduleId={}에 해당하는 Schedule을 찾을 수 없습니다.", scheduleId);
+                } else {
+                    log.info("[NotificationService] scheduleId={}에 해당하는 Schedule을 찾았습니다. 제목: {}", scheduleId, schedule.getTitle());
+                }
+            } catch (Exception e) {
+                log.error("[NotificationService] scheduleId={} 조회 중 오류 발생", scheduleId, e);
+            }
+        }
+        
         List<NotificationPayload> payloads = new ArrayList<>(recipientIds.size());
         for (Integer rid : recipientIds) {
             if (rid == null) {
@@ -155,7 +217,7 @@ public class NotificationService {
                 .orElseThrow(() -> new EntityNotFoundException("알림 수신자 없음: " + rid));
 
             Notification notification = Notification.createNotification(
-                receiver, type, message, null, null, false, false, false,
+                receiver, type, message, null, null, board, schedule, false, false, false,
                 LocalDateTime.now(), null, sender
             );
             notificationRepository.save(notification);

@@ -64,7 +64,8 @@ public class NotificationController {
 	         dto.getChatId(),
 	         dto.getRoomId(),
 	         senderId,
-	         senderName
+	         senderName,
+	         null
 	    );
         return ResponseEntity.ok().build();
 	 }
