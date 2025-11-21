@@ -45,19 +45,6 @@ function PendingDocuments() {
     return <Alert severity="error">{error}</Alert>;
   }
 
-  if (documents.length === 0) {
-    return (
-      <Box>
-        <Typography variant="h4" gutterBottom>
-          결재/합의 대기 문서
-        </Typography>
-        <Alert severity="info" sx={{ mt: 2 }}>
-          결재/합의 대기 중인 문서가 없습니다.
-        </Alert>
-      </Box>
-    );
-  }
-
   return (
     <Box>
       <Typography variant="h4" gutterBottom>
@@ -67,36 +54,38 @@ function PendingDocuments() {
         <Table sx={{ minWidth: 650 }} aria-label="결재 대기 문서 테이블">
           <TableHead sx={{ bgcolor: "grey.100" }}>
             <TableRow>
-              <TableCell align="center" sx={{ fontWeight: "bold" }}>
-                문서 번호
-              </TableCell>
+              <TableCell align="center" sx={{ fontWeight: "bold" }}>문서 번호</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>문서 양식</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>제목</TableCell>
-              <TableCell align="center" sx={{ fontWeight: "bold" }}>
-                기안자
-              </TableCell>
-              <TableCell align="center" sx={{ fontWeight: "bold" }}>
-                기안일
-              </TableCell>
+              <TableCell align="center" sx={{ fontWeight: "bold" }}>기안자</TableCell>
+              <TableCell align="center" sx={{ fontWeight: "bold" }}>기안일</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {documents.map(doc => (
-              <TableRow
-                key={doc.documentId}
-                hover
-                onClick={() => handleRowClick(doc.documentId)}
-                sx={{ cursor: "pointer", "&:last-child td, &:last-child th": { border: 0 } }}
-              >
-                <TableCell align="center">{doc.documentId}</TableCell>
-                <TableCell>{doc.templateName}</TableCell>
-                <TableCell>{doc.documentTitle}</TableCell>
-                <TableCell align="center">{doc.writerName}</TableCell>
-                <TableCell align="center">
-                  {new Date(doc.createdAt).toLocaleDateString()}
-                </TableCell>
-              </TableRow>
-            ))}
+            {documents.length === 0 ? (
+               <TableRow>
+                 <TableCell colSpan={5} align="center" sx={{ py: 5 }}>
+                    <Typography color="textSecondary">결재/합의 대기 중인 문서가 없습니다.</Typography>
+                 </TableCell>
+               </TableRow>
+            ) : (
+              documents.map(doc => (
+                <TableRow
+                  key={doc.documentId}
+                  hover
+                  onClick={() => handleRowClick(doc.documentId)}
+                  sx={{ cursor: "pointer", "&:last-child td, &:last-child th": { border: 0 } }}
+                >
+                  <TableCell align="center">{doc.documentId}</TableCell>
+                  <TableCell>{doc.templateName}</TableCell>
+                  <TableCell>{doc.documentTitle}</TableCell>
+                  <TableCell align="center">{doc.writerName}</TableCell>
+                  <TableCell align="center">
+                    {new Date(doc.createdAt).toLocaleDateString()}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </TableContainer>

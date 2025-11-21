@@ -128,47 +128,51 @@ function MyDocumentsPage() {
         </FormControl>
       </Box>
 
-      {!loading && filteredDocuments.length === 0 ? (
-        <Alert severity="info">상신한 문서가 없습니다.</Alert>
-      ) : (
-        <TableContainer component={Paper} variant="outlined">
-          <Table sx={{ minWidth: 650 }} aria-label="my documents table">
-            <TableHead sx={{ backgroundColor: "#f9f9f9" }}>
+      <TableContainer component={Paper} variant="outlined">
+        <Table sx={{ minWidth: 650 }} aria-label="my documents table">
+          <TableHead sx={{ backgroundColor: "#f9f9f9" }}>
+            <TableRow>
+              <TableCell sx={{ fontWeight: "bold", width: "150px" }}>
+                기안일
+              </TableCell>
+              <TableCell sx={{ fontWeight: "bold", width: "150px" }}>
+                완료일
+              </TableCell>
+              <TableCell sx={{ fontWeight: "bold", width: "180px" }}>
+                양식명
+              </TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>제목</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>결재선</TableCell>
+              <TableCell sx={{ fontWeight: "bold", width: "130px" }}>
+                기안부서
+              </TableCell>
+              <TableCell
+                align="center"
+                sx={{ fontWeight: "bold", width: "120px" }}
+              >
+                결재상태
+              </TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {filteredDocuments.length === 0 ? (
               <TableRow>
-                <TableCell sx={{ fontWeight: "bold", width: "150px" }}>
-                  기안일
-                </TableCell>
-                <TableCell sx={{ fontWeight: "bold", width: "150px" }}>
-                  완료일
-                </TableCell>
-                <TableCell sx={{ fontWeight: "bold", width: "180px" }}>
-                  양식명
-                </TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>제목</TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>결재선</TableCell>
-                <TableCell sx={{ fontWeight: "bold", width: "130px" }}>
-                  기안부서
-                </TableCell>
-                <TableCell
-                  align="center"
-                  sx={{ fontWeight: "bold", width: "120px" }}
-                >
-                  결재상태
+                <TableCell colSpan={7} align="center" sx={{ py: 5 }}>
+                  <Typography color="textSecondary">
+                    상신한 문서가 없습니다.
+                  </Typography>
                 </TableCell>
               </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredDocuments.map((doc) => {
-                 // 1. 결재/합의자 (REFER가 아닌 것들)
-                 const approvers = (doc.approvalLines || [])
-                   .filter(line => line.type !== "REFER") // DTO 필드명이 type인지 approvalType인지 확인 필요 (DTO기준 type)
-                   .sort((a, b) => a.approvalOrder - b.approvalOrder);
+            ) : (
+              filteredDocuments.map((doc) => {
+                const approvers = (doc.approvalLines || [])
+                  .filter((line) => line.type !== "REFER")
+                  .sort((a, b) => a.approvalOrder - b.approvalOrder);
+                const referrers = (doc.approvalLines || []).filter(
+                  (line) => line.type === "REFER"
+                );
 
-                 // 2. 참조자 (REFER인 것들)
-                 const referrers = (doc.approvalLines || [])
-                   .filter(line => line.type === "REFER");
-
-                 return (
+                return (
                   <TableRow
                     key={doc.documentId}
                     hover
@@ -186,12 +190,8 @@ function MyDocumentsPage() {
                     <TableCell>{formatCompletedDate(doc)}</TableCell>
                     <TableCell>{doc.templateName}</TableCell>
                     <TableCell>{doc.documentTitle}</TableCell>
-                    
-                    {/* --- 결재선 표시 영역 수정 --- */}
                     <TableCell>
                       <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                        
-                        {/* 1. 결재/합의 라인 (화살표 표시) */}
                         {approvers.length > 0 ? (
                           <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 0.5 }}>
                             {approvers.map((line, index) => (
@@ -199,8 +199,7 @@ function MyDocumentsPage() {
                                 <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                                   <Typography variant="body2">
                                     {line.name}
-                                    {/* 합의자인 경우 (합의) 표시 */}
-                                    <span style={{ fontSize: '0.8em', color: '#666', marginLeft: '2px' }}>
+                                    <span style={{ fontSize: "0.8em", color: "#666", marginLeft: "2px" }}>
                                       {getRoleLabel(line.type)}
                                     </span>
                                   </Typography>
@@ -217,46 +216,27 @@ function MyDocumentsPage() {
                         ) : (
                           "-"
                         )}
-
-                        {/* 2. 참조 라인 (하단 회색 박스) */}
                         {referrers.length > 0 && (
-                          <Box 
-                            sx={{ 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              gap: 1, 
-                              mt: 0.5, 
-                              p: 0.8, 
-                              backgroundColor: '#f5f5f5', 
-                              borderRadius: 1,
-                              width: 'fit-content'
-                            }}
-                          >
-                            <Chip 
-                              label="참조" 
-                              size="small" 
-                              variant="outlined" 
-                              sx={{ height: 20, fontSize: '0.7rem', borderColor: '#bbb', color: '#666' }} 
-                            />
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.5, p: 0.8, backgroundColor: "#f5f5f5", borderRadius: 1, width: "fit-content" }}>
+                            <Chip label="참조" size="small" variant="outlined" sx={{ height: 20, fontSize: "0.7rem", borderColor: "#bbb", color: "#666" }} />
                             <Typography variant="caption" color="text.secondary">
-                              {referrers.map(r => r.name).join(", ")}
+                              {referrers.map((r) => r.name).join(", ")}
                             </Typography>
                           </Box>
                         )}
                       </Box>
                     </TableCell>
-
                     <TableCell>{doc.deptName || "-"}</TableCell>
                     <TableCell align="center">
                       <DocumentStatusChip status={doc.documentStatus} />
                     </TableCell>
                   </TableRow>
                 );
-              })}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
+              })
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
     </Box>
   );
 }

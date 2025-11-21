@@ -63,21 +63,25 @@ function MyDraftsPage() {
         임시저장함
       </Typography>
       
-      {!loading && drafts.length === 0 ? (
-        <Alert severity='info'>임시저장된 문서가 없습니다.</Alert>
-      ) : (
-        <TableContainer component={Paper} variant="outlined">
-          <Table sx={{ minWidth: 650 }} aria-label="my drafts table">
-            <TableHead sx={{ backgroundColor: "#f9f9f9" }}>
+      <TableContainer component={Paper} variant="outlined">
+        <Table sx={{ minWidth: 650 }} aria-label="my drafts table">
+          <TableHead sx={{ backgroundColor: "#f9f9f9" }}>
+            <TableRow>
+              <TableCell align="center" sx={{ fontWeight: 'bold', width: '120px' }}>문서 상태</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>제목</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', width: '180px' }}>양식명</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', width: '150px' }}>임시저장일</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {drafts.length === 0 ? (
               <TableRow>
-                <TableCell align="center" sx={{ fontWeight: 'bold', width: '120px' }}>문서 상태</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>제목</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', width: '180px' }}>양식명</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', width: '150px' }}>임시저장일</TableCell>
+                <TableCell colSpan={4} align="center" sx={{ py: 5 }}>
+                   <Typography color="textSecondary">임시저장된 문서가 없습니다.</Typography>
+                </TableCell>
               </TableRow>
-            </TableHead>
-            <TableBody>
-              {drafts.map((doc) => (
+            ) : (
+              drafts.map((doc) => (
                 <TableRow
                   key={doc.documentId}
                   hover
@@ -91,11 +95,11 @@ function MyDraftsPage() {
                   <TableCell>{doc.templateName}</TableCell>
                   <TableCell>{format(new Date(doc.createdAt), 'yyyy-MM-dd HH:mm')}</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
     </Box>
   );
 }
