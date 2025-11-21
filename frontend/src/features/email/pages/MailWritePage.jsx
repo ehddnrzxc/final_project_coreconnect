@@ -75,6 +75,17 @@ function MailWritePage() {
   const { userProfile } = useContext(UserProfileContext) || {};
   const userEmail = userProfile?.email;
 
+  // 조직도 → 메일쓰기 자동 입력 mailTo 값 받기
+  const mailTo = location.state?.mailTo || null;
+  useEffect(() => {
+    if (mailTo) {
+      setForm(f => ({
+        ...f,
+        recipientAddress: [mailTo]
+      }));
+    }
+  }, [mailTo]);
+
   // 답장/전달 모드일 때 원본 메일 정보 포맷팅 함수
   const formatOriginalEmailInfo = (originalEmail, mode = 'reply') => {
     const formatDate = (date) => {
