@@ -68,6 +68,7 @@ const OrgChartDrawer = ({ open, onClose }) => {
         open={Boolean(selectedMember)}
         member={selectedMember}
         onClose={() => setSelectedMember(null)} // 모달 닫기
+        onCloseDrawer={() => onClose()}   // 드로워 닫기
       />
     </>
   );
