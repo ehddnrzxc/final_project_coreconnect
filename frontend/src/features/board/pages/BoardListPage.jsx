@@ -6,6 +6,7 @@ import CommentIcon from "@mui/icons-material/Comment";
 import RecentViewedBoards from "./RecentViewedBoards";
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
+import { getJobGradeLabel } from "../../../utils/labelUtils";
 
 
 const BoardListPage = () => {
@@ -321,7 +322,7 @@ const BoardListPage = () => {
 
                     <Typography variant="caption" color="text.secondary">
                       {b.writerName}
-                      {b.writerJobGrade ? ` ${b.writerJobGrade}` : ""}
+                      {b.writerJobGrade ? ` ${getJobGradeLabel(b.writerJobGrade)}` : ""}
                       {" / "}
                       {formatDate(b.createdAt)}
                       {" / 조회수 "}
