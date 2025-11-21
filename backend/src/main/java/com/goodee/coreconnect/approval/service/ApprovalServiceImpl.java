@@ -11,6 +11,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -314,16 +316,14 @@ public class ApprovalServiceImpl implements ApprovalService {
    * 내 상신함(내가 작성한 문서) 목록을 조회합니다.
    */
   @Override
-  public List<DocumentSimpleResponseDTO> getMyDocuments(String email) {
+  public Page<DocumentSimpleResponseDTO> getMyDocuments(String email, Pageable pageable) {
     User user = findUserByEmail(email);
 
     // 1. 리포지토리에서 조회
-    List<Document> documents = documentRepository.findByUserAndDocDeletedYnOrderByCreatedAtDesc(user, false);
+    Page<Document> documentPage = documentRepository.findByUserAndDocDeletedYnOrderByCreatedAtDesc(user, false, pageable);
 
     // 2. DTO로 변환
-    return documents.stream()
-        .map(DocumentSimpleResponseDTO::toDTO)
-        .collect(Collectors.toList());
+    return documentPage.map(DocumentSimpleResponseDTO::toDTO);
   }
 
   /**

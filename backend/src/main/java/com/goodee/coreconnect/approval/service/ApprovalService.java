@@ -2,6 +2,8 @@ package com.goodee.coreconnect.approval.service;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.goodee.coreconnect.approval.dto.request.ApprovalApproveRequestDTO;
@@ -65,7 +67,7 @@ public interface ApprovalService {
    * @param email 현재 사용자 email
    * @return 문서 목록
    */
-  List<DocumentSimpleResponseDTO> getMyDocuments(String email);
+  Page<DocumentSimpleResponseDTO> getMyDocuments(String email, Pageable pageable);
 
   /**
    * 내 결재함(내가 결재할 문서) 목록을 조회합니다.
