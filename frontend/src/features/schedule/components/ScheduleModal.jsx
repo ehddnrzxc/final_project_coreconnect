@@ -22,6 +22,7 @@ import {
   Radio,
   FormControlLabel,
   Checkbox,
+  ListSubheader,
 } from "@mui/material";
 import { toBackendFormat, toISO, toDateTimeLocal, fromDateTimeLocal } from "../../../utils/dateFormat";
 import {
@@ -919,6 +920,7 @@ export default function ScheduleModal({
             <Autocomplete
               multiple
               options={users}
+              groupBy={(option) => option.deptName || "소속 없음"}
               getOptionLabel={(option) => `${option.name} (${option.email})`}
               value={selectedUsers}
               onChange={(e, selected) =>
@@ -927,6 +929,54 @@ export default function ScheduleModal({
                   participantIds: selected.map((s) => s.id),
                 }))
               }
+              renderGroup={(params) => {
+                const { key, group, children } = params;
+                const deptName = group;
+                const deptUsers = users.filter((u) => (u.deptName || "소속 없음") === deptName);
+                const deptUserCount = deptUsers.length;
+                
+                return (
+                  <li key={key}>
+                    <ListSubheader
+                      component="div"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // 해당 부서의 모든 사용자 찾기
+                        // 이미 선택된 사용자 제외하고 추가
+                        const newUsers = deptUsers.filter(
+                          (u) => !selectedUsers.some((s) => s.id === u.id)
+                        );
+                        if (newUsers.length > 0) {
+                          setForm((prev) => ({
+                            ...prev,
+                            participantIds: [
+                              ...prev.participantIds,
+                              ...newUsers.map((u) => u.id),
+                            ],
+                          }));
+                        }
+                      }}
+                      sx={{
+                        backgroundColor: "#e0e0e0",
+                        color: "#666666",
+                        fontWeight: 400,
+                        fontSize: "1rem",
+                        cursor: "pointer",
+                        "&:hover": {
+                          backgroundColor: "#d0d0d0",
+                        },
+                        py: 0.5,
+                        px: 1,
+                        minHeight: "auto",
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      📁 {deptName} ({deptUserCount}명) - 클릭하여 전체 선택
+                    </ListSubheader>
+                    {children}
+                  </li>
+                );
+              }}
               renderTags={(selected, getTagProps) =>
                 selected.map((option, index) => {
                   const status = getParticipantStatus(option.id);
