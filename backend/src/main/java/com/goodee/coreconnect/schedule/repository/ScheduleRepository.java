@@ -64,12 +64,14 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Integer> {
           OR sp.user.id = :userId
         )
         AND (:start < s.endDateTime AND :end > s.startDateTime)
+        AND (:excludeId IS NULL OR s.id <> :excludeId)
       ORDER BY s.startDateTime ASC
   """)
   List<Schedule> findOverlappingSchedules(
       @Param("userId") Integer userId,
       @Param("start") LocalDateTime start,
-      @Param("end") LocalDateTime end
+      @Param("end") LocalDateTime end,
+      @Param("excludeId") Integer excludeId
   );
   
   

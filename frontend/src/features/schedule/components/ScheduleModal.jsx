@@ -549,7 +549,7 @@ export default function ScheduleModal({
       }
     };
     checkParticipantsAvailability();
-  }, [form.participantIds, form.startDateTime, form.endDateTime, form.isAllDay, scheduleId, isEdit]);
+  }, [form.participantIds, form.startDateTime, form.endDateTime, form.isAllDay, scheduleId]);
 
   /** 회의실 선택 시 시간대 기반으로 가용성 조회 */
   const handleRoomSelectOpen = async () => {

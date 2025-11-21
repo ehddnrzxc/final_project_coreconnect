@@ -12,7 +12,6 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.goodee.coreconnect.chat.repository.NotificationRepository;
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
 import com.goodee.coreconnect.common.notification.service.NotificationService;
 import com.goodee.coreconnect.leave.entity.LeaveRequest;
@@ -459,14 +458,15 @@ public class ScheduleServiceImpl implements ScheduleService {
       List<Integer> userIds,
       LocalDate date,
       LocalDateTime start,
-      LocalDateTime end
+      LocalDateTime end,
+      Integer scheduleId
   ) {
     LocalDateTime startTime = (start != null) ? start : date.atStartOfDay();
     LocalDateTime endTime = (end != null) ? end : date.atTime(23, 59, 59);
 
     Map<Integer, List<ResponseScheduleDTO>> result = new HashMap<>();
     for (Integer userId : userIds) {
-        List<Schedule> schedules = scheduleRepository.findOverlappingSchedules(userId, startTime, endTime);
+        List<Schedule> schedules = scheduleRepository.findOverlappingSchedules(userId, startTime, endTime, scheduleId);
         result.put(userId, schedules.stream()
             .map(ResponseScheduleDTO::toDTO)
             .toList());
