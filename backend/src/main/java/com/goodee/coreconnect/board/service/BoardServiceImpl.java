@@ -24,6 +24,7 @@ import com.goodee.coreconnect.board.repository.BoardViewHistoryRepository;
 import com.goodee.coreconnect.chat.repository.NotificationRepository;
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
 import com.goodee.coreconnect.common.notification.service.NotificationService;
+import com.goodee.coreconnect.notice.service.NotificationAsyncService;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.enums.Role;
 import com.goodee.coreconnect.user.repository.UserRepository;
@@ -44,6 +45,7 @@ public class BoardServiceImpl implements BoardService {
     private final BoardFileRepository boardFileRepository;
     private final BoardFileService boardFileService; 
     private final NotificationRepository notificationRepository;
+    private final NotificationAsyncService notificationAsyncService;
     
     // 미리보기 적용 메소드
     private void applyPreview(Board board, BoardResponseDTO dto) {
@@ -141,15 +143,22 @@ public class BoardServiceImpl implements BoardService {
                                                          .filter(id -> !id.equals(user.getId())) // 작성자 본인은 제외
                                                          .toList();
 
-                notificationService.sendNotificationToUsers(allUserIds,
-                                                            NotificationType.NOTICE,
-                                                            message,
-                                                            null, null,
-                                                            user.getId(),
-                                                            user.getName());
+//                notificationService.sendNotificationToUsers(allUserIds,
+//                                                            NotificationType.NOTICE,
+//                                                            message,
+//                                                            null, null,
+//                                                            user.getId(),
+//                                                            user.getName());
+//                
+//                notificationRepository.findBySenderId(user.getId())
+//                                      .forEach(n -> n.markSent(java.time.LocalDateTime.now()));
                 
-                notificationRepository.findBySenderId(user.getId())
-                                      .forEach(n -> n.markSent(java.time.LocalDateTime.now()));
+                // 비동기 알림 전송으로 대체
+                notificationAsyncService.sendNoticeAsync(allUserIds,                           
+                                                         NotificationType.NOTICE,             
+                                                         message,                             
+                                                         user.getId(),                        
+                                                         user.getName());
                 
 
             } else if (user.getRole() == Role.MANAGER) {
@@ -162,15 +171,22 @@ public class BoardServiceImpl implements BoardService {
                                                               .filter(id -> !id.equals(user.getId())) // 작성자 본인은 제외
                                                               .toList();
 
-                    notificationService.sendNotificationToUsers(deptUserIds,
-                                                                NotificationType.NOTICE,
-                                                                message,
-                                                                null, null,
-                                                                user.getId(),
-                                                                user.getName());
+//                    notificationService.sendNotificationToUsers(deptUserIds,
+//                                                                NotificationType.NOTICE,
+//                                                                message,
+//                                                                null, null,
+//                                                                user.getId(),
+//                                                                user.getName());
+//                    
+//                    notificationRepository.findBySenderId(user.getId())
+//                                          .forEach(n -> n.markSent(java.time.LocalDateTime.now()));
                     
-                    notificationRepository.findBySenderId(user.getId())
-                                          .forEach(n -> n.markSent(java.time.LocalDateTime.now()));
+                    // 비동기 알림 전송으로 대체
+                    notificationAsyncService.sendNoticeAsync(deptUserIds,                           
+                                                             NotificationType.NOTICE,             
+                                                             message,                             
+                                                             user.getId(),                        
+                                                             user.getName());
                 }
             }
         }
@@ -257,12 +273,20 @@ public class BoardServiceImpl implements BoardService {
                                                          .map(u -> u.getId())
                                                          .filter(id -> !id.equals(loginUser.getId()))
                                                          .toList();
-                notificationService.sendNotificationToUsers(
-                        allUserIds, NotificationType.NOTICE, message, null, null,
-                        loginUser.getId(), loginUser.getName());
                 
-                notificationRepository.findBySenderId(loginUser.getId())
-                                      .forEach(n -> n.markSent(java.time.LocalDateTime.now()));
+//                notificationService.sendNotificationToUsers(
+//                        allUserIds, NotificationType.NOTICE, message, null, null,
+//                        loginUser.getId(), loginUser.getName());
+//                
+//                notificationRepository.findBySenderId(loginUser.getId())
+//                                      .forEach(n -> n.markSent(java.time.LocalDateTime.now()));
+                
+                // 비동기 호출로 대체
+                notificationAsyncService.sendNoticeAsync(allUserIds,              
+                                                         NotificationType.NOTICE,
+                                                         message,          
+                                                         loginUser.getId(),
+                                                         loginUser.getName());
                 
             } else if (loginUser.getRole() == Role.MANAGER) {
                 Integer deptId = loginUser.getDepartment() != null
@@ -273,12 +297,21 @@ public class BoardServiceImpl implements BoardService {
                                                               .map(u -> u.getId())
                                                               .filter(id -> !id.equals(loginUser.getId()))
                                                               .toList();
-                    notificationService.sendNotificationToUsers(
-                            deptUserIds, NotificationType.NOTICE, message, null, null,
-                            loginUser.getId(), loginUser.getName());
                     
-                    notificationRepository.findBySenderId(loginUser.getId())
-                                          .forEach(n -> n.markSent(java.time.LocalDateTime.now()));
+//                    notificationService.sendNotificationToUsers(
+//                            deptUserIds, NotificationType.NOTICE, message, null, null,
+//                            loginUser.getId(), loginUser.getName());
+//                    
+//                    notificationRepository.findBySenderId(loginUser.getId())
+//                                          .forEach(n -> n.markSent(java.time.LocalDateTime.now()));
+                    
+                    // 비동기 호출로 대체
+                    notificationAsyncService.sendNoticeAsync(deptUserIds,              
+                                                             NotificationType.NOTICE,
+                                                             message,          
+                                                             loginUser.getId(),
+                                                             loginUser.getName());
+                    
                 }
             }
         }
@@ -292,12 +325,20 @@ public class BoardServiceImpl implements BoardService {
                                                          .map(u -> u.getId())
                                                          .filter(id -> !id.equals(loginUser.getId()))
                                                          .toList();
-                notificationService.sendNotificationToUsers(
-                        allUserIds, NotificationType.NOTICE, message, null, null,
-                        loginUser.getId(), loginUser.getName());
                 
-                notificationRepository.findBySenderId(loginUser.getId())
-                                      .forEach(n -> n.markSent(java.time.LocalDateTime.now()));
+//                notificationService.sendNotificationToUsers(
+//                        allUserIds, NotificationType.NOTICE, message, null, null,
+//                        loginUser.getId(), loginUser.getName());
+//                
+//                notificationRepository.findBySenderId(loginUser.getId())
+//                                      .forEach(n -> n.markSent(java.time.LocalDateTime.now()));
+                
+                // 비동기 호출
+                notificationAsyncService.sendNoticeAsync(allUserIds,              
+                                                         NotificationType.NOTICE,
+                                                         message,           
+                                                         loginUser.getId(), 
+                                                         loginUser.getName());
                 
             } else if (loginUser.getRole() == Role.MANAGER) {
                 Integer deptId = loginUser.getDepartment() != null
@@ -308,12 +349,20 @@ public class BoardServiceImpl implements BoardService {
                                                               .map(u -> u.getId())
                                                               .filter(id -> !id.equals(loginUser.getId()))
                                                               .toList();
-                    notificationService.sendNotificationToUsers(
-                            deptUserIds, NotificationType.NOTICE, message, null, null,
-                            loginUser.getId(), loginUser.getName());
+//                    notificationService.sendNotificationToUsers(
+//                            deptUserIds, NotificationType.NOTICE, message, null, null,
+//                            loginUser.getId(), loginUser.getName());
+//                    
+//                    notificationRepository.findBySenderId(loginUser.getId())
+//                                          .forEach(n -> n.markSent(java.time.LocalDateTime.now()));
                     
-                    notificationRepository.findBySenderId(loginUser.getId())
-                                          .forEach(n -> n.markSent(java.time.LocalDateTime.now()));
+                    // 비동기 호출
+                    notificationAsyncService.sendNoticeAsync(deptUserIds,              
+                                                             NotificationType.NOTICE,
+                                                             message,           
+                                                             loginUser.getId(), 
+                                                             loginUser.getName());
+                    
                 }
             }
         }
