@@ -1,4 +1,4 @@
-import { Box, Button, Chip, Typography, useTheme, Container, Paper, List, ListItemButton, ListItemText, Divider } from "@mui/material";
+import { Box, Chip, Typography, useTheme, Container, Paper, List, ListItemButton, ListItemText, Divider } from "@mui/material";
 import { checkIn, checkOut, getTodayAttendance } from "../api/attendanceAPI";
 import { formatKoreanDate, formatKoreanTime, formatTime } from "../../../utils/TimeUtils";
 import { useState, useEffect } from "react";
@@ -7,6 +7,8 @@ import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
+import StyledButton from "../../../components/ui/StyledButton";
+import { getAttendanceStatusLabel } from "../../../utils/labelUtils";
 
 function AttendanceLayout() {
   const { showSnack } = useSnackbarContext();
@@ -76,14 +78,15 @@ function AttendanceLayout() {
   };
 
   const getStatusInfo = () => {
+    const label = getAttendanceStatusLabel(status);
     switch (status) {
       case "PRESENT":
-        return { label: "출근", color: "success" };
+        return { label, color: "success" };
       case "LATE":
-        return { label: "지각", color: "warning" };
+        return { label, color: "warning" };
       case "LEAVE_EARLY":
       case "COMPLETED":
-        return { label: "퇴근", color: "info" };
+        return { label: status === "LEAVE_EARLY" ? "조퇴" : "퇴근", color: "info" };
       default:
         return { label: "미출근", color: "default" };
     }
@@ -155,24 +158,20 @@ function AttendanceLayout() {
         {/* 출근/퇴근 버튼 */}
         <Box sx={{ p: 2, borderBottom: "1px solid", borderColor: "divider" }}>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-            <Button
+            <StyledButton
               fullWidth
-              variant="contained"
               onClick={handleCheckIn}
               disabled={!canCheckIn}
-              sx={{ py: 1.5 }}
             >
               출근하기
-            </Button>
-            <Button
+            </StyledButton>
+            <StyledButton
               fullWidth
-              variant="outlined"
               onClick={handleCheckOut}
               disabled={!canCheckOut}
-              sx={{ py: 1.5 }}
             >
               퇴근하기
-            </Button>
+            </StyledButton>
           </Box>
         </Box>
 

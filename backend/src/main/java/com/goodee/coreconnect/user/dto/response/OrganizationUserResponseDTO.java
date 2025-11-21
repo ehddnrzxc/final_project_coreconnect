@@ -36,7 +36,7 @@ public class OrganizationUserResponseDTO {
 
     // jobGrade(직급)가 null일 경우 "N/A"
     String positionName = (user.getJobGrade() != null) 
-        ? user.getJobGrade().label()  // JobGrade Enum의 label() (예: "사원")
+        ? user.getJobGrade().name()  // JobGrade Enum의 name() (예: "STAFF")
             : "N/A";
 
     // 프로필 이미지 URL 변환 (user_profile_image_key → S3 URL)
@@ -97,7 +97,7 @@ public class OrganizationUserResponseDTO {
 
     // jobGrade(직급)가 null일 경우 "N/A"
     String positionName = (user.getJobGrade() != null) 
-        ? user.getJobGrade().label()
+        ? user.getJobGrade().name()
             : "N/A";
 
     return new OrganizationUserResponseDTO(

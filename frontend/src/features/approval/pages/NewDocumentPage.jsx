@@ -11,7 +11,7 @@ import VacationForm from '../forms/VacationForm';
 import DynamicApprovalTable from '../components/DynamicApprovalTable';
 import BusinessTripForm from '../forms/BusinessTripForm';
 import ExpenseForm from '../forms/ExpenseForm';
-import { getJobGradeLabel } from '../../../components/utils/labelUtils';
+import { getJobGradeLabel } from '../../../utils/labelUtils';
 import { useSnackbarContext } from '../../../components/utils/SnackbarContext';
 import { UserProfileContext } from '../../../App';
 
@@ -168,7 +168,8 @@ function NewDocumentPage() {
           tempHtmlContent: doc.tempHtmlContent
         });
 
-        setFormData(JSON.parse(doc.documentContent || '{}'));
+        const parsedData = JSON.parse(doc.documentContent || '{}');
+        setFormData(parsedData);
 
       } catch (error) {
         console.error("Error fetching document detail for edit:", error);

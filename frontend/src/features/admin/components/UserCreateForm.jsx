@@ -6,7 +6,6 @@ import {
   CardHeader,
   CardContent,
   TextField,
-  Button,
   MenuItem,
   Select,
   InputLabel,
@@ -16,6 +15,8 @@ import {
   Divider,
 } from "@mui/material";
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
+import { getJobGradeLabel } from "../../../utils/labelUtils";
+import StyledButton from "../../../components/ui/StyledButton";
 
 export default function UserCreateForm() {
   const { showSnack } = useSnackbarContext();
@@ -157,7 +158,7 @@ export default function UserCreateForm() {
   return (
     <Box
       sx={{
-        maxWidth: 640,
+        maxWidth: 1400,
         mx: "auto",
         mt: 4,
         px: 2,
@@ -178,7 +179,7 @@ export default function UserCreateForm() {
             <Box component="form" noValidate onSubmit={submit}>
               <Stack spacing={2.5}>
                 <TextField
-                  label="이메일 *"
+                  label="이메일"
                   name="email"
                   type="email"
                   value={form.email}
@@ -190,7 +191,7 @@ export default function UserCreateForm() {
                 />
 
                 <TextField
-                  label="이름 *"
+                  label="이름"
                   name="name"
                   value={form.name}
                   onChange={onChange}
@@ -201,7 +202,7 @@ export default function UserCreateForm() {
                 />
 
                 <TextField
-                  label="임시 비밀번호 *"
+                  label="임시 비밀번호"
                   name="tempPassword"
                   type="text"
                   value={form.tempPassword}
@@ -279,7 +280,7 @@ export default function UserCreateForm() {
                     ) : (
                       jobGrades.map((g) => (
                         <MenuItem key={g.value} value={g.value}>
-                          {g.label}
+                          {getJobGradeLabel(g.value)}
                         </MenuItem>
                       ))
                     )}
@@ -288,15 +289,17 @@ export default function UserCreateForm() {
 
 
                 <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1 }}>
-                  <Button
+                  <StyledButton
                     type="submit"
                     variant="contained"
+                    color="primary"
                     size="large"
                     disabled={loading}
-                    sx={{ px: 4, py: 1.2, fontWeight: 600, borderRadius: 2 }}
+                    fullWidth={false}
+                    sx={{ px: 4, py: 1.2, fontWeight: 600, borderRadius: 2, color: "primary.main" }}
                   >
                     {loading ? "생성 중..." : "유저 생성"}
-                  </Button>
+                  </StyledButton>
                 </Box>
               </Stack>
             </Box>

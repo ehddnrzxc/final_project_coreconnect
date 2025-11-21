@@ -91,7 +91,7 @@ public class BoardResponseDTO {
                                           .categoryId(board.getCategory() != null ? board.getCategory().getId() : null)
                                           .writerJobGrade(board.getUser().getJobGrade() != null ? board.getUser()
                                                                                                        .getJobGrade()
-                                                                                                       .label() : null)
+                                                                                                       .name() : null)
                                           .writerProfileImageUrl(profileImageUrl)
                                           .build();
     }

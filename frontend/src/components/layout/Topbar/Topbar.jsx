@@ -17,7 +17,7 @@ import CampaignOutlinedIcon from "@mui/icons-material/CampaignOutlined";
 import NoticeModal from "../../../features/dashboard/components/NoticeModal";
 import GroupwareNoticeModal from "../../../features/notice/components/GroupwareNoticeModal";
 import { useState, useContext, useEffect } from "react";
-import { getJobGradeLabel } from "../../../components/utils/labelUtils";
+import { getJobGradeLabel } from "../../../utils/labelUtils";
 import { UserProfileContext } from "../../../App";
 import { getUnreadNotificationSummary } from "../../../features/notification/api/notificationAPI";
 import logoImage from "../../../assets/coreconnect-logo.png";

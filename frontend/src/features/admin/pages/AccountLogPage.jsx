@@ -23,6 +23,7 @@ import {
 import HistoryIcon from "@mui/icons-material/History";
 import { getAccountLogs } from "../api/adminAPI";
 import { formatKoreanDate } from "../../../utils/TimeUtils";
+import { getLogActionTypeLabel } from "../../../utils/labelUtils";
 
 export default function AccountLogPage() {
   const [logs, setLogs] = useState([]);
@@ -33,13 +34,6 @@ export default function AccountLogPage() {
   const [totalElements, setTotalElements] = useState(0);
   const [emailFilter, setEmailFilter] = useState("");
   const [actionTypeFilter, setActionTypeFilter] = useState("");
-
-  const actionTypeLabels = {
-    LOGIN: "로그인",
-    LOGOUT: "로그아웃",
-    FAIL: "로그인 실패",
-    REFRESH: "토큰 재발급",
-  };
 
   const actionTypeColors = {
     LOGIN: "success",
@@ -158,7 +152,7 @@ export default function AccountLogPage() {
                         <TableCell>{log.userEmail}</TableCell>
                         <TableCell>
                           <Chip
-                            label={actionTypeLabels[log.actionType] || log.actionType}
+                            label={getLogActionTypeLabel(log.actionType)}
                             color={actionTypeColors[log.actionType] || "default"}
                             size="small"
                           />
@@ -180,6 +174,19 @@ export default function AccountLogPage() {
                     color="primary"
                     showFirstButton
                     showLastButton
+                    sx={{
+                      "& .MuiPaginationItem-root": {
+                        backgroundColor: "transparent",
+                        "&.Mui-selected": {
+                          backgroundColor: "transparent",
+                          color: "primary.main",
+                          fontWeight: 700,
+                        },
+                        "&:hover": {
+                          backgroundColor: "transparent",
+                        },
+                      },
+                    }}
                   />
                 </Box>
               )}

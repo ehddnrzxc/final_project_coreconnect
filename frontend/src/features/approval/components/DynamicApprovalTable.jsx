@@ -8,7 +8,7 @@ import {
 } from "@mui/material";
 import React from "react";
 
-import { getJobGradeLabel } from "../../../components/utils/labelUtils";
+import { getJobGradeLabel } from "../../../utils/labelUtils";
 import Signature from "./Signature";
 
 const DynamicApprovalTable = ({ approvers = [], drafter }) => {

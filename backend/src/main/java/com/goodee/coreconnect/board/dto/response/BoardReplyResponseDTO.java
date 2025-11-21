@@ -60,7 +60,7 @@ public class BoardReplyResponseDTO {
                                                .parentReplyId(reply.getParentReply() != null ? reply.getParentReply().getId() : null)
                                                .writerJobGrade(reply.getUser().getJobGrade() != null ? reply.getUser()
                                                                                                             .getJobGrade()
-                                                                                                            .label() : null)
+                                                                                                            .name() : null)
                                                .writerProfileImageUrl(profileImageUrl)
                                                .build();
     }

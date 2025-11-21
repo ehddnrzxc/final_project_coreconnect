@@ -87,7 +87,7 @@ public class OrganizationTreeDTO {
             return MemberDTO.builder()
                              .userId(user.getId())
                              .name(user.getName())
-                             .jobGrade(user.getJobGrade() != null ? user.getJobGrade().label() : null)
+                             .jobGrade(user.getJobGrade() != null ? user.getJobGrade().name() : null)
                              .email(user.getEmail())
                              .profileUrl(profileUrl)
                              .phone(user.getPhone())

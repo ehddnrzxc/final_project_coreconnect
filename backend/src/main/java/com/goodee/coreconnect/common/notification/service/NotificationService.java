@@ -100,6 +100,11 @@ public class NotificationService {
             public void afterCommit() {
                 try {
                     webSocketDeliveryService.sendToUser(recipientId, payload);
+                    
+                    // 전송 성공 후 sentYn 업데이트
+                    notificationRepository.findById(payload.getNotificationId())
+                    .ifPresent(n -> n.markSent(LocalDateTime.now()));
+                    
                 } catch (Exception e) {
                     log.warn("[NotificationService][afterCommit] 로컬 전송 실패 recipientId={}: {}", recipientId, e.getMessage(), e);
                 }
@@ -174,6 +179,11 @@ public class NotificationService {
                 for (NotificationPayload p : payloads) {
                     try {
                         webSocketDeliveryService.sendToUser(p.getRecipientId(), p);
+                        
+                        // 전송 성공 후 sentYn 업데이트
+                        notificationRepository.findById(p.getNotificationId())
+                            .ifPresent(n -> n.markSent(LocalDateTime.now()));
+                        
                     } catch (Exception e) {
                         log.warn("[NotificationService][afterCommit] local sendToUser 실패 recipientId={}: {}", p.getRecipientId(), e.getMessage(), e);
                     }

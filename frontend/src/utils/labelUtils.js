@@ -27,10 +27,6 @@ export const LEAVE_TYPE_LABELS = {
   ETC: "기타",
 };
 
-export const getLeaveTypeLabel = (value) => {
-  return LEAVE_TYPE_LABELS[value] || value;
-};
-
 export const NOTIFICATION_TYPE_LABELS = {
   EMAIL: "메일",
   NOTICE: "공지",
@@ -38,7 +34,26 @@ export const NOTIFICATION_TYPE_LABELS = {
   SCHEDULE: "일정",
 };
 
+export const LOG_ACTION_TYPE_LABELS = {
+  LOGIN: "로그인",
+  LOGOUT: "로그아웃",
+  FAIL: "로그인 실패",
+  REFRESH: "토큰 재발급",
+};
+
+export const ATTENDANCE_STATUS_LABELS = {
+  PRESENT: "출근",
+  LATE: "지각",
+  ABSENT: "결근",
+  LEAVE_EARLY: "조퇴",
+  COMPLETED: "완료",
+};
+
 export const getJobGradeLabel = key => JOB_GRADE_LABELS[key] || key;
 export const getLeaveRequestLabel = key => LEAVE_REQUEST_LABELS[key] || key;
-export const getNotificationTypeLabel = type => NOTIFICATION_TYPE_LABELS[type] || "알림";
+export const getLeaveTypeLabel = value => LEAVE_TYPE_LABELS[value] || value;
+export const getNotificationTypeLabel = type => NOTIFICATION_TYPE_LABELS[type] || type;
+export const getLogActionTypeLabel = type => LOG_ACTION_TYPE_LABELS[type] || type;
+export const getAttendanceStatusLabel = status => ATTENDANCE_STATUS_LABELS[status] || status;
+
 
