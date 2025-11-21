@@ -44,12 +44,46 @@ function ChatRoomCreateDialog({ open, onClose, onCreate }) {
             console.log("✅ [ChatRoomCreateDialog] /user/organization에서 사용자 조회 성공:", users.length);
             // 프로필 이미지 URL 확인을 위한 디버깅
             if (users.length > 0) {
-              console.log("🔍 [ChatRoomCreateDialog] 첫 번째 사용자 샘플:", {
+              // 모든 사용자의 profileImageUrl 상태 확인
+              const usersWithImage = users.filter(u => u.profileImageUrl && u.profileImageUrl.trim() !== '' && u.profileImageUrl.startsWith('http'));
+              const usersWithoutImage = users.filter(u => !u.profileImageUrl || u.profileImageUrl.trim() === '' || !u.profileImageUrl.startsWith('http'));
+              
+              console.log("🔍 [ChatRoomCreateDialog] /user/organization 프로필 이미지 통계:", {
+                전체사용자수: users.length,
+                이미지있는사용자수: usersWithImage.length,
+                이미지없는사용자수: usersWithoutImage.length
+              });
+              
+              // 첫 번째 사용자 상세 정보
+              console.log("🔍 [ChatRoomCreateDialog] /user/organization 첫 번째 사용자 샘플:", {
                 userId: users[0].userId,
                 name: users[0].name,
                 profileImageUrl: users[0].profileImageUrl,
-                email: users[0].email
+                profileImageUrlType: typeof users[0].profileImageUrl,
+                profileImageUrlLength: users[0].profileImageUrl?.length,
+                isValidUrl: users[0].profileImageUrl?.startsWith('http'),
+                email: users[0].email,
+                전체객체: users[0], // 전체 객체 확인
+                모든키: Object.keys(users[0]) // 객체의 모든 키 확인
               });
+              
+              // 실제로 이미지 URL이 있는 사용자 찾기
+              if (usersWithImage.length > 0) {
+                console.log("✅ [ChatRoomCreateDialog] 프로필 이미지가 있는 사용자 발견:", usersWithImage.map(u => ({
+                  name: u.name,
+                  profileImageUrl: u.profileImageUrl
+                })));
+              } else {
+                console.warn("⚠️ [ChatRoomCreateDialog] 프로필 이미지가 있는 사용자가 없습니다.");
+                // 이미지가 없는 사용자들의 profileImageUrl 값 확인
+                console.log("🔍 [ChatRoomCreateDialog] 이미지가 없는 사용자들의 profileImageUrl 값:", 
+                  usersWithoutImage.slice(0, 3).map(u => ({
+                    name: u.name,
+                    profileImageUrl: u.profileImageUrl,
+                    profileImageUrlType: typeof u.profileImageUrl
+                  }))
+                );
+              }
             }
             setAllUsers(users);
             setLoadingUsers(false);
@@ -74,13 +108,26 @@ function ChatRoomCreateDialog({ open, onClose, onCreate }) {
             console.log("✅ [ChatRoomCreateDialog] /admin/users에서 사용자 조회 성공:", users.length);
             // 프로필 이미지 URL 확인을 위한 디버깅
             if (users.length > 0) {
-              console.log("🔍 [ChatRoomCreateDialog] 첫 번째 사용자 샘플:", {
+              console.log("🔍 [ChatRoomCreateDialog] /admin/users 첫 번째 사용자 샘플:", {
                 id: users[0].id,
                 name: users[0].name,
                 profileImageUrl: users[0].profileImageUrl,
+                profileImageUrlType: typeof users[0].profileImageUrl,
+                profileImageUrlLength: users[0].profileImageUrl?.length,
+                isValidUrl: users[0].profileImageUrl?.startsWith('http'),
                 profileImageKey: users[0].profileImageKey,
                 email: users[0].email
               });
+              // 실제로 이미지 URL이 있는 사용자 찾기
+              const userWithImage = users.find(u => u.profileImageUrl && u.profileImageUrl.startsWith('http'));
+              if (userWithImage) {
+                console.log("✅ [ChatRoomCreateDialog] 프로필 이미지가 있는 사용자 발견:", {
+                  name: userWithImage.name,
+                  profileImageUrl: userWithImage.profileImageUrl
+                });
+              } else {
+                console.warn("⚠️ [ChatRoomCreateDialog] 프로필 이미지가 있는 사용자가 없습니다.");
+              }
             }
             setAllUsers(users);
             setLoadingUsers(false);
@@ -105,13 +152,26 @@ function ChatRoomCreateDialog({ open, onClose, onCreate }) {
             console.log("✅ [ChatRoomCreateDialog] /user/list에서 사용자 조회 성공:", users.length);
             // 프로필 이미지 URL 확인을 위한 디버깅
             if (users.length > 0) {
-              console.log("🔍 [ChatRoomCreateDialog] 첫 번째 사용자 샘플:", {
+              console.log("🔍 [ChatRoomCreateDialog] /user/list 첫 번째 사용자 샘플:", {
                 id: users[0].id,
                 name: users[0].name,
                 profileImageUrl: users[0].profileImageUrl,
+                profileImageUrlType: typeof users[0].profileImageUrl,
+                profileImageUrlLength: users[0].profileImageUrl?.length,
+                isValidUrl: users[0].profileImageUrl?.startsWith('http'),
                 profileImageKey: users[0].profileImageKey,
                 email: users[0].email
               });
+              // 실제로 이미지 URL이 있는 사용자 찾기
+              const userWithImage = users.find(u => u.profileImageUrl && u.profileImageUrl.startsWith('http'));
+              if (userWithImage) {
+                console.log("✅ [ChatRoomCreateDialog] 프로필 이미지가 있는 사용자 발견:", {
+                  name: userWithImage.name,
+                  profileImageUrl: userWithImage.profileImageUrl
+                });
+              } else {
+                console.warn("⚠️ [ChatRoomCreateDialog] 프로필 이미지가 있는 사용자가 없습니다.");
+              }
             }
             setAllUsers(users);
             setLoadingUsers(false);
@@ -355,16 +415,28 @@ function ChatRoomCreateDialog({ open, onClose, onCreate }) {
                       key={userId}
                       avatar={
                         <Avatar
-                          src={user.profileImageUrl || undefined}
+                          src={
+                            user.profileImageUrl && 
+                            user.profileImageUrl.trim() !== '' && 
+                            user.profileImageUrl.startsWith('http') 
+                              ? user.profileImageUrl 
+                              : undefined
+                          }
                           sx={{ bgcolor: "#10c16d", width: 24, height: 24 }}
                           imgProps={{
                             onError: (e) => {
                               // 이미지 로드 실패 시 숨기고 이니셜 표시
+                              console.warn("프로필 이미지 로드 실패 (Chip):", user.profileImageUrl, "사용자:", user.name);
                               e.target.style.display = "none";
+                            },
+                            onLoad: () => {
+                              console.log("프로필 이미지 로드 성공 (Chip):", user.profileImageUrl, "사용자:", user.name);
                             }
                           }}
                         >
-                          {(!user.profileImageUrl || user.profileImageUrl.trim() === '') && 
+                          {(!user.profileImageUrl || 
+                            user.profileImageUrl.trim() === '' || 
+                            !user.profileImageUrl.startsWith('http')) && 
                             (user.name?.[0]?.toUpperCase() || "?")}
                         </Avatar>
                       }
@@ -447,16 +519,28 @@ function ChatRoomCreateDialog({ open, onClose, onCreate }) {
                     />
                     <ListItemAvatar>
                       <Avatar
-                        src={user.profileImageUrl || undefined}
+                        src={
+                          user.profileImageUrl && 
+                          user.profileImageUrl.trim() !== '' && 
+                          user.profileImageUrl.startsWith('http') 
+                            ? user.profileImageUrl 
+                            : undefined
+                        }
                         sx={{ bgcolor: "#10c16d", width: 40, height: 40 }}
                         imgProps={{
                           onError: (e) => {
                             // 이미지 로드 실패 시 숨기고 이니셜 표시
+                            console.warn("프로필 이미지 로드 실패:", user.profileImageUrl, "사용자:", user.name);
                             e.target.style.display = "none";
+                          },
+                          onLoad: () => {
+                            console.log("프로필 이미지 로드 성공:", user.profileImageUrl, "사용자:", user.name);
                           }
                         }}
                       >
-                        {(!user.profileImageUrl || user.profileImageUrl.trim() === '') && 
+                        {(!user.profileImageUrl || 
+                          user.profileImageUrl.trim() === '' || 
+                          !user.profileImageUrl.startsWith('http')) && 
                           (user.name?.[0]?.toUpperCase() || "?")}
                       </Avatar>
                     </ListItemAvatar>

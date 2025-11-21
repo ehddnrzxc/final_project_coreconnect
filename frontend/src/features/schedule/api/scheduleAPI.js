@@ -181,11 +181,19 @@ export const deleteScheduleCategory = async (id) => {
   }
 };
 
-/** 사용자 목록 조회 (초대용) */
+/** 사용자 목록 조회 (초대용) - 조직도 API 사용 */
 export const getUsers = async () => {
   try {
-    const res = await http.get("/user");
-    return res.data;
+    const res = await http.get("/user/organization");
+    // 조직도 API 응답을 기존 로직과 호환되도록 매핑
+    // OrganizationUserResponseDTO: { userId, name, email, deptName, positionName }
+    // 기존 로직이 기대하는 형태: { id, name, email, deptName }
+    return res.data.map(user => ({
+      id: user.userId,  // userId → id로 변환
+      name: user.name,
+      email: user.email,
+      deptName: user.deptName || "소속 없음"  // 부서 정보 포함
+    }));
   } catch (err) {
     const message = err.response?.data || "사용자 목록을 불러올 수 없습니다.";
     throw new Error(message);
