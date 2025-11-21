@@ -6,7 +6,6 @@ import {
   Box, Typography, Divider, Paper, IconButton, Chip, Tooltip, Button,
   Snackbar, Alert
 } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ReplyIcon from '@mui/icons-material/Reply';
 import ForwardIcon from '@mui/icons-material/Forward';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -259,7 +258,6 @@ function MailDetailPage() {
         flexShrink: 0
       }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Tooltip title="뒤로가기"><IconButton onClick={() => navigate(-1)}><ArrowBackIcon /></IconButton></Tooltip>
           <Tooltip title="답장"><IconButton color="inherit" onClick={handleReply}><ReplyIcon /></IconButton></Tooltip>
           <Tooltip title="전달"><IconButton color="inherit" onClick={handleForward}><ForwardIcon /></IconButton></Tooltip>
           <Tooltip title="삭제"><IconButton color="inherit" onClick={handleDelete}><DeleteIcon /></IconButton></Tooltip>

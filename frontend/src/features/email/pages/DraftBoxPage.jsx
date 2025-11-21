@@ -2,12 +2,11 @@
 import React, { useEffect, useState, useContext } from "react";
 import {
   Box, Typography, Paper, Table, TableHead, TableBody, TableRow, TableCell,
-  IconButton, Pagination, Chip, Snackbar, Alert, Menu, MenuItem
+  IconButton, Pagination, Chip, Snackbar, Alert, Menu, MenuItem, LinearProgress
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import SyncIcon from "@mui/icons-material/Sync";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { fetchDraftbox, deleteDraftMail, fetchDraftCount } from "../api/emailApi"; // ★ fetchDraftCount 추가!
 import { UserProfileContext } from "../../../App";
 import { useNavigate } from "react-router-dom";
@@ -20,6 +19,7 @@ const DraftBoxPage = () => {
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(10); // 페이지당 항목 수 (5 또는 10 선택 가능)
   const [loading, setLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false); // 새로고침 로딩 상태
   const [sizeMenuAnchor, setSizeMenuAnchor] = useState(null); // 페이지 크기 선택 메뉴
   const [snack, setSnack] = useState({ open: false, severity: "info", message: "" });
   // ★ context에서 draftCount, refreshDraftCount 받아오기
@@ -30,25 +30,25 @@ const DraftBoxPage = () => {
   const navigate = useNavigate();
 
   // 임시보관함 목록 조회 및 상태 세팅
-  const reload = () => {
-    if (!userEmail) return;
+  const reload = async () => {
+    if (!userEmail) return Promise.resolve();
     setLoading(true);
-    fetchDraftbox(userEmail, page - 1, size)
-      .then(res => {
-        const boxData = res?.data?.data;
-        setDrafts(boxData?.content || []);
-        setTotal(
-          typeof boxData?.totalElements === "number"
-            ? boxData.totalElements
-            : (Array.isArray(boxData?.content) ? boxData.content.length : 0)
-        );
-      })
-      .catch(err => {
-        console.error("[DraftBoxPage] fetchDraftbox 실패", err);
-        setDrafts([]);
-        setTotal(0);
-      })
-      .finally(() => setLoading(false));
+    try {
+      const res = await fetchDraftbox(userEmail, page - 1, size);
+      const boxData = res?.data?.data;
+      setDrafts(boxData?.content || []);
+      setTotal(
+        typeof boxData?.totalElements === "number"
+          ? boxData.totalElements
+          : (Array.isArray(boxData?.content) ? boxData.content.length : 0)
+      );
+    } catch (err) {
+      console.error("[DraftBoxPage] fetchDraftbox 실패", err);
+      setDrafts([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ★ 임시보관함 개수 카운트 최신화 → context & chip 등에서 사용
@@ -84,9 +84,21 @@ const DraftBoxPage = () => {
     }
   };
 
-  const handleRefresh = () => {
-    reload();
-    updateDraftCount();
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        reload(),
+        updateDraftCount()
+      ]);
+    } catch (err) {
+      console.error("handleRefresh error", err);
+    } finally {
+      // 로딩바가 잠깐 보이도록 최소 시간 대기 (UX 개선)
+      setTimeout(() => {
+        setIsRefreshing(false);
+      }, 300);
+    }
   };
 
   // 메일 클릭: 임시메일로 쓰기
@@ -96,33 +108,44 @@ const DraftBoxPage = () => {
 
   return (
     <Box sx={{ p: 3, position: 'relative' }}>
-      {/* 뒤로가기 버튼 - 상단 구석 */}
-      <Box sx={{ position: 'absolute', top: 16, right: 16, zIndex: 1000 }}>
-        <IconButton onClick={() => navigate(-1)} sx={{ bgcolor: '#fff', boxShadow: 1 }}>
-          <ArrowBackIcon />
-        </IconButton>
-      </Box>
+      {/* 로딩바 - 상단 고정 */}
+      {isRefreshing && (
+        <LinearProgress 
+          sx={{ 
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 1300,
+            height: 4
+          }} 
+        />
+      )}
       <Paper sx={{ p: 3, mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-          <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            임시보관함
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              임시보관함
+            </Typography>
             {/* Chip에 최신 draftCount 사용, fallback: total */}
             <Chip
               label={`총 ${draftCount ?? total}개`}
               color={(draftCount ?? total) > 0 ? "primary" : "default"}
-              sx={{ ml: 2 }}
+              size="small"
             />
-          </Typography>
-          <Paper 
-            sx={{ display: 'inline-flex', alignItems: 'center', px: 0.5, cursor: 'pointer' }}
-            onClick={(e) => setSizeMenuAnchor(e.currentTarget)}
-          >
-            <Typography sx={{ px: 0.5, fontWeight: 500, fontSize: 15 }}>{size}</Typography>
-            <IconButton size="small"><MoreVertIcon fontSize="small" /></IconButton>
-          </Paper>
-          <IconButton onClick={handleRefresh} sx={{ ml: 1 }}>
-            <SyncIcon />
-          </IconButton>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Paper 
+              sx={{ display: 'inline-flex', alignItems: 'center', px: 0.5, cursor: 'pointer' }}
+              onClick={(e) => setSizeMenuAnchor(e.currentTarget)}
+            >
+              <Typography sx={{ px: 0.5, fontWeight: 500, fontSize: 15 }}>{size}</Typography>
+              <IconButton size="small"><MoreVertIcon fontSize="small" /></IconButton>
+            </Paper>
+            <IconButton onClick={handleRefresh}>
+              <SyncIcon />
+            </IconButton>
+          </Box>
           <Menu
             anchorEl={sizeMenuAnchor}
             open={Boolean(sizeMenuAnchor)}

@@ -234,14 +234,39 @@ function ChatRoomInviteDialog({ open, onClose, roomId, onInviteSuccess }) {
     return filtered;
   }, [allUsers, searchTerm]);
 
-  const handleToggleUser = (userId) => {
+  const handleToggleUser = (userId, e) => {
+    // 이벤트 전파 방지
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    
+    // userId가 없으면 처리하지 않음
+    if (!userId) {
+      console.warn("⚠️ [ChatRoomInviteDialog] userId가 없습니다:", userId);
+      return;
+    }
+    
     setSelectedUserIds((prev) => {
       const newSet = new Set(prev);
-      if (newSet.has(userId)) {
+      const wasSelected = newSet.has(userId);
+      
+      if (wasSelected) {
         newSet.delete(userId);
+        console.log("🔘 [ChatRoomInviteDialog] 사용자 선택 해제:", {
+          userId,
+          이전선택된수: prev.size,
+          새로운선택된수: newSet.size
+        });
       } else {
         newSet.add(userId);
+        console.log("🔘 [ChatRoomInviteDialog] 사용자 선택:", {
+          userId,
+          이전선택된수: prev.size,
+          새로운선택된수: newSet.size
+        });
       }
+      
       return newSet;
     });
   };
@@ -368,9 +393,16 @@ function ChatRoomInviteDialog({ open, onClose, roomId, onInviteSuccess }) {
           </Box>
         ) : (
           <List sx={{ p: 0 }}>
-            {filteredUsers.map((user) => (
+            {filteredUsers.map((user) => {
+              const userId = user.id || user.userId;
+              if (!userId) {
+                console.warn("⚠️ [ChatRoomInviteDialog] 사용자 ID가 없습니다:", user);
+                return null;
+              }
+              
+              return (
               <ListItem
-                key={user.id}
+                key={userId}
                 disablePadding
                 sx={{
                   "&:hover": {
@@ -379,12 +411,21 @@ function ChatRoomInviteDialog({ open, onClose, roomId, onInviteSuccess }) {
                 }}
               >
                 <ListItemButton
-                  onClick={() => handleToggleUser(user.id)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleToggleUser(userId, e);
+                  }}
                   sx={{ py: 1.5, px: 2 }}
                 >
                   <Checkbox
-                    checked={selectedUserIds.has(user.id)}
-                    onChange={() => handleToggleUser(user.id)}
+                    checked={selectedUserIds.has(userId)}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      handleToggleUser(userId, e);
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
                     sx={{ mr: 1 }}
                   />
                   <ListItemAvatar>
@@ -449,7 +490,8 @@ function ChatRoomInviteDialog({ open, onClose, roomId, onInviteSuccess }) {
                   />
                 </ListItemButton>
               </ListItem>
-            ))}
+              );
+            })}
           </List>
         )}
       </DialogContent>

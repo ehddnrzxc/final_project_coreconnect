@@ -89,4 +89,11 @@ public interface ChatRepository extends JpaRepository<Chat, Integer> {
     // ⭐ 복합키 사용으로 COUNT(c) 대신 COUNT(1) 사용
     @Query("SELECT c.chat.chatRoom.id AS roomId, COUNT(1) AS unreadCount FROM ChatMessageReadStatus c WHERE c.user.id = :userId AND c.readYn = false GROUP BY c.chat.chatRoom.id")
     List<Object[]> countUnreadMessagesByUserId(@Param("userId") Integer userId);
+    
+    // 11. 특정 Chat ID로 messageFiles와 sender를 함께 조회
+    @Query("SELECT DISTINCT c FROM Chat c " +
+           "LEFT JOIN FETCH c.messageFiles " +
+           "LEFT JOIN FETCH c.sender " +
+           "WHERE c.id = :chatId")
+    Chat findByIdWithMessageFiles(@Param("chatId") Integer chatId);
 }

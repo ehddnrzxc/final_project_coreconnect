@@ -302,7 +302,7 @@ public class EmailController {
     // 임시보관함 개수 (Redis 활용)
     @GetMapping("/draftbox/count")
     public ResponseEntity<ResponseDTO<Long>> getDraftCount(@RequestParam String userEmail) {
-    	 System.out.println("userEmail = " + userEmail); 
+    	 log.debug("userEmail = {}", userEmail); 
         long count = emailService.getDraftCount(userEmail); // 내부에 Redis/caching 사용
         return ResponseEntity.ok(ResponseDTO.success(count, "임시보관함 개수 조회 성공"));
     }

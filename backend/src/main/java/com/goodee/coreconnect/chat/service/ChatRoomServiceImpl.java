@@ -343,6 +343,9 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 			
 			// 파일 저장
 			messageFileRepository.save(file);
+		} else if (contentOrFile == null) {
+			// ⭐ null인 경우 빈 Chat 메시지 생성 (다중 파일 업로드용)
+			chat = Chat.createChat(chatRoom, sender, null, false, null, LocalDateTime.now());
 		} else {
 			throw new IllegalArgumentException("지원하지 않는 타입");
 		}
@@ -499,8 +502,8 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	    log.info("[sendChatMessage] ⭐ unreadCount 최신 DB 조회 (flush 후) - chatId: {}, 총참여자수: {}, 접속중인사용자수: {}, 최신unreadCount: {}", 
 	            chat.getId(), totalParticipants, connectedUsersCount, confirmedUnreadCount);
 	    
-	    // ⭐ Chat 엔티티에 최신 DB 값 설정
-	    chat.setUnreadCount(confirmedUnreadCount);
+	    // ⭐ Chat 엔티티에 최신 DB 값 설정 - 도메인 메서드 사용
+	    chat.updateUnreadCount(confirmedUnreadCount);
 	    chatRepository.save(chat);
 	    
 	    // ⭐ Chat 엔티티 저장 후 flush (일관성 유지)
@@ -630,9 +633,9 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	        if (chatOpt.isPresent()) {
 	            Chat chat = chatOpt.get();
 	            Integer currentUnreadCount = chat.getUnreadCount() != null ? chat.getUnreadCount() : 0;
-	            // unreadCount가 0보다 클 때만 -1 감소
+	            // unreadCount가 0보다 클 때만 -1 감소 - 도메인 메서드 사용
 	            if (currentUnreadCount > 0) {
-	                chat.setUnreadCount(currentUnreadCount - 1);
+	                chat.updateUnreadCount(currentUnreadCount - 1);
 	                chatRepository.save(chat);
 	            }
 	        }
@@ -693,7 +696,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
         List<Chat> allChats = chatRepository.findByChatRoomId(roomId);
         for (Chat chat : allChats) {
             Integer count = unreadCountMap.getOrDefault(chat.getId(), 0);
-            chat.setUnreadCount(count); // 엔티티 필드에 값 설정
+            chat.updateUnreadCount(count); // 도메인 메서드 사용
             chatRepository.save(chat);  // DB에 저장/업데이트
         }
 
@@ -723,8 +726,8 @@ public class ChatRoomServiceImpl implements ChatRoomService {
     @Override
     public ChatResponseDTO saveChatAndReturnDTO(Integer roomId, Integer senderId, String content, int unreadCount) {
         Chat chat = sendChatMessage(roomId, senderId, content); // chat 저장
-        // unreadCount 반영
-        chat.setUnreadCount(unreadCount);
+        // unreadCount 반영 - 도메인 메서드 사용
+        chat.updateUnreadCount(unreadCount);
         // Lazy 필드 강제 초기화(필요시)
         chat.getSender().getName();
         chat.getChatRoom().getId();
@@ -817,14 +820,15 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	    for (ChatRoom room : chatRooms) {
 	        Chat lastMessage = roomIdToLastMessage.get(room.getId());
 	        long unreadCount = roomIdToUnreadCount.getOrDefault(room.getId(), 0L);
-	        dtos.add(new ChatRoomListDTO(
-	            room.getId(),
-	            room.getRoomName(),
-	            lastMessage != null ? lastMessage.getMessageContent() : null,
-	            lastMessage != null ? lastMessage.getSendAt() : null,
-	            lastMessage != null && lastMessage.getSender() != null ? lastMessage.getSender().getName() : null,
-	            unreadCount
-	        ));
+	        ChatRoomListDTO dto = new ChatRoomListDTO();
+	        dto.setRoomId(room.getId());
+	        dto.setRoomName(room.getRoomName());
+	        dto.setLastMessageContent(lastMessage != null ? lastMessage.getMessageContent() : null);
+	        dto.setLasMessageTime(lastMessage != null ? lastMessage.getSendAt() : null);
+	        dto.setLastSenderName(lastMessage != null && lastMessage.getSender() != null ? lastMessage.getSender().getName() : null);
+	        dto.setUnreadCount(unreadCount);
+	        dto.setLastMessageFileYn(lastMessage != null ? lastMessage.getFileYn() : null);
+	        dtos.add(dto);
 	    }
 	    return dtos;
 	}

@@ -186,7 +186,7 @@ function ChatRoomListPane({
                         display: "block"
                       }}
                     >
-                      {room.lastMessageContent ? room.lastMessageContent : ""}
+                      {room.lastMessageFileYn ? "이미지 업로드" : (room.lastMessageContent ? room.lastMessageContent : "")}
                     </Typography>
                     <Box component="span" sx={{ display: "flex", alignItems: "center", mt: 0.5 }}>
                       <Typography

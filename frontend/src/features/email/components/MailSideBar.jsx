@@ -115,14 +115,20 @@ const MailSideBar = () => {
               </ListItemButton>
             </ListItem>
             <ListItem disableGutters sx={{ py: 0.5, px: 0 }}>
-              <ListItemButton sx={{ borderRadius: 1, px: 1.3, py: 0.5 }} onClick={goUnreadMailTab}>
+              <ListItemButton 
+                sx={{ 
+                  borderRadius: 1, 
+                  px: 1.3, 
+                  py: 0.5
+                }} 
+                onClick={goUnreadMailTab}
+              >
                 <ListItemText
                   primary={
                     <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                       <Typography variant="body2" sx={{ lineHeight: 1.5 }}>안읽은 메일</Typography>
                       {unreadCount != null && unreadCount > 0 && (
                         <Badge
-                          color="error"
                           badgeContent={unreadCount}
                           anchorOrigin={{
                             vertical: 'top',
@@ -141,6 +147,9 @@ const MailSideBar = () => {
                               top: 0,
                               right: 0,
                               transform: "none",
+                              bgcolor: "#d32f2f",
+                              color: "#fff",
+                              fontWeight: 600,
                             } 
                           }}
                         >
@@ -176,7 +185,11 @@ const MailSideBar = () => {
           <List dense sx={{ p: 0 }}>
             <ListItem disableGutters sx={{ py: 0.5, px: 0 }}>
               <ListItemButton
-                sx={{ borderRadius: 1, px: 1.3, py: 0.5 }}
+                sx={{ 
+                  borderRadius: 1, 
+                  px: 1.3, 
+                  py: 0.5
+                }}
                 onClick={goAllMailTab}
               >
                 <ListItemText
@@ -185,7 +198,6 @@ const MailSideBar = () => {
                       <Typography variant="body2" sx={{ lineHeight: 1.5 }}>받은메일함</Typography>
                       {unreadCount != null && unreadCount > 0 && (
                         <Badge
-                          color="primary"
                           badgeContent={unreadCount}
                           anchorOrigin={{
                             vertical: 'top',
@@ -204,6 +216,9 @@ const MailSideBar = () => {
                               top: 0,
                               right: 0,
                               transform: "none",
+                              bgcolor: "#d32f2f",
+                              color: "#fff",
+                              fontWeight: 600,
                             } 
                           }}
                         >
@@ -226,7 +241,11 @@ const MailSideBar = () => {
             {/* 임시보관함 */}
             <ListItem disableGutters sx={{ py: 0.5, px: 0 }}>
               <ListItemButton
-                sx={{ borderRadius: 1, px: 1.3, py: 0.5 }}
+                sx={{ 
+                  borderRadius: 1, 
+                  px: 1.3, 
+                  py: 0.5
+                }}
                 onClick={() => navigate("/email/draftbox")}
               >
                 <ListItemText primary={
@@ -238,10 +257,11 @@ const MailSideBar = () => {
                       label={draftCount}
                       sx={{
                         ml: 1,
-                        bgcolor: "#f2f4f8",
+                        bgcolor: "#d32f2f",
                         fontSize: 12,
-                        color: "#222",
+                        color: "#fff",
                         height: 18,
+                        fontWeight: 600,
                         "& .MuiChip-label": { px: 0.8, py: 0.1 },
                       }}
                     />

@@ -12,7 +12,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
@@ -47,21 +49,20 @@ public class ChatUserResponseDTO {
         String profileImageKey = user.getProfileImageKey();
         
         // ⚠️ 디버깅: profileImageKey 확인
-        System.out.println("[ChatUserResponseDTO.fromEntity] userId: " + user.getId() + 
-                          ", profileImageKey: " + profileImageKey);
+        log.debug("[ChatUserResponseDTO.fromEntity] userId: {}, profileImageKey: {}", user.getId(), profileImageKey);
         
         if (profileImageKey != null && !profileImageKey.isBlank()) {
             try {
                 profileImageUrl = s3Service.getFileUrl(profileImageKey);
                 // ⚠️ 디버깅: 변환된 URL 확인
-                System.out.println("[ChatUserResponseDTO.fromEntity] profileImageUrl 생성 성공: " + 
-                                  (profileImageUrl != null ? profileImageUrl.substring(0, Math.min(50, profileImageUrl.length())) + "..." : "null"));
+                log.debug("[ChatUserResponseDTO.fromEntity] profileImageUrl 생성 성공: {}", 
+                         profileImageUrl != null ? profileImageUrl.substring(0, Math.min(50, profileImageUrl.length())) + "..." : "null");
             } catch (Exception e) {
-                System.err.println("[ChatUserResponseDTO.fromEntity] S3 URL 변환 실패: " + e.getMessage());
+                log.error("[ChatUserResponseDTO.fromEntity] S3 URL 변환 실패: {}", e.getMessage(), e);
                 profileImageUrl = ""; // 예외 발생 시 빈 문자열
             }
         } else {
-            System.out.println("[ChatUserResponseDTO.fromEntity] profileImageKey가 null 또는 빈 문자열");
+            log.debug("[ChatUserResponseDTO.fromEntity] profileImageKey가 null 또는 빈 문자열");
         }
         
         // ⭐ 부서명 설정
@@ -80,9 +81,9 @@ public class ChatUserResponseDTO {
                 .build();
         
         // ⚠️ 디버깅: 최종 DTO 확인
-        System.out.println("[ChatUserResponseDTO.fromEntity] 최종 DTO - id: " + dto.getId() + 
-                          ", name: " + dto.getName() + 
-                          ", profileImageUrl: " + (dto.getProfileImageUrl() != null ? dto.getProfileImageUrl().substring(0, Math.min(50, dto.getProfileImageUrl().length())) + "..." : "null"));
+        log.debug("[ChatUserResponseDTO.fromEntity] 최종 DTO - id: {}, name: {}, profileImageUrl: {}", 
+                 dto.getId(), dto.getName(), 
+                 dto.getProfileImageUrl() != null ? dto.getProfileImageUrl().substring(0, Math.min(50, dto.getProfileImageUrl().length())) + "..." : "null");
         
         return dto;
     }

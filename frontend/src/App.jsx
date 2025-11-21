@@ -13,9 +13,8 @@ import useAuth from "./hooks/useAuth";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 // ----------- 채팅 컴포넌트 import 추가 -----------
-import ChatHeaderIcon from "../src/features/chat/components/ChatHeaderIcon";
-import ChatMain from "../src/features/chat/components/ChatMain";
 import { getMyPendingApprovalCount } from "./features/dashboard/api/dashboardAPI";
+import { fetchChatRoomsLatest } from "./features/chat/api/ChatRoomApi";
 // -----------------------------------------------
 
 export const MailCountContext = createContext();
@@ -82,8 +81,9 @@ function App() {
   const [draftCount, setDraftCount] = useState(0);
   const navigate = useNavigate();
 
-  // ------------ 채팅 오픈 상태 추가 -------------
-  const [chatOpen, setChatOpen] = useState(false);
+  // ------------ 채팅 상태 추가 -------------
+  const [chatRoomList, setChatRoomList] = useState([]);
+  const [chatUnreadCount, setChatUnreadCount] = useState(0);
   // --------------------------------------------
 
   // 결재 대기 개수 상태
@@ -167,12 +167,31 @@ function App() {
     })();
   }, []);
 
-  // 최초 마운트 시 개수 상태 동기화 (안읽은+임시보관)
+  // 채팅방 목록 및 읽지 않은 메시지 개수 로드
+  const refreshChatRooms = async () => {
+    try {
+      const data = await fetchChatRoomsLatest();
+      const rooms = data?.data || [];
+      setChatRoomList(rooms);
+      // 안읽은 메시지의 총 개수 계산 (각 채팅방의 unreadCount 합계)
+      const totalUnreadCount = rooms.reduce((sum, room) => {
+        return sum + (room?.unreadCount || 0);
+      }, 0);
+      setChatUnreadCount(totalUnreadCount);
+    } catch (e) {
+      console.warn("채팅방 목록 불러오기 실패:", e);
+      setChatRoomList([]);
+      setChatUnreadCount(0);
+    }
+  };
+
+  // 최초 마운트 시 개수 상태 동기화 (안읽은+임시보관+채팅)
   useEffect(() => {
     if (userProfile?.email) {
       refreshUnreadCount();
       refreshDraftCount();
       refreshApprovalCount();
+      refreshChatRooms();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userProfile?.email]);
@@ -204,9 +223,8 @@ function App() {
               themeMode={themeMode}
               themeOptions={themeOptions}
               onThemeChange={handleThemeChange}
-              rightExtra={
-                <ChatHeaderIcon onClick={() => setChatOpen(true)} />
-              }
+              chatRoomList={chatRoomList}
+              chatUnreadCount={chatUnreadCount}
             />
             {/* ----------------------------------------------- */}
             {/* MailCountContext Provider */}
@@ -230,11 +248,6 @@ function App() {
               </ApprovalCountContext.Provider>
             </MailCountContext.Provider>
 
-            {/* ---------- 채팅 패널(오버레이) ---------- */}
-            {chatOpen && (
-              <ChatMain onClose={() => setChatOpen(false)} />
-            )}
-            {/* ---------------------------------------- */}
           </Box>
         </UserProfileContext.Provider>
       </LocalizationProvider>
