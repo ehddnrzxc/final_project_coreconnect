@@ -7,12 +7,12 @@ import {
   Box,
   Typography,
   Paper,
-  Button,
   TextField,
   Grid,
   Alert,
   CircularProgress,
 } from "@mui/material";
+import StyledButton from "../../../components/ui/StyledButton";
 
 /**
  * 관리자: 새 결재 양식 생성 페이지
@@ -56,7 +56,7 @@ function TemplateAdminCreate() {
   };
 
   return (
-    <Box sx={{ p: 3, maxWidth: 1000, margin: "auto" }}>
+    <Box sx={{ p: 3, maxWidth: 1400, margin: "auto" }}>
       <Typography variant="h4" gutterBottom>
         새 결재 양식 만들기
       </Typography>
@@ -111,14 +111,15 @@ function TemplateAdminCreate() {
       </Paper>
       {/* 저장 버튼 */}
       <Box sx={{ mt: 3, display: "flex", justifyContent: "flex-end", gap: 1 }}>
-        <Button
+        <StyledButton
           variant="contained"
           color="primary"
           onClick={handleSubmit}
           disabled={submitting}
+          fullWidth={false}
         >
           {submitting ? <CircularProgress size={24} /> : "양식 저장하기"}
-        </Button>
+        </StyledButton>
       </Box>
     </Box>
   );

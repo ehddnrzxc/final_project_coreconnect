@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { getAdminUsers } from "../../user/api/userAPI";
 import { updateUser } from "../api/adminAPI";
 import { fetchDepartmentsFlat } from "../api/departmentAPI";
-import { getJobGradeLabel } from "../../../components/utils/labelUtils";
+import { getJobGradeLabel } from "../../../utils/labelUtils";
 import http from "../../../api/http";
 import {
   Box,
@@ -185,7 +185,7 @@ export default function UserList() {
   };
 
   return (
-    <Box sx={{ maxWidth: 1000, mx: "auto", mt: 4, px: 2 }}>
+    <Box sx={{ width: "100%", maxWidth: "100%", mx: "auto", mt: 4, px: 2 }}>
       <Card elevation={3} sx={{ borderRadius: 3 }}>
         <CardHeader
           title={
@@ -213,13 +213,13 @@ export default function UserList() {
             ) : (
               <TableContainer
                 sx={{
-                  maxHeight: 480,
                   borderRadius: 2,
                   border: "1px solid",
                   borderColor: "divider",
+                  width: "100%",
                 }}
               >
-                <Table stickyHeader size="medium">
+                <Table stickyHeader size="medium" sx={{ width: "100%" }}>
                   <TableHead>
                     <TableRow>
                       <TableCell sx={{ fontWeight: 600 }}>ID</TableCell>
@@ -230,13 +230,12 @@ export default function UserList() {
                       <TableCell sx={{ fontWeight: 600 }}>상태</TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>직급</TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>부서</TableCell>
-                      <TableCell sx={{ fontWeight: 600 }}>작업</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {users.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
+                        <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
                           <Typography color="text.secondary">
                             등록된 사용자가 없습니다.
                           </Typography>
@@ -259,13 +258,17 @@ export default function UserList() {
                               },
                             }}
                             onClick={() => {
-                              if (editingUserId !== u.id) {
+                              if (editingUserId === u.id) {
+                                // 이미 편집 중이면 취소
+                                handleCancel();
+                              } else {
+                                // 편집 모드 시작
                                 handleEdit(u);
                               }
                             }}
                           >
                             <TableCell sx={{ py: 1.5 }}>{u.id}</TableCell>
-                            <TableCell sx={{ py: 1.5 }}>{u.name}</TableCell>
+                            <TableCell sx={{ py: 1.5, whiteSpace: "nowrap" }}>{u.name}</TableCell>
                             <TableCell sx={{ py: 1.5 }}>{u.email}</TableCell>
                             <TableCell sx={{ py: 1.5, whiteSpace: "nowrap" }}>
                               {formatPhoneNumber(u.phone)}
@@ -298,50 +301,11 @@ export default function UserList() {
                               />
                             </TableCell>
                             {/* 직급 - 한글 변환 */}
-                            <TableCell sx={{ py: 1.5 }}>
+                            <TableCell sx={{ py: 1.5, whiteSpace: "nowrap" }}>
                               {getJobGradeLabel(u.jobGrade)}
                             </TableCell>
                             {/* 부서 */}
-                            <TableCell sx={{ py: 1.5 }}>{u.deptName}</TableCell>
-                            {/* 작업 버튼 */}
-                            <TableCell sx={{ py: 1.5 }}>
-                              {editingUserId === u.id ? (
-                                <Box sx={{ display: "flex", gap: 1 }}>
-                                  <IconButton
-                                    size="small"
-                                    color="primary"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleSave(u.id);
-                                    }}
-                                    disabled={saving}
-                                  >
-                                    <SaveIcon />
-                                  </IconButton>
-                                  <IconButton
-                                    size="small"
-                                    color="error"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleCancel();
-                                    }}
-                                    disabled={saving}
-                                  >
-                                    <CancelIcon />
-                                  </IconButton>
-                                </Box>
-                              ) : (
-                                <IconButton
-                                  size="small"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEdit(u);
-                                  }}
-                                >
-                                  <EditIcon />
-                                </IconButton>
-                              )}
-                            </TableCell>
+                            <TableCell sx={{ py: 1.5, whiteSpace: "nowrap" }}>{u.deptName}</TableCell>
                           </TableRow>
 
                           {/* 수정 폼 행 */}
@@ -355,7 +319,7 @@ export default function UserList() {
                                 },
                               }}
                             >
-                              <TableCell colSpan={9} sx={{ py: 3 }}>
+                              <TableCell colSpan={8} sx={{ py: 3 }}>
                                 <Box
                                   sx={{
                                     display: "grid",
@@ -475,6 +439,47 @@ export default function UserList() {
                                       ))}
                                     </Select>
                                   </FormControl>
+                                </Box>
+                                {/* 저장/취소 버튼 */}
+                                <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, mt: 2, px: 2 }}>
+                                  <Button
+                                    variant="outlined"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleSave(u.id);
+                                    }}
+                                    disabled={saving}
+                                    sx={{
+                                      border: "1px solid",
+                                      borderColor: "divider",
+                                      color: "text.primary",
+                                      "&:hover": {
+                                        borderColor: "text.primary",
+                                        backgroundColor: "transparent",
+                                      },
+                                    }}
+                                  >
+                                    저장
+                                  </Button>
+                                  <Button
+                                    variant="outlined"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleCancel();
+                                    }}
+                                    disabled={saving}
+                                    sx={{
+                                      border: "1px solid",
+                                      borderColor: "divider",
+                                      color: "text.primary",
+                                      "&:hover": {
+                                        borderColor: "text.primary",
+                                        backgroundColor: "transparent",
+                                      },
+                                    }}
+                                  >
+                                    취소
+                                  </Button>
                                 </Box>
                               </TableCell>
                             </TableRow>

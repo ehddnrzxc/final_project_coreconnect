@@ -1,10 +1,11 @@
-import { Dialog, DialogTitle, DialogContent, IconButton, Typography, Avatar, Divider, Box, Button } from "@mui/material";
+import { Dialog, DialogContent, IconButton, Typography, Avatar, Paper, Box, Button } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import MailOutlineIcon from "@mui/icons-material/MailOutline";
 import { useNavigate } from "react-router-dom";
+import { getJobGradeLabel } from "../../../utils/labelUtils";
 
 
-const MemberDetailModal = ({ open, member, onClose }) => {
+const MemberDetailModal = ({ open, member, onClose, onCloseDrawer }) => {
 
   const navigate = useNavigate();
 
@@ -19,60 +20,74 @@ const MemberDetailModal = ({ open, member, onClose }) => {
       PaperProps={{
         sx: {
           borderRadius: 4,
-          p: 1,
+          overflow: "hidden",
+          boxShadow: "0 6px 25px rgba(0,0,0,0.15)",
         },
       }}
     >
 
-      {/* 메일쓰기 버튼 */}
-      <Box sx={{ position: "absolute", left: 16, top: 16, zIndex: 20 }}>
+      {/* 상단 그라데이션 영역 */}
+      <Box
+        sx={{
+          height: 120,
+          background: "linear-gradient(135deg, #5AA9E6 0%, #7FC8F8 100%)",
+          position: "relative",
+        }}
+      >
+        {/* 메일쓰기 버튼 */}
         <Button
           startIcon={<MailOutlineIcon />}
-          variant="outlined"
-          size="small"
           onClick={() => {
             navigate("/email/write", { state: { mailTo: member.email } });
-            onClose();
+            if (onCloseDrawer) onCloseDrawer(); // drawer 닫기
+            onClose();                          // modal 닫기
+          }}
+          sx={{
+            position: "absolute",
+            left: 16,
+            top: 16,
+            bgcolor: "rgba(255,255,255,0.9)",
+            borderRadius: "50px",
+            fontSize: 13,
+            fontWeight: 600,
+            px: 2,
+            py: 0.6,
+            boxShadow: 1,
+            "&:hover": { bgcolor: "white" },
           }}
         >
           메일쓰기
         </Button>
-      </Box>
 
-      {/* 모달 상단 (닫기 버튼 포함) */}
-      <DialogTitle
-        sx={{
-          textAlign: "center",
-          fontWeight: 700,
-          position: "relative",
-          pb: 1,
-        }}
-      >
+        {/* 닫기 버튼 */}
         <IconButton
-          onClick={onClose} // 닫기 버튼
-          sx={{ position: "absolute", right: 8, top: 8 }}
+          onClick={onClose}
+          sx={{ position: "absolute", right: 8, top: 8, color: "#fff" }}
         >
           <CloseIcon />
         </IconButton>
-      </DialogTitle>
+      </Box>
 
-      {/* 모달 본문 */}
-      <DialogContent sx={{ textAlign: "center" }}>
-        {/* 프로필 이미지 */}
+      {/* 아바타 + 기본 정보 섹션 */}
+      <DialogContent sx={{ textAlign: "center", mt: -6 }}>
         <Avatar
           src={member.profileUrl}
           sx={{
-            width: 84,
-            height: 84,
+            width: 100,
+            height: 100,
             mx: "auto",
             mb: 2,
             bgcolor: "#e0e0e0",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
           }}
         />
 
         {/* 이름 + 직급 */}
-        <Typography variant="h6" fontWeight={700}>
-          {member.name} {member.jobGrade ? `${member.jobGrade}` : ""}
+        <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }}>
+          {member.name} {member.jobGrade ? ` ${getJobGradeLabel(member.jobGrade)}` : ""}
+           <span style={{ fontWeight: 500, color: "#666" }}>
+            {member.jobGrade || ""}
+          </span>
         </Typography>
 
         {/* 부서 경로 */}
@@ -80,16 +95,24 @@ const MemberDetailModal = ({ open, member, onClose }) => {
           {member.deptPath}
         </Typography>
 
-        <Divider sx={{ my: 2 }} />
-
-        {/* 상세 정보 목록 */}
-        <Box sx={{ textAlign: "left", px: 2 }}>
+        {/* 상세 정보 카드 */}
+        <Paper
+          elevation={0}
+          sx={{
+            border: "1px solid #e5e5e5",
+            borderRadius: 3,
+            p: 2,
+            textAlign: "left",
+            mb: 2,
+            bgcolor: "#fafafa",
+          }}
+        >
           <InfoRow label="회사" value="코어커넥트" />
           <InfoRow label="부서" value={member.deptName} />
-          <InfoRow label="직급" value={member.jobGrade || "-"} />
+          <InfoRow label="직급" value={member.jobGrade ? getJobGradeLabel(member.jobGrade) : "-"} />
           <InfoRow label="이메일" value={member.email} />
           <InfoRow label="휴대전화" value={member.phone || "-"} />
-        </Box>
+        </Paper>
       </DialogContent>
     </Dialog>
   );
@@ -98,10 +121,12 @@ const MemberDetailModal = ({ open, member, onClose }) => {
 /** 한 줄 상세정보 */
 const InfoRow = ({ label, value }) => (
   <Box sx={{ mb: 1.5 }}>
-    <Typography variant="caption" color="text.secondary">
+    <Typography variant="caption" color="text.secondary" sx={{ fontSize: 12 }}>
       {label}
     </Typography>
-    <Typography variant="body1">{value}</Typography>
+    <Typography variant="body1" sx={{ fontSize: 15 }}>
+      {value}
+    </Typography>
   </Box>
 );
 

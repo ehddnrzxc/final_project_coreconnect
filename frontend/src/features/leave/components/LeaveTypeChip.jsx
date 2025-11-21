@@ -1,6 +1,6 @@
 import React from "react";
 import { Chip } from "@mui/material";
-import { getLeaveTypeLabel } from "../../../components/utils/labelUtils";
+import { getLeaveTypeLabel } from "../../../utils/labelUtils";
 
 /**
  * 휴가 유형을 표시하는 칩

@@ -22,7 +22,7 @@ import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ExpandLess from "@mui/icons-material/ExpandLess";
 import ExpandMore from "@mui/icons-material/ExpandMore";
-import { getJobGradeLabel } from "../../../components/utils/labelUtils";
+import { getJobGradeLabel } from "../../../utils/labelUtils";
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 
 const style = {

@@ -114,7 +114,7 @@ public class AuthController {
           user.getName(),
           user.getRole().name(),
           user.getDepartment() != null ? user.getDepartment().getDeptName() : null,
-          user.getJobGrade() != null ? user.getJobGrade().label() : null
+          user.getJobGrade() != null ? user.getJobGrade().name() : null
       );
       
       return ResponseEntity.ok(response);

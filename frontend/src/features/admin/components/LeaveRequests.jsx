@@ -41,7 +41,7 @@ export default function LeaveRequests() {
   }, []);
 
   return (
-    <Box sx={{ px: 4, py: 3, maxWidth: 1440, mx: "auto" }}>
+    <Box sx={{ px: 4, py: 3, width: "100%", maxWidth: 1400, mx: "auto" }}>
       {/* 헤더 */}
       <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 3 }}>
         <BeachAccessIcon color="primary" sx={{ fontSize: 30 }} />
