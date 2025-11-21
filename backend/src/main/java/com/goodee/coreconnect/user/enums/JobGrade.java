@@ -1,14 +1,14 @@
 package com.goodee.coreconnect.user.enums;
 
 public enum JobGrade {
-    INTERN,
-    STAFF,
-    ASSISTANT_MANAGER,
-    MANAGER,
-    DEPUTY_GENERAL_MANAGER,
-    GENERAL_MANAGER,
-    DIRECTOR,
-    EXECUTIVE_DIRECTOR,
-    VICE_PRESIDENT,
-    PRESIDENT
+    INTERN, // 인턴
+    STAFF, // 사원
+    ASSISTANT_MANAGER, // 대리
+    MANAGER, // 과장
+    DEPUTY_GENERAL_MANAGER, // 차장
+    GENERAL_MANAGER, // 부장
+    DIRECTOR, // 이사
+    EXECUTIVE_DIRECTOR, // 상무
+    VICE_PRESIDENT, // 전무
+    PRESIDENT // 대표
 }
