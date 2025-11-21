@@ -1333,7 +1333,7 @@ export default function ScheduleModal({
 
       {/* 하단 버튼 (항상 고정) */}
       <DialogActions sx={{ borderTop: "1px solid #ddd", p: 2 }}>
-        {isEdit && (
+        {isEdit && initialData?.userEmail === currentUserEmail && (
           <Button color="error" onClick={() => onDelete(initialData.id)}>
             삭제
           </Button>
