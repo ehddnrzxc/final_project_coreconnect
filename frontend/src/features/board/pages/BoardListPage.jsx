@@ -132,7 +132,7 @@ const BoardListPage = () => {
           alignItems="center"
           sx={{
             mb: 2,
-            width: "77%",
+            width: "80%",
             mx: "auto",
           }}
         >
@@ -178,17 +178,14 @@ const BoardListPage = () => {
             />
 
             <Button
-              variant="outlined"
+              variant="contained"
               size="small"
               onClick={handleSearch}
               sx={{
                 fontWeight: 700,
                 borderRadius: 2,
-                bgcolor: "#f6f7fc",
-                borderColor: "#e1e3ea",
+                px: 2.5,
                 py: 1,
-                px: 2,
-                minWidth: 70,
               }}
             >
               검색
@@ -203,7 +200,7 @@ const BoardListPage = () => {
             {idx > 0 && (
               <Divider
                 sx={{
-                  width: "77%",
+                  width: "80%",
                   mx: "auto",
                   borderColor: "#e0e0e0",
                 }}
@@ -237,7 +234,7 @@ const BoardListPage = () => {
                 border: "1px solid #e5e5e5",
                 py: 2,
                 px: 2,
-                width: "77%",
+                width: "80%",
                 mx: "auto",
                 boxShadow: "0 2px 4px rgba(0,0,0,0.03)",
 
@@ -359,7 +356,7 @@ const BoardListPage = () => {
         ))}
 
         {/* 페이지네이션 영역 */}
-        <Box sx={{ display: "flex", justifyContent: "center", mt: 1 }}>
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 4, mb: 5 }}>
           {(() => {
             const totalPages = pageInfo.totalPages || 1;
             const page = currentPage + 1;
@@ -371,67 +368,76 @@ const BoardListPage = () => {
 
             const goPage = (p) => handlePageChange(null, p);
 
-            const btnStyle = {
-              minWidth: 26,
-              height: 30,
-              fontSize: "0.8rem",
-              borderRadius: "6px",
-              color: "#0a8aa0",
+            // 얇은 기본 버튼 스타일
+            const baseStyle = {
+              minWidth: 30,
+              height: 32,
+              mx: 0.3,
+              borderRadius: "8px",
+              fontSize: "0.83rem",
+              fontWeight: 500,
+              color: "#3a8ea0",
               backgroundColor: "transparent",
-              padding: "0 6px",
-              boxShadow: "none",
+              border: "1px solid #d6e7ea",
+              transition: "0.18s ease",
               "&:hover": {
-                backgroundColor: "#e9f8fa",
-              },
+                backgroundColor: "#eefbfd",
+                borderColor: "#9ad3dd",
+              }
             };
 
+            // 활성 페이지는 좀 더 강조된 pill 스타일
             const activeStyle = {
-              ...btnStyle,
+              ...baseStyle,
               backgroundColor: "#0aa2b4",
               color: "white",
+              borderColor: "#0aa2b4",
               fontWeight: 700,
               "&:hover": {
                 backgroundColor: "#0895a5",
-              },
+                borderColor: "#0895a5",
+              }
             };
 
+            // 비활성(클릭 불가) 스타일 – 흐릿+호버 무시
             const disabledStyle = {
-              ...btnStyle,
-              color: "#bfbfbf",
+              ...baseStyle,
+              color: "#c5c5c5",
+              borderColor: "#e3e3e3",
               cursor: "default",
               "&:hover": {
                 backgroundColor: "transparent",
-              },
+                borderColor: "#e3e3e3"
+              }
             };
 
             return (
-              <Stack direction="row" spacing={1} alignItems="center">
-                {/* << 처음으로 */}
+              <Stack direction="row" spacing={0.5} alignItems="center">
+                {/* << 처음 */}
                 <Button
-                  sx={blockStart === 1 ? disabledStyle : btnStyle}
+                  sx={blockStart === 1 ? disabledStyle : baseStyle}
                   disabled={blockStart === 1}
                   onClick={() => goPage(1)}
                 >
                   {"<<"}
                 </Button>
 
-                {/* < 이전 블록 */}
+                {/* < 이전 */}
                 <Button
-                  sx={blockStart === 1 ? disabledStyle : btnStyle}
+                  sx={blockStart === 1 ? disabledStyle : baseStyle}
                   disabled={blockStart === 1}
                   onClick={() => goPage(blockStart - blockSize)}
                 >
                   {"<"}
                 </Button>
 
-                {/* 숫자 페이지 */}
+                {/* 페이지 번호 */}
                 {[...Array(Math.max(0, blockEnd - blockStart + 1))].map((_, idx) => {
                   const pageNumber = blockStart + idx;
-
                   return (
                     <Button
                       key={pageNumber}
-                      sx={pageNumber === page ? activeStyle : btnStyle}
+                      sx={pageNumber === page ? activeStyle : baseStyle}
                       onClick={() => goPage(pageNumber)}
                     >
                       {pageNumber}
@@ -439,18 +445,18 @@ const BoardListPage = () => {
                   );
                 })}
 
-                {/* > 다음 블록 */}
+                {/* > 다음 */}
                 <Button
-                  sx={blockEnd === totalPages ? disabledStyle : btnStyle}
+                  sx={blockEnd === totalPages ? disabledStyle : baseStyle}
                   disabled={blockEnd === totalPages}
                   onClick={() => goPage(blockEnd + 1)}
                 >
                   {">"}
                 </Button>
 
-                {/* >> 마지막 블록 */}
+                {/* >> 마지막 */}
                 <Button
-                  sx={blockEnd === totalPages ? disabledStyle : btnStyle}
+                  sx={blockEnd === totalPages ? disabledStyle : baseStyle}
                   disabled={blockEnd === totalPages}
                   onClick={() => goPage(totalPages)}
                 >
