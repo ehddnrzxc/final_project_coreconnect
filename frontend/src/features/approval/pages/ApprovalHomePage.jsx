@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import {
   Box,
@@ -28,10 +28,13 @@ import {
 } from "../api/approvalApi";
 
 import DocumentStatusChip from "../components/DocumentStatusChip";
+import { UserProfileContext } from "../../../App";
 
 const ITEMS_PER_PAGE = 4;
 
 function ApprovalHomePage() {
+  const { userProfile } = useContext(UserProfileContext);
+
   const [myTasks, setMyTasks] = useState([]);
   const [pendingDocs, setPendingDocs] = useState([]);
   const [completedDocs, setCompletedDocs] = useState([]);
@@ -68,6 +71,20 @@ function ApprovalHomePage() {
     fetchDocs();
   }, []);
 
+  const getActionButtonLabel = doc => {
+    if (!userProfile || !doc.approvalLines) return "결재하기";
+
+    const myLine = doc.approvalLines.find(
+      line => line.userId === userProfile.id
+    );
+
+    if (myLine && myLine.type === "AGREE") {
+      return "합의하기";
+    }
+
+    return "결재하기";
+  };
+
   const handleRowClick = (documentId) => {
     navigate(`/e-approval/doc/${documentId}`);
   };
@@ -101,10 +118,10 @@ function ApprovalHomePage() {
 
       {/* --- 1. 내가 결재할 문서 (Cards) --- */}
       <Typography variant="h5" sx={{ mt: 4, mb: 2 }}>
-        결재 대기 문서
+        결재/합의 대기 문서
       </Typography>
       {myTasks.length === 0 ? (
-        <Typography>결재 대기중인 문서가 없습니다.</Typography>
+        <Alert severity="info">결재 대기중인 문서가 없습니다.</Alert>
       ) : (
         <>
           <Box
@@ -179,7 +196,7 @@ function ApprovalHomePage() {
                       },
                     }}
                   >
-                    결재하기
+                    {getActionButtonLabel(doc)}
                   </Button>
                 </Box>
               </Card>
@@ -209,21 +226,29 @@ function ApprovalHomePage() {
       <Typography variant="h5" sx={{ mt: 4, mb: 2 }}>
         진행중인 문서 (내가 상신한 문서)
       </Typography>
-      {pendingDocs.length === 0 ? (
-        <Typography>진행중인 문서가 없습니다.</Typography>
-      ) : (
-        <TableContainer component={Paper} variant="outlined">
-          <Table sx={{ minWidth: 650 }} aria-label="진행중인 문서 테이블">
-            <TableHead>
-              <TableRow sx={{ backgroundColor: "#f8f9fa" }}>
-                <TableCell>문서 제목</TableCell>
-                <TableCell>결재 양식</TableCell>
-                <TableCell>기안일</TableCell>
-                <TableCell>상태</TableCell>
+      <TableContainer component={Paper} variant="outlined">
+        <Table sx={{ minWidth: 650 }} aria-label="진행중인 문서 테이블">
+          <TableHead>
+            <TableRow sx={{ backgroundColor: "#f8f9fa" }}>
+              <TableCell>문서 제목</TableCell>
+              <TableCell>결재 양식</TableCell>
+              <TableCell>기안일</TableCell>
+              <TableCell>상태</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {displayPendingDocs.length === 0 ? (
+              /* 데이터가 없을 때 보여줄 행 */
+              <TableRow>
+                <TableCell colSpan={4} align="center" sx={{ py: 5 }}>
+                  <Typography color="textSecondary">
+                    아직 진행중인 문서가 없습니다.
+                  </Typography>
+                </TableCell>
               </TableRow>
-            </TableHead>
-            <TableBody>
-              {displayPendingDocs.map((doc) => (
+            ) : (
+              /* 데이터가 있을 때 매핑 */
+              displayPendingDocs.map((doc) => (
                 <TableRow
                   key={doc.documentId}
                   hover
@@ -244,31 +269,39 @@ function ApprovalHomePage() {
                     <DocumentStatusChip status={doc.documentStatus} />
                   </TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
       {/* --- 3. 완료된 문서 (Table) --- */}
       <Typography variant="h5" sx={{ mt: 4, mb: 2 }}>
         완료된 문서
       </Typography>
-      {completedDocs.length === 0 ? (
-        <Typography>완료된 문서가 없습니다.</Typography>
-      ) : (
-        <TableContainer component={Paper} variant="outlined">
-          <Table sx={{ minWidth: 650 }} aria-label="완료된 문서 테이블">
-            <TableHead>
-              <TableRow sx={{ backgroundColor: "#f8f9fa" }}>
-                <TableCell>문서 제목</TableCell>
-                <TableCell>결재 양식</TableCell>
-                <TableCell>완료일</TableCell>
-                <TableCell>상태</TableCell>
+      <TableContainer component={Paper} variant="outlined">
+        <Table sx={{ minWidth: 650 }} aria-label="완료된 문서 테이블">
+          <TableHead>
+            <TableRow sx={{ backgroundColor: "#f8f9fa" }}>
+              <TableCell>문서 제목</TableCell>
+              <TableCell>결재 양식</TableCell>
+              <TableCell>완료일</TableCell>
+              <TableCell>상태</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {displayCompletedDocs.length === 0 ? (
+              /* 데이터가 없을 때 보여줄 행 */
+              <TableRow>
+                <TableCell colSpan={4} align="center" sx={{ py: 5 }}>
+                  <Typography color="textSecondary">
+                    완료된 문서가 없습니다.
+                  </Typography>
+                </TableCell>
               </TableRow>
-            </TableHead>
-            <TableBody>
-              {displayCompletedDocs.map((doc) => (
+            ) : (
+              /* 데이터가 있을 때 매핑 */
+              displayCompletedDocs.map((doc) => (
                 <TableRow
                   key={doc.documentId}
                   hover
@@ -289,11 +322,11 @@ function ApprovalHomePage() {
                     <DocumentStatusChip status={doc.documentStatus} />
                   </TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
     </Box>
   );
 }

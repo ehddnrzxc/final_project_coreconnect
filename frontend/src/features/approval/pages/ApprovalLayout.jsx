@@ -56,7 +56,7 @@ function ApprovalLayout() {
           <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold", letterSpacing: -2 }}>
             전자결재
           </Typography>
-          <StyledButton>
+          <StyledButton onClick={handleOpenModal}>
             새 결재 진행
           </StyledButton>
         </Box>
