@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.Page;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Transactional;
@@ -262,13 +263,13 @@ public class ApprovalServiceTest {
     // @BeforeEach에서 'drafter'가 'testDocument'를 생성함
 
     // Act (When)
-    List<DocumentSimpleResponseDTO> drafts = approvalService.getMyDocuments(drafter.getEmail());
+    Page<DocumentSimpleResponseDTO> drafts = approvalService.getMyDocuments(drafter.getEmail(), null);
 
     // Assert (Then)
     assertThat(drafts).isNotNull();
     assertThat(drafts).hasSize(1);
-    assertThat(drafts.get(0).getDocumentId()).isEqualTo(testDocument.getId());
-    assertThat(drafts.get(0).getDocumentTitle()).isEqualTo("기본 테스트 문서");
+    assertThat(((DocumentDetailResponseDTO) drafts.get()).getDocumentId()).isEqualTo(testDocument.getId());
+    assertThat(((DocumentCreateRequestDTO) drafts.get()).getDocumentTitle()).isEqualTo("기본 테스트 문서");
   }
 
   @Test
@@ -282,7 +283,7 @@ public class ApprovalServiceTest {
     documentRepository.saveAndFlush(docToUpdate);
 
     // Act
-    List<DocumentSimpleResponseDTO> drafts = approvalService.getMyDocuments(drafter.getEmail());
+    Page<DocumentSimpleResponseDTO> drafts = approvalService.getMyDocuments(drafter.getEmail(), null);
 
     // Assert
     // Service의 리포지토리 쿼리(findByUserAndDocDeletedYnOrderByCreatedAtDesc(user, false))가
