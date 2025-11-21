@@ -2,6 +2,7 @@ import { Box, Button, Chip, LinearProgress, Typography, useTheme } from "@mui/ma
 import { checkIn, checkOut, getTodayAttendance } from "../../attendance/api/attendanceAPI";
 import { formatKoreanDate, formatKoreanTime, formatTime } from "../../../utils/TimeUtils";
 import { useState, useEffect } from "react";
+import { Link as RouterLink } from "react-router-dom";
 import Card from "../../../components/ui/Card";
 import { formatHM } from "../../../utils/TimeUtils";
 import http from "../../../api/http";
@@ -117,18 +118,9 @@ function AttendanceCard() {
     <Card
       title="근태"
       right={
-        <Chip
-          label={
-            status === "PRESENT" || status === "LATE"
-              ? "근무중"
-              : status === "LEAVE_EARLY" || status === "COMPLETED"
-              ? "퇴근"
-              : getAttendanceStatusLabel(status)
-          }
-          size="small"
-          variant="outlined"
-          sx={{ fontSize: 12, borderRadius: 999, px: 1 }}
-        />
+        <Button component={RouterLink} to="/attendance" size="small" sx={{ textTransform: "none" }}>
+          근태현황 바로가기
+        </Button>
       }
     >
       {/* 날짜 + 현재 시각 */}
@@ -145,6 +137,18 @@ function AttendanceCard() {
             {dateString} {timeString}
           </Typography>
         </Box>
+        <Chip
+          label={
+            status === "PRESENT" || status === "LATE"
+              ? "근무중"
+              : status === "LEAVE_EARLY" || status === "COMPLETED"
+              ? "퇴근"
+              : getAttendanceStatusLabel(status)
+          }
+          size="small"
+          variant="outlined"
+          sx={{ fontSize: 12, borderRadius: 999, px: 1 }}
+        />
       </Box>
 
       {/* 출근 / 퇴근 박스 */}

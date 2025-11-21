@@ -211,7 +211,7 @@ export default function ProfileCard() {
       highlight: Number(pendingApprovalCount) > 0, 
       to: "/e-approval/pending", 
     },
-    { label: "참조 대기 문서", 
+    { label: "내 참조 문서", 
       value: receivedApprovalCount == null ? "-" : receivedApprovalCount, 
       highlight: Number(receivedApprovalCount) > 0,
       to: "/e-approval/refer" 
