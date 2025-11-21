@@ -19,13 +19,13 @@ const navSections = [
     items: [
       { text: "결재홈", path: "/e-approval" }, // index: true
       { text: "결재/합의 대기 문서", path: "/e-approval/pending" },
-      { text: "참조 대기 문서", path: "/e-approval/refer"}
     ],
   },
   {
     title: "개인 문서함",
     items: [
       { text: "내 상신함", path: "/e-approval/my-documents" },
+      { text: "내 참조 문서", path: "/e-approval/refer"},
       { text: "임시저장함", path: "/e-approval/my-drafts" },
     ],
   },

@@ -1,4 +1,4 @@
-package com.goodee.coreconnect;
+package com.goodee.coreconnect.approval;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -11,6 +11,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -104,10 +105,10 @@ public class DocumentRepositoryTest {
         
         // --- 1. 실행 (Act) ---
         // drafter1이 작성한 문서를 조회 (doc1, doc2, doc3)
-        List<Document> results = documentRepository.findByUserAndDocDeletedYnOrderByCreatedAtDesc(drafter1, false);
+        Page<Document> results = documentRepository.findByUserAndDocDeletedYnOrderByCreatedAtDesc(drafter1, false, null);
 
         // --- 2. 검증 (Assert) ---
-        log.info("drafter1이 작성한 문서 개수: {}", results.size());
+        log.info("drafter1이 작성한 문서 개수: {}", results.getSize());
 
         // (검증 1) drafter1이 작성한 문서는 총 3개여야 한다. (doc4_noise 제외)
         assertThat(results).hasSize(3);

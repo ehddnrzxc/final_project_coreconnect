@@ -48,7 +48,7 @@ const ReferDocumentPage = () => {
   return (
     <Box>
       <Typography variant='h4' gutterBottom>
-        참조 대기 문서
+        내 참조 문서
       </Typography>
       <TableContainer component={Paper} sx={{ mt: 2 }}>
         <Table sx={{ minWidth: 650 }} aria-label='참조 문서 테이블'>

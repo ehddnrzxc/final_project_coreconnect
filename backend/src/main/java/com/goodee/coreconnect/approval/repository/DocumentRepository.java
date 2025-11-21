@@ -3,6 +3,8 @@ package com.goodee.coreconnect.approval.repository;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -22,7 +24,7 @@ public interface DocumentRepository extends JpaRepository<Document, Integer>{
    * @param user
    * @return
    */
-  @Query("""
+  @Query(value = """
       SELECT DISTINCT d FROM Document d
       JOIN FETCH d.user u
       LEFT JOIN FETCH u.department
@@ -32,10 +34,17 @@ public interface DocumentRepository extends JpaRepository<Document, Integer>{
       WHERE d.user = :user
       AND d.docDeletedYn = :deletedYn
       ORDER BY d.createdAt DESC
+      """,
+      countQuery = """
+      SELECT count(d) FROM Document d
+      WHERE d.user = :user
+      AND d.docDeletedYn = :deletedYn
       """)
-  List<Document> findByUserAndDocDeletedYnOrderByCreatedAtDesc(
+  Page<Document> findByUserAndDocDeletedYnOrderByCreatedAtDesc(
       @Param("user") User user,
-      @Param("deletedYn") Boolean docDeletedYn
+      @Param("deletedYn") Boolean docDeletedYn,
+      Pageable pageable
+      
   );
 
   /**

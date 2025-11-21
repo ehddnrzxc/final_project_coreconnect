@@ -18,6 +18,7 @@ import {
   Select,
   MenuItem,
   Chip,
+  Pagination,
 } from "@mui/material";
 import { format } from "date-fns";
 import DocumentStatusChip from "../components/DocumentStatusChip";
@@ -37,14 +38,22 @@ function MyDocumentsPage() {
   const [statusFilter, setStatusFilter] = useState("전체");
   const navigate = useNavigate();
 
+  // 페이지네이션 상태
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
+
   useEffect(() => {
     const fetchDocuments = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const res = await getMyDocuments();
-        setDocuments(res.data || []);
+        // API 호출 (page, size 전달)
+        const res = await getMyDocuments(page, rowsPerPage);
+
+        setDocuments(res.data.content || []);
+        setTotalCount(res.data.totalElements || 0);
       } catch (err) {
         console.error("내 상신함 조회 실패:", err);
         setError(
@@ -56,7 +65,11 @@ function MyDocumentsPage() {
     };
 
     fetchDocuments();
-  }, []);
+  }, [page, rowsPerPage]);
+
+  const handlePageChange = (event, value) => {
+    setPage(value - 1); // UI(1,2,3) -> Backend(0,1,2)
+  };
 
   const handleRowClick = (documentId) => {
     navigate(`/e-approval/doc/${documentId}`);
@@ -89,9 +102,9 @@ function MyDocumentsPage() {
   }, [documents, statusFilter]);
 
   // --- [UI 헬퍼 함수] 역할(Role) 텍스트 반환 ---
-  const getRoleLabel = type => {
+  const getRoleLabel = (type) => {
     if (type === "AGREE") return "(합의)";
-    return ""; 
+    return "";
   };
 
   if (loading)
@@ -191,22 +204,70 @@ function MyDocumentsPage() {
                     <TableCell>{doc.templateName}</TableCell>
                     <TableCell>{doc.documentTitle}</TableCell>
                     <TableCell>
-                      <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 1,
+                        }}
+                      >
                         {approvers.length > 0 ? (
-                          <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 0.5 }}>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              flexWrap: "wrap",
+                              gap: 0.5,
+                            }}
+                          >
                             {approvers.map((line, index) => (
                               <React.Fragment key={line.lineId}>
-                                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 0.5,
+                                  }}
+                                >
                                   <Typography variant="body2">
                                     {line.name}
-                                    <span style={{ fontSize: "0.8em", color: "#666", marginLeft: "2px" }}>
+                                    <span
+                                      style={{
+                                        fontSize: "0.8em",
+                                        color: "#666",
+                                        marginLeft: "2px",
+                                      }}
+                                    >
                                       {getRoleLabel(line.type)}
                                     </span>
                                   </Typography>
-                                  <ApprovalLineStatusChip status={line.approvalStatus} />
+
+                                  {/* [1. 비동의 처리 부분] */}
+                                  {line.type === "AGREE" &&
+                                  line.approvalStatus === "REJECTED" ? (
+                                    <Chip
+                                      label="비동의"
+                                      size="small"
+                                      variant="outlined"
+                                      color="error"
+                                      sx={{
+                                        height: 24,
+                                        fontSize: "0.75rem",
+                                        fontWeight: "bold",
+                                      }}
+                                    />
+                                  ) : (
+                                    <ApprovalLineStatusChip
+                                      status={line.approvalStatus}
+                                    />
+                                  )}
                                 </Box>
                                 {index < approvers.length - 1 && (
-                                  <Typography variant="body2" color="text.secondary" sx={{ mx: 0.5 }}>
+                                  <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                    sx={{ mx: 0.5 }}
+                                  >
                                     →
                                   </Typography>
                                 )}
@@ -217,9 +278,33 @@ function MyDocumentsPage() {
                           "-"
                         )}
                         {referrers.length > 0 && (
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.5, p: 0.8, backgroundColor: "#f5f5f5", borderRadius: 1, width: "fit-content" }}>
-                            <Chip label="참조" size="small" variant="outlined" sx={{ height: 20, fontSize: "0.7rem", borderColor: "#bbb", color: "#666" }} />
-                            <Typography variant="caption" color="text.secondary">
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                              mt: 0.5,
+                              p: 0.8,
+                              backgroundColor: "#f5f5f5",
+                              borderRadius: 1,
+                              width: "fit-content",
+                            }}
+                          >
+                            <Chip
+                              label="참조"
+                              size="small"
+                              variant="outlined"
+                              sx={{
+                                height: 20,
+                                fontSize: "0.7rem",
+                                borderColor: "#bbb",
+                                color: "#666",
+                              }}
+                            />
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
                               {referrers.map((r) => r.name).join(", ")}
                             </Typography>
                           </Box>
@@ -237,6 +322,24 @@ function MyDocumentsPage() {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* [2. 페이지네이션부분 (숫자형, 중앙 정렬, 청록색 스타일)] */}
+      <Box sx={{ display: "flex", justifyContent: "center", mt: 3, mb: 2 }}>
+        <Pagination
+          count={Math.ceil(totalCount / rowsPerPage)}
+          page={page + 1}
+          onChange={handlePageChange}
+          shape="circular"
+          showFirstButton={false}
+          showLastButton={false}
+          sx={{
+            "& .Mui-selected": {
+              backgroundColor: "#00bcd4 !important",
+              color: "#fff",
+            },
+          }}
+        />
+      </Box>
     </Box>
   );
 }

@@ -183,6 +183,7 @@ function NewDocumentPage() {
       try {
         setLoading(true);
         setError(null);
+        setApprovalLine([]);
         const detailRes = await getTemplateDetail(templateId);
         console.log("detailResponse", detailRes)
 
@@ -270,6 +271,7 @@ function NewDocumentPage() {
 
       if (isEditMode) {
         const requestDTO = {
+          templateId: parseInt(selectedTemplate.templateId),
           documentTitle: documentTitle,
           documentDataJson: documentDataJson,
           approvalLines: formattedApprovalLines

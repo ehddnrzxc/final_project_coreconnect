@@ -6,6 +6,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import org.springframework.core.io.InputStreamResource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -136,11 +139,12 @@ public class ApprovalController {
    */
   @Operation(summary = "목록 조회", description = "내가 작성한 문서 목록 조회")
   @GetMapping("/my-documents")
-  public ResponseEntity<List<DocumentSimpleResponseDTO>> getMyDrafts(
-      @AuthenticationPrincipal CustomUserDetails user
+  public ResponseEntity<Page<DocumentSimpleResponseDTO>> getMyDrafts(
+      @AuthenticationPrincipal CustomUserDetails user,
+      @PageableDefault(page = 0, size = 10) Pageable pageable
       ) {
     String email = user.getEmail();
-    List<DocumentSimpleResponseDTO> myDrafts = approvalService.getMyDocuments(email);
+    Page<DocumentSimpleResponseDTO> myDrafts = approvalService.getMyDocuments(email, pageable);
     return ResponseEntity.ok(myDrafts);
   }
 
@@ -151,7 +155,8 @@ public class ApprovalController {
   @Operation(summary = "임시저장함 조회", description = "내가 임시저장한(DRAFT 상태) 문서 목록 조회")
   @GetMapping("/drafts")
   public ResponseEntity<List<DocumentSimpleResponseDTO>> getMyDraftBox(
-      @AuthenticationPrincipal CustomUserDetails user
+      @AuthenticationPrincipal CustomUserDetails user,
+      @PageableDefault(page = 0, size = 10) Pageable pageable
       ) {
     String email = user.getEmail();
     List<DocumentSimpleResponseDTO> myDrafts = approvalService.getMyDraftBox(email);
