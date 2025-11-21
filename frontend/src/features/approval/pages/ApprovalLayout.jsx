@@ -11,6 +11,7 @@ import {
   ListSubheader,
 } from "@mui/material";
 import TemplateSelectModal from "../components/TemplateSelectModal";
+import StyledButton from "../../../components/ui/StyledButton"
 
 const navSections = [
   {
@@ -55,15 +56,9 @@ function ApprovalLayout() {
           <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold", letterSpacing: -2 }}>
             전자결재
           </Typography>
-          <Button
-            variant="contained"
-            color="primary"
-            fullWidth
-            onClick={handleOpenModal}
-            size="large"
-          >
+          <StyledButton onClick={handleOpenModal}>
             새 결재 진행
-          </Button>
+          </StyledButton>
         </Box>
 
         <Divider />

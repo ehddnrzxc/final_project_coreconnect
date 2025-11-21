@@ -17,6 +17,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Chip,
 } from "@mui/material";
 import { format } from "date-fns";
 import DocumentStatusChip from "../components/DocumentStatusChip";
@@ -61,9 +62,7 @@ function MyDocumentsPage() {
     navigate(`/e-approval/doc/${documentId}`);
   };
 
-  // 완료일 포맷팅 함수
   const formatCompletedDate = (doc) => {
-    // 'COMPLETED' 상태이고, completedAt 값이 있을 때만 날짜 포맷
     if (
       (doc.documentStatus === "COMPLETED" ||
         doc.documentStatus === "REJECTED") &&
@@ -80,7 +79,6 @@ function MyDocumentsPage() {
         </>
       );
     }
-    // 그 외 (진행중, 반려 등)는 '-' 표시
     return "-";
   };
 
@@ -89,6 +87,12 @@ function MyDocumentsPage() {
     const targets = STATUS_MAP[statusFilter] || [];
     return documents.filter((doc) => targets.includes(doc.documentStatus));
   }, [documents, statusFilter]);
+
+  // --- [UI 헬퍼 함수] 역할(Role) 텍스트 반환 ---
+  const getRoleLabel = type => {
+    if (type === "AGREE") return "(합의)";
+    return ""; 
+  };
 
   if (loading)
     return (
@@ -124,129 +128,115 @@ function MyDocumentsPage() {
         </FormControl>
       </Box>
 
-      {!loading && filteredDocuments.length === 0 ? (
-        <Alert severity="info">상신한 문서가 없습니다.</Alert>
-      ) : (
-        <TableContainer component={Paper} variant="outlined">
-          <Table sx={{ minWidth: 650 }} aria-label="my documents table">
-            <TableHead sx={{ backgroundColor: "#f9f9f9" }}>
-              {/* 테이블 헤더 순서 및 이름 변경 */}
+      <TableContainer component={Paper} variant="outlined">
+        <Table sx={{ minWidth: 650 }} aria-label="my documents table">
+          <TableHead sx={{ backgroundColor: "#f9f9f9" }}>
+            <TableRow>
+              <TableCell sx={{ fontWeight: "bold", width: "150px" }}>
+                기안일
+              </TableCell>
+              <TableCell sx={{ fontWeight: "bold", width: "150px" }}>
+                완료일
+              </TableCell>
+              <TableCell sx={{ fontWeight: "bold", width: "180px" }}>
+                양식명
+              </TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>제목</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>결재선</TableCell>
+              <TableCell sx={{ fontWeight: "bold", width: "130px" }}>
+                기안부서
+              </TableCell>
+              <TableCell
+                align="center"
+                sx={{ fontWeight: "bold", width: "120px" }}
+              >
+                결재상태
+              </TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {filteredDocuments.length === 0 ? (
               <TableRow>
-                <TableCell sx={{ fontWeight: "bold", width: "150px" }}>
-                  기안일
-                </TableCell>
-                <TableCell sx={{ fontWeight: "bold", width: "150px" }}>
-                  완료일
-                </TableCell>
-                <TableCell sx={{ fontWeight: "bold", width: "180px" }}>
-                  양식명
-                </TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>제목</TableCell>
-                <TableCell sx={{ fontWeight: "bold" }}>결재선</TableCell>
-                <TableCell sx={{ fontWeight: "bold", width: "130px" }}>
-                  기안부서
-                </TableCell>
-                <TableCell
-                  align="center"
-                  sx={{ fontWeight: "bold", width: "120px" }}
-                >
-                  결재상태
+                <TableCell colSpan={7} align="center" sx={{ py: 5 }}>
+                  <Typography color="textSecondary">
+                    상신한 문서가 없습니다.
+                  </Typography>
                 </TableCell>
               </TableRow>
-            </TableHead>
-            <TableBody>
-              {filteredDocuments.map((doc) => (
-                <TableRow
-                  key={doc.documentId}
-                  hover
-                  onClick={() => handleRowClick(doc.documentId)}
-                  sx={{ cursor: "pointer" }}
-                >
-                  {/* 기안일 */}
-                  <TableCell>
-                    <Typography variant="body2">
-                      {format(new Date(doc.createdAt), "yyyy-MM-dd")}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {format(new Date(doc.createdAt), "HH:mm")}
-                    </Typography>
-                  </TableCell>
+            ) : (
+              filteredDocuments.map((doc) => {
+                const approvers = (doc.approvalLines || [])
+                  .filter((line) => line.type !== "REFER")
+                  .sort((a, b) => a.approvalOrder - b.approvalOrder);
+                const referrers = (doc.approvalLines || []).filter(
+                  (line) => line.type === "REFER"
+                );
 
-                  {/* 완료일 (로직 적용) */}
-                  <TableCell>{formatCompletedDate(doc)}</TableCell>
-
-                  {/* 양식명 */}
-                  <TableCell>{doc.templateName}</TableCell>
-
-                  {/* 제목 */}
-                  <TableCell>{doc.documentTitle}</TableCell>
-
-                  {/* 결재선 */}
-                  <TableCell>
-                    <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        flexWrap: "wrap",
-                        gap: 0.5,
-                      }}
-                    >
-                      {doc.approvalLines &&
-                        doc.approvalLines
-                          .filter((line) => line.approvalType !== "REFER")
-                          .sort((a, b) => a.approvalOrder - b.approvalOrder)
-                          .map((line, index, arr) => (
-                            <React.Fragment
-                              key={line.lineId || `line-${index}`}
-                            >
-                              {/* 이름과 칩을 묶음 */}
-                              <Box
-                                sx={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 0.5,
-                                }}
-                              >
-                                {/* 백엔드 DTO의 필드명('name')을 사용합니다. */}
-                                <Typography variant="body2">
-                                  {line.name}
-                                </Typography>
-
-                                {/* 백엔드 DTO의 필드명('approvalStatus')을 사용합니다. */}
-                                <ApprovalLineStatusChip
-                                  status={line.approvalStatus}
-                                />
-                              </Box>
-
-                              {/* 마지막 항목이 아니면(index < arr.length - 1) "->" 화살표 표시 */}
-                              {index < arr.length - 1 && (
-                                <Typography variant="body2" sx={{ mx: 0.5 }}>
-                                  {"->"}
-                                </Typography>
-                              )}
-                            </React.Fragment>
-                          ))}
-                      {(!doc.approvalLines ||
-                        doc.approvalLines.filter(
-                          (line) => line.approvalType !== "REFER"
-                        ).length === 0) &&
-                        "-"}
-                    </Box>
-                  </TableCell>
-
-                  {/* 기안부서 (API 응답에 drafterDeptName이 포함되어야 함) */}
-                  <TableCell>{doc.deptName || "-"}</TableCell>
-
-                  {/* 결재상태 */}
-                  <TableCell align="center">
-                    <DocumentStatusChip status={doc.documentStatus} />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
+                return (
+                  <TableRow
+                    key={doc.documentId}
+                    hover
+                    onClick={() => handleRowClick(doc.documentId)}
+                    sx={{ cursor: "pointer" }}
+                  >
+                    <TableCell>
+                      <Typography variant="body2">
+                        {format(new Date(doc.createdAt), "yyyy-MM-dd")}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {format(new Date(doc.createdAt), "HH:mm")}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>{formatCompletedDate(doc)}</TableCell>
+                    <TableCell>{doc.templateName}</TableCell>
+                    <TableCell>{doc.documentTitle}</TableCell>
+                    <TableCell>
+                      <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                        {approvers.length > 0 ? (
+                          <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 0.5 }}>
+                            {approvers.map((line, index) => (
+                              <React.Fragment key={line.lineId}>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                                  <Typography variant="body2">
+                                    {line.name}
+                                    <span style={{ fontSize: "0.8em", color: "#666", marginLeft: "2px" }}>
+                                      {getRoleLabel(line.type)}
+                                    </span>
+                                  </Typography>
+                                  <ApprovalLineStatusChip status={line.approvalStatus} />
+                                </Box>
+                                {index < approvers.length - 1 && (
+                                  <Typography variant="body2" color="text.secondary" sx={{ mx: 0.5 }}>
+                                    →
+                                  </Typography>
+                                )}
+                              </React.Fragment>
+                            ))}
+                          </Box>
+                        ) : (
+                          "-"
+                        )}
+                        {referrers.length > 0 && (
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.5, p: 0.8, backgroundColor: "#f5f5f5", borderRadius: 1, width: "fit-content" }}>
+                            <Chip label="참조" size="small" variant="outlined" sx={{ height: 20, fontSize: "0.7rem", borderColor: "#bbb", color: "#666" }} />
+                            <Typography variant="caption" color="text.secondary">
+                              {referrers.map((r) => r.name).join(", ")}
+                            </Typography>
+                          </Box>
+                        )}
+                      </Box>
+                    </TableCell>
+                    <TableCell>{doc.deptName || "-"}</TableCell>
+                    <TableCell align="center">
+                      <DocumentStatusChip status={doc.documentStatus} />
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
     </Box>
   );
 }

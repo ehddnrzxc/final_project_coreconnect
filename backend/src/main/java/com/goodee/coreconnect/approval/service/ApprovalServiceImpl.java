@@ -468,9 +468,13 @@ public class ApprovalServiceImpl implements ApprovalService {
     boolean isMyTurn = false;
     
     if (document.getDocumentStatus() == DocumentStatus.IN_PROGRESS) {
-      isMyTurn = document.getApprovalLines().stream()
-          .anyMatch(line -> line.getApprover().getId().equals(currentUserId) &&
-              line.getApprovalLineStatus() == ApprovalLineStatus.WAITING);
+      ApprovalLine currentTurnLine = document.getApprovalLines().stream()
+          .filter(line -> line.getApprovalLineStatus() == ApprovalLineStatus.WAITING)
+          .min(Comparator.comparing(ApprovalLine::getApprovalLineOrder))
+          .orElse(null);
+
+      if (currentTurnLine != null && currentTurnLine.getApprover().getId().equals(currentUserId))
+        isMyTurn = true;
     }
     
     responseDTO.setMyTurnApprove(isMyTurn);

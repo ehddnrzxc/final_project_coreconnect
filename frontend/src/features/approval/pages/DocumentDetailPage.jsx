@@ -26,7 +26,7 @@ function DocumentDetailPage() {
 
   const { showSnack } = useSnackbarContext();
   const navigate = useNavigate();
-  const currentUser = useContext(UserProfileContext)?.userProfile;
+  const { userProfile } = useContext(UserProfileContext);
   const printRef = useRef(null);
 
   const handleDownload = (fileId, fileName) => {
@@ -134,19 +134,17 @@ function DocumentDetailPage() {
 
   const isDrafter = useMemo(() => {
     
-    if (!currentUser || !currentUser.userProfile || !currentUser.userProfile.email) {
-      return false;
-    }
+    if (!userProfile || !userProfile.email) return false;
 
     if (!documentData || !documentData.drafter || !documentData.drafter.userEmail) {
       return false;
     }
 
-    const userEmail = currentUser.userProfile.email.trim().toLowerCase();
+    const userEmail = userProfile.email.trim().toLowerCase();
     const drafterEmail = documentData.drafter.userEmail.trim().toLowerCase();
 
     return userEmail === drafterEmail;
-  }, [currentUser, documentData]);
+  }, [userProfile, documentData]);
 
   if (loading) return <Box sx={{ display: 'flex', justifyContent: "center", mt: 4 }}><CircularProgress /></Box>;
   if (error) return <Alert severity='error'>{error}</Alert>;
