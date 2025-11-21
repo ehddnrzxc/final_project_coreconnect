@@ -857,7 +857,7 @@ const BoardDetailPage = () => {
                           overflowWrap: "break-word",
                         }}
                       >
-                        {r.content?.trim() ? r.content : "내용 없음"}
+                        {child.content?.trim() ? child.content : "내용 없음"}
                       </Typography>
                     )}
                   </Paper>
