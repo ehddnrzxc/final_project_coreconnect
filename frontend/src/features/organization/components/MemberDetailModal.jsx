@@ -3,6 +3,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import MailOutlineIcon from "@mui/icons-material/MailOutline";
 import { useNavigate } from "react-router-dom";
 import { getJobGradeLabel } from "../../../utils/labelUtils";
+import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 
 
 const MemberDetailModal = ({ open, member, onClose, onCloseDrawer }) => {
@@ -56,7 +57,43 @@ const MemberDetailModal = ({ open, member, onClose, onCloseDrawer }) => {
             "&:hover": { bgcolor: "white" },
           }}
         >
-          메일쓰기
+          메일
+        </Button>
+
+        <Button
+          startIcon={<ChatBubbleOutlineIcon />}
+          onClick={() => {
+            // Drawer 닫기
+            onCloseDrawer && onCloseDrawer();
+            // Modal 닫기
+            onClose();
+            // 채팅 페이지로 이동하면서 상태 전달
+            navigate("/chat", {
+              state: {
+                startChatWith: {
+                  id: member.userId,
+                  name: member.name,
+                  email: member.email,
+                  profileImageUrl: member.profileUrl,
+                }
+              }
+            });
+          }}
+          sx={{
+            position: "absolute",
+            left: 110,   
+            top: 16,
+            bgcolor: "rgba(255,255,255,0.9)",
+            borderRadius: "50px",
+            fontSize: 13,
+            fontWeight: 600,
+            px: 2,
+            py: 0.6,
+            boxShadow: 1,
+            "&:hover": { bgcolor: "white" },
+          }}
+        >
+          채팅
         </Button>
 
         {/* 닫기 버튼 */}
