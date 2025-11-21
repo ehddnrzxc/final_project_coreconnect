@@ -305,7 +305,8 @@ public class ScheduleServiceImpl implements ScheduleService {
                   "[일정 수정] '" + schedule.getTitle() + "' 일정에 새로 추가되었습니다.",
                   null, null,
                   schedule.getUser().getId(),
-                  schedule.getUser().getName()
+                  schedule.getUser().getName(),
+                  schedule.getId()
           );  
         }
       }
