@@ -36,6 +36,7 @@ import {
 import AttendeeTimelinePanel from "../components/AttendeeTimelinePanel";
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 import { UserProfileContext } from "../../../App";
+import logoImage from "../../../assets/coreconnect-logo.png";
 
 export default function ScheduleModal({
   open,
@@ -969,43 +970,61 @@ export default function ScheduleModal({
                         px: 1,
                         minHeight: "auto",
                         lineHeight: 1.5,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 0.5,
                       }}
                     >
-                      📁 {deptName} ({deptUserCount}명) - 클릭하여 전체 선택
+                      <Box
+                        component="img"
+                        src={logoImage}
+                        alt="코어커넥트 로고"
+                        sx={{
+                          height: 16,
+                          width: "auto",
+                          objectFit: "contain",
+                        }}
+                      />
+                      {deptName} ({deptUserCount}명) - 클릭하여 전체 선택
                     </ListSubheader>
                     {children}
                   </li>
                 );
               }}
-              renderTags={(selected, getTagProps) =>
-                selected.map((option, index) => {
-                  const status = getParticipantStatus(option.id);
-                  let label, color;
-                  
-                  if (status === "participating") {
-                    label = `${option.name} 🟦 참여중`;
-                    color = "info";
-                  } else if (status === "busy") {
-                    label = `${option.name} 🟥 바쁨`;
-                    color = "error";
-                  } else {
-                    label = `${option.name} 🟩 가능`;
-                    color = "success";
-                  }
-                  
-                  // getTagProps에서 key를 분리하여 직접 전달 (React key prop 경고 해결)
-                  const { key, ...tagProps } = getTagProps({ index });
-                  
-                  return (
-                    <Chip
-                      key={key || option.id}
-                      label={label}
-                      color={color}
-                      {...tagProps}
-                    />
-                  );
-                })
-              }
+              renderValue={(selected) => (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {selected.map((option) => {
+                    const status = getParticipantStatus(option.id);
+                    let label, color;
+                    
+                    if (status === "participating") {
+                      label = `${option.name} 🟦 참여중`;
+                      color = "info";
+                    } else if (status === "busy") {
+                      label = `${option.name} 🟥 바쁨`;
+                      color = "error";
+                    } else {
+                      label = `${option.name} 🟩 가능`;
+                      color = "success";
+                    }
+                    
+                    return (
+                      <Chip
+                        key={option.id}
+                        label={label}
+                        color={color}
+                        onDelete={(e) => {
+                          e.stopPropagation();
+                          setForm((prev) => ({
+                            ...prev,
+                            participantIds: prev.participantIds.filter((id) => id !== option.id),
+                          }));
+                        }}
+                      />
+                    );
+                  })}
+                </Box>
+              )}
               renderInput={(params) => (
                 <TextField {...params} label="참여자 초대" placeholder="검색 후 선택" />
               )}
