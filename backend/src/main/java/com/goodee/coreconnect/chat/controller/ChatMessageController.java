@@ -731,7 +731,96 @@ public class ChatMessageController {
 		return ResponseEntity.status(HttpStatus.CREATED).body(ResponseDTO.success(dto, "파일/이미지 업로드 성공"));
 	}
 	
-	  // 9. 채팅방 초대/참여
+	  // 9. 채팅방 초대 가능한 사용자 목록 조회 (참여자 제외)
+    @Operation(summary = "채팅방 초대 가능한 사용자 목록 조회", description = "특정 채팅방에 참여하지 않은 모든 사용자 목록을 조회합니다.")
+    @GetMapping("/{roomId}/users/available")
+    public ResponseEntity<ResponseDTO<List<ChatUserResponseDTO>>> getAvailableUsersForInvite(
+            @PathVariable("roomId") Integer roomId
+    ) {
+        log.info("[getAvailableUsersForInvite] 요청 시작 - roomId: {}", roomId);
+        try {
+            // 채팅방 존재 확인
+            log.info("[getAvailableUsersForInvite] 채팅방 조회 시작");
+            ChatRoom chatRoom = chatRoomService.findById(roomId);
+            if (chatRoom == null) {
+                log.warn("[getAvailableUsersForInvite] 채팅방을 찾을 수 없음 - roomId: {}", roomId);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(ResponseDTO.error("채팅방을 찾을 수 없습니다."));
+            }
+            log.info("[getAvailableUsersForInvite] 채팅방 조회 성공 - roomId: {}, roomName: {}", roomId, chatRoom.getRoomName());
+            
+            // 현재 채팅방 참여자 ID 목록 조회
+            log.info("[getAvailableUsersForInvite] 참여자 목록 조회 시작");
+            List<Integer> participantIds = chatRoomService.getParticipantIds(roomId);
+            log.info("[getAvailableUsersForInvite] 채팅방 {} 참여자 수: {}", roomId, participantIds.size());
+            log.info("[getAvailableUsersForInvite] 참여자 ID 목록: {}", participantIds);
+            
+            // 모든 사용자 조회 (Department와 함께 로드하여 Lazy Loading 방지)
+            log.info("[getAvailableUsersForInvite] 전체 사용자 조회 시작");
+            List<User> allUsers;
+            try {
+                allUsers = userRepository.findAllWithDepartment();
+                log.info("[getAvailableUsersForInvite] 전체 사용자 수: {}", allUsers.size());
+            } catch (Exception e) {
+                log.error("[getAvailableUsersForInvite] 전체 사용자 조회 실패", e);
+                // Fallback: 일반 findAll 사용
+                log.info("[getAvailableUsersForInvite] Fallback: findAll() 사용");
+                allUsers = userRepository.findAll();
+                log.info("[getAvailableUsersForInvite] Fallback 전체 사용자 수: {}", allUsers.size());
+            }
+            
+            // 참여자 제외한 사용자만 필터링
+            log.info("[getAvailableUsersForInvite] 참여자 제외 필터링 시작");
+            List<User> availableUsers = allUsers.stream()
+                    .filter(user -> {
+                        if (user == null || user.getId() == null) {
+                            log.warn("[getAvailableUsersForInvite] null 사용자 발견");
+                            return false;
+                        }
+                        return true;
+                    })
+                    .filter(user -> !participantIds.contains(user.getId()))
+                    .collect(Collectors.toList());
+            
+            log.info("[getAvailableUsersForInvite] 참여자 제외 후 사용자 수: {}", availableUsers.size());
+            
+            // DTO 변환 (프로필 이미지 URL 포함)
+            log.info("[getAvailableUsersForInvite] DTO 변환 시작");
+            List<ChatUserResponseDTO> dtoList = new ArrayList<>();
+            for (User user : availableUsers) {
+                try {
+                    ChatUserResponseDTO dto = ChatUserResponseDTO.fromEntity(user, s3Service);
+                    if (dto != null) {
+                        dtoList.add(dto);
+                    }
+                } catch (Exception e) {
+                    log.error("[getAvailableUsersForInvite] 사용자 DTO 변환 실패 - userId: {}, error: {}", 
+                            user.getId(), e.getMessage(), e);
+                    // 개별 사용자 변환 실패해도 계속 진행
+                }
+            }
+            
+            log.info("[getAvailableUsersForInvite] 채팅방 {} 초대 가능한 사용자 수: {}", roomId, dtoList.size());
+            if (dtoList.size() > 0) {
+                log.info("[getAvailableUsersForInvite] 첫 번째 사용자: id={}, name={}, email={}", 
+                        dtoList.get(0).getId(), dtoList.get(0).getName(), dtoList.get(0).getEmail());
+            }
+            
+            log.info("[getAvailableUsersForInvite] 요청 성공 - roomId: {}, 사용자 수: {}", roomId, dtoList.size());
+            return ResponseEntity.ok(ResponseDTO.success(dtoList, "초대 가능한 사용자 목록 조회 성공"));
+        } catch (Exception e) {
+            log.error("[getAvailableUsersForInvite] 초대 가능한 사용자 목록 조회 실패 - roomId: {}", roomId, e);
+            log.error("[getAvailableUsersForInvite] 에러 타입: {}", e.getClass().getName());
+            log.error("[getAvailableUsersForInvite] 에러 메시지: {}", e.getMessage());
+            if (e.getCause() != null) {
+                log.error("[getAvailableUsersForInvite] 원인: {}", e.getCause().getMessage());
+            }
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ResponseDTO.error("초대 가능한 사용자 목록 조회에 실패했습니다: " + e.getMessage()));
+        }
+    }
+    
+	  // 10. 채팅방 초대/참여
     @Operation(summary = "채팅방에 사용자 초대", description = "채팅방에 사용자를 초대하고 참여 메시지를 전송합니다.")
     @PostMapping("/{roomId}/invite")
     public ResponseEntity<ResponseDTO<List<ChatUserResponseDTO>>> inviteUsersToChatRoom(
@@ -749,10 +838,12 @@ public class ChatMessageController {
         for (User invited : invitedUsers) {
             ChatRoomUser cru = ChatRoomUser.createChatRoomUser(invited, chatRoom);
             chatRoomUserRepository.save(cru);
-            String joinMsg = invited.getName() + "의 사용자가 채팅방에 참여했습니다";
+            String joinMsg = invited.getName() + "님이 입장했습니다";
             chatRoomService.sendChatMessage(roomId, invited.getId(), joinMsg);
         }
-        List<ChatUserResponseDTO> dtoList = invitedUsers.stream().map(ChatUserResponseDTO::fromEntity).collect(Collectors.toList());
+        List<ChatUserResponseDTO> dtoList = invitedUsers.stream()
+                .map(user -> ChatUserResponseDTO.fromEntity(user, s3Service))
+                .collect(Collectors.toList());
         return ResponseEntity.ok(ResponseDTO.success(dtoList, "초대 및 참여 메시지 저장 성공"));
     }
     

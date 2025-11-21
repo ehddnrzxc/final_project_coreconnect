@@ -64,9 +64,49 @@ public class UserServiceImpl implements UserService {
   @Override
   @Transactional(readOnly = true)
   public List<UserDTO> findAllUsers() {
-    return userRepository.findAll()
+    // Department를 함께 로드하여 LazyInitializationException 방지
+    return userRepository.findAllWithDepartment()
         .stream()
-        .map(UserDTO::toDTO)
+        .map(user -> {
+          UserDTO dto = UserDTO.toDTO(user);
+          
+          // user.getProfileImageKey()를 직접 사용하여 S3 URL로 변환
+          String imageUrl = "";
+          String profileImageKey = user.getProfileImageKey();
+          
+          if (profileImageKey != null && !profileImageKey.isBlank()) {
+            try {
+              imageUrl = s3Service.getFileUrl(profileImageKey);
+              System.out.println("[UserServiceImpl.findAllUsers] userId: " + user.getId() + 
+                                ", profileImageKey: " + profileImageKey + 
+                                ", profileImageUrl: " + imageUrl.substring(0, Math.min(50, imageUrl.length())) + "...");
+            } catch (Exception e) {
+              System.err.println("[UserServiceImpl.findAllUsers] S3 URL 변환 실패: userId=" + user.getId() + 
+                               ", profileImageKey=" + profileImageKey + ", error=" + e.getMessage());
+              imageUrl = "";
+            }
+          } else {
+            System.out.println("[UserServiceImpl.findAllUsers] userId: " + user.getId() + 
+                             ", profileImageKey가 null 또는 빈 문자열");
+          }
+          
+          // profileImageUrl을 포함한 새 DTO 반환
+          return new UserDTO(
+              dto.id(),
+              dto.email(),
+              dto.name(),
+              dto.phone(),
+              dto.role(),
+              dto.status(),
+              dto.deptId(),
+              dto.deptName(),
+              dto.joinDate(),
+              dto.jobGrade(),
+              profileImageKey, // 원본 profileImageKey 사용
+              imageUrl,        // 변환된 S3 URL
+              dto.employeeNumber()
+          );
+        })
         .toList();
   }
 
@@ -76,7 +116,7 @@ public class UserServiceImpl implements UserService {
   public List<OrganizationUserResponseDTO> getOrganizationChart() {
     List<User> users = userRepository.findAllForOrganization();
     return users.stream()
-        .map(OrganizationUserResponseDTO::fromEntity)
+        .map(user -> OrganizationUserResponseDTO.fromEntity(user, s3Service))
         .collect(Collectors.toList());
   }
 
