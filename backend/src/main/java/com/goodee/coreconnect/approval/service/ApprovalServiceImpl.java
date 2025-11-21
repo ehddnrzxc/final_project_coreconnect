@@ -286,6 +286,7 @@ public class ApprovalServiceImpl implements ApprovalService {
    * 1-3. 임시저장 문서 수정 후 상신
    */
   @Override
+  @Transactional
   public Integer updateAndSubmitDocument(Integer documentId, DocumentUpdateRequestDTO requestDTO,
       List<MultipartFile> files, String email) {
     User drafter = findUserByEmail(email);

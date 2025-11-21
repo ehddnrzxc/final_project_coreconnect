@@ -14,6 +14,11 @@ import lombok.Setter;
 public class DocumentUpdateRequestDTO {
   
   /**
+   * 양식 ID
+   */
+  private Integer templateId;
+  
+  /**
    * 문서 제목
    */
   @Size(max = 100, message = "제목을 100자를 초과할 수 없습니다.")
