@@ -18,6 +18,7 @@ import {
   Select,
   MenuItem,
   Chip,
+  TablePagination,
 } from "@mui/material";
 import { format } from "date-fns";
 import DocumentStatusChip from "../components/DocumentStatusChip";
@@ -37,14 +38,19 @@ function MyDocumentsPage() {
   const [statusFilter, setStatusFilter] = useState("전체");
   const navigate = useNavigate();
 
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
+
   useEffect(() => {
     const fetchDocuments = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const res = await getMyDocuments();
-        setDocuments(res.data || []);
+        const res = await getMyDocuments(page, rowsPerPage);
+        setDocuments(res.data.content || []);
+        setTotalCount(res.data.totalElements || 0);
       } catch (err) {
         console.error("내 상신함 조회 실패:", err);
         setError(
@@ -56,7 +62,16 @@ function MyDocumentsPage() {
     };
 
     fetchDocuments();
-  }, []);
+  }, [page, rowsPerPage]);
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = event => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
 
   const handleRowClick = (documentId) => {
     navigate(`/e-approval/doc/${documentId}`);
@@ -237,6 +252,16 @@ function MyDocumentsPage() {
           </TableBody>
         </Table>
       </TableContainer>
+      <TablePagination
+        component="div"
+        count={totalCount}
+        page={page}
+        onPageChange={handleChangePage}
+        rowsPerPage={rowsPerPage}
+        onRowsPerPageChange={handleChangeRowsPerPage}
+        rowsPerPageOptions={[5, 10, 25]}
+        labelRowsPerPage="페이지당 줄 수:"
+      />
     </Box>
   );
 }

@@ -32,7 +32,7 @@ export const updateDraft = (documentId, formData) => http.put(`/approvals/drafts
 export const updateDocument = (documentId, formData) => http.put(`/approvals/${documentId}`, formData);
 
 // 내 상신함 (내가 작성한 모든 문서)
-export const getMyDocuments = () => http.get("/approvals/my-documents");
+export const getMyDocuments = (page = 0, size = 10) => http.get(`/approvals/my-documents?page=${page}&size=${size}`);
 
 // 임시저장함
 export const getMyDraftBox = () => http.get("/approvals/drafts");
