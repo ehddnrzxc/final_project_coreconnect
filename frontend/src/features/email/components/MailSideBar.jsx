@@ -10,9 +10,13 @@ import { useNavigate } from "react-router-dom";
 import { MailCountContext } from "../../../App";
 import { emptyTrash } from "../api/emailApi";
 import MailWriteButton from "./ui/MailWriteButton";
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
+import ConfirmDialog from "../../../components/utils/ConfirmDialog";
 
 const MailSideBar = () => {
+  const { showSnack } = useSnackbarContext();
   const navigate = useNavigate();
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   // context 값 받아오기: draftCount, unreadCount, …, refreshDraftCount 등
   const {
     draftCount = 0,
@@ -33,16 +37,20 @@ const MailSideBar = () => {
   const goAllMailTab = () => navigate("/email?tab=all");
 
   // 휴지통 비우기 핸들러
-  const handleEmptyTrash = async (e) => {
+  const handleEmptyTrash = (e) => {
     e.stopPropagation();
-    if (!window.confirm("정말 휴지통을 비우시겠습니까? (되돌릴 수 없습니다)")) return;
+    setConfirmDialogOpen(true);
+  };
+
+  const handleConfirmEmptyTrash = async () => {
+    setConfirmDialogOpen(false);
     try {
       await emptyTrash();
       refreshDraftCount();
       refreshUnreadCount();
-      alert("휴지통이 비워졌습니다.");
+      showSnack("휴지통이 비워졌습니다.", 'success');
     } catch (err) {
-      alert("휴지통 비우기 중 오류가 발생했습니다.");
+      showSnack("휴지통 비우기 중 오류가 발생했습니다.", 'error');
       console.error(err);
     }
   };
@@ -262,6 +270,14 @@ const MailSideBar = () => {
           </List>
         </Box>
       </Box>
+      
+      <ConfirmDialog
+        open={confirmDialogOpen}
+        title="휴지통 비우기"
+        message="정말 휴지통을 비우시겠습니까? (되돌릴 수 없습니다)"
+        onConfirm={handleConfirmEmptyTrash}
+        onCancel={() => setConfirmDialogOpen(false)}
+      />
     </Box>
   );
 };

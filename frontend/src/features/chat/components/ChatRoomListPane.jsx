@@ -34,13 +34,13 @@ function ChatRoomListPane({
   // "전체"(0) 또는 "안읽음"(1) 탭 필터링
   const filteredRooms = tabIdx === 0 ? roomList : roomList.filter(r => r.unreadCount > 0);
 
-  // 참여자 수 기준 채팅방 유형 뱃지(1:1, Group) 반환용
+  // 참여자 수 기준 채팅방 유형 뱃지(1:1, 단체 채팅) 반환용
   function TypeBadge({ count }) {
     if (!count) return null; // 참여자 데이터 없음
     if (count === 2)
       return <Chip label="1:1" size="small" color="primary" sx={{ fontWeight: 700, ml: 0.5, flexShrink: 0 }} />;
     if (count > 2)
-      return <Chip label="Group" size="small" color="success" sx={{ fontWeight: 700, ml: 0.5, flexShrink: 0 }} />;
+      return <Chip label="단체 채팅" size="small" color="success" sx={{ fontWeight: 700, ml: 0.5, flexShrink: 0 }} />;
     return null;
   }
 
@@ -129,7 +129,7 @@ function ChatRoomListPane({
                       <Typography sx={{ fontWeight: 700, fontSize: 18, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {room.roomName}
                       </Typography>
-                      {/* 참여자수에 따라 1:1 또는 Group 뱃지 표시 - 채팅방 이름 바로 옆에 붙임 */}
+                      {/* 참여자수에 따라 1:1 또는 단체 채팅 뱃지 표시 - 채팅방 이름 바로 옆에 붙임 */}
                       {roomMemberCounts[room.roomId] && (
                         <TypeBadge count={roomMemberCounts[room.roomId]} />
                       )}
@@ -160,6 +160,21 @@ function ChatRoomListPane({
                 }
                 secondary={
                   <Box component="span" sx={{ display: "block" }}>
+                    {/* 초대된 채팅방 표시 */}
+                    {room.invited && (
+                      <Typography
+                        component="span"
+                        sx={{
+                          fontSize: 12,
+                          color: "#1976d2",
+                          fontWeight: 600,
+                          display: "block",
+                          mb: 0.5
+                        }}
+                      >
+                        내가 초대된 채팅방입니다
+                      </Typography>
+                    )}
                     <Typography
                       component="span"
                       sx={{

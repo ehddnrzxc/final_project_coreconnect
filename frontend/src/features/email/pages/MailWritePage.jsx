@@ -11,9 +11,7 @@ import {
   Autocomplete,
   Divider,
   Stack,
-  Tooltip,
-  Snackbar,
-  Alert
+  Tooltip
 } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
@@ -35,6 +33,7 @@ import {
 import { useLocation, useNavigate } from "react-router-dom";
 import { useContext } from "react";
 import { UserProfileContext } from "../../../App";
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 
 
 const emailSuggestions = [
@@ -47,6 +46,7 @@ const emailSuggestions = [
 ];
 
 function MailWritePage() {
+  const { showSnack } = useSnackbarContext();
   const [form, setForm] = useState({
     emailId: null,
     recipientAddress: [],
@@ -66,9 +66,6 @@ function MailWritePage() {
   const [ccInputValue, setCcInputValue] = useState("");
   const [bccInputValue, setBccInputValue] = useState("");
 
-  const [snackOpen, setSnackOpen] = useState(false);
-  const [snackSeverity, setSnackSeverity] = useState("success");
-  const [snackMessage, setSnackMessage] = useState("");
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -301,7 +298,7 @@ function MailWritePage() {
     setSavingDraft(true);
     try {
       if (!form.emailTitle) {
-        alert("임시저장하려면 제목은 입력해야 합니다.");
+        showSnack("임시저장하려면 제목은 입력해야 합니다.", "warning");
         setSavingDraft(false);
         return;
       }
@@ -334,9 +331,7 @@ function MailWritePage() {
         await saveDraftMail(draftData); // fallback: if API accepts JSON for drafts without new files
       }
 
-      setSnackSeverity("success");
-      setSnackMessage("임시저장되었습니다!");
-      setSnackOpen(true);
+      showSnack("임시저장되었습니다!", "success");
 
       setForm({
         emailId: null,
@@ -350,9 +345,7 @@ function MailWritePage() {
       setReservedAt(null);
     } catch (e) {
       console.error("saveDraft error:", e);
-      setSnackSeverity("error");
-      setSnackMessage("임시저장 실패: " + (e?.response?.data?.message || e.message || ""));
-      setSnackOpen(true);
+      showSnack("임시저장 실패: " + (e?.response?.data?.message || e.message || ""), "error");
     } finally {
       setSavingDraft(false);
     }
@@ -373,17 +366,17 @@ function MailWritePage() {
       }
       
       if (!validRecipients.length) {
-        alert("받는사람(수신자)을 입력해주세요.");
+        showSnack("받는사람(수신자)을 입력해주세요.", "warning");
         setSending(false);
         return;
       }
       if (!form.emailTitle) {
-        alert("제목을 입력해주세요.");
+        showSnack("제목을 입력해주세요.", "warning");
         setSending(false);
         return;
       }
       if (!form.emailContent) {
-        alert("본문을 입력해주세요.");
+        showSnack("본문을 입력해주세요.", "warning");
         setSending(false);
         return;
       }
@@ -454,9 +447,7 @@ function MailWritePage() {
       // IMPORTANT: do not set Content-Type header manually in sendMail; let browser set boundary.
       await sendMail(fd);
 
-      setSnackSeverity("success");
-      setSnackMessage(reservedAt ? "예약메일이 정상적으로 등록되었습니다!" : "메일이 정상적으로 발송되었습니다!");
-      setSnackOpen(true);
+      showSnack(reservedAt ? "예약메일이 정상적으로 등록되었습니다!" : "메일이 정상적으로 발송되었습니다!", "success");
 
       // reset form
       setForm({
@@ -475,18 +466,12 @@ function MailWritePage() {
       setBccInputValue("");
     } catch (e) {
       console.error("sendMail error:", e);
-      setSnackSeverity("error");
-      setSnackMessage("메일 전송 실패: " + (e?.response?.data?.message || e.message || "알 수 없는 오류"));
-      setSnackOpen(true);
+      showSnack("메일 전송 실패: " + (e?.response?.data?.message || e.message || "알 수 없는 오류"), "error");
     } finally {
       setSending(false);
     }
   };
 
-  const handleSnackClose = (event, reason) => {
-    if (reason === "clickaway") return;
-    setSnackOpen(false);
-  };
 
   return (
     <Box sx={{ py: 3, px: 4, position: 'relative' }}>
@@ -804,19 +789,6 @@ function MailWritePage() {
         </Box>
       </Paper>
 
-      <Snackbar 
-        open={snackOpen} 
-        autoHideDuration={5000} 
-        onClose={handleSnackClose}
-        anchorOrigin={{
-          vertical: 'top',
-          horizontal: 'center'
-        }}
-      >
-        <Alert onClose={handleSnackClose} severity={snackSeverity} sx={{ width: '100%' }}>
-          {snackMessage}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 }
