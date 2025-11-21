@@ -745,7 +745,7 @@ public class ChatMessageController {
             if (chatRoom == null) {
                 log.warn("[getAvailableUsersForInvite] 채팅방을 찾을 수 없음 - roomId: {}", roomId);
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(ResponseDTO.error("채팅방을 찾을 수 없습니다."));
+                        .body(ResponseDTO.error(404, "채팅방을 찾을 수 없습니다."));
             }
             log.info("[getAvailableUsersForInvite] 채팅방 조회 성공 - roomId: {}, roomName: {}", roomId, chatRoom.getRoomName());
             

@@ -1,13 +1,19 @@
 package com.goodee.coreconnect.user.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.goodee.coreconnect.common.service.S3Service;
 import com.goodee.coreconnect.user.entity.User;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
+@Setter
+@NoArgsConstructor
 @AllArgsConstructor // Service에서 생성자를 편하게 쓰기 위해 추가
+@JsonInclude(JsonInclude.Include.ALWAYS) // null 값도 JSON에 포함되도록 설정
 public class OrganizationUserResponseDTO {
 
   private Integer userId;
@@ -34,26 +40,36 @@ public class OrganizationUserResponseDTO {
             : "N/A";
 
     // 프로필 이미지 URL 변환 (user_profile_image_key → S3 URL)
-    String profileImageUrl = "";
+    String profileImageUrl = null; // null로 초기화하여 JSON에 명시적으로 포함되도록 함
     String profileImageKey = user.getProfileImageKey();
     
     // 디버깅: profileImageKey 확인
     System.out.println("[OrganizationUserResponseDTO.fromEntity] userId: " + user.getId() + 
                       ", name: " + user.getName() + 
-                      ", profileImageKey: " + profileImageKey);
+                      ", profileImageKey: " + profileImageKey +
+                      ", s3Service: " + (s3Service != null ? "존재" : "null"));
     
     if (profileImageKey != null && !profileImageKey.isBlank() && s3Service != null) {
       try {
         profileImageUrl = s3Service.getFileUrl(profileImageKey);
-        System.out.println("[OrganizationUserResponseDTO.fromEntity] profileImageUrl 생성 성공: " + 
-                          (profileImageUrl != null ? profileImageUrl.substring(0, Math.min(50, profileImageUrl.length())) + "..." : "null"));
+        System.out.println("[OrganizationUserResponseDTO.fromEntity] ✅ profileImageUrl 생성 성공 - userId: " + user.getId() + 
+                          ", name: " + user.getName() + 
+                          ", url: " + (profileImageUrl != null ? profileImageUrl.substring(0, Math.min(80, profileImageUrl.length())) + "..." : "null"));
       } catch (Exception e) {
-        System.err.println("[OrganizationUserResponseDTO.fromEntity] S3 URL 변환 실패: userId=" + user.getId() + 
-                         ", profileImageKey=" + profileImageKey + ", error=" + e.getMessage());
-        profileImageUrl = ""; // 예외 발생 시 빈 문자열
+        System.err.println("[OrganizationUserResponseDTO.fromEntity] ❌ S3 URL 변환 실패: userId=" + user.getId() + 
+                         ", name=" + user.getName() +
+                         ", profileImageKey=" + profileImageKey + 
+                         ", error=" + e.getMessage());
+        e.printStackTrace();
+        profileImageUrl = null; // 예외 발생 시 null로 설정
       }
     } else {
-      System.out.println("[OrganizationUserResponseDTO.fromEntity] profileImageKey가 null 또는 빈 문자열이거나 s3Service가 null");
+      String reason = "";
+      if (profileImageKey == null) reason = "profileImageKey가 null";
+      else if (profileImageKey.isBlank()) reason = "profileImageKey가 빈 문자열";
+      else if (s3Service == null) reason = "s3Service가 null";
+      System.out.println("[OrganizationUserResponseDTO.fromEntity] ⚠️ 프로필 이미지 URL 생성 불가 - userId: " + user.getId() + 
+                        ", name: " + user.getName() + ", 이유: " + reason);
     }
 
     return new OrganizationUserResponseDTO(
