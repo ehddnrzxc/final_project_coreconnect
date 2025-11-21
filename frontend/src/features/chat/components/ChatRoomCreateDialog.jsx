@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, Button, Box, Typography, Radio, RadioGroup, FormControlLabel, 
-  Chip, List, ListItem, ListItemButton, ListItemAvatar, ListItemText, 
+  TextField, Button, Box, Typography, Radio, RadioGroup, FormControlLabel,
+  Chip, List, ListItem, ListItemButton, ListItemAvatar, ListItemText,
   Checkbox, Avatar, CircularProgress
 } from "@mui/material";
 import http from "../../../api/http";
@@ -11,7 +11,7 @@ import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 // open: 다이얼로그 show/hide
 // onClose: 다이얼로그 닫기 콜백
 // onCreate: 생성 버튼 눌렀을 때 콜백. 인자로 { roomName, roomType: boolean, userIds: number[] }를 넘겨줌
-function ChatRoomCreateDialog({ open, onClose, onCreate }) {
+function ChatRoomCreateDialog({ open, onClose, onCreate, presetUsers }) {
   const { showSnack } = useSnackbarContext();
   const [roomName, setRoomName] = useState("");
   const [roomType, setRoomType] = useState("group"); // "group" or "alone"
@@ -21,25 +21,32 @@ function ChatRoomCreateDialog({ open, onClose, onCreate }) {
   const [allUsers, setAllUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
 
+  // 조직도에서 넘어온 presetUsers 적용
+  useEffect(() => {
+    if (open && presetUsers && Array.isArray(presetUsers)) {
+      setSelectedUsers(presetUsers);
+    }
+  }, [open, presetUsers]);
+
   // 사용자 목록 DB에서 가져오기
   useEffect(() => {
     if (open) {
       setLoadingUsers(true);
       setError(""); // 에러 초기화
-      
+
       // 여러 API를 시도하는 fallback 로직
       const fetchUsers = async () => {
         try {
           // 1순위: /user/organization (조직도 API - 부서 정보 포함)
           let res = await http.get("/user/organization");
           let users = [];
-          
+
           if (Array.isArray(res.data)) {
             users = res.data;
           } else if (res.data?.data && Array.isArray(res.data.data)) {
             users = res.data.data;
           }
-          
+
           if (users.length > 0) {
             console.log("✅ [ChatRoomCreateDialog] /user/organization에서 사용자 조회 성공:", users.length);
             // 프로필 이미지 URL 확인을 위한 디버깅
@@ -47,13 +54,13 @@ function ChatRoomCreateDialog({ open, onClose, onCreate }) {
               // 모든 사용자의 profileImageUrl 상태 확인
               const usersWithImage = users.filter(u => u.profileImageUrl && u.profileImageUrl.trim() !== '' && u.profileImageUrl.startsWith('http'));
               const usersWithoutImage = users.filter(u => !u.profileImageUrl || u.profileImageUrl.trim() === '' || !u.profileImageUrl.startsWith('http'));
-              
+
               console.log("🔍 [ChatRoomCreateDialog] /user/organization 프로필 이미지 통계:", {
                 전체사용자수: users.length,
                 이미지있는사용자수: usersWithImage.length,
                 이미지없는사용자수: usersWithoutImage.length
               });
-              
+
               // 첫 번째 사용자 상세 정보
               console.log("🔍 [ChatRoomCreateDialog] /user/organization 첫 번째 사용자 샘플:", {
                 userId: users[0].userId,
@@ -66,7 +73,7 @@ function ChatRoomCreateDialog({ open, onClose, onCreate }) {
                 전체객체: users[0], // 전체 객체 확인
                 모든키: Object.keys(users[0]) // 객체의 모든 키 확인
               });
-              
+
               // 실제로 이미지 URL이 있는 사용자 찾기
               if (usersWithImage.length > 0) {
                 console.log("✅ [ChatRoomCreateDialog] 프로필 이미지가 있는 사용자 발견:", usersWithImage.map(u => ({
@@ -76,7 +83,7 @@ function ChatRoomCreateDialog({ open, onClose, onCreate }) {
               } else {
                 console.warn("⚠️ [ChatRoomCreateDialog] 프로필 이미지가 있는 사용자가 없습니다.");
                 // 이미지가 없는 사용자들의 profileImageUrl 값 확인
-                console.log("🔍 [ChatRoomCreateDialog] 이미지가 없는 사용자들의 profileImageUrl 값:", 
+                console.log("🔍 [ChatRoomCreateDialog] 이미지가 없는 사용자들의 profileImageUrl 값:",
                   usersWithoutImage.slice(0, 3).map(u => ({
                     name: u.name,
                     profileImageUrl: u.profileImageUrl,
@@ -92,18 +99,18 @@ function ChatRoomCreateDialog({ open, onClose, onCreate }) {
         } catch (err) {
           console.log("⚠️ [ChatRoomCreateDialog] /user/organization 실패, 다음 API 시도:", err.message);
         }
-        
+
         try {
           // 2순위: /admin/users (관리자 API)
           let res = await http.get("/admin/users");
           let users = [];
-          
+
           if (Array.isArray(res.data)) {
             users = res.data;
           } else if (res.data?.data && Array.isArray(res.data.data)) {
             users = res.data.data;
           }
-          
+
           if (users.length > 0) {
             console.log("✅ [ChatRoomCreateDialog] /admin/users에서 사용자 조회 성공:", users.length);
             // 프로필 이미지 URL 확인을 위한 디버깅
@@ -136,18 +143,18 @@ function ChatRoomCreateDialog({ open, onClose, onCreate }) {
         } catch (err) {
           console.log("⚠️ [ChatRoomCreateDialog] /admin/users 실패, 다음 API 시도:", err.message);
         }
-        
+
         try {
           // 3순위: /user/list
           let res = await http.get("/user/list");
           let users = [];
-          
+
           if (Array.isArray(res.data)) {
             users = res.data;
           } else if (res.data?.data && Array.isArray(res.data.data)) {
             users = res.data.data;
           }
-          
+
           if (users.length > 0) {
             console.log("✅ [ChatRoomCreateDialog] /user/list에서 사용자 조회 성공:", users.length);
             // 프로필 이미지 URL 확인을 위한 디버깅
@@ -180,18 +187,18 @@ function ChatRoomCreateDialog({ open, onClose, onCreate }) {
         } catch (err) {
           console.log("⚠️ [ChatRoomCreateDialog] /user/list 실패, 다음 API 시도:", err.message);
         }
-        
+
         try {
           // 4순위: /user (기본 API)
           let res = await http.get("/user");
           let users = [];
-          
+
           if (Array.isArray(res.data)) {
             users = res.data;
           } else if (res.data?.data && Array.isArray(res.data.data)) {
             users = res.data.data;
           }
-          
+
           if (users.length > 0) {
             console.log("✅ [ChatRoomCreateDialog] /user에서 사용자 조회 성공:", users.length);
             setAllUsers(users);
@@ -201,14 +208,14 @@ function ChatRoomCreateDialog({ open, onClose, onCreate }) {
         } catch (err) {
           console.log("⚠️ [ChatRoomCreateDialog] /user 실패:", err.message);
         }
-        
+
         // 모든 API 실패
         console.error("❌ [ChatRoomCreateDialog] 모든 사용자 목록 API 실패");
         setAllUsers([]);
         showSnack("사용자 목록을 불러오는데 실패했습니다.", "error");
         setLoadingUsers(false);
       };
-      
+
       fetchUsers();
     } else {
       // 다이얼로그 닫을 때 초기화
@@ -220,27 +227,27 @@ function ChatRoomCreateDialog({ open, onClose, onCreate }) {
       setAllUsers([]);
     }
   }, [open, showSnack]);
-  
+
   // 검색 필터링
   const filteredUsers = useMemo(() => {
     if (searchTerm.trim() === "") {
       return allUsers;
     }
-    
+
     const searchLower = searchTerm.toLowerCase();
     return allUsers.filter((user) => {
       const nameMatch = user.name && user.name.toLowerCase().includes(searchLower);
       const emailMatch = user.email && user.email.toLowerCase().includes(searchLower);
       // jobGrade (UserDTO) 또는 positionName (OrganizationUserResponseDTO) 지원
       const jobGradeMatch = (user.jobGrade && getJobGradeLabel(user.jobGrade).toLowerCase().includes(searchLower)) ||
-                           (user.positionName && user.positionName.toLowerCase().includes(searchLower));
+        (user.positionName && user.positionName.toLowerCase().includes(searchLower));
       // deptName 또는 departmentName 지원
-      const deptMatch = (user.deptName || user.departmentName) && 
-                       (user.deptName || user.departmentName).toLowerCase().includes(searchLower);
+      const deptMatch = (user.deptName || user.departmentName) &&
+        (user.deptName || user.departmentName).toLowerCase().includes(searchLower);
       return nameMatch || emailMatch || jobGradeMatch || deptMatch;
     });
   }, [allUsers, searchTerm]);
-  
+
   // 사용자 선택/해제 핸들러
   const handleToggleUser = (user) => {
     // userId 또는 id 필드 사용 (OrganizationUserResponseDTO는 userId, UserDTO는 id)
@@ -249,10 +256,10 @@ function ChatRoomCreateDialog({ open, onClose, onCreate }) {
       console.error("사용자 ID가 없습니다:", user);
       return;
     }
-    
+
     setSelectedUsers((prev) => {
       const isSelected = prev.some(u => (u.userId || u.id) === userId);
-      
+
       if (isSelected) {
         // 이미 선택된 경우 제거
         return prev.filter(u => (u.userId || u.id) !== userId);
@@ -265,13 +272,13 @@ function ChatRoomCreateDialog({ open, onClose, onCreate }) {
         return [...prev, user];
       }
     });
-    
+
     // 에러 초기화는 콜백 밖에서 처리
     if (error) {
       setError("");
     }
   };
-  
+
   // 선택된 사용자 제거 (Chip X 버튼)
   const handleRemoveUser = (userToRemove) => {
     const userId = userToRemove.userId || userToRemove.id;
@@ -400,7 +407,7 @@ function ChatRoomCreateDialog({ open, onClose, onCreate }) {
               <FormControlLabel value="alone" control={<Radio />} label="1:1" />
             </RadioGroup>
           </Box>
-          
+
           {/* 선택된 사용자 표시 */}
           {selectedUsers.length > 0 && (
             <Box mt={2}>
@@ -416,10 +423,10 @@ function ChatRoomCreateDialog({ open, onClose, onCreate }) {
                       avatar={
                         <Avatar
                           src={
-                            user.profileImageUrl && 
-                            user.profileImageUrl.trim() !== '' && 
-                            user.profileImageUrl.startsWith('http') 
-                              ? user.profileImageUrl 
+                            user.profileImageUrl &&
+                              user.profileImageUrl.trim() !== '' &&
+                              user.profileImageUrl.startsWith('http')
+                              ? user.profileImageUrl
                               : undefined
                           }
                           sx={{ bgcolor: "#10c16d", width: 24, height: 24 }}
@@ -434,9 +441,9 @@ function ChatRoomCreateDialog({ open, onClose, onCreate }) {
                             }
                           }}
                         >
-                          {(!user.profileImageUrl || 
-                            user.profileImageUrl.trim() === '' || 
-                            !user.profileImageUrl.startsWith('http')) && 
+                          {(!user.profileImageUrl ||
+                            user.profileImageUrl.trim() === '' ||
+                            !user.profileImageUrl.startsWith('http')) &&
                             (user.name?.[0]?.toUpperCase() || "?")}
                         </Avatar>
                       }
@@ -451,7 +458,7 @@ function ChatRoomCreateDialog({ open, onClose, onCreate }) {
             </Box>
           )}
         </Box>
-        
+
         {/* 참여자 선택 (체크박스 리스트) */}
         <Box sx={{ borderTop: "1px solid #e3e8ef" }}>
           <Box sx={{ p: 2, borderBottom: "1px solid #e3e8ef" }}>
@@ -471,7 +478,7 @@ function ChatRoomCreateDialog({ open, onClose, onCreate }) {
               }}
             />
           </Box>
-          
+
           {loadingUsers ? (
             <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: 200 }}>
               <CircularProgress />
@@ -497,75 +504,75 @@ function ChatRoomCreateDialog({ open, onClose, onCreate }) {
                       },
                     }}
                   >
-                  <ListItemButton
-                    onClick={(e) => {
-                      // 체크박스가 아닌 영역 클릭 시에만 토글
-                      if (e.target.type !== 'checkbox' && !e.target.closest('input[type="checkbox"]')) {
-                        handleToggleUser(user);
-                      }
-                    }}
-                    sx={{ py: 1.5, px: 2 }}
-                  >
-                    <Checkbox
-                      checked={isUserSelected(user)}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        handleToggleUser(user);
-                      }}
+                    <ListItemButton
                       onClick={(e) => {
-                        e.stopPropagation();
-                      }}
-                      sx={{ mr: 1, pointerEvents: 'auto' }}
-                    />
-                    <ListItemAvatar>
-                      <Avatar
-                        src={
-                          user.profileImageUrl && 
-                          user.profileImageUrl.trim() !== '' && 
-                          user.profileImageUrl.startsWith('http') 
-                            ? user.profileImageUrl 
-                            : undefined
+                        // 체크박스가 아닌 영역 클릭 시에만 토글
+                        if (e.target.type !== 'checkbox' && !e.target.closest('input[type="checkbox"]')) {
+                          handleToggleUser(user);
                         }
-                        sx={{ bgcolor: "#10c16d", width: 40, height: 40 }}
-                        imgProps={{
-                          onError: (e) => {
-                            // 이미지 로드 실패 시 숨기고 이니셜 표시
-                            console.warn("프로필 이미지 로드 실패:", user.profileImageUrl, "사용자:", user.name);
-                            e.target.style.display = "none";
-                          },
-                          onLoad: () => {
-                            console.log("프로필 이미지 로드 성공:", user.profileImageUrl, "사용자:", user.name);
-                          }
+                      }}
+                      sx={{ py: 1.5, px: 2 }}
+                    >
+                      <Checkbox
+                        checked={isUserSelected(user)}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          handleToggleUser(user);
                         }}
-                      >
-                        {(!user.profileImageUrl || 
-                          user.profileImageUrl.trim() === '' || 
-                          !user.profileImageUrl.startsWith('http')) && 
-                          (user.name?.[0]?.toUpperCase() || "?")}
-                      </Avatar>
-                    </ListItemAvatar>
-                    <ListItemText
-                      primary={
-                        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                          {user.name || "이름 없음"}
-                        </Typography>
-                      }
-                      secondary={
-                        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
-                          <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                            {[
-                              user.jobGrade ? getJobGradeLabel(user.jobGrade) : user.positionName,
-                              user.deptName || user.departmentName
-                            ].filter(Boolean).join(" / ") || "직급 / 부서 정보 없음"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
+                        sx={{ mr: 1, pointerEvents: 'auto' }}
+                      />
+                      <ListItemAvatar>
+                        <Avatar
+                          src={
+                            user.profileImageUrl &&
+                              user.profileImageUrl.trim() !== '' &&
+                              user.profileImageUrl.startsWith('http')
+                              ? user.profileImageUrl
+                              : undefined
+                          }
+                          sx={{ bgcolor: "#10c16d", width: 40, height: 40 }}
+                          imgProps={{
+                            onError: (e) => {
+                              // 이미지 로드 실패 시 숨기고 이니셜 표시
+                              console.warn("프로필 이미지 로드 실패:", user.profileImageUrl, "사용자:", user.name);
+                              e.target.style.display = "none";
+                            },
+                            onLoad: () => {
+                              console.log("프로필 이미지 로드 성공:", user.profileImageUrl, "사용자:", user.name);
+                            }
+                          }}
+                        >
+                          {(!user.profileImageUrl ||
+                            user.profileImageUrl.trim() === '' ||
+                            !user.profileImageUrl.startsWith('http')) &&
+                            (user.name?.[0]?.toUpperCase() || "?")}
+                        </Avatar>
+                      </ListItemAvatar>
+                      <ListItemText
+                        primary={
+                          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                            {user.name || "이름 없음"}
                           </Typography>
-                          <Typography variant="caption" sx={{ color: "text.secondary", fontSize: "0.75rem" }}>
-                            {user.email || "이메일 없음"}
-                          </Typography>
-                        </Box>
-                      }
-                    />
-                  </ListItemButton>
-                </ListItem>
+                        }
+                        secondary={
+                          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
+                            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                              {[
+                                user.jobGrade ? getJobGradeLabel(user.jobGrade) : user.positionName,
+                                user.deptName || user.departmentName
+                              ].filter(Boolean).join(" / ") || "직급 / 부서 정보 없음"}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: "text.secondary", fontSize: "0.75rem" }}>
+                              {user.email || "이메일 없음"}
+                            </Typography>
+                          </Box>
+                        }
+                      />
+                    </ListItemButton>
+                  </ListItem>
                 );
               })}
             </List>

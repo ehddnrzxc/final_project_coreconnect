@@ -6,6 +6,7 @@ import CommentIcon from "@mui/icons-material/Comment";
 import RecentViewedBoards from "./RecentViewedBoards";
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
+import { getJobGradeLabel } from "../../../utils/labelUtils";
 
 
 const BoardListPage = () => {
@@ -248,8 +249,8 @@ const BoardListPage = () => {
                 flexDirection: "column",
               }}
             >
-              <Box sx={{ display: "flex", width: "100%" }}>
-                <Box sx={{ flex: 4, pr: 1 }}>
+              <Box sx={{ display: "flex", width: "100%", minWidth: 0 }}>
+                <Box sx={{ flex: 4, pr: 1, minWidth: 0 }}>
                   <Stack direction="row" alignItems="center" spacing={1}>
                     <Typography variant="body2" color="text.secondary">
                       {b.categoryName || "전체 게시판"}
@@ -321,7 +322,7 @@ const BoardListPage = () => {
 
                     <Typography variant="caption" color="text.secondary">
                       {b.writerName}
-                      {b.writerJobGrade ? ` ${b.writerJobGrade}` : ""}
+                      {b.writerJobGrade ? ` ${getJobGradeLabel(b.writerJobGrade)}` : ""}
                       {" / "}
                       {formatDate(b.createdAt)}
                       {" / 조회수 "}

@@ -13,6 +13,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import DownloadIcon from "@mui/icons-material/Download";
 import DescriptionIcon from "@mui/icons-material/Description";
 import { UserProfileContext } from "../../../App";
+import { getJobGradeLabel } from "../../../utils/labelUtils";
 
 
 // 파일이 이미지인지 판단하는 헬퍼 함수 (확장자 기준)
@@ -304,11 +305,11 @@ const BoardDetailPage = () => {
         {/* 이름 + 직급 + 날짜 + 조회수 */}
         <Typography variant="body2" color="text.secondary">
           {board.writerName}
-          {board.writerJobGrade ? ` ${board.writerJobGrade}` : ""}
-          {" | "}
+          {board.writerJobGrade ? ` ${getJobGradeLabel(board.writerJobGrade)}` : ""}
+          {" / "}
           {formatDateTime(board.createdAt)}
-          {" | 조회수 "}
-          {board.viewCount ?? 0}
+          {" / 조회 "}
+          {board.viewCount}
         </Typography>
       </Stack>
 
@@ -585,7 +586,7 @@ const BoardDetailPage = () => {
                       />
                       <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                         {r.writerName || "익명"}
-                        {r.writerJobGrade ? ` ${r.writerJobGrade}` : ""}
+                        {r.writerJobGrade ? ` ${getJobGradeLabel(r.writerJobGrade)}` : ""}
                         <Typography component="span" variant="caption" sx={{ color: "text.secondary" }}>
                           (
                           {r.updatedAt
@@ -771,7 +772,7 @@ const BoardDetailPage = () => {
                         />
                         <Typography variant="subtitle2">
                           ↳ {child.writerName}
-                          {child.writerJobGrade ? ` ${child.writerJobGrade}` : ""}
+                          {child.writerJobGrade ? ` ${getJobGradeLabel(child.writerJobGrade)}` : ""}
                           <Typography component="span" variant="caption" sx={{ color: "text.secondary" }}>
                             (
                             {child.updatedAt
@@ -856,7 +857,7 @@ const BoardDetailPage = () => {
                           overflowWrap: "break-word",
                         }}
                       >
-                        {r.content?.trim() ? r.content : "내용 없음"}
+                        {child.content?.trim() ? child.content : "내용 없음"}
                       </Typography>
                     )}
                   </Paper>

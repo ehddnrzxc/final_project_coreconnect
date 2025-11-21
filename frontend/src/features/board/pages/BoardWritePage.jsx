@@ -315,7 +315,7 @@ const BoardWritePage = () => {
             </FormControl>
           ) : (
             <Typography sx={{ mb: 2, fontWeight: 600 }}>
-              📂 {form.categoryName}
+              {form.categoryName}
             </Typography>
           )}
 
