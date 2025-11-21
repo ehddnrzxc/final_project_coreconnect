@@ -37,11 +37,19 @@ const MailInboxPage = () => {
   const [sortOrder, setSortOrder] = useState("desc"); // 날짜 정렬 순서: "desc" (내림차순, 최신순), "asc" (오름차순, 오래된순)
   const [isRefreshing, setIsRefreshing] = useState(false); // 새로고침 로딩 상태
   const pendingReadIdsRef = useRef(new Set());
-  const { userProfile } = useContext(UserProfileContext) || {};
+  const userProfileContext = useContext(UserProfileContext);
+  const { userProfile } = userProfileContext || {};
   const userEmail = userProfile?.email;
   const navigate = useNavigate();
   const location = useLocation();
   const mailCountContext = useContext(MailCountContext);
+  
+  // 디버깅: userProfile과 userEmail 확인
+  useEffect(() => {
+    console.log("[MailInboxPage] userProfileContext:", userProfileContext);
+    console.log("[MailInboxPage] userProfile:", userProfile);
+    console.log("[MailInboxPage] userEmail:", userEmail);
+  }, [userProfileContext, userProfile, userEmail]);
 
   // 쿼리파라미터에 따라 탭 상태 반영
   useEffect(() => {
@@ -78,7 +86,26 @@ const MailInboxPage = () => {
     keywordParam = appliedKeyword,
     searchTypeParam = appliedSearchType
   ) => {
-    if (!userEmail) return;
+    if (!userEmail) {
+      console.warn("[MailInboxPage] loadInbox: userEmail이 없어서 메일 목록을 불러오지 않습니다.", {
+        userProfile,
+        userEmail,
+        userProfileContext
+      });
+      setMails([]);
+      setTotal(0);
+      return;
+    }
+    
+    console.log("[MailInboxPage] loadInbox 호출:", {
+      userEmail,
+      pageIdx,
+      pageSize,
+      activeTab,
+      keywordParam,
+      searchTypeParam
+    });
+    
     try {
       // 서버에서 삭제된 메일이 제외되어 반환됨(DB/JPQL 필터)
       const res = await fetchInbox(
@@ -91,8 +118,17 @@ const MailInboxPage = () => {
         searchTypeParam,
         keywordParam
       );
+      
+      console.log("[MailInboxPage] fetchInbox 응답:", res);
+      
       const boxData = res?.data?.data;
       const mailList = Array.isArray(boxData?.content) ? boxData.content : [];
+      
+      console.log("[MailInboxPage] 메일 목록:", {
+        mailListLength: mailList.length,
+        totalElements: boxData?.totalElements,
+        boxData
+      });
 
       if (activeTab === "unread") {
         if (pendingReadIdsRef.current.size > 0) {
