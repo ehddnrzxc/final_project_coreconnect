@@ -49,6 +49,7 @@ export default function ProfileCard() {
     (async () => {
       try {
         const list = await getMyTodaySchedules();
+        console.log("오늘 일정 리스트:", list);
         setTodayScheduleCount(list.length);
         setScheduleError(null);
       } catch (err) {
@@ -141,11 +142,22 @@ export default function ProfileCard() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
-      setError("이미지 파일을 선택해주세요.");
+    // 허용된 이미지 형식 검증
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      setError("지원하는 이미지 형식은 JPG, PNG, GIF, WEBP입니다.");
       event.target.value = "";
       return;
     }
+
+    // 파일 크기 검증 (5MB = 5 * 1024 * 1024 bytes)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      setError("파일 크기는 5MB 이하여야 합니다.");
+      event.target.value = "";
+      return;
+    }
+
     if (!email) {
       setError("로그인 정보가 없습니다. 다시 로그인해주세요.");
       event.target.value = "";
@@ -168,7 +180,9 @@ export default function ProfileCard() {
       }
     } catch (err) {
       console.error("이미지 업로드 실패:", err);
-      setError("이미지 업로드에 실패했습니다.");
+      // 서버에서 반환한 에러 메시지가 있으면 사용, 없으면 기본 메시지
+      const errorMessage = err.response?.data?.message || err.message || "이미지 업로드에 실패했습니다.";
+      setError(errorMessage);
     } finally {
       setLoading(false);
       event.target.value = ""; // 같은 파일 재선택 가능
@@ -262,6 +276,15 @@ export default function ProfileCard() {
               disabled={loading}
             />
           </Box>
+          {error && (
+            <Typography
+              variant="body2"
+              color="error"
+              sx={{ fontSize: 12, mt: 0.5 }}
+            >
+              {error}
+            </Typography>
+          )}
         </Box>
 
         {/* 이름 / 부서 */}
@@ -348,16 +371,6 @@ export default function ProfileCard() {
           );
         })}
       </List>
-
-      {error && (
-        <Typography
-          variant="body2"
-          color="error"
-          sx={{ mt: 1, whiteSpace: "pre-line" }}
-        >
-          {error}
-        </Typography>
-      )}
     </Card>
   );
 };

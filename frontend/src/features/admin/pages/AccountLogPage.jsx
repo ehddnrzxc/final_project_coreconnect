@@ -22,7 +22,7 @@ import {
 } from "@mui/material";
 import HistoryIcon from "@mui/icons-material/History";
 import { getAccountLogs } from "../api/adminAPI";
-import { formatKoreanDate } from "../../../utils/TimeUtils";
+import { formatDateTime } from "../../../utils/TimeUtils";
 import { getLogActionTypeLabel } from "../../../utils/labelUtils";
 
 export default function AccountLogPage() {
@@ -92,30 +92,37 @@ export default function AccountLogPage() {
       <Card sx={{ borderRadius: 3, boxShadow: "0 12px 24px rgba(15,23,42,0.05)" }}>
         <Box sx={{ p: 3 }}>
           {/* 필터 영역 */}
-          <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
-            <TextField
-              label="이메일 검색"
-              variant="outlined"
-              size="small"
-              value={emailFilter}
-              onChange={handleEmailFilterChange}
-              placeholder="이메일 입력"
-              sx={{ minWidth: 200 }}
-            />
-            <FormControl size="small" sx={{ minWidth: 150 }}>
-              <InputLabel>액션 타입</InputLabel>
-              <Select
-                value={actionTypeFilter}
-                label="액션 타입"
-                onChange={handleActionTypeFilterChange}
-              >
-                <MenuItem value="">전체</MenuItem>
-                <MenuItem value="LOGIN">로그인</MenuItem>
-                <MenuItem value="LOGOUT">로그아웃</MenuItem>
-                <MenuItem value="FAIL">로그인 실패</MenuItem>
-                <MenuItem value="REFRESH">토큰 재발급</MenuItem>
-              </Select>
-            </FormControl>
+          <Stack direction="row" spacing={2} sx={{ mb: 3 }} justifyContent="space-between" alignItems="center">
+            <Stack direction="row" spacing={2}>
+              <TextField
+                label="이메일 검색"
+                variant="outlined"
+                size="small"
+                value={emailFilter}
+                onChange={handleEmailFilterChange}
+                placeholder="이메일 입력"
+                sx={{ minWidth: 200 }}
+              />
+              <FormControl size="small" sx={{ minWidth: 150 }}>
+                <InputLabel>액션 타입</InputLabel>
+                <Select
+                  value={actionTypeFilter}
+                  label="액션 타입"
+                  onChange={handleActionTypeFilterChange}
+                >
+                  <MenuItem value="">전체</MenuItem>
+                  <MenuItem value="LOGIN">로그인</MenuItem>
+                  <MenuItem value="LOGOUT">로그아웃</MenuItem>
+                  <MenuItem value="FAIL">로그인 실패</MenuItem>
+                  <MenuItem value="REFRESH">토큰 재발급</MenuItem>
+                </Select>
+              </FormControl>
+            </Stack>
+            {!loading && logs.length > 0 && (
+              <Typography variant="body2" color="text.secondary">
+                전체 {totalElements}건
+              </Typography>
+            )}
           </Stack>
 
           {/* 테이블 */}
@@ -135,18 +142,19 @@ export default function AccountLogPage() {
                 <Table>
                   <TableHead>
                     <TableRow>
-                      <TableCell sx={{ fontWeight: 700 }}>시간</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>발생시간</TableCell>
                       <TableCell sx={{ fontWeight: 700 }}>사용자</TableCell>
                       <TableCell sx={{ fontWeight: 700 }}>이메일</TableCell>
                       <TableCell sx={{ fontWeight: 700 }}>액션</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>IP 주소</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>IPv4</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>IPv6</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {logs.map((log) => (
                       <TableRow key={log.logId} hover>
                         <TableCell>
-                          {formatKoreanDate(log.actionTime)}
+                          {formatDateTime(log.actionTime)}
                         </TableCell>
                         <TableCell>{log.userName}</TableCell>
                         <TableCell>{log.userEmail}</TableCell>
@@ -157,7 +165,8 @@ export default function AccountLogPage() {
                             size="small"
                           />
                         </TableCell>
-                        <TableCell>{log.ipAddress || "-"}</TableCell>
+                        <TableCell>{log.ipv4 || "-"}</TableCell>
+                        <TableCell>{log.ipv6 || "-"}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -190,10 +199,6 @@ export default function AccountLogPage() {
                   />
                 </Box>
               )}
-
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 2, textAlign: "center" }}>
-                전체 {totalElements}건
-              </Typography>
             </>
           )}
         </Box>

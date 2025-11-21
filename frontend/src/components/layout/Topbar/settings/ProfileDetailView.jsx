@@ -35,6 +35,7 @@ export default function ProfileDetailView({
     externalEmail: "",
   });
   const [savingProfile, setSavingProfile] = useState(false);
+  const [errors, setErrors] = useState({});
 
   // 프로필 정보 로드
   useEffect(() => {
@@ -61,8 +62,60 @@ export default function ProfileDetailView({
     }
   }, [userEmail]);
 
+  // 입력값 검증
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (detailProfileFormData.companyName && detailProfileFormData.companyName.length > 100) {
+      newErrors.companyName = "회사이름은 100자 이하여야 합니다.";
+    }
+    
+    if (detailProfileFormData.directPhone && detailProfileFormData.directPhone.length > 20) {
+      newErrors.directPhone = "직통전화는 20자 이하여야 합니다.";
+    }
+    
+    if (detailProfileFormData.fax && detailProfileFormData.fax.length > 20) {
+      newErrors.fax = "팩스는 20자 이하여야 합니다.";
+    }
+    
+    if (detailProfileFormData.address && detailProfileFormData.address.length > 500) {
+      newErrors.address = "주소는 500자 이하여야 합니다.";
+    }
+    
+    if (detailProfileFormData.externalEmail && detailProfileFormData.externalEmail.length > 255) {
+      newErrors.externalEmail = "외부 메일은 255자 이하여야 합니다.";
+    }
+    
+    // 이메일 형식 검증
+    if (detailProfileFormData.externalEmail && detailProfileFormData.externalEmail.trim() !== "") {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(detailProfileFormData.externalEmail)) {
+        newErrors.externalEmail = "올바른 이메일 형식이 아닙니다.";
+      }
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // 입력값 변경 핸들러
+  const handleFieldChange = (field, value) => {
+    setDetailProfileFormData({ ...detailProfileFormData, [field]: value });
+    // 실시간 검증
+    if (errors[field]) {
+      const newErrors = { ...errors };
+      delete newErrors[field];
+      setErrors(newErrors);
+    }
+  };
+
   // 프로필 정보 수정 핸들러
   const handleSaveDetailProfile = async () => {
+    // 검증 실패 시 저장하지 않음
+    if (!validateForm()) {
+      return;
+    }
+    
     try {
       setSavingProfile(true);
       await updateDetailProfileInfo({
@@ -78,8 +131,15 @@ export default function ProfileDetailView({
       const info = await getDetailProfileInfo();
       setDetailProfileInfo(info);
       setIsEditingDetailProfile(false);
+      setErrors({});
     } catch (error) {
       console.error("프로필 정보 저장 실패:", error);
+      // 에러 메시지 표시
+      if (error.response?.data?.message) {
+        setErrors({ submit: error.response.data.message });
+      } else {
+        setErrors({ submit: "프로필 정보 저장에 실패했습니다." });
+      }
     } finally {
       setSavingProfile(false);
     }
@@ -101,6 +161,7 @@ export default function ProfileDetailView({
       bio: detailProfileInfo?.bio || "",
       externalEmail: detailProfileInfo?.externalEmail || "",
     });
+    setErrors({});
   };
 
   return (
@@ -149,54 +210,58 @@ export default function ProfileDetailView({
 
         {isEditingDetailProfile ? (
           <Stack spacing={2}>
+            {errors.submit && (
+              <Typography variant="body2" color="error" sx={{ mb: 1 }}>
+                {errors.submit}
+              </Typography>
+            )}
             <TextField
               label="회사이름"
               value={detailProfileFormData.companyName}
-              onChange={(e) =>
-                setDetailProfileFormData({ ...detailProfileFormData, companyName: e.target.value })
-              }
+              onChange={(e) => handleFieldChange("companyName", e.target.value)}
               size="small"
               fullWidth
+              inputProps={{ maxLength: 100 }}
+              error={!!errors.companyName}
+              helperText={errors.companyName || `${detailProfileFormData.companyName.length}/100`}
             />
             <TextField
               label="직통전화"
               value={detailProfileFormData.directPhone}
-              onChange={(e) =>
-                setDetailProfileFormData({
-                  ...detailProfileFormData,
-                  directPhone: e.target.value,
-                })
-              }
+              onChange={(e) => handleFieldChange("directPhone", e.target.value)}
               size="small"
               fullWidth
+              inputProps={{ maxLength: 20 }}
+              error={!!errors.directPhone}
+              helperText={errors.directPhone || `${detailProfileFormData.directPhone.length}/20`}
             />
             <TextField
               label="팩스"
               value={detailProfileFormData.fax}
-              onChange={(e) =>
-                setDetailProfileFormData({ ...detailProfileFormData, fax: e.target.value })
-              }
+              onChange={(e) => handleFieldChange("fax", e.target.value)}
               size="small"
               fullWidth
+              inputProps={{ maxLength: 20 }}
+              error={!!errors.fax}
+              helperText={errors.fax || `${detailProfileFormData.fax.length}/20`}
             />
             <TextField
               label="주소"
               value={detailProfileFormData.address}
-              onChange={(e) =>
-                setDetailProfileFormData({ ...detailProfileFormData, address: e.target.value })
-              }
+              onChange={(e) => handleFieldChange("address", e.target.value)}
               size="small"
               fullWidth
               multiline
               rows={2}
+              inputProps={{ maxLength: 500 }}
+              error={!!errors.address}
+              helperText={errors.address || `${detailProfileFormData.address.length}/500`}
             />
             <TextField
               label="생일"
               type="date"
               value={detailProfileFormData.birthday}
-              onChange={(e) =>
-                setDetailProfileFormData({ ...detailProfileFormData, birthday: e.target.value })
-              }
+              onChange={(e) => handleFieldChange("birthday", e.target.value)}
               size="small"
               fullWidth
               InputLabelProps={{ shrink: true }}
@@ -205,25 +270,22 @@ export default function ProfileDetailView({
               label="외부 메일"
               type="email"
               value={detailProfileFormData.externalEmail}
-              onChange={(e) =>
-                setDetailProfileFormData({
-                  ...detailProfileFormData,
-                  externalEmail: e.target.value,
-                })
-              }
+              onChange={(e) => handleFieldChange("externalEmail", e.target.value)}
               size="small"
               fullWidth
+              inputProps={{ maxLength: 255 }}
+              error={!!errors.externalEmail}
+              helperText={errors.externalEmail || `${detailProfileFormData.externalEmail.length}/255`}
             />
             <TextField
               label="자기소개"
               value={detailProfileFormData.bio}
-              onChange={(e) =>
-                setDetailProfileFormData({ ...detailProfileFormData, bio: e.target.value })
-              }
+              onChange={(e) => handleFieldChange("bio", e.target.value)}
               size="small"
               fullWidth
               multiline
               rows={4}
+              helperText={`${detailProfileFormData.bio.length}자`}
             />
             <Stack direction="row" spacing={2} justifyContent="flex-end" sx={{ mt: 2 }}>
               <Button variant="outlined" onClick={handleCancel} disabled={savingProfile}>
