@@ -226,10 +226,8 @@ const BoardListPage = () => {
                       : 0,
 
                 bgcolor: b.pinned
-                  ? "#FFF5D6"
-                  : b.noticeYn
-                    ? "#E8F3FF"
-                    : "white",
+                  ? "#FFF5D6"           // 상단고정만 색 유지
+                  : "white",
 
                 border: "1px solid #e5e5e5",
                 py: 2,
