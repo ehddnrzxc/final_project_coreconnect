@@ -250,7 +250,7 @@ function ApprovalLineModal({
     <ListItem key={user.userId} disablePadding>
       <ListItemButton>
         <ListItemText
-          primary={`${user.name} (${user.positionName})`}
+          primary={`${user.name} (${getJobGradeLabel(user.positionName)})`}
           secondary={user.deptName}
         />
         <Box sx={{ display: 'flex', gap: 0.5 }}>

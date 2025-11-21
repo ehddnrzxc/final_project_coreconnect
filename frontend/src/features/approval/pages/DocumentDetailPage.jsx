@@ -176,6 +176,11 @@ function DocumentDetailPage() {
             </div>
           </div>
           <div
+            style={{
+              wordBreak: "break-all",
+              overflowWrap: "break-word",
+              whiteSpace: "pre-wrap"
+            }}
             dangerouslySetInnerHTML={{ __html: mergedHtml }}
           />
         </div>
