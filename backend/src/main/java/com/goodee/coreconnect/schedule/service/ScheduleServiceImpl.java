@@ -147,7 +147,8 @@ public class ScheduleServiceImpl implements ScheduleService {
                 "[일정 등록] '" + savedSchedule.getTitle() + "' 일정에 초대되었습니다.",
                 null, null,
                 user.getId(),
-                user.getName()
+                user.getName(),
+                savedSchedule.getId()
         );
       }
     }
@@ -160,7 +161,8 @@ public class ScheduleServiceImpl implements ScheduleService {
               "[일정 등록 완료] '" + savedSchedule.getTitle() + "' 일정이 생성되었습니다.",
               null, null,
               user.getId(),
-              user.getName()
+              user.getName(),
+              savedSchedule.getId()
       );
     }
 
@@ -328,7 +330,8 @@ public class ScheduleServiceImpl implements ScheduleService {
               "[일정 수정] '" + schedule.getTitle() + "' 일정이 변경되었습니다.",
               null, null,
               schedule.getUser().getId(),
-              schedule.getUser().getName()
+              schedule.getUser().getName(),
+              schedule.getId()
       );
     }
         

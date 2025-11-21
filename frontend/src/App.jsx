@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, createContext } from "react";
+import React, { useState, useMemo, useEffect, createContext, useCallback } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import Topbar from "./components/layout/Topbar/Topbar";
 import Sidebar from "./components/layout/Sidebar";
@@ -116,15 +116,15 @@ function App() {
   };
 
   // 받은메일함(안읽은)
-  const refreshUnreadCount = async () => {
+  const refreshUnreadCount = useCallback(async () => {
     const userEmail = userProfile?.email;
     if (!userEmail) return;
     const count = await fetchUnreadCount(userEmail);
     setUnreadCount(count || 0);
-  };
+  }, [userProfile?.email]);
 
   // 임시보관함(임시저장 개수)
-  const refreshDraftCount = async () => {
+  const refreshDraftCount = useCallback(async () => {
     const userEmail = userProfile?.email;
     if (!userEmail) return setDraftCount(0);
 
@@ -135,9 +135,9 @@ function App() {
         ? res.data.data.totalElements
         : 0;
     setDraftCount(count);
-  };
+  }, [userProfile?.email]);
 
-  const refreshApprovalCount = async () => {
+  const refreshApprovalCount = useCallback(async () => {
     const userEmail = userProfile?.email;
     if (!userEmail) return;
     try {
@@ -146,7 +146,7 @@ function App() {
     } catch (e) {
       console.warn("결재 대기 개수 조회 실패:", e);
     }
-  }
+  }, [userProfile?.email]);
 
   const { logout } = useAuth();
 
@@ -197,18 +197,24 @@ function App() {
   }, [userProfile?.email]);
 
   // context value: count, set, refresh 함수
-  const mailCountContextValue = {
-    unreadCount, refreshUnreadCount,
-    draftCount, refreshDraftCount,
-  };
+  // useMemo를 사용하여 항상 동일한 객체 참조를 유지하고, userProfile이 없어도 기본값 제공
+  const mailCountContextValue = useMemo(() => ({
+    unreadCount: unreadCount || 0,
+    refreshUnreadCount,
+    draftCount: draftCount || 0,
+    refreshDraftCount,
+  }), [unreadCount, draftCount, refreshUnreadCount, refreshDraftCount]);
 
-  const approvalCountContextValue = { approvalCount, refreshApprovalCount };
+  const approvalCountContextValue = useMemo(() => ({
+    approvalCount: approvalCount || 0,
+    refreshApprovalCount
+  }), [approvalCount, refreshApprovalCount]);
 
   return (
     <ThemeProvider theme={theme}>
       <LocalizationProvider dateAdapter={AdapterDayjs}>
         <CssBaseline />
-        <UserProfileContext.Provider value={{ userProfile, setUserProfile }}>
+        <UserProfileContext.Provider value={useMemo(() => ({ userProfile, setUserProfile }), [userProfile])}>
           <Box
             sx={{
               display: "flex",

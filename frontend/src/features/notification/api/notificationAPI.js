@@ -18,9 +18,21 @@ export async function getUnreadNotificationsExceptLatest() {
   return res.data || [];
 }
 
+/** 모든 안읽은 알림 목록 조회 */
+export async function getAllUnreadNotifications() {
+  const res = await http.get("/chat/notifications/unread/all");
+  return res.data?.data || [];
+}
+
 /** 알림 읽음 처리 */
 export async function markNotificationAsRead(notificationId) {
-  const res = await http.put(`/notification/${notificationId}/read`);
+  const res = await http.put(`/chat/notifications/${notificationId}/read`);
+  return res.data;
+}
+
+/** 모든 알림 읽음 처리 */
+export async function markAllNotificationsAsRead() {
+  const res = await http.put("/chat/notifications/read-all");
   return res.data;
 }
 

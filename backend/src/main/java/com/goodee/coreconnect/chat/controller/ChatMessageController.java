@@ -1030,15 +1030,104 @@ public class ChatMessageController {
     // 10. 알림 읽음 처리 (채팅/업무)
     @Operation(summary = "알림 읽음 처리", description = "알림을 읽음 처리합니다.")
     @PutMapping("/notifications/{notificationId}/read")
+    @org.springframework.transaction.annotation.Transactional
     public ResponseEntity<ResponseDTO<NotificationReadResponseDTO>> markNotificationRead(
             @PathVariable("notificationId") Integer notificationId
     ) {
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new IllegalArgumentException("알림 없음: " + notificationId));
+        
+        // 이미 읽음 처리된 알림인지 확인
+        if (Boolean.TRUE.equals(notification.getNotificationReadYn())) {
+            log.info("[markNotificationRead] 알림이 이미 읽음 처리되어 있습니다. notificationId: {}", notificationId);
+            NotificationReadResponseDTO dto = new NotificationReadResponseDTO(notification.getId(), notification.getNotificationReadYn());
+            return ResponseEntity.ok(ResponseDTO.success(dto, "알림이 이미 읽음 처리되어 있습니다."));
+        }
+        
+        // 알림 읽음 처리 (notification_read_yn = true, notification_read_at = 현재 시간)
         notification.markRead();
         notificationRepository.save(notification);
+        
+        // 즉시 DB에 반영되도록 flush
+        notificationRepository.flush();
+        
+        log.info("[markNotificationRead] 알림 읽음 처리 완료 - notificationId: {}, notificationReadYn: {}, notificationReadAt: {}", 
+                notification.getId(), notification.getNotificationReadYn(), notification.getNotificationReadAt());
+        
         NotificationReadResponseDTO dto = new NotificationReadResponseDTO(notification.getId(), notification.getNotificationReadYn());
         return ResponseEntity.ok(ResponseDTO.success(dto, "알림 읽음 처리 성공"));
+    }
+
+    // 10-1. 모든 알림 읽음 처리
+    @Operation(summary = "모든 알림 읽음 처리", description = "현재 사용자의 모든 안읽은 알림을 읽음 처리합니다.")
+    @PutMapping("/notifications/read-all")
+    @org.springframework.transaction.annotation.Transactional
+    public ResponseEntity<ResponseDTO<Integer>> markAllNotificationsAsRead(
+            @AuthenticationPrincipal CustomUserDetails customUserDetails
+    ) {
+        String email = customUserDetails.getEmail();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + email));
+        
+        // 현재 사용자의 모든 안읽은 알림 조회
+        List<Notification> unreadNotifications = notificationRepository.findUnreadByUserId(user.getId());
+        
+        if (unreadNotifications.isEmpty()) {
+            log.info("[markAllNotificationsAsRead] 읽지 않은 알림이 없습니다. userId: {}", user.getId());
+            return ResponseEntity.ok(ResponseDTO.success(0, "읽지 않은 알림이 없습니다."));
+        }
+        
+        // 모든 알림 읽음 처리
+        int count = 0;
+        LocalDateTime now = LocalDateTime.now();
+        for (Notification notification : unreadNotifications) {
+            // 이미 읽음 처리된 알림은 건너뛰기
+            if (Boolean.TRUE.equals(notification.getNotificationReadYn())) {
+                log.debug("[markAllNotificationsAsRead] 이미 읽음 처리된 알림 건너뛰기 - notificationId: {}", notification.getId());
+                continue;
+            }
+            
+            // 읽음 처리 전 상태 로그
+            log.info("[markAllNotificationsAsRead] 읽음 처리 전 - notificationId: {}, readYn: {}, readAt: {}", 
+                    notification.getId(), notification.getNotificationReadYn(), notification.getNotificationReadAt());
+            
+            // 읽음 처리
+            notification.markRead();
+            
+            // 읽음 처리 후 상태 로그
+            log.info("[markAllNotificationsAsRead] 읽음 처리 후 (엔티티 상태) - notificationId: {}, readYn: {}, readAt: {}", 
+                    notification.getId(), notification.getNotificationReadYn(), notification.getNotificationReadAt());
+            
+            // saveAndFlush를 사용하여 즉시 DB에 반영
+            Notification saved = notificationRepository.saveAndFlush(notification);
+            
+            // 저장 후 상태 확인
+            log.info("[markAllNotificationsAsRead] 저장 후 (DB 상태) - notificationId: {}, readYn: {}, readAt: {}", 
+                    saved.getId(), saved.getNotificationReadYn(), saved.getNotificationReadAt());
+            
+            // DB에서 다시 조회하여 확인
+            notificationRepository.findById(notification.getId()).ifPresent(verified -> {
+                log.info("[markAllNotificationsAsRead] DB 재조회 확인 - notificationId: {}, readYn: {}, readAt: {}", 
+                        verified.getId(), verified.getNotificationReadYn(), verified.getNotificationReadAt());
+                if (!Boolean.TRUE.equals(verified.getNotificationReadYn())) {
+                    log.error("[markAllNotificationsAsRead] ⚠️ 경고 - DB에 읽음 처리가 반영되지 않았습니다! notificationId: {}", verified.getId());
+                }
+            });
+            
+            count++;
+        }
+        
+        // 읽음 처리 후 확인 (디버깅용)
+        List<Notification> verifyUnread = notificationRepository.findUnreadByUserId(user.getId());
+        log.info("[markAllNotificationsAsRead] 모든 알림 읽음 처리 완료 - userId: {}, 처리된 알림 수: {}, 읽음 처리 후 남은 안읽은 알림 수: {}", 
+                user.getId(), count, verifyUnread.size());
+        
+        if (verifyUnread.size() > 0) {
+            log.warn("[markAllNotificationsAsRead] ⚠️ 읽음 처리 후에도 안읽은 알림이 남아있습니다. 남은 알림 ID: {}", 
+                    verifyUnread.stream().map(Notification::getId).collect(java.util.stream.Collectors.toList()));
+        }
+        
+        return ResponseEntity.ok(ResponseDTO.success(count, String.format("%d개의 알림을 읽음 처리했습니다.", count)));
     }
 
     // 11. 미읽은 알림/채팅 메시지 요약
@@ -1077,7 +1166,8 @@ public class ChatMessageController {
                 req.getMessage(),
                 null, null,
                 user.getId(),
-                user.getName()
+                user.getName(),
+                null
         );
         return ResponseEntity.ok(ResponseDTO.success("푸시 테스트 성공", "알림 푸시 테스트 완료"));
     }
@@ -1299,6 +1389,72 @@ public class ChatMessageController {
 
         List<UnreadNotificationListDTO> unreadDtos = chatRoomService.getUnreadNotificationsExceptLatest(user.getId(), allowedTypes);
         return ResponseEntity.ok(unreadDtos);
+    }
+    
+    // 21. 모든 안읽은 알림 목록 조회
+    @Operation(summary = "모든 안읽은 알림 목록 조회", description = "사용자의 모든 안읽은 알림을 최신순으로 조회")
+    @GetMapping("/notifications/unread/all")
+    public ResponseEntity<ResponseDTO<List<UnreadNotificationListDTO>>> getAllUnreadNotifications(
+            @AuthenticationPrincipal CustomUserDetails customUserDetails
+    ) {
+        try {
+            String email = customUserDetails.getEmail();
+            User user = userRepository.findByEmail(email).orElseThrow();
+            List<NotificationType> allowedTypes = List.of(NotificationType.EMAIL, NotificationType.NOTICE, NotificationType.APPROVAL, NotificationType.SCHEDULE);
+            
+            List<Notification> unreadList = notificationRepository.findUnreadByUserIdAndTypesOrderBySentAtDesc(user.getId(), allowedTypes);
+            
+            log.info("🔔 [getAllUnreadNotifications] 사용자 ID: {}, 안읽은 알림 개수: {}", user.getId(), unreadList.size());
+            
+            List<UnreadNotificationListDTO> unreadDtos = new ArrayList<>();
+            for (Notification n : unreadList) {
+                try {
+                    log.info("🔔 [getAllUnreadNotifications] 알림 ID: {}, 타입: {}, 메시지: {}, 읽음여부: {}, 삭제여부: {}", 
+                            n.getId(), n.getNotificationType(), n.getNotificationMessage(), n.getNotificationReadYn(), n.getNotificationDeletedYn());
+                    
+                    // DTO 변환 시 LazyInitializationException 방지를 위해 명시적으로 접근
+                    Integer scheduleIdValue = null;
+                    try {
+                        if (n.getSchedule() != null) {
+                            scheduleIdValue = n.getSchedule().getId();
+                            log.info("🔔 [getAllUnreadNotifications] 알림 ID: {}, Schedule ID: {}", n.getId(), scheduleIdValue);
+                        } else {
+                            log.warn("🔔 [getAllUnreadNotifications] 알림 ID: {}, Schedule이 null입니다.", n.getId());
+                        }
+                    } catch (Exception e) {
+                        log.error("🔔 [getAllUnreadNotifications] Schedule 조회 실패 - 알림 ID: {}", n.getId(), e);
+                    }
+                    
+                    UnreadNotificationListDTO dto = UnreadNotificationListDTO.builder()
+                            .notificationId(n.getId())
+                            .message(n.getNotificationMessage())
+                            .senderName(n.getSender() != null ? n.getSender().getName() : null)
+                            .receiverName(n.getUser() != null ? n.getUser().getName() : null)
+                            .sentAt(n.getNotificationSentAt())
+                            .notificationType(n.getNotificationType() != null ? n.getNotificationType().name() : null)
+                            .documentId(n.getDocument() != null ? n.getDocument().getId() : null)
+                            .boardId(n.getBoard() != null ? n.getBoard().getId() : null)
+                            .scheduleId(scheduleIdValue)
+                            .build();
+                    
+                    unreadDtos.add(dto);
+                } catch (Exception e) {
+                    log.error("🔔 [getAllUnreadNotifications] 알림 DTO 변환 실패 - 알림 ID: {}", n.getId(), e);
+                    // 개별 알림 변환 실패 시에도 계속 진행
+                }
+            }
+            
+            log.info("🔔 [getAllUnreadNotifications] DTO 변환 완료, DTO 개수: {}", unreadDtos.size());
+            if (!unreadDtos.isEmpty()) {
+                log.info("🔔 [getAllUnreadNotifications] 첫 번째 DTO 샘플: {}", unreadDtos.get(0));
+            }
+            
+            return ResponseEntity.ok(ResponseDTO.success(unreadDtos, "모든 안읽은 알림 조회 성공"));
+        } catch (Exception e) {
+            log.error("🔔 [getAllUnreadNotifications] 알림 조회 실패", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ResponseDTO.error("알림 조회 중 오류가 발생했습니다: " + e.getMessage()));
+        }
     }
 
     // 20. 나에게 온 안읽은 메시지를 채팅방을 접속해서 다 읽으면 채팅방목록에서 안읽은 메시지 개수가 없어지게 만들기

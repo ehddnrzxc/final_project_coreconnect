@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useContext } from "react";
+import { useSearchParams } from "react-router-dom";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -21,6 +22,7 @@ import { UserProfileContext } from "../../../App";
 import "./CalendarPage.css";
 
 export default function CalendarPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -257,6 +259,19 @@ export default function CalendarPage() {
 
     init();
   }, []);
+
+  // URL 쿼리 파라미터에서 scheduleId 확인 (일정 로드 후 실행)
+  useEffect(() => {
+    if (!loading) {
+      const scheduleIdParam = searchParams.get("scheduleId");
+      if (scheduleIdParam) {
+        setDetailId(parseInt(scheduleIdParam));
+        setDetailOpen(true);
+        // URL에서 쿼리 파라미터 제거
+        setSearchParams({});
+      }
+    }
+  }, [loading, searchParams, setSearchParams]);
 
 
   /** 카테고리 선택 토글 */

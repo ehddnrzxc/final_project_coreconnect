@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   IconButton,
@@ -13,9 +14,9 @@ import CloseIcon from "@mui/icons-material/Close";
 import { formatTime } from "../../../../utils/TimeUtils";
 import { getNotificationTypeLabel } from "../../../../utils/labelUtils";
 import {
-  getUnreadNotificationSummary,
-  getUnreadNotificationsExceptLatest,
+  getAllUnreadNotifications,
   markNotificationAsRead,
+  markAllNotificationsAsRead,
 } from "../../../../features/notification/api/notificationAPI";
 
 export default function NotificationPopover({
@@ -23,63 +24,227 @@ export default function NotificationPopover({
   open,
   onClose,
 }) {
+  const navigate = useNavigate();
   const [unreadList, setUnreadList] = useState([]);
   const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [markAllAsReadTimestamp, setMarkAllAsReadTimestamp] = useState(null); // "모두 읽음" 처리 시간 추적
+
+  // 알림 타입별 색상 설정
+  const getNotificationTypeColor = (type) => {
+    switch (type?.toUpperCase()) {
+      case "EMAIL":
+        return { bgcolor: "#1976d2", color: "#fff" }; // 파란색
+      case "NOTICE":
+        return { bgcolor: "#ed6c02", color: "#fff" }; // 주황색
+      case "APPROVAL":
+        return { bgcolor: "#d32f2f", color: "#fff" }; // 빨간색
+      case "SCHEDULE":
+        return { bgcolor: "#2e7d32", color: "#fff" }; // 초록색
+      default:
+        return { bgcolor: "#757575", color: "#fff" }; // 회색
+    }
+  };
+
+  // 알림 클릭 시 상세 페이지로 이동
+  const handleNotificationClick = async (notif) => {
+    try {
+      // Optimistic Update: 읽음 처리 전에 즉시 목록에서 제거 (더 나은 UX)
+      setUnreadList(prevList => 
+        prevList.filter(item => item.notificationId !== notif.notificationId)
+      );
+      
+      // 알림 읽음 처리 (실패해도 페이지 이동은 진행)
+      try {
+        await markNotificationAsRead(notif.notificationId);
+        console.log(`[NotificationPopover] 알림 읽음 처리 완료 - notificationId: ${notif.notificationId}`);
+      } catch (readError) {
+        console.error("[NotificationPopover] 알림 읽음 처리 실패:", readError);
+        // 읽음 처리 실패해도 이미 목록에서 제거했으므로 그대로 진행
+      }
+      
+      // 알림 타입에 따라 다른 페이지로 이동
+      const type = notif.notificationType?.toUpperCase();
+      switch (type) {
+        case "EMAIL":
+          // 메일 알림의 경우 메일 목록 페이지로 이동 (메시지에서 emailId 추출이 어려우므로)
+          navigate("/email");
+          break;
+        case "APPROVAL": {
+          // 결재 알림의 경우 메시지 내용에 따라 다른 페이지로 이동
+          const message = notif.message || "";
+          
+          // "새로운 결재 요청이 도착했습니다" 메시지가 있는 경우 결재 홈으로 이동
+          if (message.includes("새로운 결재 요청이 도착했습니다")) {
+            navigate("/e-approval");
+          } 
+          // "최종 승인되었습니다" 메시지가 있고 documentId가 있는 경우 문서 상세 페이지로 이동
+          else if (message.includes("최종 승인되었습니다") && notif.documentId) {
+            navigate(`/e-approval/doc/${notif.documentId}`);
+          }
+          // documentId가 있는 경우 문서 상세 페이지로 이동
+          else if (notif.documentId) {
+            navigate(`/e-approval/doc/${notif.documentId}`);
+          } 
+          // 그 외의 경우 결재 홈으로 이동
+          else {
+            navigate("/e-approval");
+          }
+          break;
+        }
+        case "NOTICE":
+          // 공지사항 알림의 경우 boardId가 있으면 상세 페이지로, 없으면 목록 페이지로
+          if (notif.boardId) {
+            navigate(`/board/detail/${notif.boardId}`);
+          } else {
+            navigate("/board");
+          }
+          break;
+        case "SCHEDULE":
+          // 일정 알림의 경우 scheduleId가 있으면 쿼리 파라미터로 전달하여 캘린더 페이지로 이동
+          if (notif.scheduleId) {
+            navigate(`/calendar?scheduleId=${notif.scheduleId}`);
+          } else {
+            navigate("/calendar");
+          }
+          break;
+        default:
+          // 알 수 없는 타입의 경우 홈으로 이동
+          navigate("/home");
+      }
+      
+      // 백그라운드에서 알림 목록 새로고침 (서버와 동기화)
+      // 팝오버가 열려있을 때만 새로고침 (닫혀있으면 불필요)
+      if (open) {
+        setTimeout(async () => {
+          try {
+            await loadNotifications();
+          } catch (loadError) {
+            console.error("[NotificationPopover] 알림 목록 새로고침 실패:", loadError);
+          }
+        }, 300); // 약간의 딜레이를 두어 페이지 이동 후 실행
+      }
+      
+      onClose(); // 팝오버 닫기
+    } catch (err) {
+      console.error("[NotificationPopover] 알림 처리 중 오류 발생:", err);
+    }
+  };
 
   const loadNotifications = useCallback(async () => {
     try {
       setLoadingNotifications(true);
-      const summary = await getUnreadNotificationSummary();
-
-      // 모든 미읽은 알림을 최신순으로 가져오기
-      const allUnreadNotifications = [];
-
-      // 최근 알림이 있으면 리스트에 추가
-      if (summary && summary.notificationId) {
-        allUnreadNotifications.push({
-          notificationId: summary.notificationId,
-          message: summary.message,
-          notificationType: summary.notificationType,
-          sentAt: summary.sentAt,
-          senderName: summary.senderName,
-        });
+      
+      // 모든 안읽은 알림을 내림차순으로 한 번에 가져오기
+      const allNotifications = await getAllUnreadNotifications();
+      
+      console.log("🔔 [NotificationPopover] API 응답:", allNotifications);
+      console.log("🔔 [NotificationPopover] 응답 타입:", typeof allNotifications);
+      console.log("🔔 [NotificationPopover] 배열 여부:", Array.isArray(allNotifications));
+      console.log("🔔 [NotificationPopover] 길이:", allNotifications?.length);
+      
+      if (allNotifications && Array.isArray(allNotifications) && allNotifications.length > 0) {
+        console.log("🔔 [NotificationPopover] 첫 번째 알림 샘플:", allNotifications[0]);
+        
+        // UnreadNotificationListDTO 필드명에 맞춰 매핑
+        const sortedNotifications = allNotifications
+          .map(notif => {
+            // DTO 필드명: notificationId, message, senderName, sentAt, notificationType
+            const notificationId = notif.notificationId;
+            const message = notif.message;
+            const notificationType = notif.notificationType;
+            const sentAt = notif.sentAt; // LocalDateTime이 JSON으로 변환된 형태
+            const senderName = notif.senderName;
+            
+            console.log("🔔 [NotificationPopover] 매핑된 알림:", {
+              notificationId,
+              message,
+              notificationType,
+              sentAt,
+              senderName,
+              documentId: notif.documentId,
+              boardId: notif.boardId,
+              scheduleId: notif.scheduleId,
+              원본객체: notif
+            });
+            
+            // scheduleId 매핑 (여러 필드명 확인)
+            const scheduleId = notif.scheduleId || notif.schId || notif.schedule_id || null;
+            
+            return {
+              notificationId,
+              message,
+              notificationType,
+              sentAt,
+              senderName,
+              documentId: notif.documentId || null, // 백엔드에서 documentId 추가됨
+              boardId: notif.boardId || null, // 백엔드에서 boardId 추가됨
+              scheduleId: scheduleId, // 백엔드에서 scheduleId 추가됨
+            };
+          })
+          .filter(notif => notif.notificationId) // notificationId가 있는 것만 필터링
+          .sort((a, b) => {
+            const dateA = a.sentAt ? new Date(a.sentAt).getTime() : 0;
+            const dateB = b.sentAt ? new Date(b.sentAt).getTime() : 0;
+            return dateB - dateA; // 내림차순 (최신순)
+          });
+        
+        console.log("🔔 [NotificationPopover] 최종 알림 목록:", sortedNotifications);
+        console.log("🔔 [NotificationPopover] 최종 알림 개수:", sortedNotifications.length);
+        
+        setUnreadList(sortedNotifications);
+      } else {
+        console.warn("🔔 [NotificationPopover] 알림이 없거나 배열이 아님:", allNotifications);
+        setUnreadList([]);
       }
-
-      // 나머지 알림 목록 추가
-      if (summary && summary.unreadCount > 1) {
-        const list = await getUnreadNotificationsExceptLatest();
-        allUnreadNotifications.push(...list);
-      }
-
-      // sentAt 기준으로 최신순 정렬
-      allUnreadNotifications.sort((a, b) => {
-        const dateA = a.sentAt ? new Date(a.sentAt).getTime() : 0;
-        const dateB = b.sentAt ? new Date(b.sentAt).getTime() : 0;
-        return dateB - dateA; // 최신순
-      });
-
-      setUnreadList(allUnreadNotifications);
     } catch (err) {
-      console.error("알림 조회 실패:", err);
+      console.error("🔔 [NotificationPopover] 알림 조회 실패:", err);
+      console.error("🔔 [NotificationPopover] 에러 상세:", err.response?.data || err.message);
+      setUnreadList([]);
     } finally {
       setLoadingNotifications(false);
     }
   }, []);
 
-  const handleMarkAsRead = async (notificationId) => {
+  // 모든 알림 읽음 처리 핸들러
+  const handleMarkAllAsRead = async () => {
     try {
-      await markNotificationAsRead(notificationId);
-      await loadNotifications();
+      // Optimistic Update: 즉시 목록에서 모든 알림 제거
+      setUnreadList([]);
+      
+      // "모두 읽음" 처리 시간 기록
+      const currentTimestamp = Date.now();
+      setMarkAllAsReadTimestamp(currentTimestamp);
+      
+      // 모든 알림 읽음 처리 API 호출
+      const response = await markAllNotificationsAsRead();
+      console.log("[NotificationPopover] 모든 알림 읽음 처리 완료:", response);
+      
+      // 성공 메시지 표시 (선택 사항)
+      if (response?.data?.data) {
+        console.log(`[NotificationPopover] ${response.data.data}개의 알림을 읽음 처리했습니다.`);
+      }
+      
+      // 목록을 다시 로드하지 않음 (이미 읽음 처리되었으므로)
+      // 사용자가 팝오버를 다시 열면 그때 새로 로드됨
     } catch (err) {
-      console.error("알림 읽음 처리 실패:", err);
+      console.error("[NotificationPopover] 모든 알림 읽음 처리 실패:", err);
+      // 실패 시 타임스탬프 초기화 및 목록 다시 로드
+      setMarkAllAsReadTimestamp(null);
+      await loadNotifications();
     }
   };
 
   useEffect(() => {
     if (open) {
+      // "모두 읽음" 처리 후 1초 이내에는 목록을 다시 로드하지 않음
+      // (이미 읽음 처리되었으므로 서버에서 빈 배열이 반환됨)
+      if (markAllAsReadTimestamp && (Date.now() - markAllAsReadTimestamp) < 1000) {
+        console.log("[NotificationPopover] '모두 읽음' 처리 직후이므로 목록을 다시 로드하지 않습니다.");
+        return;
+      }
       loadNotifications();
     }
-  }, [open, loadNotifications]);
+  }, [open, loadNotifications, markAllAsReadTimestamp]);
   return (
     <Popover
       open={open}
@@ -108,9 +273,24 @@ export default function NotificationPopover({
           <Typography variant="h6" fontWeight={600}>
             알림
           </Typography>
-          <IconButton size="small" onClick={onClose}>
-            <CloseIcon fontSize="small" />
-          </IconButton>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            {unreadList.length > 0 && (
+              <Typography
+                variant="caption"
+                color="primary"
+                sx={{
+                  cursor: "pointer",
+                  "&:hover": { textDecoration: "underline" },
+                }}
+                onClick={handleMarkAllAsRead}
+              >
+                모두 읽음
+              </Typography>
+            )}
+            <IconButton size="small" onClick={onClose}>
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Box>
         </Box>
         <Divider sx={{ mb: 2 }} />
         {loadingNotifications ? (
@@ -134,7 +314,7 @@ export default function NotificationPopover({
                   cursor: "pointer",
                   "&:hover": { bgcolor: "action.hover" },
                 }}
-                onClick={() => handleMarkAsRead(notif.notificationId)}
+                onClick={() => handleNotificationClick(notif)}
               >
                 <Box sx={{ width: "100%" }}>
                   <Box
@@ -148,8 +328,11 @@ export default function NotificationPopover({
                     <Chip
                       label={getNotificationTypeLabel(notif.notificationType)}
                       size="small"
-                      variant="outlined"
-                      sx={{ height: 20, fontSize: "0.7rem" }}
+                      sx={{
+                        height: 20,
+                        fontSize: "0.7rem",
+                        ...getNotificationTypeColor(notif.notificationType),
+                      }}
                     />
                     <Typography variant="caption" color="text.secondary">
                       {notif.sentAt ? formatTime(notif.sentAt) : ""}

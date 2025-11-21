@@ -15,9 +15,9 @@ export const useRealtimeNotifications = () => useContext(RealtimeNotificationCon
 /**
  * 사용법:
  * - main.jsx에서 앱 루트를 감싸세요:
- *   <RealtimeNotificationProvider baseUrl={import.meta.env.VITE_WS_NOTIFICATION || "ws://localhost:8080/ws/notification"}>...</RealtimeNotificationProvider>
+ *   <RealtimeNotificationProvider>...</RealtimeNotificationProvider>
  */
-export function RealtimeNotificationProvider({ children, baseUrl }) {
+export function RealtimeNotificationProvider({ children }) {
   const [notifications, setNotifications] = useState([]);
   const [snackOpen, setSnackOpen] = useState(false);
   const [snackPayload, setSnackPayload] = useState(null);
@@ -41,7 +41,7 @@ export function RealtimeNotificationProvider({ children, baseUrl }) {
 
   useEffect(() => {
     // access_token이 HttpOnly 쿠키에 있다면, JS에서는 읽을 수 없으니 getCookie/token 관련 없이 무조건 접속만!
-    const url = baseUrl || import.meta.env.VITE_WS_NOTIFICATION || "ws://localhost:8080/ws/notification";
+    // SockJS가 자동으로 쿠키를 전송하므로 쿼리 파라미터 불필요
 
     const handleMessage = (payload) => {
       console.log("[Notification WS] message payload ::", payload);
@@ -59,13 +59,18 @@ export function RealtimeNotificationProvider({ children, baseUrl }) {
       setSnackOpen(true);
     };
 
-    // 토큰 전달 X, 그냥 연결!
-    connectNotification({ baseUrl: url, onMessage: handleMessage });
+    // SockJS를 사용하여 상대 경로로 연결 (Vite 프록시를 통해 쿠키 자동 전송)
+    connectNotification({ onMessage: handleMessage });
 
     return () => {
-      disconnectNotification();
+      // 컴포넌트 언마운트 시 연결 해제
+      try {
+        disconnectNotification();
+      } catch (err) {
+        console.warn("[RealtimeNotificationProvider] cleanup 중 오류 (무시):", err);
+      }
     };
-  }, [pushNotification, baseUrl]);
+  }, [pushNotification]); // baseUrl 제거 (더 이상 사용하지 않음)
 
   return (
     <RealtimeNotificationContext.Provider value={{ notifications, pushNotification, clearNotifications }}>

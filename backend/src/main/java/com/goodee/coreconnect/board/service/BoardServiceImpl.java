@@ -144,7 +144,8 @@ public class BoardServiceImpl implements BoardService {
                                                          NotificationType.NOTICE,             
                                                          message,                             
                                                          user.getId(),                        
-                                                         user.getName());
+                                                         user.getName(),
+                                                         saved.getId());
                 
 
             } else if (user.getRole() == Role.MANAGER) {
@@ -162,7 +163,8 @@ public class BoardServiceImpl implements BoardService {
                                                              NotificationType.NOTICE,             
                                                              message,                             
                                                              user.getId(),                        
-                                                             user.getName());
+                                                             user.getName(),
+                                                             saved.getId());
                 }
             }
         }
@@ -255,7 +257,8 @@ public class BoardServiceImpl implements BoardService {
                                                          NotificationType.NOTICE,
                                                          message,          
                                                          loginUser.getId(),
-                                                         loginUser.getName());
+                                                         loginUser.getName(),
+                                                         board.getId());
                 
             } else if (loginUser.getRole() == Role.MANAGER) {
                 Integer deptId = loginUser.getDepartment() != null
@@ -272,7 +275,8 @@ public class BoardServiceImpl implements BoardService {
                                                              NotificationType.NOTICE,
                                                              message,          
                                                              loginUser.getId(),
-                                                             loginUser.getName());
+                                                             loginUser.getName(),
+                                                             board.getId());
                 }
             }
         }
@@ -292,7 +296,8 @@ public class BoardServiceImpl implements BoardService {
                                                          NotificationType.NOTICE,
                                                          message,           
                                                          loginUser.getId(), 
-                                                         loginUser.getName());
+                                                         loginUser.getName(),
+                                                         board.getId());
                 
             } else if (loginUser.getRole() == Role.MANAGER) {
                 Integer deptId = loginUser.getDepartment() != null
@@ -309,7 +314,8 @@ public class BoardServiceImpl implements BoardService {
                                                              NotificationType.NOTICE,
                                                              message,           
                                                              loginUser.getId(), 
-                                                             loginUser.getName());
+                                                             loginUser.getName(),
+                                                             board.getId());
                 }
             }
         }

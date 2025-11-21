@@ -859,6 +859,8 @@ public class ApprovalServiceImpl implements ApprovalService {
           payload.getMessage(), 
           null,     // Chat
           document, // Document
+          null,     // Board
+          null,     // Schedule
           false,    // readYn
           true,    // sentYn
           false,    // deletedYn
