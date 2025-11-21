@@ -12,7 +12,7 @@ import {
 } from "@mui/material";
 import { getMyNotifications } from "../../notification/api/notificationAPI";
 import { formatTime, formatKoreanDate } from "../../../utils/TimeUtils";
-import { getNotificationTypeLabel } from "../../../components/utils/labelUtils";
+import { getNotificationTypeLabel } from "../../../utils/labelUtils";
 
 export default function RecentNotificationsCard() {
   const navigate = useNavigate();

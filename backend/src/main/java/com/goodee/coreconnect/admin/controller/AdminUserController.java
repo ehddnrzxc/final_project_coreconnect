@@ -94,8 +94,7 @@ public class AdminUserController {
   public List<Map<String, String>> getJobGrades() {
     return Arrays.stream(JobGrade.values())
                  .map(grade -> Map.of(
-                       "value", grade.name(),
-                       "label", grade.label()
+                       "value", grade.name()
                      ))
                  .collect(Collectors.toList());
   }

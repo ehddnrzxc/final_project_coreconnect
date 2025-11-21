@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Box, Typography, Collapse, Avatar, ListItemButton } from "@mui/material";
 import ArrowRightIcon from "@mui/icons-material/ArrowRight";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import { getJobGradeLabel } from "../../../utils/labelUtils";
 
 
 const OrgTreeNode = ({ node, depth, keyword, onSelectMember, defaultExpanded = true }) => {
@@ -39,7 +40,7 @@ const OrgTreeNode = ({ node, depth, keyword, onSelectMember, defaultExpanded = t
     // 구성원 이름/직급/부서 검사
     if (n.members.some((m) =>
       matchKeyword(m.name) ||
-      matchKeyword(m.jobGrade) ||
+      matchKeyword(getJobGradeLabel(m.jobGrade)) ||
       matchKeyword(m.deptName)
     )
     ) {
@@ -92,7 +93,7 @@ const OrgTreeNode = ({ node, depth, keyword, onSelectMember, defaultExpanded = t
               sx={{ width: 28, height: 28 }}
             />
             <Typography variant="body2">
-              {highlight(`${m.name} ${m.jobGrade || ""}`)}
+              {highlight(`${m.name} ${m.jobGrade ? getJobGradeLabel(m.jobGrade) : ""}`)}
             </Typography>
           </ListItemButton>
         ))}

@@ -23,7 +23,7 @@ import {
   getMyDeptBoardCategoryId,
 } from "../api/dashboardAPI";
 import { UserProfileContext } from "../../../App";
-import { getJobGradeLabel } from "../../../components/utils/labelUtils";
+import { getJobGradeLabel } from "../../../utils/labelUtils";
 
 export default function ProfileCard() {
   const [loading, setLoading] = useState(false);

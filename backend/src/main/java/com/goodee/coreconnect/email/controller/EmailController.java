@@ -135,9 +135,10 @@ public class EmailController {
 
         EmailResponseDTO result = null;
         try {
-            result = emailService.sendEmail(requestDTO, attachments);
+            // 실제 이메일 발송 (SendGrid 사용)
+            result = emailService.sendEmailViaSendGrid(requestDTO, attachments);
         } catch (IOException e) {
-            log.error("[send] sendEmail failed", e);
+            log.error("[send] sendEmailViaSendGrid failed", e);
             throw new RuntimeException(e);
         }
         return ResponseEntity.ok(ResponseDTO.success(result, "이메일 발송 성공"));

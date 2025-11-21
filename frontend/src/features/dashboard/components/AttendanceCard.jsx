@@ -6,6 +6,7 @@ import Card from "../../../components/ui/Card";
 import { formatHM } from "../../../utils/TimeUtils";
 import http from "../../../api/http";
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
+import { getAttendanceStatusLabel } from "../../../utils/labelUtils";
 
 function AttendanceCard() {
   const { showSnack } = useSnackbarContext();
@@ -122,7 +123,7 @@ function AttendanceCard() {
               ? "근무중"
               : status === "LEAVE_EARLY" || status === "COMPLETED"
               ? "퇴근"
-              : "미출근"
+              : getAttendanceStatusLabel(status)
           }
           size="small"
           variant="outlined"

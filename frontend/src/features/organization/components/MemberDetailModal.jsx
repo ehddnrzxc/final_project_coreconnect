@@ -2,6 +2,7 @@ import { Dialog, DialogTitle, DialogContent, IconButton, Typography, Avatar, Div
 import CloseIcon from "@mui/icons-material/Close";
 import MailOutlineIcon from "@mui/icons-material/MailOutline";
 import { useNavigate } from "react-router-dom";
+import { getJobGradeLabel } from "../../../utils/labelUtils";
 
 
 const MemberDetailModal = ({ open, member, onClose }) => {
@@ -72,7 +73,7 @@ const MemberDetailModal = ({ open, member, onClose }) => {
 
         {/* 이름 + 직급 */}
         <Typography variant="h6" fontWeight={700}>
-          {member.name} {member.jobGrade ? `${member.jobGrade}` : ""}
+          {member.name} {member.jobGrade ? ` ${getJobGradeLabel(member.jobGrade)}` : ""}
         </Typography>
 
         {/* 부서 경로 */}
@@ -86,7 +87,7 @@ const MemberDetailModal = ({ open, member, onClose }) => {
         <Box sx={{ textAlign: "left", px: 2 }}>
           <InfoRow label="회사" value="코어커넥트" />
           <InfoRow label="부서" value={member.deptName} />
-          <InfoRow label="직급" value={member.jobGrade || "-"} />
+          <InfoRow label="직급" value={member.jobGrade ? getJobGradeLabel(member.jobGrade) : "-"} />
           <InfoRow label="이메일" value={member.email} />
           <InfoRow label="휴대전화" value={member.phone || "-"} />
         </Box>

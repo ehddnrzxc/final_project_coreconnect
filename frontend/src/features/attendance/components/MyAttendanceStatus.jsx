@@ -17,6 +17,7 @@ import {
 import { useState, useEffect } from "react";
 import { formatHM, formatTime, formatKoreanDate } from "../../../utils/TimeUtils";
 import { getAttendanceStatistics, getWeeklyAttendanceDetail, getMonthlyAttendanceDetail } from "../api/attendanceAPI";
+import { getAttendanceStatusLabel } from "../../../utils/labelUtils";
 
 function MyAttendanceStatus() {
   const [period, setPeriod] = useState("weekly"); // "weekly" or "monthly"
@@ -106,16 +107,17 @@ function MyAttendanceStatus() {
   };
 
   const getStatusInfo = (status) => {
+    const label = getAttendanceStatusLabel(status);
     switch (status) {
       case "PRESENT":
-        return { label: "출근", color: "success" };
+        return { label, color: "success" };
       case "LATE":
-        return { label: "지각", color: "warning" };
+        return { label, color: "warning" };
       case "COMPLETED":
         return { label: "퇴근", color: "info" };
       case "ABSENT":
       default:
-        return { label: "결근", color: "default" };
+        return { label, color: "default" };
     }
   };
 

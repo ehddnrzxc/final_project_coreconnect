@@ -9,7 +9,6 @@ import {
   TableRow,
   TableCell,
   TableBody,
-  Button,
   Chip,
   Stack,
   CircularProgress,
@@ -20,6 +19,7 @@ import {
   TextField,
 } from "@mui/material";
 import LockResetIcon from "@mui/icons-material/LockReset";
+import StyledButton from "../../../components/ui/StyledButton";
 
 import {
   getPasswordResetRequests,
@@ -154,7 +154,7 @@ export default function PasswordReset() {
         px: 4,
         py: 3,
         width: "100%",
-        maxWidth: 1440,
+        maxWidth: 1400,
         mx: "auto",
       }}
     >
@@ -189,34 +189,38 @@ export default function PasswordReset() {
             }}
           >
             <Stack direction="row" spacing={1}>
-              <Button
+              <StyledButton
                 size="small"
                 variant={statusFilter === "PENDING" ? "contained" : "outlined"}
                 onClick={() => setStatusFilter("PENDING")}
+                fullWidth={false}
               >
                 대기
-              </Button>
-              <Button
+              </StyledButton>
+              <StyledButton
                 size="small"
                 variant={statusFilter === "APPROVED" ? "contained" : "outlined"}
                 onClick={() => setStatusFilter("APPROVED")}
+                fullWidth={false}
               >
                 승인
-              </Button>
-              <Button
+              </StyledButton>
+              <StyledButton
                 size="small"
                 variant={statusFilter === "REJECTED" ? "contained" : "outlined"}
                 onClick={() => setStatusFilter("REJECTED")}
+                fullWidth={false}
               >
                 거절
-              </Button>
-              <Button
+              </StyledButton>
+              <StyledButton
                 size="small"
                 variant={statusFilter === "ALL" ? "contained" : "outlined"}
                 onClick={() => setStatusFilter("ALL")}
+                fullWidth={false}
               >
                 전체
-              </Button>
+              </StyledButton>
             </Stack>
 
             {loading && (
@@ -314,24 +318,26 @@ export default function PasswordReset() {
                   <TableCell align="center">
                     {req.status === "PENDING" ? (
                     <Stack direction="row" spacing={1} justifyContent="center">
-                      <Button
+                      <StyledButton
                         size="small"
                         variant="outlined"
                         color="success"
                         disabled={actioningId === req.id}
                         onClick={() => handleApproveClick(req.id)}
+                        fullWidth={false}
                       >
                         승인
-                      </Button>
-                      <Button
+                      </StyledButton>
+                      <StyledButton
                         size="small"
                         variant="outlined"
                         color="error"
                         disabled={actioningId === req.id}
                         onClick={() => handleRejectClick(req.id)}
+                        fullWidth={false}
                       >
                         거절
-                      </Button>
+                      </StyledButton>
                     </Stack>
                     ) : (
                       <Typography variant="caption" color="text.secondary">
@@ -374,21 +380,23 @@ export default function PasswordReset() {
           )}
         </DialogContent>
         <DialogActions>
-          <Button 
+          <StyledButton 
             onClick={() => setApproveDialogOpen(false)} 
             disabled={approveProcessing}
+            fullWidth={false}
           >
             취소
-          </Button>
-          <Button 
+          </StyledButton>
+          <StyledButton 
             onClick={handleApprove} 
             variant="contained" 
             color="success"
             disabled={approveProcessing}
             startIcon={approveProcessing ? <CircularProgress size={16} /> : null}
+            fullWidth={false}
           >
             승인
-          </Button>
+          </StyledButton>
         </DialogActions>
       </Dialog>
 
@@ -415,10 +423,10 @@ export default function PasswordReset() {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setRejectReasonDialogOpen(false)}>취소</Button>
-          <Button onClick={handleRejectReasonSubmit} variant="contained" color="error">
+          <StyledButton onClick={() => setRejectReasonDialogOpen(false)} fullWidth={false}>취소</StyledButton>
+          <StyledButton onClick={handleRejectReasonSubmit} variant="contained" color="error" fullWidth={false}>
             다음
-          </Button>
+          </StyledButton>
         </DialogActions>
       </Dialog>
 
@@ -457,21 +465,23 @@ export default function PasswordReset() {
           )}
         </DialogContent>
         <DialogActions>
-          <Button 
+          <StyledButton 
             onClick={() => setRejectConfirmDialogOpen(false)} 
             disabled={rejectProcessing}
+            fullWidth={false}
           >
             취소
-          </Button>
-          <Button 
+          </StyledButton>
+          <StyledButton 
             onClick={handleReject} 
             variant="contained" 
             color="error"
             disabled={rejectProcessing}
             startIcon={rejectProcessing ? <CircularProgress size={16} /> : null}
+            fullWidth={false}
           >
             거절
-          </Button>
+          </StyledButton>
         </DialogActions>
       </Dialog>
     </Box>
