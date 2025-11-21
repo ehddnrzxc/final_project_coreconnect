@@ -18,6 +18,7 @@ public class ChatRoomListDTO {
 	private String lastMessageContent;
 	private LocalDateTime lasMessageTime;
 	private String lastSenderName;
-	private long unreadCount;	
+	private long unreadCount;
+	private Boolean lastMessageFileYn; // 마지막 메시지의 파일 첨부 여부
 	
 }

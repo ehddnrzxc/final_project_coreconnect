@@ -25,8 +25,10 @@ import NotificationPopover from "./components/NotificationPopover";
 import ProfilePopover from "./components/ProfilePopover";
 import ThemeSelect from "./components/ThemeSelect";
 import SettingsDialog from "./settings/SettingsDialog";
+import ChatPopover from "../../../features/chat/components/ChatPopover";
+import { fetchChatRoomsLatest } from "../../../features/chat/api/ChatRoomApi";
 
-export default function Topbar({ onLogout, themeMode, themeOptions, onThemeChange }) {
+export default function Topbar({ onLogout, themeMode, themeOptions, onThemeChange, chatRoomList = [], chatUnreadCount = 0 }) {
   const navigate = useNavigate();
   const theme = useTheme();
   const { userProfile } = useContext(UserProfileContext) || {};
@@ -45,6 +47,7 @@ export default function Topbar({ onLogout, themeMode, themeOptions, onThemeChang
   const [settingsView, setSettingsView] = useState("overview");
   const [notificationAnchor, setNotificationAnchor] = useState(null);
   const [unreadSummary, setUnreadSummary] = useState(null);
+  const [chatAnchor, setChatAnchor] = useState(null);
 
   const handleOpenNotice = async () => {
     setNoticeOpen(true);
@@ -87,6 +90,14 @@ export default function Topbar({ onLogout, themeMode, themeOptions, onThemeChang
 
   const handleCloseNotification = () => {
     setNotificationAnchor(null);
+  };
+
+  const handleChatClick = (e) => {
+    setChatAnchor(e.currentTarget);
+  };
+
+  const handleCloseChat = () => {
+    setChatAnchor(null);
   };
 
   useEffect(() => {
@@ -199,11 +210,17 @@ export default function Topbar({ onLogout, themeMode, themeOptions, onThemeChang
             <Tooltip title="채팅" arrow>
               <IconButton
                 size="small"
-                onClick={() => navigate("/chat")}
+                onClick={handleChatClick}
                 aria-label="Chat"
-                sx={{ color: "text.primary" }}
+                sx={{ color: "text.primary", position: "relative" }}
               >
-                <MessageIcon />
+                <Badge
+                  badgeContent={chatUnreadCount}
+                  color="error"
+                  max={99}
+                >
+                  <MessageIcon />
+                </Badge>
               </IconButton>
             </Tooltip>
 
@@ -304,6 +321,14 @@ export default function Topbar({ onLogout, themeMode, themeOptions, onThemeChang
         anchorEl={notificationAnchor}
         open={Boolean(notificationAnchor)}
         onClose={handleCloseNotification}
+      />
+
+      {/* 채팅 팝오버 */}
+      <ChatPopover
+        anchorEl={chatAnchor}
+        open={Boolean(chatAnchor)}
+        onClose={handleCloseChat}
+        roomList={chatRoomList}
       />
     </>
   );

@@ -80,6 +80,7 @@ export default function ChatLayout() {
   // ⭐ 중복 메시지 방지: 최근 처리한 메시지 ID 추적 (동시 호출 방지)
   const processedMessageIdsRef = useRef(new Set());
   const processingMessageIdsRef = useRef(new Set()); // 현재 처리 중인 메시지 ID
+  const pendingFileUrlsRef = useRef(new Map()); // 메시지 ID -> fileUrls 매핑 (파일 업로드 응답에서 받은 fileUrls 저장)
   
   // ⭐ UNREAD_COUNT_UPDATE 대기 큐: 메시지가 아직 로드되지 않은 경우 unreadCount 업데이트 저장
   const pendingUnreadCountUpdatesRef = useRef(new Map()); // chatId -> unreadCount
@@ -174,6 +175,10 @@ export default function ChatLayout() {
     const handleNewMessageTimestamp = new Date().toISOString();
     console.log("📨 [ChatLayout] ========== handleNewMessage 진입 ==========", {
       timestamp: handleNewMessageTimestamp,
+      fileYn: msg?.fileYn,
+      fileUrl: msg?.fileUrl,
+      fileUrls: msg?.fileUrls,
+      fileUrlsLength: msg?.fileUrls?.length,
       messageType: msg?.type || "일반메시지",
       messageId: msg?.id,
       roomId: msg?.roomId,
@@ -445,9 +450,35 @@ export default function ChatLayout() {
         
         // ⭐ 내가 보낸 새 메시지의 unreadCount가 있으면 그대로 사용 (백엔드에서 실시간 계산된 값)
         // unreadCount가 없거나 undefined인 경우 0으로 설정
+        // ⚠️ 중요: fileUrls를 명시적으로 포함하여 여러 파일이 제대로 표시되도록 함
+        // ⚠️ 중요: msg.fileUrls가 배열이고 길이가 0보다 크면 그대로 사용
+        // ⚠️ 중요: WebSocket 메시지에 fileUrls가 없으면 파일 업로드 응답에서 저장한 fileUrls 사용
+        let fileUrls = null;
+        if (msg.fileUrls && Array.isArray(msg.fileUrls) && msg.fileUrls.length > 0) {
+          fileUrls = msg.fileUrls;
+        } else {
+          // 파일 업로드 응답에서 저장한 fileUrls 확인
+          const pendingFileUrls = pendingFileUrlsRef.current.get(numMsgId);
+          if (pendingFileUrls && Array.isArray(pendingFileUrls) && pendingFileUrls.length > 0) {
+            fileUrls = pendingFileUrls;
+            console.log("📨 [ChatLayout] 파일 업로드 응답에서 저장한 fileUrls 사용:", {
+              messageId: numMsgId,
+              fileUrlsLength: fileUrls.length,
+              fileUrls: fileUrls
+            });
+            // 사용 후 삭제
+            pendingFileUrlsRef.current.delete(numMsgId);
+          } else if (msg.fileUrl) {
+            fileUrls = [msg.fileUrl];
+          }
+        }
+        
         const newMessage = {
           ...msg,
-          unreadCount: msg.unreadCount != null ? msg.unreadCount : 0
+          unreadCount: msg.unreadCount != null ? msg.unreadCount : 0,
+          fileUrls: fileUrls, // fileUrls 명시적으로 설정
+          fileUrl: msg.fileUrl, // 하위 호환성을 위해 fileUrl도 유지
+          fileYn: msg.fileYn
         };
         
         console.log("🔥 [ChatLayout] 새 메시지 객체 생성:", {
@@ -455,6 +486,14 @@ export default function ChatLayout() {
           roomId: newMessage.roomId,
           messageContent: newMessage.messageContent,
           unreadCount: newMessage.unreadCount,
+          fileYn: newMessage.fileYn,
+          fileUrl: newMessage.fileUrl,
+          fileUrls: newMessage.fileUrls,
+          fileUrlsLength: newMessage.fileUrls?.length,
+          fileUrls타입: Array.isArray(newMessage.fileUrls) ? "배열" : typeof newMessage.fileUrls,
+          원본msgfileUrls: msg.fileUrls,
+          원본msgfileUrls타입: Array.isArray(msg.fileUrls) ? "배열" : typeof msg.fileUrls,
+          원본msgfileUrls길이: msg.fileUrls?.length,
           전체메시지: newMessage
         });
         
@@ -494,7 +533,14 @@ export default function ChatLayout() {
           console.log("📨 [ChatLayout] 내가 보낸 메시지 추가 완료:", {
             messageId: msg.id,
             unreadCount: newMessage.unreadCount,
-            전체메시지수: updated.length
+            fileYn: newMessage.fileYn,
+            fileUrl: newMessage.fileUrl,
+            fileUrls: newMessage.fileUrls,
+            fileUrlsLength: newMessage.fileUrls?.length,
+            fileUrls타입: Array.isArray(newMessage.fileUrls) ? "배열" : typeof newMessage.fileUrls,
+            전체메시지수: updated.length,
+            추가된메시지의fileUrls: updated[updated.length - 1]?.fileUrls,
+            추가된메시지의fileUrls길이: updated[updated.length - 1]?.fileUrls?.length
           });
           return updated;
         });
@@ -510,6 +556,7 @@ export default function ChatLayout() {
                 ...room,
                 lastMessageContent: msg.messageContent,
                 lasMessageTime: msg.sendAt,
+                lastMessageFileYn: msg.fileYn || false, // 마지막 메시지의 파일 첨부 여부
                 fileYn: msg.fileYn,
                 sendAt: msg.sendAt,
                 // ⭐ unreadCount는 유지 (자신이 보낸 메시지는 읽음 처리되므로)
@@ -562,9 +609,35 @@ export default function ChatLayout() {
       
       // ⭐ 다른 사람이 보낸 새 메시지의 unreadCount가 있으면 그대로 사용 (백엔드에서 실시간 계산된 값)
       // unreadCount가 없거나 undefined인 경우 0으로 설정
+      // ⚠️ 중요: fileUrls를 명시적으로 포함하여 여러 파일이 제대로 표시되도록 함
+      // ⚠️ 중요: msg.fileUrls가 배열이고 길이가 0보다 크면 그대로 사용
+      // ⚠️ 중요: WebSocket 메시지에 fileUrls가 없으면 파일 업로드 응답에서 저장한 fileUrls 사용
+      let fileUrls = null;
+      if (msg.fileUrls && Array.isArray(msg.fileUrls) && msg.fileUrls.length > 0) {
+        fileUrls = msg.fileUrls;
+      } else {
+        // 파일 업로드 응답에서 저장한 fileUrls 확인
+        const pendingFileUrls = pendingFileUrlsRef.current.get(numMsgId);
+        if (pendingFileUrls && Array.isArray(pendingFileUrls) && pendingFileUrls.length > 0) {
+          fileUrls = pendingFileUrls;
+          console.log("📨 [ChatLayout] 파일 업로드 응답에서 저장한 fileUrls 사용 (다른 사람 메시지):", {
+            messageId: numMsgId,
+            fileUrlsLength: fileUrls.length,
+            fileUrls: fileUrls
+          });
+          // 사용 후 삭제
+          pendingFileUrlsRef.current.delete(numMsgId);
+        } else if (msg.fileUrl) {
+          fileUrls = [msg.fileUrl];
+        }
+      }
+      
       const newMessage = {
         ...msg,
-        unreadCount: msg.unreadCount != null ? msg.unreadCount : 0
+        unreadCount: msg.unreadCount != null ? msg.unreadCount : 0,
+        fileUrls: fileUrls, // fileUrls 명시적으로 설정
+        fileUrl: msg.fileUrl, // 하위 호환성을 위해 fileUrl도 유지
+        fileYn: msg.fileYn
       };
       
       // ⭐ 디버깅: 다른 사람이 보낸 메시지의 unreadCount 확인 (필요시 주석 해제)
@@ -574,6 +647,13 @@ export default function ChatLayout() {
         senderEmail: msg.senderEmail,
         unreadCount: newMessage.unreadCount,
         messageContent: msg.messageContent,
+        fileYn: newMessage.fileYn,
+        fileUrl: newMessage.fileUrl,
+        fileUrls: newMessage.fileUrls,
+        fileUrlsLength: newMessage.fileUrls?.length,
+        fileUrls타입: Array.isArray(newMessage.fileUrls) ? "배열" : typeof newMessage.fileUrls,
+        원본msgfileUrls: msg.fileUrls,
+        원본msgfileUrls타입: Array.isArray(msg.fileUrls) ? "배열" : typeof msg.fileUrls,
         메시지전체: newMessage
       });
       
@@ -608,7 +688,14 @@ export default function ChatLayout() {
           console.log("📨 [ChatLayout] 다른 사람이 보낸 메시지 추가 완료:", {
             messageId: msg.id,
             unreadCount: newMessage.unreadCount,
-            전체메시지수: updated.length
+            fileYn: newMessage.fileYn,
+            fileUrl: newMessage.fileUrl,
+            fileUrls: newMessage.fileUrls,
+            fileUrlsLength: newMessage.fileUrls?.length,
+            fileUrls타입: Array.isArray(newMessage.fileUrls) ? "배열" : typeof newMessage.fileUrls,
+            전체메시지수: updated.length,
+            추가된메시지의fileUrls: updated[updated.length - 1]?.fileUrls,
+            추가된메시지의fileUrls길이: updated[updated.length - 1]?.fileUrls?.length
           });
           return updated;
       });
@@ -622,6 +709,7 @@ export default function ChatLayout() {
               ...room,
               lastMessageContent: msg.messageContent,
               lasMessageTime: msg.sendAt,
+              lastMessageFileYn: msg.fileYn || false, // 마지막 메시지의 파일 첨부 여부
               fileYn: msg.fileYn,
               sendAt: msg.sendAt,
               // ⭐ 현재 선택된 방이므로 unreadCount는 유지 (이미 읽고 있으므로)
@@ -686,6 +774,7 @@ export default function ChatLayout() {
               unreadCount: newUnreadCount,
               messageContent: msg.messageContent,
               sendAt: msg.sendAt,
+              fileYn: msg.fileYn,
               isMyMessage: true,
               isCurrentlySelected
             });
@@ -725,6 +814,7 @@ export default function ChatLayout() {
             ...room,
             lastMessageContent: msg.messageContent,
             lasMessageTime: msg.sendAt,
+            lastMessageFileYn: msg.fileYn || false, // 마지막 메시지의 파일 첨부 여부
             fileYn: msg.fileYn,
             sendAt: msg.sendAt,
             unreadCount: newUnreadCount,
@@ -736,46 +826,79 @@ export default function ChatLayout() {
     });
   };
 
-  // ---------- 파일 업로드 (다중 파일 지원) ----------
+  // ---------- 파일 업로드 (다중 파일 지원 - 하나의 메시지로 묶기) ----------
   const handleFileUpload = async (files) => {
     if (!files || files.length === 0 || !selectedRoomId) return;
     
-    // 각 파일을 개별적으로 업로드
+    // ⭐ 여러 파일을 한 번에 업로드 (하나의 메시지로 묶기)
+    const formData = new FormData();
     for (const file of files) {
-      const formData = new FormData();
-      formData.append("file", file);
-      try {
-        const res = await fetch(`/api/v1/chat/${selectedRoomId}/messages/file`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: formData
+      formData.append("files", file);
+    }
+    
+    try {
+      const res = await fetch(`/api/v1/chat/${selectedRoomId}/messages/files`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: formData
+      });
+      if (!res.ok) throw new Error("파일 업로드 실패");
+      const result = await res.json();
+      const chatMessage = result.data;
+      
+      // ⚠️ 디버깅: 업로드된 파일 정보 확인
+      console.log("[ChatLayout] 파일 업로드 응답:", {
+        messageId: chatMessage?.id,
+        fileUrl: chatMessage?.fileUrl,
+        fileUrls: chatMessage?.fileUrls,
+        fileUrlsLength: chatMessage?.fileUrls?.length,
+        fileYn: chatMessage?.fileYn
+      });
+      
+      // ⭐ fileUrls가 없으면 fileUrl을 배열로 변환하여 설정
+      const messageWithFileUrls = {
+        ...chatMessage,
+        fileUrls: chatMessage.fileUrls || (chatMessage.fileUrl ? [chatMessage.fileUrl] : undefined),
+        fileUrl: chatMessage.fileUrl, // 하위 호환성을 위해 유지
+        fileYn: chatMessage.fileYn
+      };
+      
+      console.log("[ChatLayout] 파일 업로드 메시지 처리:", {
+        messageId: messageWithFileUrls?.id,
+        fileUrls: messageWithFileUrls?.fileUrls,
+        fileUrlsLength: messageWithFileUrls?.fileUrls?.length,
+        fileUrl: messageWithFileUrls?.fileUrl
+      });
+      
+      // ⚠️ 중요: 파일 업로드 API 응답으로 받은 메시지는 추가하지 않음
+      // WebSocket으로 받은 메시지가 더 최신이고, 모든 참여자에게 동일하게 전달되므로
+      // WebSocket 메시지만 사용하도록 함
+      // 파일 업로드 API 응답은 성공 여부 확인용으로만 사용
+      console.log("📨 [ChatLayout] 파일 업로드 성공 - WebSocket 메시지 대기 중:", {
+        messageId: messageWithFileUrls.id,
+        fileUrlsLength: messageWithFileUrls.fileUrls?.length
+      });
+      
+      // ⭐ 파일 업로드 응답으로 받은 fileUrls를 임시 저장 (WebSocket 메시지에 fileUrls가 없을 경우 대비)
+      const msgId = messageWithFileUrls?.id;
+      if (msgId != null && messageWithFileUrls.fileUrls && messageWithFileUrls.fileUrls.length > 0) {
+        const numMsgId = Number(msgId);
+        pendingFileUrlsRef.current.set(numMsgId, messageWithFileUrls.fileUrls);
+        console.log("📨 [ChatLayout] 파일 업로드 응답의 fileUrls 임시 저장:", {
+          messageId: numMsgId,
+          fileUrlsLength: messageWithFileUrls.fileUrls.length,
+          fileUrls: messageWithFileUrls.fileUrls
         });
-        if (!res.ok) throw new Error("파일 업로드 실패");
-        const result = await res.json();
-        const chatMessage = result.data;
         
-        // ⭐ 중복 메시지 체크: 이미 같은 ID의 메시지가 있으면 추가하지 않음
-        setMessages((prev) => {
-          const exists = prev.some(m => {
-            const mId = m?.id;
-            const newId = chatMessage?.id;
-            if (mId == null || newId == null) return false;
-            return Number(mId) === Number(newId);
-          });
-          if (exists) {
-            console.log("📨 [ChatLayout] 중복 메시지 무시 (파일 업로드):", {
-              messageId: chatMessage.id,
-              messageContent: chatMessage.messageContent
-            });
-            return prev;
-          }
-          return [...prev, chatMessage];
-        });
-      } catch (err) {
-        alert(`파일 업로드에 실패했습니다 (${file.name}): ${err.message}`);
+        // 5초 후 자동 삭제 (메모리 관리)
+        setTimeout(() => {
+          pendingFileUrlsRef.current.delete(numMsgId);
+        }, 5000);
       }
+    } catch (err) {
+      alert(`파일 업로드에 실패했습니다: ${err.message}`);
     }
   };
 
@@ -871,6 +994,53 @@ export default function ChatLayout() {
             // 최신 메시지부터 내림차순으로 받아오므로 역순으로 정렬하여 오름차순으로 표시
             const sortedMessages = [...pageData.content].reverse();
             
+            // ⭐ 중간에 초대된 사용자는 초대 시점부터의 메시지만 표시
+            // 현재 사용자의 입장 메시지를 찾아서 초대 시점 확인
+            const currentUserId = userProfile?.id || userProfile?.userId;
+            let joinedAtTime = null;
+            
+            if (currentUserId) {
+              // 현재 사용자의 입장 메시지 찾기 (시스템 메시지)
+              const joinMessage = sortedMessages.find((msg) => {
+                const isJoinMessage = msg.messageContent && msg.messageContent.includes("님이 입장했습니다");
+                const isMyJoinMessage = msg.senderId === currentUserId || 
+                                       (msg.senderEmail && userProfile?.email && 
+                                        msg.senderEmail.trim().toLowerCase() === userProfile.email.trim().toLowerCase());
+                return isJoinMessage && isMyJoinMessage;
+              });
+              
+              if (joinMessage && joinMessage.sendAt) {
+                joinedAtTime = new Date(joinMessage.sendAt).getTime();
+                console.log("📅 [ChatLayout] 사용자 초대 시점 확인:", {
+                  joinMessageId: joinMessage.id,
+                  joinMessageContent: joinMessage.messageContent,
+                  joinedAtTime: joinMessage.sendAt,
+                  timestamp: joinedAtTime
+                });
+              }
+            }
+            
+            // 초대 시점 이후의 메시지만 필터링 (입장 메시지 포함)
+            const filteredMessages = joinedAtTime 
+              ? sortedMessages.filter((msg) => {
+                  // 입장 메시지는 항상 포함
+                  const isJoinMessage = msg.messageContent && msg.messageContent.includes("님이 입장했습니다");
+                  if (isJoinMessage) {
+                    return true;
+                  }
+                  // 초대 시점 이후의 메시지만 포함
+                  const msgTime = msg.sendAt ? new Date(msg.sendAt).getTime() : 0;
+                  return msgTime >= joinedAtTime;
+                })
+              : sortedMessages; // 초대 시점을 찾을 수 없으면 모든 메시지 표시
+            
+            console.log("📅 [ChatLayout] 메시지 필터링 결과:", {
+              전체메시지수: sortedMessages.length,
+              필터링된메시지수: filteredMessages.length,
+              초대시점: joinedAtTime ? new Date(joinedAtTime).toISOString() : "없음",
+              필터링여부: joinedAtTime !== null
+            });
+            
             // ⭐ 중요: 채팅방 진입 시 fetch한 메시지 사용
             // ⭐ selectedRoomId가 변경되면 이전 방의 메시지는 무시하고 새로 fetch
             // ⭐ 서버에서 최신 unreadCount를 가져오므로 그대로 사용
@@ -889,7 +1059,7 @@ export default function ChatLayout() {
             });
             
             // ⭐ 대기 중인 unreadCount 업데이트 적용 (메시지가 로드되기 전에 도착한 UNREAD_COUNT_UPDATE 처리)
-            const messagesWithPendingUpdates = sortedMessages.map((m) => {
+            const messagesWithPendingUpdates = filteredMessages.map((m) => {
               const chatId = Number(m.id);
               const pendingUpdate = pendingUnreadCountUpdatesRef.current.get(chatId);
               if (pendingUpdate !== undefined) {
@@ -918,11 +1088,41 @@ export default function ChatLayout() {
             setHasMore(!pageData.last); // last가 false면 더 있음
             setCurrentPage(0);
             
+            // ⭐ 채팅방 선택 시 메시지 로드 후 최신 메시지로 스크롤
+            // DOM 업데이트 완료 후 스크롤 (약간의 지연)
+            setTimeout(() => {
+              const scrollContainer = document.querySelector('.chat-message-list-container');
+              if (scrollContainer) {
+                scrollContainer.scrollTop = scrollContainer.scrollHeight;
+                console.log("📜 [ChatLayout] 채팅방 선택 시 최신 메시지로 스크롤:", {
+                  scrollTop: scrollContainer.scrollTop,
+                  scrollHeight: scrollContainer.scrollHeight,
+                  messagesLength: messagesWithPendingUpdates.length
+                });
+              }
+            }, 300);
+            
           // ⭐ 채팅방 접속 시 안읽은 메시지들을 읽음 처리
           // 이렇게 하면 내가 읽은 메시지들의 unreadCount가 -1씩 감소됨
           try {
             await markRoomMessagesAsRead(selectedRoomId);
             console.log("[ChatLayout] 채팅방 접속 시 메시지 읽음 처리 완료 - roomId:", selectedRoomId);
+            
+            // ⭐ 채팅방 목록의 unreadCount를 0으로 업데이트
+            setRoomList((prevRoomList) => {
+              const updated = prevRoomList.map(room => {
+                if (Number(room.roomId) === Number(selectedRoomId)) {
+                  return {
+                    ...room,
+                    unreadCount: 0 // 읽음 처리했으므로 unreadCount를 0으로 설정
+                  };
+                }
+                return room;
+              });
+              return sortRoomList(updated);
+            });
+            
+            console.log("[ChatLayout] 채팅방 목록의 unreadCount 업데이트 완료 - roomId:", selectedRoomId);
           } catch (error) {
             console.error("[ChatLayout] 메시지 읽음 처리 실패:", error);
           }
@@ -940,6 +1140,22 @@ export default function ChatLayout() {
             try {
               await markRoomMessagesAsRead(selectedRoomId);
               console.log("[ChatLayout] 채팅방 접속 시 메시지 읽음 처리 완료 - roomId:", selectedRoomId);
+              
+              // ⭐ 채팅방 목록의 unreadCount를 0으로 업데이트
+              setRoomList((prevRoomList) => {
+                const updated = prevRoomList.map(room => {
+                  if (Number(room.roomId) === Number(selectedRoomId)) {
+                    return {
+                      ...room,
+                      unreadCount: 0 // 읽음 처리했으므로 unreadCount를 0으로 설정
+                    };
+                  }
+                  return room;
+                });
+                return sortRoomList(updated);
+              });
+              
+              console.log("[ChatLayout] 채팅방 목록의 unreadCount 업데이트 완료 - roomId:", selectedRoomId);
             } catch (error) {
               console.error("[ChatLayout] 메시지 읽음 처리 실패:", error);
             }
@@ -1002,6 +1218,38 @@ export default function ChatLayout() {
           // pageData.content는 내림차순이므로 역순으로 정렬
           const newMessages = [...pageData.content].reverse();
           
+          // ⭐ 중간에 초대된 사용자는 초대 시점부터의 메시지만 표시
+          const currentUserId = userProfile?.id || userProfile?.userId;
+          let joinedAtTime = null;
+          
+          if (currentUserId) {
+            // 현재 사용자의 입장 메시지 찾기 (기존 메시지 + 새로 로드한 메시지에서)
+            const allMessagesForJoinCheck = [...messages, ...newMessages];
+            const joinMessage = allMessagesForJoinCheck.find((msg) => {
+              const isJoinMessage = msg.messageContent && msg.messageContent.includes("님이 입장했습니다");
+              const isMyJoinMessage = msg.senderId === currentUserId || 
+                                     (msg.senderEmail && userProfile?.email && 
+                                      msg.senderEmail.trim().toLowerCase() === userProfile.email.trim().toLowerCase());
+              return isJoinMessage && isMyJoinMessage;
+            });
+            
+            if (joinMessage && joinMessage.sendAt) {
+              joinedAtTime = new Date(joinMessage.sendAt).getTime();
+            }
+          }
+          
+          // 초대 시점 이후의 메시지만 필터링
+          const filteredNewMessages = joinedAtTime 
+            ? newMessages.filter((msg) => {
+                const isJoinMessage = msg.messageContent && msg.messageContent.includes("님이 입장했습니다");
+                if (isJoinMessage) {
+                  return true;
+                }
+                const msgTime = msg.sendAt ? new Date(msg.sendAt).getTime() : 0;
+                return msgTime >= joinedAtTime;
+              })
+            : newMessages;
+          
             // ⭐ 중복 메시지 체크: 이미 존재하는 메시지는 제외
           // ⭐ 중요: 기존 메시지의 unreadCount를 보존하기 위해 병합 로직 사용
           setMessages(prev => {
@@ -1019,7 +1267,7 @@ export default function ChatLayout() {
               }
             });
             
-            const filteredNewMessages = newMessages.map(msg => {
+            const processedNewMessages = filteredNewMessages.map(msg => {
               const msgId = msg?.id;
               if (msgId == null) return null;
               const numId = Number(msgId);
@@ -1033,7 +1281,13 @@ export default function ChatLayout() {
                   새로운unreadCount: pendingUpdate
                 });
                 pendingUnreadCountUpdatesRef.current.delete(numId);
-                return { ...msg, unreadCount: pendingUpdate };
+                return { 
+                  ...msg, 
+                  unreadCount: pendingUpdate,
+                  fileUrls: msg.fileUrls || (msg.fileUrl ? [msg.fileUrl] : undefined), // fileUrls 보존
+                  fileUrl: msg.fileUrl,
+                  fileYn: msg.fileYn
+                };
               }
               
               // ⭐ 기존 메시지가 있으면 unreadCount를 보존 (UNREAD_COUNT_UPDATE로 patch된 값 우선)
@@ -1043,17 +1297,26 @@ export default function ChatLayout() {
                 if (existingUnreadCount != null) {
                   return {
                     ...msg,
-                    unreadCount: existingUnreadCount
+                    unreadCount: existingUnreadCount,
+                    fileUrls: msg.fileUrls || (msg.fileUrl ? [msg.fileUrl] : undefined), // fileUrls 보존
+                    fileUrl: msg.fileUrl,
+                    fileYn: msg.fileYn
                   };
                 }
               }
               
               // ⭐ 새로운 메시지이거나 기존 unreadCount가 없으면 fetch된 값 사용
-              return msg;
+              // ⚠️ 중요: fileUrls 보존
+              return {
+                ...msg,
+                fileUrls: msg.fileUrls || (msg.fileUrl ? [msg.fileUrl] : undefined),
+                fileUrl: msg.fileUrl,
+                fileYn: msg.fileYn
+              };
             }).filter(msg => msg != null);
             
             // ⭐ 중복 제거: 기존에 없는 메시지만 추가
-            const trulyNewMessages = filteredNewMessages.filter(msg => {
+            const trulyNewMessages = processedNewMessages.filter(msg => {
               const msgId = msg?.id;
               if (msgId == null) return false;
               return !existingIds.has(Number(msgId));
@@ -1065,23 +1328,26 @@ export default function ChatLayout() {
               if (existingId == null) return existingMsg;
               
               // ⭐ fetch된 메시지 중 같은 ID가 있으면 unreadCount를 보존한 채로 병합
-              const fetchedMsg = filteredNewMessages.find(m => Number(m.id) === Number(existingId));
+              const fetchedMsg = processedNewMessages.find(m => Number(m.id) === Number(existingId));
               if (fetchedMsg) {
                 // ⭐ 기존 unreadCount가 있으면 보존 (UNREAD_COUNT_UPDATE로 patch된 값)
                 return {
                   ...fetchedMsg,
-                  unreadCount: existingMsg.unreadCount != null ? existingMsg.unreadCount : fetchedMsg.unreadCount
+                  unreadCount: existingMsg.unreadCount != null ? existingMsg.unreadCount : fetchedMsg.unreadCount,
+                  fileUrls: fetchedMsg.fileUrls || (fetchedMsg.fileUrl ? [fetchedMsg.fileUrl] : undefined), // fileUrls 보존
+                  fileUrl: fetchedMsg.fileUrl,
+                  fileYn: fetchedMsg.fileYn
                 };
               }
               
               return existingMsg;
             });
             
-            if (trulyNewMessages.length < newMessages.length) {
+            if (trulyNewMessages.length < processedNewMessages.length) {
               console.log("📨 [ChatLayout] 중복 메시지 제외 (이전 메시지 로딩, unreadCount 보존):", {
-                전체메시지수: newMessages.length,
+                전체메시지수: processedNewMessages.length,
                 중복제외후: trulyNewMessages.length,
-                제외된메시지수: newMessages.length - trulyNewMessages.length,
+                제외된메시지수: processedNewMessages.length - trulyNewMessages.length,
                 병합된메시지수: merged.length
               });
             }

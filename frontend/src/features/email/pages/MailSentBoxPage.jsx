@@ -10,8 +10,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import ForwardIcon from '@mui/icons-material/Forward';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import SyncIcon from '@mui/icons-material/Sync';
-import ViewListIcon from '@mui/icons-material/ViewList';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 
 import { fetchSentbox, moveToTrash, getEmailDetail } from '../api/emailApi';
 import { useNavigate } from 'react-router-dom';
@@ -305,12 +305,6 @@ const MailSentBoxPage = () => {
           }} 
         />
       )}
-      {/* 뒤로가기 버튼 - 상단 구석 */}
-      <Box sx={{ position: 'absolute', top: 16, right: 16, zIndex: 1000 }}>
-        <IconButton onClick={() => navigate(-1)} sx={{ bgcolor: '#fff', boxShadow: 1 }}>
-          <ArrowBackIcon />
-        </IconButton>
-      </Box>
       <Paper elevation={0} sx={{ p: 3, borderRadius: 2 }}>
         {/* 상단 타이틀 및 툴바 */}
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
@@ -373,7 +367,7 @@ const MailSentBoxPage = () => {
           </ButtonGroup>
           <Box sx={{ flex: 1 }} />
           <IconButton onClick={handleSortByDate} title={sortOrder === "desc" ? "날짜순 내림차순 (최신순)" : "날짜순 오름차순 (오래된순)"}>
-            <ViewListIcon />
+            {sortOrder === "desc" ? <ArrowDownwardIcon /> : <ArrowUpwardIcon />}
           </IconButton>
           <IconButton onClick={handleRefresh}><SyncIcon /></IconButton>
           <Paper 

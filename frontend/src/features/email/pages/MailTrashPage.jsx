@@ -6,7 +6,6 @@ import {
 // import VisibilityIcon from "@mui/icons-material/Visibility"; // 눈모양 제거
 import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useNavigate } from "react-router-dom";
 import {
   fetchTrashMails,   // 휴지통 메일 목록 조회
@@ -182,12 +181,6 @@ const MailTrashPage = () => {
 
   return (
     <Box sx={{ p: 4, minHeight: "100vh", bgcolor: "#fafbfd", position: 'relative' }}>
-      {/* 뒤로가기 버튼 - 상단 구석 */}
-      <Box sx={{ position: 'absolute', top: 16, right: 16, zIndex: 1000 }}>
-        <IconButton onClick={() => navigate(-1)} sx={{ bgcolor: '#fff', boxShadow: 1 }}>
-          <ArrowBackIcon />
-        </IconButton>
-      </Box>
       <Paper elevation={0} sx={{ p: 3, borderRadius: 2 }}>
         {/* 상단 툴바 / 타이틀 */}
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>

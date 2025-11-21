@@ -224,7 +224,7 @@ public class ChatMessageController {
 	    
 	    // ⭐ Chat 엔티티의 unreadCount도 최신 값으로 업데이트 (일관성 유지)
 	    if (saved.getUnreadCount() == null || saved.getUnreadCount() != realUnreadCount) {
-	        saved.setUnreadCount(realUnreadCount);
+	        saved.updateUnreadCount(realUnreadCount);
 	        chatRepository.save(saved);
 	        chatRepository.flush(); // 브로드캐스트 직전에 flush하여 최신 값 확보
 	    }
@@ -505,7 +505,7 @@ public class ChatMessageController {
 	    @RequestParam(value = "page", defaultValue = "0") int page,
 	    @RequestParam(value = "size", defaultValue = "20") int size,
 	    @AuthenticationPrincipal CustomUserDetails customUserDetails) {
-	    System.out.println("여기 들어옴=============================");
+	    log.debug("여기 들어옴=============================");
 	    try {
 	        String email = customUserDetails.getEmail();
 	        User user = userRepository.findByEmail(email).orElseThrow();
@@ -530,7 +530,7 @@ public class ChatMessageController {
 	            Optional<ChatMessageReadStatus> readStatusOpt =
 	                chatMessageReadStatusRepository.findByChatIdAndUserId(chat.getId(), userId);
 	            boolean readYn = readStatusOpt.map(ChatMessageReadStatus::getReadYn).orElse(false);
-	            ChatMessageResponseDTO dto = ChatMessageResponseDTO.fromEntity(chat, readYn);
+	            ChatMessageResponseDTO dto = ChatMessageResponseDTO.fromEntity(chat, readYn, s3Service);
 	            
 	            // ⭐ unreadCount를 실시간으로 계산하여 설정 (DB 저장값이 아닌 실제 읽지 않은 사람 수)
 	            int realUnreadCount = chatMessageReadStatusRepository.countUnreadByChatId(chat.getId());
@@ -573,7 +573,7 @@ public class ChatMessageController {
 	            return dto;
 	        });
 
-	        System.out.println("messages page: " + chatPage.getNumber() + ", total: " + chatPage.getTotalElements());
+	        log.debug("messages page: {}, total: {}", chatPage.getNumber(), chatPage.getTotalElements());
 
 	        return ResponseEntity.ok(ResponseDTO.success(dtoPage, "채팅방 메시지 페이징 조회 성공"));
 	    } catch (Exception e) {
@@ -677,10 +677,11 @@ public class ChatMessageController {
 					.body(ResponseDTO.internalError("파일 s3 업로드 실패: "+ e.getMessage()));
 		}		
 		
+		// ⭐ MessageFile에는 S3 키를 저장 (URL이 아닌 키)
 		MessageFile fileEntity = MessageFile.createMessageFile(
 	                uploadFile.getOriginalFilename(),
 	                (double) uploadFile.getSize(),
-	                fileUrl,
+	                s3Key, // S3 키 저장 (URL이 아닌 키)
 	                null // chat은 sendChatMessage에서 연결됨
 	     );
 		// fileUrl은 chat의 fileUrl 필드로도 저장해줄 수 있음
@@ -693,7 +694,7 @@ public class ChatMessageController {
 		// ⭐ unreadCount는 sendChatMessage에서 실시간 접속자 수를 기반으로 계산되어 Chat 엔티티에 설정됨
 		// 공식: unreadCount = (참여자 전체 - 발신자 - 접속중인 다른 사용자)
 		messageFileRepository.save(fileEntity);
-		ChatResponseDTO dto = ChatResponseDTO.fromEntity(chat);
+		ChatResponseDTO dto = ChatResponseDTO.fromEntity(chat, s3Service);
 		
 		// ⭐ sendChatMessage에서 계산된 unreadCount 사용
 		int realUnreadCount = chat.getUnreadCount() != null ? chat.getUnreadCount() : 0;
@@ -703,7 +704,7 @@ public class ChatMessageController {
 		// fromEntity에서 chat.getSender().getEmail()이 null일 수 있으므로 sender.getEmail() 직접 설정
 		dto.setSenderEmail(sender.getEmail());
 		
-		// fileUrl도 DTO에 포함
+		// fileUrl도 DTO에 포함 (S3 URL로 변환)
 		dto.setFileUrl(fileUrl);
 		
 		// ⭐ 프로필 이미지 URL 설정 (user_profile_image_key 사용)
@@ -731,7 +732,185 @@ public class ChatMessageController {
 		return ResponseEntity.status(HttpStatus.CREATED).body(ResponseDTO.success(dto, "파일/이미지 업로드 성공"));
 	}
 	
-	  // 9. 채팅방 초대 가능한 사용자 목록 조회 (참여자 제외)
+	/**
+	 * 9. 다중 파일/이미지 업로드 (하나의 메시지로 묶기)
+	 * @throws java.io.IOException 
+	 * */
+	@Operation(summary = "채팅방 다중 파일/이미지 업로드", description = "채팅방에 여러 파일/이미지를 하나의 메시지로 업로드합니다")
+	@PostMapping("/{roomId}/messages/files")
+	public ResponseEntity<ResponseDTO<ChatResponseDTO>> uploadMultipleFileMessage(
+			@PathVariable("roomId") Integer roomId, 
+			@AuthenticationPrincipal CustomUserDetails user, 
+			@RequestParam("files") MultipartFile[] uploadFiles) throws java.io.IOException {
+		String email = user.getEmail();
+		// ⭐ LazyInitializationException 방지: Department를 함께 로드하는 메서드 사용
+		User sender = userRepository.findByEmailWithDepartment(email).orElseThrow();
+		
+		if (uploadFiles == null || uploadFiles.length == 0) {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+					.body(ResponseDTO.error(400, "업로드할 파일이 없습니다."));
+		}
+		
+		// ⚠️ 디버깅: 업로드된 파일 수 확인
+		log.info("[uploadMultipleFileMessage] 업로드 요청 파일 수: {}", uploadFiles.length);
+		
+		// ⭐ 하나의 Chat 메시지 생성
+		Chat chat = chatRoomService.sendChatMessage(roomId, sender.getId(), null);
+		if (chat == null) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(ResponseDTO.error(500, "채팅 메시지 생성 실패"));
+		}
+		
+		// ⭐ 각 파일을 S3에 업로드하고 MessageFile로 저장
+		List<MessageFile> fileEntities = new ArrayList<>();
+		int fileIndex = 0;
+		for (MultipartFile uploadFile : uploadFiles) {
+			fileIndex++;
+			if (uploadFile.isEmpty()) {
+				log.warn("[uploadMultipleFileMessage] 파일 {} 건너뜀 (빈 파일)", fileIndex);
+				continue;
+			}
+			
+			String s3Key;
+			String fileUrl;
+			try {
+				// s3에 업로드
+				s3Key = s3Service.uploadProfileImage(uploadFile, sender.getName());
+				fileUrl = s3Service.getFileUrl(s3Key);
+				log.info("[uploadMultipleFileMessage] 파일 {} S3 업로드 성공: {} -> {}", fileIndex, uploadFile.getOriginalFilename(), s3Key);
+			} catch (IOException e) {
+				log.error("[uploadMultipleFileMessage] 파일 {} S3 업로드 실패: {}", fileIndex, e.getMessage(), e);
+				continue; // 개별 파일 업로드 실패 시 건너뛰기
+			}
+			
+			// ⭐ MessageFile에는 S3 키를 저장 (URL이 아닌 키)
+			MessageFile fileEntity = MessageFile.createMessageFile(
+					uploadFile.getOriginalFilename(),
+					(double) uploadFile.getSize(),
+					s3Key, // S3 키 저장 (URL이 아닌 키)
+					chat // 같은 chat에 연결
+			);
+			
+			// chat의 파일리스트에 파일 추가 (양방향 매핑)
+			chat.getMessageFiles().add(fileEntity);
+			fileEntities.add(fileEntity);
+			log.debug("[uploadMultipleFileMessage] 파일 {} MessageFile 생성 및 추가 완료. 현재 fileEntities.size(): {}", fileIndex, fileEntities.size());
+		}
+		
+		log.info("[uploadMultipleFileMessage] 최종 fileEntities.size(): {}, chat.getMessageFiles().size(): {}", fileEntities.size(), chat.getMessageFiles().size());
+		
+		if (fileEntities.isEmpty()) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(ResponseDTO.error(500, "모든 파일 업로드 실패"));
+		}
+		
+		// ⭐ Chat 저장 (fileYn = true로 설정) - 도메인 메서드 사용
+		chat.updateFileYn(true);
+		// ⭐ 첫 번째 파일의 S3 키를 chat의 fileUrl로 설정 (하위 호환성 - 나중에 URL로 변환됨)
+		if (!fileEntities.isEmpty()) {
+			chat.updateFileUrl(fileEntities.get(0).getS3ObjectKey());
+		}
+		
+		// ⭐ Chat 저장 (cascade = CascadeType.ALL이므로 MessageFile도 함께 저장됨)
+		// ⚠️ 중요: 
+		// 1. messageFileRepository.save()를 개별적으로 호출하지 않음
+		// 2. chat.getMessageFiles()에 이미 추가한 파일들이 cascade로 인해 자동 저장됨
+		// 3. fileEntities 리스트를 사용하여 정확한 파일 목록을 DTO에 설정
+		chat = chatRepository.save(chat);
+		
+		// ⭐ 저장 후 chat을 다시 조회하여 messageFiles를 명시적으로 로드
+		// ⚠️ 중요: 저장 직후에는 lazy loading으로 인해 messageFiles가 제대로 로드되지 않을 수 있음
+		// 따라서 저장 후 다시 조회하여 messageFiles를 명시적으로 로드
+		Chat savedChat = chatRepository.findByIdWithMessageFiles(chat.getId());
+		if (savedChat != null) {
+			chat = savedChat;
+			log.info("[uploadMultipleFileMessage] 저장 후 재조회 - chat.getMessageFiles().size(): {}", chat.getMessageFiles().size());
+		} else {
+			log.error("[uploadMultipleFileMessage] 저장 후 재조회 실패! chatId: {}", chat.getId());
+		}
+		
+		// ⭐ 여러 파일 URL 목록 설정 (S3 키를 URL로 변환) - fileEntities를 직접 사용
+		List<String> fileUrls = fileEntities.stream()
+			.map(file -> {
+				String s3Key = file.getS3ObjectKey();
+				if (s3Key != null && !s3Key.isEmpty()) {
+					return s3Service.getFileUrl(s3Key);
+				}
+				return null;
+			})
+			.filter(url -> url != null && !url.isEmpty())
+			.collect(java.util.stream.Collectors.toList());
+		
+		log.info("[uploadMultipleFileMessage] 생성된 fileUrls.size(): {}", fileUrls.size());
+		
+		// ⭐ 첫 번째 파일의 URL (하위 호환성) - S3 URL로 변환
+		String firstFileUrl = null;
+		if (!fileEntities.isEmpty() && fileEntities.get(0).getS3ObjectKey() != null) {
+			firstFileUrl = s3Service.getFileUrl(fileEntities.get(0).getS3ObjectKey());
+		}
+		
+		// ⭐ DTO 생성 - fileUrls와 fileUrl을 직접 설정
+		ChatResponseDTO dto = ChatResponseDTO.fromEntity(chat, s3Service);
+		
+		// ⭐ sendChatMessage에서 계산된 unreadCount 사용
+		int realUnreadCount = chat.getUnreadCount() != null ? chat.getUnreadCount() : 0;
+		dto.setUnreadCount(realUnreadCount);
+		
+		// ⭐ senderEmail 명시적으로 설정
+		dto.setSenderEmail(sender.getEmail());
+		
+		// ⭐ 여러 파일 URL 목록 설정 (fileEntities를 직접 사용하여 정확한 파일 목록 반환)
+		// ⚠️ 중요: fromEntity에서 설정한 fileUrls를 덮어씀 (chat.getMessageFiles()가 제대로 로드되지 않을 수 있음)
+		dto.setFileUrls(fileUrls);
+		
+		// ⭐ 첫 번째 파일의 URL을 DTO에 설정 (하위 호환성)
+		if (firstFileUrl != null) {
+			dto.setFileUrl(firstFileUrl);
+		}
+		
+		// ⭐ 프로필 이미지 URL 설정
+		if (sender != null && sender.getProfileImageKey() != null && !sender.getProfileImageKey().isBlank()) {
+			String profileImageUrl = s3Service.getFileUrl(sender.getProfileImageKey());
+			dto.setSenderProfileImageUrl(profileImageUrl);
+		}
+		
+		// ⚠️ 디버깅: 최종 DTO 확인
+		log.debug("[uploadMultipleFileMessage] ⭐ 최종 DTO 확인:");
+		log.debug("  - chatId: {}", dto.getId());
+		log.debug("  - fileYn: {}", dto.getFileYn());
+		log.debug("  - fileUrl: {}", dto.getFileUrl());
+		log.debug("  - fileUrls.size(): {}", dto.getFileUrls() != null ? dto.getFileUrls().size() : 0);
+		if (dto.getFileUrls() != null && !dto.getFileUrls().isEmpty()) {
+			log.debug("  - fileUrls 내용:");
+			for (int i = 0; i < dto.getFileUrls().size(); i++) {
+				log.debug("    [{}] {}", i, dto.getFileUrls().get(i));
+			}
+		}
+		
+		// ⚠️ 디버깅: DB 저장 확인
+		log.debug("[uploadMultipleFileMessage] ⭐ DB 저장 확인:");
+		log.debug("  - chatId: {}", chat.getId());
+		log.debug("  - chat.getMessageFiles().size(): {}", chat.getMessageFiles().size());
+		if (!chat.getMessageFiles().isEmpty()) {
+			log.debug("  - DB에 저장된 MessageFile 목록:");
+			for (int i = 0; i < chat.getMessageFiles().size(); i++) {
+				com.goodee.coreconnect.chat.entity.MessageFile mf = chat.getMessageFiles().get(i);
+				log.debug("    [{}] id: {}, fileName: {}, s3Key: {}", i, mf.getId(), mf.getFileName(), mf.getS3ObjectKey());
+			}
+		}
+		
+		// ⭐ WebSocket으로 브로드캐스트
+		String topic = "/topic/chat.room." + roomId;
+		log.info("[uploadMultipleFileMessage] ⭐ WebSocket 브로드캐스트 시작 - topic: {}", topic);
+		log.info("[uploadMultipleFileMessage] ⭐ 브로드캐스트할 DTO의 fileUrls: {}", dto.getFileUrls());
+		log.info("[uploadMultipleFileMessage] ⭐ 브로드캐스트할 DTO의 fileUrls.size(): {}", dto.getFileUrls() != null ? dto.getFileUrls().size() : 0);
+		messagingTemplate.convertAndSend(topic, dto);
+		log.info("[uploadMultipleFileMessage] ⭐ WebSocket 브로드캐스트 완료");
+		
+		return ResponseEntity.ok(ResponseDTO.success(dto, "다중 파일 업로드 성공"));
+	}
+	
+	  // 10. 채팅방 초대 가능한 사용자 목록 조회 (참여자 제외)
     @Operation(summary = "채팅방 초대 가능한 사용자 목록 조회", description = "특정 채팅방에 참여하지 않은 모든 사용자 목록을 조회합니다.")
     @GetMapping("/{roomId}/users/available")
     public ResponseEntity<ResponseDTO<List<ChatUserResponseDTO>>> getAvailableUsersForInvite(
@@ -1071,7 +1250,7 @@ public class ChatMessageController {
         List<ChatMessageResponseDTO> unreadMessages = unreadStatuses.stream()
         		// 각 ChatMessageReadStatus에 대해 메시지 객체와 내 읽음 여부 getReadYn()를 함께 전달
         		.map(status -> {
-        		    ChatMessageResponseDTO dto = ChatMessageResponseDTO.fromEntity(status.getChat(), status.getReadYn());
+        		    ChatMessageResponseDTO dto = ChatMessageResponseDTO.fromEntity(status.getChat(), status.getReadYn(), s3Service);
         		    
         		    // ⭐ senderEmail 명시적으로 설정 (lazy loading 문제 해결)
         		    if (dto != null && status.getChat() != null && status.getChat().getSender() != null 

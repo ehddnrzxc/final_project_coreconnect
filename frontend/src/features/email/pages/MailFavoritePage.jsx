@@ -11,7 +11,6 @@ import ForwardIcon from '@mui/icons-material/Forward';
 import SyncIcon from '@mui/icons-material/Sync';
 import ViewListIcon from '@mui/icons-material/ViewList';
 import StarIcon from '@mui/icons-material/Star';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 import { fetchFavoriteMails, moveToTrash, getEmailDetail, toggleFavoriteStatus } from '../api/emailApi';
 import { useNavigate } from 'react-router-dom';
@@ -107,7 +106,7 @@ const MailFavoritePage = () => {
     setAppliedKeyword(keyword);
     setAppliedSearchType(type);
     setPage(1);
-    load(1, size, keyword, type);
+    // useEffect가 appliedKeyword와 appliedSearchType 변경을 감지하여 load()를 호출함
   };
 
   // 날짜순 정렬 토글 핸들러
@@ -336,12 +335,6 @@ const MailFavoritePage = () => {
           }} 
         />
       )}
-      {/* 뒤로가기 버튼 - 상단 구석 */}
-      <Box sx={{ position: 'absolute', top: 16, right: 16, zIndex: 1000 }}>
-        <IconButton onClick={() => navigate(-1)} sx={{ bgcolor: '#fff', boxShadow: 1 }}>
-          <ArrowBackIcon />
-        </IconButton>
-      </Box>
       <Paper elevation={0} sx={{ p: 3, borderRadius: 2 }}>
         {/* 제목 */}
         <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -373,8 +366,6 @@ const MailFavoritePage = () => {
               <MenuItem value="CONTENT">내용</MenuItem>
             </Select>
             <Paper
-              component="form"
-              onSubmit={handleSearchSubmit}
               sx={{ display: 'flex', alignItems: 'center', width: 300, height: 36, p: '2px 4px' }}
             >
               <InputBase
@@ -382,8 +373,14 @@ const MailFavoritePage = () => {
                 placeholder="검색어 입력"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSearchSubmit(e);
+                  }
+                }}
               />
-              <IconButton type="submit" sx={{ p: '6px' }}>
+              <IconButton onClick={handleSearchSubmit} sx={{ p: '6px' }}>
                 <SearchIcon fontSize="small" />
               </IconButton>
             </Paper>

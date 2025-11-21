@@ -17,6 +17,9 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Component
 public class EmailReservationScheduler {
 
@@ -95,8 +98,7 @@ public class EmailReservationScheduler {
                 emailRepository.save(email);
             } catch (Exception e) {
                 // 실패하면 로깅. (운영 환경에선 재시도 큐 추가 등 권장)
-                System.err.println("예약메일 발송 실패 emailId=" + email.getEmailId() + ", 사유=" + e.getMessage());
-                e.printStackTrace();
+                log.error("예약메일 발송 실패 emailId={}, 사유={}", email.getEmailId(), e.getMessage(), e);
             }
         }
     }

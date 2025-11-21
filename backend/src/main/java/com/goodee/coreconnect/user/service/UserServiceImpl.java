@@ -23,7 +23,9 @@ import com.goodee.coreconnect.user.repository.UserDetailProfileRepository;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
@@ -77,17 +79,15 @@ public class UserServiceImpl implements UserService {
           if (profileImageKey != null && !profileImageKey.isBlank()) {
             try {
               imageUrl = s3Service.getFileUrl(profileImageKey);
-              System.out.println("[UserServiceImpl.findAllUsers] userId: " + user.getId() + 
-                                ", profileImageKey: " + profileImageKey + 
-                                ", profileImageUrl: " + imageUrl.substring(0, Math.min(50, imageUrl.length())) + "...");
+              log.debug("[UserServiceImpl.findAllUsers] userId: {}, profileImageKey: {}, profileImageUrl: {}", 
+                        user.getId(), profileImageKey, imageUrl.substring(0, Math.min(50, imageUrl.length())) + "...");
             } catch (Exception e) {
-              System.err.println("[UserServiceImpl.findAllUsers] S3 URL 변환 실패: userId=" + user.getId() + 
-                               ", profileImageKey=" + profileImageKey + ", error=" + e.getMessage());
+              log.error("[UserServiceImpl.findAllUsers] S3 URL 변환 실패: userId={}, profileImageKey={}, error={}", 
+                        user.getId(), profileImageKey, e.getMessage(), e);
               imageUrl = "";
             }
           } else {
-            System.out.println("[UserServiceImpl.findAllUsers] userId: " + user.getId() + 
-                             ", profileImageKey가 null 또는 빈 문자열");
+            log.debug("[UserServiceImpl.findAllUsers] userId: {}, profileImageKey가 null 또는 빈 문자열", user.getId());
           }
           
           // profileImageUrl을 포함한 새 DTO 반환
@@ -115,19 +115,19 @@ public class UserServiceImpl implements UserService {
   @Transactional(readOnly = true)
   public List<OrganizationUserResponseDTO> getOrganizationChart() {
     List<User> users = userRepository.findAllForOrganization();
-    System.out.println("[UserServiceImpl.getOrganizationChart] 전체 사용자 수: " + users.size());
+    log.info("[UserServiceImpl.getOrganizationChart] 전체 사용자 수: {}", users.size());
     
     List<OrganizationUserResponseDTO> result = users.stream()
         .map(user -> {
           OrganizationUserResponseDTO dto = OrganizationUserResponseDTO.fromEntity(user, s3Service);
           // 변환 결과 확인
           if (dto != null && dto.getProfileImageUrl() != null && !dto.getProfileImageUrl().isBlank()) {
-            System.out.println("[UserServiceImpl.getOrganizationChart] ✅ 프로필 이미지 URL 생성 성공 - userId: " + 
-                             user.getId() + ", name: " + user.getName() + ", url: " + 
-                             dto.getProfileImageUrl().substring(0, Math.min(50, dto.getProfileImageUrl().length())) + "...");
+            log.debug("[UserServiceImpl.getOrganizationChart] ✅ 프로필 이미지 URL 생성 성공 - userId: {}, name: {}, url: {}", 
+                     user.getId(), user.getName(), 
+                     dto.getProfileImageUrl().substring(0, Math.min(50, dto.getProfileImageUrl().length())) + "...");
           } else {
-            System.out.println("[UserServiceImpl.getOrganizationChart] ⚠️ 프로필 이미지 URL 없음 - userId: " + 
-                             user.getId() + ", name: " + user.getName() + ", profileImageKey: " + user.getProfileImageKey());
+            log.debug("[UserServiceImpl.getOrganizationChart] ⚠️ 프로필 이미지 URL 없음 - userId: {}, name: {}, profileImageKey: {}", 
+                     user.getId(), user.getName(), user.getProfileImageKey());
           }
           return dto;
         })
@@ -140,8 +140,8 @@ public class UserServiceImpl implements UserService {
                       dto.getProfileImageUrl().startsWith("http"))
         .count();
     
-    System.out.println("[UserServiceImpl.getOrganizationChart] 프로필 이미지 통계 - 전체: " + result.size() + 
-                      ", 이미지 있음: " + usersWithImage + ", 이미지 없음: " + (result.size() - usersWithImage));
+    log.info("[UserServiceImpl.getOrganizationChart] 프로필 이미지 통계 - 전체: {}, 이미지 있음: {}, 이미지 없음: {}", 
+             result.size(), usersWithImage, result.size() - usersWithImage);
     
     return result;
   }
