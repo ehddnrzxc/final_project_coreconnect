@@ -62,7 +62,7 @@ public class LeaveServiceImpl implements LeaveService {
   /** 전자결재 연동 휴가 생성 */
   @Override
   public void createLeaveFromApproval(Document document, User drafter, LocalDate startDate, LocalDate endDate, String typeLabel, String reason) {
-    LeaveType leaveType = LeaveType.fromLabel(typeLabel);
+    LeaveType leaveType = LeaveType.valueOf(typeLabel);
     LeaveRequest leave = LeaveRequest.createLeaveRequest(drafter, 
                                                          startDate, 
                                                          endDate, 
@@ -229,7 +229,7 @@ public class LeaveServiceImpl implements LeaveService {
     LocalDateTime endDateTime = calculateEndDateTime(leave);
     
     RequestScheduleDTO dto = RequestScheduleDTO.builder()
-        .title(leave.getType().getLabel())
+        .title(leave.getType().name())
         .content(leave.getReason())
         .categoryId(category.getId())
         .visibility(ScheduleVisibility.PUBLIC)

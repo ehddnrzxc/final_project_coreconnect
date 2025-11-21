@@ -16,6 +16,7 @@ import {
   Divider,
 } from "@mui/material";
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
+import { getJobGradeLabel } from "../../../utils/labelUtils";
 
 export default function UserCreateForm() {
   const { showSnack } = useSnackbarContext();
@@ -279,7 +280,7 @@ export default function UserCreateForm() {
                     ) : (
                       jobGrades.map((g) => (
                         <MenuItem key={g.value} value={g.value}>
-                          {g.label}
+                          {getJobGradeLabel(g.value)}
                         </MenuItem>
                       ))
                     )}

@@ -2,6 +2,7 @@ import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, Ta
 import { useState, useEffect } from "react";
 import { formatTime } from "../../../utils/TimeUtils";
 import { getCompanyAttendanceToday } from "../api/attendanceAPI";
+import { getAttendanceStatusLabel } from "../../../utils/labelUtils";
 
 function CompanyAttendanceStatus() {
   const [loading, setLoading] = useState(true);
@@ -35,17 +36,17 @@ function CompanyAttendanceStatus() {
   };
 
   const getStatusInfo = (status) => {
+    const label = getAttendanceStatusLabel(status);
     switch (status) {
       case "PRESENT":
-        return { label: "출근", color: "success" };
+        return { label, color: "success" };
       case "LATE":
-        return { label: "지각", color: "warning" };
+        return { label, color: "warning" };
       case "COMPLETED":
         return { label: "퇴근", color: "info" };
       case "ABSENT":
-        return { label: "미출근", color: "default" };
       default:
-        return { label: "미출근", color: "default" };
+        return { label, color: "default" };
     }
   };
 

@@ -7,10 +7,10 @@ import {
   ListItemButton,
   ListItemText,
   Divider,
-  Button,
 } from "@mui/material";
 import { Link as RouterLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import BeachAccessIcon from "@mui/icons-material/BeachAccess";
+import StyledButton from "../../../components/ui/StyledButton";
 
 /** 휴가 레이아웃 컴포넌트 */
 export default function LeaveLayout() {
@@ -45,26 +45,13 @@ export default function LeaveLayout() {
               휴가
             </Typography>
           </Box>
-          <Button
-            variant="outlined"
+          <StyledButton
             fullWidth
             component={RouterLink}
             to="/e-approval/new/1"
-            sx={{ 
-              py: 1,
-              bgcolor: "transparent",
-              borderColor: "black",
-              borderWidth: 1,
-              color: "text.primary",
-              "&:hover": {
-                bgcolor: "transparent",
-                borderColor: "black",
-                borderWidth: 1,
-              },
-            }}
           >
             휴가 신청하기
-          </Button>
+          </StyledButton>
         </Box>
 
         {/* 메뉴 */}

@@ -5,7 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import { Table, TableBody, TableRow, TableCell, TextField, Select, MenuItem, Typography, CircularProgress } from '@mui/material';
 import { getLeaveTypes } from '../../leave/api/leaveAPI';
-import { getLeaveTypeLabel } from '../../../components/utils/labelUtils';
+import { getLeaveTypeLabel } from '../../../utils/labelUtils';
 
 // 공통 스타일 정의
 const commonStyles = {
@@ -43,7 +43,7 @@ const VacationForm = ({ formData, onFormChange }) => {
   }, []);
 
   // 반차 여부 확인
-  const isHalfDay = formData.vacationType === '반차(오전)' || formData.vacationType === '반차(오후)';
+  const isHalfDay = formData.vacationType === 'HALF_DAY_MORNING' || formData.vacationType === 'HALF_DAY_AFTERNOON';
 
   // 반차인 경우 endDate를 startDate와 같게 자동 설정 (휴가 종류 변경 시)
   useEffect(() => {
@@ -117,7 +117,7 @@ const VacationForm = ({ formData, onFormChange }) => {
                 >
                   <MenuItem value="" disabled><em>선택</em></MenuItem>
                   {leaveTypes.map((type) => (
-                    <MenuItem key={type.value} value={getLeaveTypeLabel(type.value)}>
+                    <MenuItem key={type.value} value={type.value}>
                       {getLeaveTypeLabel(type.value)}
                     </MenuItem>
                   ))}
