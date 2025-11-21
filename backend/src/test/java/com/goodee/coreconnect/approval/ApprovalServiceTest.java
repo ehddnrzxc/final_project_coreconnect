@@ -1,4 +1,4 @@
-package com.goodee.coreconnect;
+package com.goodee.coreconnect.approval;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
