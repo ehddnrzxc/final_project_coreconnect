@@ -249,8 +249,8 @@ const BoardListPage = () => {
                 flexDirection: "column",
               }}
             >
-              <Box sx={{ display: "flex", width: "100%" }}>
-                <Box sx={{ flex: 4, pr: 1 }}>
+              <Box sx={{ display: "flex", width: "100%", minWidth: 0 }}>
+                <Box sx={{ flex: 4, pr: 1, minWidth: 0 }}>
                   <Stack direction="row" alignItems="center" spacing={1}>
                     <Typography variant="body2" color="text.secondary">
                       {b.categoryName || "전체 게시판"}
