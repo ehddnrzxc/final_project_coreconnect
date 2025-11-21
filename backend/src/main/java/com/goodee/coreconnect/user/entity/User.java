@@ -14,6 +14,9 @@ import com.goodee.coreconnect.board.entity.Board;
 import com.goodee.coreconnect.chat.entity.ChatRoom;
 import com.goodee.coreconnect.chat.entity.ChatRoomUser;
 import com.goodee.coreconnect.department.entity.Department;
+import com.goodee.coreconnect.user.enums.JobGrade;
+import com.goodee.coreconnect.user.enums.Role;
+import com.goodee.coreconnect.user.enums.Status;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
 import jakarta.persistence.CascadeType;
@@ -29,6 +32,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
@@ -78,6 +82,9 @@ public class User {
 
     @Column(name = "user_employee_number", length = 10, unique = true)
     private String employeeNumber;
+
+    @OneToOne(mappedBy = "user", cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
+    private UserDetailProfile userDetailProfile;
 
     // ─────────────── 연관관계 매핑 ───────────────
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -186,6 +193,13 @@ public class User {
     /** 전화번호 변경 */
     public void changePhone(String newPhone) {
         this.phone = newPhone;
+    }
+    
+    /** 이메일 변경 */
+    public void changeEmail(String newEmail) {
+        if (newEmail != null && !newEmail.isBlank()) {
+            this.email = newEmail;
+        }
     }
     
     /** 이름 변경 */

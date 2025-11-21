@@ -61,3 +61,9 @@ export async function getAccountLogs(page = 0, size = 20, email = null, actionTy
   const res = await http.get("/admin/account-logs", { params });
   return res.data;
 }
+
+/** 사용자 정보 수정 */
+export async function updateUser(userId, userData) {
+  const res = await http.put(`/admin/users/${userId}`, userData);
+  return res.data;
+}

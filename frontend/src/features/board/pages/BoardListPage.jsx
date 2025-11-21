@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { Box, Typography, ListItemButton, Stack, TextField, Button, MenuItem, Select, FormControl, InputLabel, Avatar } from "@mui/material";
+import { Box, Typography, ListItemButton, Stack, TextField, Button, MenuItem, Select, FormControl, InputLabel, Avatar, Divider } from "@mui/material";
 import { getBoardsByCategory, getBoardsOrdered, searchBoards } from "../api/boardAPI";
 import CommentIcon from "@mui/icons-material/Comment";
 import RecentViewedBoards from "./RecentViewedBoards";
@@ -132,11 +132,11 @@ const BoardListPage = () => {
           alignItems="center"
           sx={{
             mb: 2,
-            width: "77%",   // 게시글 박스와 동일하게
-            mx: "auto",     // 가운데 정렬
+            width: "77%",
+            mx: "auto",
           }}
         >
-          
+
           {/* 정렬 선택박스 */}
           <FormControl size="small" sx={{ width: 130 }}>
             <InputLabel id="sort-label">정렬</InputLabel>
@@ -178,10 +178,18 @@ const BoardListPage = () => {
             />
 
             <Button
-              variant="contained"
-              color="primary"
+              variant="outlined"
+              size="small"
               onClick={handleSearch}
-              sx={{ minWidth: 70 }}
+              sx={{
+                fontWeight: 700,
+                borderRadius: 2,
+                bgcolor: "#f6f7fc",
+                borderColor: "#e1e3ea",
+                py: 1,
+                px: 2,
+                minWidth: 70,
+              }}
             >
               검색
             </Button>
@@ -189,174 +197,165 @@ const BoardListPage = () => {
         </Stack>
 
         {/* 게시글 목록 영역 */}
-        {boards.map((b) => (
-          <ListItemButton
-            key={b.id}
-            onClick={() =>
-              navigate(`/board/detail/${b.id}`, {
-                state: {
-                  // 상세페이지에 출발지 정보 전달
-                  fromAllBoard: !categoryId, // 전체 게시판이면 true, 카테고리면 false
-                },
-              })
-            }
-            sx={{
-              bgcolor: b.pinned
-                ? "primary.main"
-                : b.noticeYn
-                  ? "#d9d9d9"
-                  : "white",
-              border: "1px solid #e0e0e0",
-              borderRadius: 1,
-              mb: 1.2,
-              py: 1.5,
-              width: "77%",
-              mx: "auto",
-              flexDirection: "column",
-              alignItems: "flex-start",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-              "&:hover": {
+        {boards.map((b, idx) => (
+          <Box key={b.id}>
+            {/* ★ 카드 사이 구분선 추가 */}
+            {idx > 0 && (
+              <Divider
+                sx={{
+                  width: "77%",
+                  mx: "auto",
+                  borderColor: "#e0e0e0",
+                }}
+              />
+            )}
+
+            <ListItemButton
+              onClick={() =>
+                navigate(`/board/detail/${b.id}`, {
+                  state: { fromAllBoard: !categoryId },
+                })
+              }
+              sx={{
+                // 카드 사이 간격 제거
+                mb: 0,
+
+                // ★ 리스트처럼 붙지만 섹션 전체는 둥글게 유지
+                borderRadius:
+                  idx === 0
+                    ? "12px 12px 0 0"
+                    : idx === boards.length - 1
+                      ? "0 0 12px 12px"
+                      : 0,
+
                 bgcolor: b.pinned
-                  ? "primary.light"
+                  ? "#FFF5D6"
                   : b.noticeYn
-                    ? "#e0e0e0"
-                    : "#fafafa",
-              },
-            }}
-          >
-            <Box sx={{ display: "flex", width: "100%" }}>
-              {/* 텍스트 본문 (80%) */}
-              <Box sx={{ flex: 4, pr: 1 }}>
-                {" "}
-                {/* 카테고리/댓글수/제목/내용/작성자 */}
-                <Stack direction="row" alignItems="center" spacing={1}>
-                  {/* 게시판 카테고리명 */}
-                  <Typography variant="body2" color="text.secondary">
-                    {b.categoryName || "전체 게시판"}
-                  </Typography>
+                    ? "#E8F3FF"
+                    : "white",
 
-                  <Stack direction="row" alignItems="center" spacing={0.5}>
-                    {/* 댓글 아이콘 + 개수 */}
-                    <CommentIcon sx={{ fontSize: 20, color: "#1976d2" }} />
-                    <Typography variant="caption" color="text.secondary">
-                      {b.replyCount ?? 0}
+                border: "1px solid #e5e5e5",
+                py: 2,
+                px: 2,
+                width: "77%",
+                mx: "auto",
+                boxShadow: "0 2px 4px rgba(0,0,0,0.03)",
+
+                "&:hover": {
+                  backgroundColor: "#f7f7f7",
+                  transform: "translateY(-2px)",
+                  boxShadow: "0 4px 10px rgba(0,0,0,0.06)",
+                  transition: "0.15s ease",
+                },
+
+                transition: "0.15s ease",
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              <Box sx={{ display: "flex", width: "100%" }}>
+                <Box sx={{ flex: 4, pr: 1 }}>
+                  <Stack direction="row" alignItems="center" spacing={1}>
+                    <Typography variant="body2" color="text.secondary">
+                      {b.categoryName || "전체 게시판"}
                     </Typography>
 
-                    {/* 첨부파일 → 이미지 유무 상관없이 표시 */}
-                    {b.fileCount > 0 && (
-                      <Stack
-                        direction="row"
-                        alignItems="center"
-                        spacing={0.3}
-                        sx={{ ml: 1 }}
-                      >
-                        <AttachFileIcon sx={{ fontSize: 20, color: "#e78018ff" }} />
-                        <Typography variant="caption" color="text.secondary">
-                          {b.fileCount}
-                        </Typography>
-                      </Stack>
-                    )}
+                    <Stack direction="row" alignItems="center" spacing={0.5}>
+                      <CommentIcon sx={{ fontSize: 20, color: "#1976d2" }} />
+                      <Typography variant="caption" color="text.secondary">
+                        {b.replyCount ?? 0}
+                      </Typography>
+
+                      {b.fileCount > 0 && (
+                        <Stack direction="row" alignItems="center" spacing={0.3} sx={{ ml: 1 }}>
+                          <AttachFileIcon sx={{ fontSize: 20, color: "#e78018ff" }} />
+                          <Typography variant="caption" color="text.secondary">
+                            {b.fileCount}
+                          </Typography>
+                        </Stack>
+                      )}
+                    </Stack>
                   </Stack>
-                </Stack>
-                {/* 제목, 내용, 날짜 */}
-                <Stack
-                  direction="row"
-                  alignItems="center"
-                  spacing={1}
-                  sx={{ width: "100%" }}
-                >
-                  {b.pinned && (
-                    <Typography component="span" sx={{ fontSize: 20, mr: 0.5 }}>
-                      📌
-                    </Typography>
-                  )}
-                  {b.privateYn && (
-                    <Typography component="span" sx={{ fontSize: 19, mr: 0.5 }}>
-                      🔒
-                    </Typography>
-                  )}
-                  <Typography
-                    variant="subtitle1"
-                    sx={{
-                      fontWeight: 700,
-                      fontSize: 17,
-                      flexGrow: 1,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {b.title}
-                  </Typography>
-                </Stack>
-                {b.content && (
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{
-                      mt: 0.5,
-                      mb: 1.5,
-                      overflow: "hidden",
-                      display: "-webkit-box",
-                      WebkitLineClamp: 1,
-                      WebkitBoxOrient: "vertical",
-                    }}
-                  >
-                    {b.content}
-                  </Typography>
-                )}
-                <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 0.5 }}>
 
-                  {/* 프로필 이미지 */}
-                  <Avatar
-                    src={b.writerProfileImageUrl || undefined}
-                    sx={{
-                      width: 27,
-                      height: 27,
-                      mr: 0.5
-                    }}
-                  />
+                  <Stack direction="row" alignItems="center" spacing={1}>
+                    {b.pinned && <Typography sx={{ fontSize: 20 }}>📢</Typography>}
+                    {!b.pinned && b.noticeYn && <Typography sx={{ fontSize: 20 }}>📢</Typography>}
+                    {b.privateYn && <Typography sx={{ fontSize: 19 }}>🔒</Typography>}
 
-                  {/* 작성자 정보 */}
-                  <Typography variant="caption" color="text.secondary">
-                    {b.writerName}
-                    {b.writerJobGrade ? ` ${b.writerJobGrade}` : ""}
-                    {" / "}
-                    {formatDate(b.createdAt)}
-                    {" / 조회수 "}
-                    {b.viewCount ?? 0}
-                  </Typography>
-                </Stack>
-              </Box>
-
-              {/* 오른쪽 이미지 미리보기 (20%) */}
-              {b.files &&
-                b.files.length > 0 &&
-                b.files[0].fileUrl &&
-                /\.(jpg|jpeg|png|gif|webp)$/i.test(b.files[0].fileName) && (
-                  <Box
-                    sx={{
-                      flex: 1, // 20%
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "flex-start",
-                    }}
-                  >
-                    <Box
-                      component="img"
-                      src={b.files[0].fileUrl}
-                      alt={b.files[0].fileName || "첨부 이미지"}
+                    <Typography
+                      variant="subtitle1"
                       sx={{
-                        width: "100%",
-                        height: 112,
-                        objectFit: "cover",
-                        borderRadius: 1,
+                        fontWeight: 700,
+                        fontSize: 17,
+                        flexGrow: 1,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        minWidth: 0,
                       }}
+                    >
+                      {b.title}
+                    </Typography>
+                  </Stack>
+
+                  {b.content && (
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{
+                        mt: 0.5,
+                        mb: 1.5,
+                        overflow: "hidden",
+                        display: "-webkit-box",
+                        WebkitLineClamp: 1,
+                        WebkitBoxOrient: "vertical",
+                        wordBreak: "break-word",    // 영어 단어 줄바꿈 핵심
+                        overflowWrap: "break-word", // 길게 이어진 텍스트 박스 밖으로 못 나가게
+                        minWidth: 0,                // flex 아이템 관련(“필요하면 너 마음대로 줄바꿈 해도 된다.”)
+                      }}
+                    >
+                      {b.content}
+                    </Typography>
+                  )}
+
+                  <Stack direction="row" alignItems="center" spacing={1}>
+                    <Avatar
+                      src={b.writerProfileImageUrl || undefined}
+                      sx={{ width: 27, height: 27, mr: 0.5 }}
                     />
-                  </Box>
-                )}
-            </Box>
-          </ListItemButton>
+
+                    <Typography variant="caption" color="text.secondary">
+                      {b.writerName}
+                      {b.writerJobGrade ? ` ${b.writerJobGrade}` : ""}
+                      {" / "}
+                      {formatDate(b.createdAt)}
+                      {" / 조회수 "}
+                      {b.viewCount ?? 0}
+                    </Typography>
+                  </Stack>
+                </Box>
+
+                {b.files &&
+                  b.files.length > 0 &&
+                  b.files[0].fileUrl &&
+                  /\.(jpg|jpeg|png|gif|webp)$/i.test(b.files[0].fileName) && (
+                    <Box sx={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "flex-start" }}>
+                      <Box
+                        component="img"
+                        src={b.files[0].fileUrl}
+                        alt={b.files[0].fileName}
+                        sx={{
+                          width: "100%",
+                          height: 112,
+                          objectFit: "cover",
+                          borderRadius: "10px",
+                        }}
+                      />
+                    </Box>
+                  )}
+              </Box>
+            </ListItemButton>
+          </Box>
         ))}
 
         {/* 페이지네이션 영역 */}
@@ -426,7 +425,7 @@ const BoardListPage = () => {
                 </Button>
 
                 {/* 숫자 페이지 */}
-                {[...Array(blockEnd - blockStart + 1)].map((_, idx) => {
+                {[...Array(Math.max(0, blockEnd - blockStart + 1))].map((_, idx) => {
                   const pageNumber = blockStart + idx;
 
                   return (
@@ -464,7 +463,13 @@ const BoardListPage = () => {
       </Box>
 
       {/* 오른쪽 사이드 영역: 최근 본 게시글 */}
-      <Box sx={{ flex: 1.2 }}>
+      <Box
+        sx={{
+          width: 340,         // 가로 고정
+          flexShrink: 0,      // 공간 부족해도 줄어들지 않음
+          ml: 3,              // 왼쪽 영역과 간격
+        }}
+      >
         <RecentViewedBoards />
       </Box>
     </Box>

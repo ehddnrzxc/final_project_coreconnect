@@ -1,8 +1,13 @@
-import { Dialog, DialogTitle, DialogContent, IconButton, Typography, Avatar, Divider, Box } from "@mui/material";
+import { Dialog, DialogTitle, DialogContent, IconButton, Typography, Avatar, Divider, Box, Button } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import MailOutlineIcon from "@mui/icons-material/MailOutline";
+import { useNavigate } from "react-router-dom";
 
 
 const MemberDetailModal = ({ open, member, onClose }) => {
+
+  const navigate = useNavigate();
+
   if (!member) return null; // 선택된 구성원이 없으면 모달 표시하지 않음
 
   return (
@@ -18,6 +23,22 @@ const MemberDetailModal = ({ open, member, onClose }) => {
         },
       }}
     >
+
+      {/* 메일쓰기 버튼 */}
+      <Box sx={{ position: "absolute", left: 16, top: 16, zIndex: 20 }}>
+        <Button
+          startIcon={<MailOutlineIcon />}
+          variant="outlined"
+          size="small"
+          onClick={() => {
+            navigate("/email/write", { state: { mailTo: member.email } });
+            onClose();
+          }}
+        >
+          메일쓰기
+        </Button>
+      </Box>
+
       {/* 모달 상단 (닫기 버튼 포함) */}
       <DialogTitle
         sx={{

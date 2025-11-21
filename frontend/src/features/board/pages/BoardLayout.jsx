@@ -103,7 +103,7 @@ const BoardLayout = () => {
   // 라우트 변경 시 화면 스크롤을 맨 위로 이동시키는 효과
   // - window.scrollTo는 브라우저 전체 스크롤 기준으로 동작
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" }); 
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }, [location]); // URL(location)이 바뀔 때마다 실행됨
 
   // 좌측: 카테고리 리스트
@@ -127,10 +127,18 @@ const BoardLayout = () => {
 
         {/* 글쓰기 버튼 */}
         <Button
-          variant="contained"
+          variant="outlined"
           fullWidth
-          sx={{ mb: 1 }}
-          onClick={handleWriteClick} // 클릭 시 글쓰기 페이지로 이동
+          size="small"
+          onClick={handleWriteClick}
+          sx={{
+            fontWeight: 700,
+            borderRadius: 2,
+            bgcolor: "#f6f7fc",
+            borderColor: "#e1e3ea",
+            py: 1,
+            mb: 1
+          }}
         >
           글쓰기
         </Button>
@@ -139,10 +147,17 @@ const BoardLayout = () => {
         {isAdmin && (
           <Button
             variant="outlined"
-            color="info"
             fullWidth
-            sx={{ mb: 2 }}
-            onClick={() => navigate("/admin/board/category")} // 관리자용 카테고리 관리 페이지로 이동
+            size="small"
+            onClick={() => navigate("/board/category-admin")}
+            sx={{
+              fontWeight: 700,
+              borderRadius: 2,
+              bgcolor: "#f6f7fc",
+              borderColor: "#e1e3ea",
+              py: 1,
+              mb: 2
+            }}
           >
             카테고리 관리
           </Button>
@@ -150,32 +165,31 @@ const BoardLayout = () => {
 
         {/* 카테고리 목록 리스트 */}
         <List>
-          {/* 전체 게시판 버튼 (모든 글 보기) */}
+          {/* 게시판 홈 버튼 (모든 글 보기) */}
           <ListItemButton
-            onClick={() => navigate("/board?page=0")} // 전체 게시판 페이지 이동 (page=0으로 초기화)
+            onClick={() => {
+              navigate("/board?page=0");
+              setActiveCategoryId("");
+            }}
             sx={{
-              bgcolor: "primary.main", // 항상 메인 색상 (#08a7bf)
-              borderBottom: "1px solid #b0bec5", // 하단 구분선
-              borderRadius: 1.5, // 살짝 둥근 모서리
-              boxShadow:
-                "inset 0 1px 3px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.2)", // 입체감 있는 그림자
+              borderBottom: "1px solid #e0e0e0",
+              bgcolor: activeCategoryId === "" ? "#d9d9d9" : "transparent",
               "&:hover": {
-                bgcolor: "#079bb1", // hover 시 약간 어두운 파랑
-                boxShadow: "0 3px 6px rgba(0,0,0,0.1)", // hover 시 외곽 그림자 강화
-                transition: "background-color 0.2s ease, box-shadow 0.2s ease", // 부드러운 전환 효과
+                bgcolor: "#d9d9d9",
+                boxShadow: "0 3px 6px rgba(0,0,0,0.1)",
+                transition: "background-color 0.2s ease, box-shadow 0.2s ease",
               },
-              fontWeight: 700, // 굵은 글씨체
-              color: "#ffffff", // 글씨 흰색
+              fontWeight: activeCategoryId === "" ? 600 : 400,
+              color: activeCategoryId === "" ? "#000" : "inherit",
+              borderRadius: 1,
+              boxShadow:
+                activeCategoryId === ""
+                  ? "inset 0 1px 3px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.1)"
+                  : "none",
               transition: "background-color 0.2s ease, box-shadow 0.2s ease",
             }}
           >
-            <ListItemText
-              primary="전체 게시판"
-              primaryTypographyProps={{
-                fontWeight: 700,
-                fontSize: "0.95rem", // 글씨 크기 약간 키움
-              }}
-            />
+            <ListItemText primary="게시판 홈" />
           </ListItemButton>
 
           {/* 개별 카테고리 목록 출력 */}

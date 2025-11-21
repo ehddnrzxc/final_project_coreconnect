@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.goodee.coreconnect.account.entity.AccountLog;
-import com.goodee.coreconnect.account.entity.LogActionType;
+import com.goodee.coreconnect.account.enums.LogActionType;
 
 public interface AccountLogRepository extends JpaRepository<AccountLog, Long>{
 

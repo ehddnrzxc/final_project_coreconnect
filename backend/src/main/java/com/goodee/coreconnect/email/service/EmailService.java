@@ -36,7 +36,7 @@ public interface EmailService {
      * @param size 한 페이지당 아이템 수
      * @return Page<EmailResponseDTO> 페이징된 EmailResponseDTO 리스트
      */
-	Page<EmailResponseDTO> getInbox(String userEmail, int page, int size,  String filter);
+	Page<EmailResponseDTO> getInbox(String userEmail, int page, int size,  String filter, String searchType, String keyword);
 	
 	/**
      * 발신함(보낸메일함) 리스트를 페이징으로 조회합니다.
@@ -45,7 +45,7 @@ public interface EmailService {
      * @param size 한 페이지당 아이템 수
      * @return Page<EmailResponseDTO> 페이징된 EmailResponseDTO 리스트
      */
-	Page<EmailResponseDTO> getSentbox(String userEmail, int page, int size);
+	Page<EmailResponseDTO> getSentbox(String userEmail, int page, int size, String searchType, String keyword);
 	
 	 /**
      * 반송함(실패/반송된 메일함) 리스트를 페이징으로 조회합니다.
@@ -58,6 +58,9 @@ public interface EmailService {
 
 	// [NEW] 개별 메일 읽음 처리 (상세조회 외에도 별도 PATCH 호출 대응)
 		boolean markMailAsRead(Integer emailId, String userEmail);
+
+	// [NEW] 개별 메일 중요 표시 토글
+		boolean toggleFavoriteStatus(Integer emailId, String userEmail);
 
 		 // ------------- [Draft(임시저장)] 기능용 추가 메서드 -------------
 
@@ -156,6 +159,16 @@ public interface EmailService {
 	    
 	    Page<EmailResponseDTO> getScheduledMails(String userEmail, int page, int size);
 	    
+	    /**
+	     * 중요 메일 목록 조회 (발신/수신 모두 포함)
+	     * @param userEmail 사용자 이메일
+	     * @param page 페이지 번호
+	     * @param size 페이지 크기
+	     * @param searchType 검색 타입 (TITLE/CONTENT/TITLE_CONTENT)
+	     * @param keyword 검색 키워드
+	     * @return Page<EmailResponseDTO> 중요 메일 목록
+	     */
+	    Page<EmailResponseDTO> getFavoriteMails(String userEmail, int page, int size, String searchType, String keyword);
 	    
 	    EmailResponseDTO sendEmailViaSendGrid(EmailSendRequestDTO requestDTO, List<MultipartFile> attachments) throws IOException;
 }

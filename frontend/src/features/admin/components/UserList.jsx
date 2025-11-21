@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { getAdminUsers } from "../../user/api/userAPI";
-import { jobGradeLabel } from "../../../utils/jobGradeUtils";
+import { updateUser } from "../api/adminAPI";
+import { fetchDepartmentsFlat } from "../api/departmentAPI";
+import { getJobGradeLabel } from "../../../components/utils/labelUtils";
+import http from "../../../api/http";
 import {
   Box,
   Card,
@@ -17,27 +20,118 @@ import {
   CircularProgress,
   Stack,
   Divider,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Button,
+  IconButton,
 } from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
+import SaveIcon from "@mui/icons-material/Save";
+import CancelIcon from "@mui/icons-material/Cancel";
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 
 export default function UserList() {
   const { showSnack } = useSnackbarContext();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [editingUserId, setEditingUserId] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [departments, setDepartments] = useState([]);
+  const [roles, setRoles] = useState([]);
+  const [jobGrades, setJobGrades] = useState([]);
+  const [saving, setSaving] = useState(false);
 
+  // 사용자 목록 로드
   useEffect(() => {
     (async () => {
       try {
         const data = await getAdminUsers();
         setUsers(data);
       } catch (e) {
-        console.error(e);
+        console.error("사용자 목록 조회 실패:", e);
         showSnack("사용자 목록을 불러오지 못했습니다.", "error");
       } finally {
         setLoading(false);
       }
     })();
   }, []);
+
+  // 부서 목록 로드
+  useEffect(() => {
+    fetchDepartmentsFlat()
+      .then((data) => setDepartments(data))
+      .catch(() => {
+        showSnack("부서 목록을 불러오지 못했습니다.", "warning");
+      });
+  }, [showSnack]);
+
+  // Role 목록 로드
+  useEffect(() => {
+    http
+      .get("/admin/users/roles")
+      .then(({ data }) => setRoles(data))
+      .catch(() => {
+        showSnack("권한 목록을 불러오지 못했습니다.", "warning");
+      });
+  }, [showSnack]);
+
+  // JobGrade 목록 로드
+  useEffect(() => {
+    http
+      .get("/admin/users/job-grades")
+      .then(({ data }) => setJobGrades(data))
+      .catch(() => {
+        showSnack("직급 목록을 불러오지 못했습니다.", "warning");
+      });
+  }, [showSnack]);
+
+  // 수정 모드 시작
+  const handleEdit = (user) => {
+    setEditingUserId(user.id);
+    setEditForm({
+      name: user.name || "",
+      email: user.email || "",
+      phone: user.phone || "",
+      deptId: user.deptId || "",
+      role: user.role || "",
+      status: user.status || "",
+      jobGrade: user.jobGrade || "",
+    });
+  };
+
+  // 수정 취소
+  const handleCancel = () => {
+    setEditingUserId(null);
+    setEditForm({});
+  };
+
+  // 폼 필드 변경
+  const handleFormChange = (field, value) => {
+    setEditForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // 저장
+  const handleSave = async (userId) => {
+    setSaving(true);
+    try {
+      const updatedUser = await updateUser(userId, editForm);
+      // 사용자 목록 업데이트
+      setUsers((prevUsers) =>
+        prevUsers.map((u) => (u.id === userId ? updatedUser : u))
+      );
+      setEditingUserId(null);
+      setEditForm({});
+      showSnack("사용자 정보가 수정되었습니다.", "success");
+    } catch (e) {
+      console.error("사용자 정보 수정 실패:", e);
+      showSnack("사용자 정보 수정에 실패했습니다.", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // 역할별 색상
   const roleColor = (role) => {
@@ -63,6 +157,33 @@ export default function UserList() {
     }
   };
 
+  // 전화번호 포맷팅 함수 (숫자만 받아서 하이픈 추가 - UI 표시용)
+  const formatPhoneNumber = (phone) => {
+    if (!phone) return "-";
+    // 숫자만 추출
+    const numbers = phone.replace(/\D/g, "");
+    
+    if (numbers.length === 0) return "-";
+    
+    // 길이에 따라 하이픈 추가
+    if (numbers.length <= 3) {
+      return numbers;
+    } else if (numbers.length <= 7) {
+      // 010-1234
+      return `${numbers.slice(0, 3)}-${numbers.slice(3)}`;
+    } else if (numbers.length <= 10) {
+      // 02-1234-5678 또는 031-123-4567
+      if (numbers.startsWith("02")) {
+        return `${numbers.slice(0, 2)}-${numbers.slice(2, 6)}-${numbers.slice(6)}`;
+      } else {
+        return `${numbers.slice(0, 3)}-${numbers.slice(3, 6)}-${numbers.slice(6)}`;
+      }
+    } else {
+      // 010-1234-5678 (11자리)
+      return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`;
+    }
+  };
+
   return (
     <Box sx={{ maxWidth: 1000, mx: "auto", mt: 4, px: 2 }}>
       <Card elevation={3} sx={{ borderRadius: 3 }}>
@@ -72,7 +193,7 @@ export default function UserList() {
               사용자 목록
             </Typography>
           }
-          subheader="등록된 사용자 정보를 확인합니다."
+          subheader="등록된 사용자 정보를 확인하고 수정합니다."
         />
         <Divider />
 
@@ -104,15 +225,18 @@ export default function UserList() {
                       <TableCell sx={{ fontWeight: 600 }}>ID</TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>이름</TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>이메일</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>전화번호</TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>역할</TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>상태</TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>직급</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>부서</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>작업</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {users.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                        <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
                           <Typography color="text.secondary">
                             등록된 사용자가 없습니다.
                           </Typography>
@@ -120,54 +244,242 @@ export default function UserList() {
                       </TableRow>
                     ) : (
                       users.map((u) => (
-                        <TableRow
-                          key={u.id}
-                          hover
-                          sx={{
-                            "&:last-child td, &:last-child th": { borderBottom: 0 },
-                          }}
-                        >
-                          <TableCell sx={{ py: 1.5 }}>{u.id}</TableCell>
-                          <TableCell sx={{ py: 1.5 }}>{u.name}</TableCell>
-                          <TableCell sx={{ py: 1.5 }}>{u.email}</TableCell>
+                        <React.Fragment key={u.id}>
+                          {/* 원본 행 */}
+                          <TableRow
+                            hover
+                            sx={{
+                              cursor: "pointer",
+                              backgroundColor:
+                                editingUserId === u.id
+                                  ? "action.selected"
+                                  : "transparent",
+                              "&:last-child td, &:last-child th": {
+                                borderBottom: 0,
+                              },
+                            }}
+                            onClick={() => {
+                              if (editingUserId !== u.id) {
+                                handleEdit(u);
+                              }
+                            }}
+                          >
+                            <TableCell sx={{ py: 1.5 }}>{u.id}</TableCell>
+                            <TableCell sx={{ py: 1.5 }}>{u.name}</TableCell>
+                            <TableCell sx={{ py: 1.5 }}>{u.email}</TableCell>
+                            <TableCell sx={{ py: 1.5, whiteSpace: "nowrap" }}>
+                              {formatPhoneNumber(u.phone)}
+                            </TableCell>
+                            {/* 역할 */}
+                            <TableCell sx={{ py: 1.5 }}>
+                              <Chip
+                                label={u.role}
+                                size="small"
+                                color={roleColor(u.role)}
+                                sx={{
+                                  fontWeight: 600,
+                                  color:
+                                    u.role === "USER"
+                                      ? "text.primary"
+                                      : "white",
+                                }}
+                              />
+                            </TableCell>
+                            {/* 상태 */}
+                            <TableCell sx={{ py: 1.5 }}>
+                              <Chip
+                                label={u.status}
+                                size="small"
+                                color={statusColor(u.status)}
+                                sx={{
+                                  fontWeight: 600,
+                                  color: "white",
+                                }}
+                              />
+                            </TableCell>
+                            {/* 직급 - 한글 변환 */}
+                            <TableCell sx={{ py: 1.5 }}>
+                              {getJobGradeLabel(u.jobGrade)}
+                            </TableCell>
+                            {/* 부서 */}
+                            <TableCell sx={{ py: 1.5 }}>{u.deptName}</TableCell>
+                            {/* 작업 버튼 */}
+                            <TableCell sx={{ py: 1.5 }}>
+                              {editingUserId === u.id ? (
+                                <Box sx={{ display: "flex", gap: 1 }}>
+                                  <IconButton
+                                    size="small"
+                                    color="primary"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleSave(u.id);
+                                    }}
+                                    disabled={saving}
+                                  >
+                                    <SaveIcon />
+                                  </IconButton>
+                                  <IconButton
+                                    size="small"
+                                    color="error"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleCancel();
+                                    }}
+                                    disabled={saving}
+                                  >
+                                    <CancelIcon />
+                                  </IconButton>
+                                </Box>
+                              ) : (
+                                <IconButton
+                                  size="small"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEdit(u);
+                                  }}
+                                >
+                                  <EditIcon />
+                                </IconButton>
+                              )}
+                            </TableCell>
+                          </TableRow>
 
-                          {/* 역할 */}
-                          <TableCell sx={{ py: 1.5 }}>
-                            <Chip
-                              label={u.role}
-                              size="small"
-                              color={roleColor(u.role)}
+                          {/* 수정 폼 행 */}
+                          {editingUserId === u.id && (
+                            <TableRow
                               sx={{
-                                fontWeight: 600,
-                                color:
-                                  u.role === "USER"
-                                    ? "text.primary"
-                                    : "white",
+                                backgroundColor: "action.hover",
+                                "& td": {
+                                  borderTop: "2px solid",
+                                  borderColor: "primary.main",
+                                },
                               }}
-                            />
-                          </TableCell>
+                            >
+                              <TableCell colSpan={9} sx={{ py: 3 }}>
+                                <Box
+                                  sx={{
+                                    display: "grid",
+                                    gridTemplateColumns: "repeat(3, 1fr)",
+                                    gap: 2,
+                                    px: 2,
+                                  }}
+                                >
+                                  {/* 이름 */}
+                                  <TextField
+                                    label="이름"
+                                    value={editForm.name || ""}
+                                    onChange={(e) =>
+                                      handleFormChange("name", e.target.value)
+                                    }
+                                    size="small"
+                                    fullWidth
+                                  />
 
-                          {/* 상태 */}
-                          <TableCell sx={{ py: 1.5 }}>
-                            <Chip
-                              label={u.status}
-                              size="small"
-                              color={statusColor(u.status)}
-                              sx={{
-                                fontWeight: 600,
-                                color:
-                                  u.status === "INACTIVE"
-                                    ? "white"
-                                    : "white",
-                              }}
-                            />
-                          </TableCell>
+                                  {/* 이메일 */}
+                                  <TextField
+                                    label="이메일"
+                                    type="email"
+                                    value={editForm.email || ""}
+                                    onChange={(e) =>
+                                      handleFormChange("email", e.target.value)
+                                    }
+                                    size="small"
+                                    fullWidth
+                                  />
 
-                          {/* 직급 - 한글 변환 */}
-                          <TableCell sx={{ py: 1.5 }}>
-                            {jobGradeLabel(u.jobGrade)}
-                          </TableCell>
-                        </TableRow>
+                                  {/* 전화번호 */}
+                                  <TextField
+                                    label="전화번호"
+                                    value={editForm.phone || ""}
+                                    onChange={(e) =>
+                                      handleFormChange("phone", e.target.value)
+                                    }
+                                    size="small"
+                                    fullWidth
+                                  />
+
+                                  {/* 역할 */}
+                                  <FormControl size="small" fullWidth>
+                                    <InputLabel>역할</InputLabel>
+                                    <Select
+                                      value={editForm.role || ""}
+                                      label="역할"
+                                      onChange={(e) =>
+                                        handleFormChange("role", e.target.value)
+                                      }
+                                    >
+                                      {roles.map((role) => (
+                                        <MenuItem key={role} value={role}>
+                                          {role}
+                                        </MenuItem>
+                                      ))}
+                                    </Select>
+                                  </FormControl>
+
+                                  {/* 상태 */}
+                                  <FormControl size="small" fullWidth>
+                                    <InputLabel>상태</InputLabel>
+                                    <Select
+                                      value={editForm.status || ""}
+                                      label="상태"
+                                      onChange={(e) =>
+                                        handleFormChange("status", e.target.value)
+                                      }
+                                    >
+                                      <MenuItem value="ACTIVE">ACTIVE</MenuItem>
+                                      <MenuItem value="INACTIVE">
+                                        INACTIVE
+                                      </MenuItem>
+                                    </Select>
+                                  </FormControl>
+
+                                  {/* 직급 */}
+                                  <FormControl size="small" fullWidth>
+                                    <InputLabel>직급</InputLabel>
+                                    <Select
+                                      value={editForm.jobGrade || ""}
+                                      label="직급"
+                                      onChange={(e) =>
+                                        handleFormChange(
+                                          "jobGrade",
+                                          e.target.value
+                                        )
+                                      }
+                                    >
+                                      {jobGrades.map((jg) => (
+                                        <MenuItem
+                                          key={jg.value}
+                                          value={jg.value}
+                                        >
+                                          {jg.label}
+                                        </MenuItem>
+                                      ))}
+                                    </Select>
+                                  </FormControl>
+
+                                  {/* 부서 */}
+                                  <FormControl size="small" fullWidth>
+                                    <InputLabel>부서</InputLabel>
+                                    <Select
+                                      value={editForm.deptId || ""}
+                                      label="부서"
+                                      onChange={(e) =>
+                                        handleFormChange("deptId", e.target.value)
+                                      }
+                                    >
+                                      <MenuItem value="">부서 없음</MenuItem>
+                                      {departments.map((dept) => (
+                                        <MenuItem key={dept.id} value={dept.id}>
+                                          {dept.name}
+                                        </MenuItem>
+                                      ))}
+                                    </Select>
+                                  </FormControl>
+                                </Box>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </React.Fragment>
                       ))
                     )}
                   </TableBody>

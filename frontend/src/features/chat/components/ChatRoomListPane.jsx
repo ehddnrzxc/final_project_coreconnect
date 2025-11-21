@@ -4,7 +4,7 @@ import http from "../../../api/http"; // axios 인스턴스 불러오기
 
 // 채팅방 목록(좌측) & 탭
 function ChatRoomListPane({
-  tabIdx, setTabIdx, roomList, selectedRoomId, setSelectedRoomId, unreadRoomCount, formatTime
+  tabIdx, setTabIdx, roomList, selectedRoomId, setSelectedRoomId, formatTime
 }) {
   // 참여자 수 정보를 저장할 state: { [roomId]: 참여자수 }
   const [roomMemberCounts, setRoomMemberCounts] = useState({});
@@ -19,7 +19,7 @@ function ChatRoomListPane({
             // GET /chat/{roomId}/users → 응답 data.data에 사용자 배열
             const res = await http.get(`/chat/${room.roomId}/users`);
             obj[room.roomId] = Array.isArray(res.data.data) ? res.data.data.length : 0;
-          } catch (err) {
+          } catch {
             obj[room.roomId] = 0;
           }
         })
@@ -34,13 +34,13 @@ function ChatRoomListPane({
   // "전체"(0) 또는 "안읽음"(1) 탭 필터링
   const filteredRooms = tabIdx === 0 ? roomList : roomList.filter(r => r.unreadCount > 0);
 
-  // 참여자 수 기준 채팅방 유형 뱃지(1:1, Group) 반환용
+  // 참여자 수 기준 채팅방 유형 뱃지(1:1, 단체 채팅) 반환용
   function TypeBadge({ count }) {
     if (!count) return null; // 참여자 데이터 없음
     if (count === 2)
-      return <Chip label="1:1" size="small" color="primary" sx={{ fontWeight: 700, ml: 0.5 }} />;
+      return <Chip label="1:1" size="small" color="primary" sx={{ fontWeight: 700, ml: 0.5, flexShrink: 0 }} />;
     if (count > 2)
-      return <Chip label="Group" size="small" color="success" sx={{ fontWeight: 700, ml: 0.5 }} />;
+      return <Chip label="단체 채팅" size="small" color="success" sx={{ fontWeight: 700, ml: 0.5, flexShrink: 0 }} />;
     return null;
   }
 
@@ -124,31 +124,57 @@ function ChatRoomListPane({
                 </ListItemAvatar>
                 <ListItemText
                 primary={
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <Typography sx={{ fontWeight: 700, fontSize: 18, flexGrow: 1 }}>
-                      {room.roomName}
-                    </Typography>
-                    {/* 참여자수에 따라 1:1 또는 Group 뱃지 표시 */}
-                    <TypeBadge count={roomMemberCounts[room.roomId]} />
+                  <Box sx={{ display: "flex", alignItems: "center", flexWrap: "nowrap", width: "100%" }}>
+                    <Box sx={{ display: "flex", alignItems: "center", flexGrow: 1, minWidth: 0, gap: 0 }}>
+                      <Typography sx={{ fontWeight: 700, fontSize: 18, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {room.roomName}
+                      </Typography>
+                      {/* 참여자수에 따라 1:1 또는 단체 채팅 뱃지 표시 - 채팅방 이름 바로 옆에 붙임 */}
+                      {roomMemberCounts[room.roomId] && (
+                        <TypeBadge count={roomMemberCounts[room.roomId]} />
+                      )}
+                    </Box>
+                    {/* 안읽은 메시지 숫자 - 오른쪽으로 더 이동 */}
                     {room.unreadCount > 0 && (
-                      <Badge
-                        badgeContent={room.unreadCount}
-                        sx={{
-                          "& .MuiBadge-badge": {
-                            background: "#ff7f1a",
-                            color: "#fff",
-                            fontWeight: 700,
-                            fontSize: "13px",
-                            borderRadius: "10px",
-                            py: 1, px: 1.2,
-                          }
-                        }}
-                      />
+                      <Box sx={{ flexShrink: 0, ml: 2 }}>
+                        <Badge
+                          badgeContent={room.unreadCount}
+                          sx={{
+                            "& .MuiBadge-badge": {
+                              background: "#ff7f1a",
+                              color: "#fff",
+                              fontWeight: 700,
+                              fontSize: "13px",
+                              borderRadius: "10px",
+                              py: 1, 
+                              px: 1.2,
+                              minWidth: "20px",
+                            }
+                          }}
+                        >
+                          <Box sx={{ width: 0, height: 0 }} />
+                        </Badge>
+                      </Box>
                     )}
                   </Box>
                 }
                 secondary={
                   <Box component="span" sx={{ display: "block" }}>
+                    {/* 초대된 채팅방 표시 */}
+                    {room.invited && (
+                      <Typography
+                        component="span"
+                        sx={{
+                          fontSize: 12,
+                          color: "#1976d2",
+                          fontWeight: 600,
+                          display: "block",
+                          mb: 0.5
+                        }}
+                      >
+                        내가 초대된 채팅방입니다
+                      </Typography>
+                    )}
                     <Typography
                       component="span"
                       sx={{

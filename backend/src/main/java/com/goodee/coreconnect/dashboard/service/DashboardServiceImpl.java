@@ -13,8 +13,7 @@ import com.goodee.coreconnect.approval.enums.ApprovalLineType;
 import com.goodee.coreconnect.approval.repository.ApprovalLineRepository;
 import com.goodee.coreconnect.board.entity.Board;
 import com.goodee.coreconnect.board.repository.BoardRepository;
-import com.goodee.coreconnect.dashboard.dto.DashboardNoticeDTO;
-
+import com.goodee.coreconnect.dashboard.dto.response.DashboardNoticeDTO;
 
 import lombok.RequiredArgsConstructor;
 

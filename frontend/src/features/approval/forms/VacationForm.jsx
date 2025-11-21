@@ -42,10 +42,52 @@ const VacationForm = ({ formData, onFormChange }) => {
     loadLeaveTypes();
   }, []);
 
+  // 반차 여부 확인
+  const isHalfDay = formData.vacationType === '반차(오전)' || formData.vacationType === '반차(오후)';
+
+  // 반차인 경우 endDate를 startDate와 같게 자동 설정 (휴가 종류 변경 시)
+  useEffect(() => {
+    if (isHalfDay && formData.startDate && formData.endDate !== formData.startDate) {
+      const e = {
+        target: {
+          name: 'endDate',
+          value: formData.startDate,
+        },
+      };
+      onFormChange(e);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.vacationType, formData.startDate]);
+
   const handleReasonChange = e => {
     const { value } = e.target;
     if (value.length > 200) {
       e.target.value = value.slice(0, 200);
+    }
+    onFormChange(e);
+  };
+
+  const handleStartDateChange = e => {
+    onFormChange(e);
+    // 반차인 경우 endDate도 자동으로 startDate와 같게 설정
+    if (isHalfDay) {
+      const endDateEvent = {
+        target: {
+          name: 'endDate',
+          value: e.target.value,
+        },
+      };
+      // 다음 이벤트 루프에서 실행하여 startDate 업데이트 후 endDate 업데이트
+      setTimeout(() => {
+        onFormChange(endDateEvent);
+      }, 0);
+    }
+  };
+
+  const handleEndDateChange = e => {
+    // 반차인 경우 endDate 변경을 막고 startDate와 같게 유지
+    if (isHalfDay && e.target.value !== formData.startDate) {
+      return;
     }
     onFormChange(e);
   };
@@ -90,7 +132,7 @@ const VacationForm = ({ formData, onFormChange }) => {
                 type="date"
                 name="startDate"
                 value={formData.startDate || ''}
-                onChange={onFormChange}
+                onChange={handleStartDateChange}
                 required
                 size="small"
                 InputLabelProps={{ shrink: true }}
@@ -101,11 +143,12 @@ const VacationForm = ({ formData, onFormChange }) => {
                 type="date"
                 name="endDate"
                 value={formData.endDate || ''}
-                onChange={onFormChange}
+                onChange={handleEndDateChange}
                 required
+                disabled={isHalfDay}
                 size="small"
                 sx={{ ml: 1, mr: 2 }}
-                InputLabelProps={{ shirink: true }}
+                InputLabelProps={{ shrink: true }}
                 InputProps={{
                   inputProps: {
                     min: formData.startDate || '',

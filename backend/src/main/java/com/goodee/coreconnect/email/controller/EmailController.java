@@ -41,6 +41,7 @@ import com.goodee.coreconnect.common.dto.response.ResponseDTO;
 import com.goodee.coreconnect.email.dto.request.DeleteMailsRequest;
 import com.goodee.coreconnect.email.dto.request.EmailSendRequestDTO;
 import com.goodee.coreconnect.email.dto.request.MarkMailReadRequestDTO;
+import com.goodee.coreconnect.email.dto.request.ToggleFavoriteRequestDTO;
 import com.goodee.coreconnect.email.dto.response.DeleteMailsResponse;
 import com.goodee.coreconnect.email.dto.response.EmailResponseDTO;
 import com.goodee.coreconnect.email.entity.EmailFile;
@@ -157,10 +158,12 @@ public class EmailController {
     		@RequestParam("userEmail") String userEmail, /* 이름 명확히 */
     	    @RequestParam(value = "page", defaultValue = "0") int page,
     	    @RequestParam(value = "size", defaultValue = "1") int size,
-    	    @RequestParam(value = "filter", required = false) String filter
+    	    @RequestParam(value = "filter", required = false) String filter,
+    	    @RequestParam(value = "searchType", required = false) String searchType,
+    	    @RequestParam(value = "keyword", required = false) String keyword
     ) {
     	// filter: null or "today"/"unread"
-        Page<EmailResponseDTO> result = emailService.getInbox(userEmail, page, size, filter);
+        Page<EmailResponseDTO> result = emailService.getInbox(userEmail, page, size, filter, searchType, keyword);
         // 안읽은 메일 개수는 별도 API로 조회하므로 여기서는 제거
         return ResponseEntity.ok(ResponseDTO.success(result, "받은메일함 조회 성공"));
     }
@@ -171,10 +174,12 @@ public class EmailController {
     public ResponseEntity<ResponseDTO<Page<EmailResponseDTO>>> getSentbox(
     	@RequestParam("userEmail") String userEmail,
         @RequestParam(value = "page", defaultValue = "0") int page,
-        @RequestParam(value = "size", defaultValue = "1") int size
+        @RequestParam(value = "size", defaultValue = "1") int size,
+        @RequestParam(value = "searchType", required = false) String searchType,
+        @RequestParam(value = "keyword", required = false) String keyword
     ) {
     	log.info("userEmail: {}", userEmail);
-        Page<EmailResponseDTO> result = emailService.getSentbox(userEmail, page, size);
+        Page<EmailResponseDTO> result = emailService.getSentbox(userEmail, page, size, searchType, keyword);
         return ResponseEntity.ok(ResponseDTO.success(result, "보낸메일함 조회 성공"));
     }
 
@@ -207,6 +212,17 @@ public class EmailController {
     ) {
         boolean updated = emailService.markMailAsRead(emailId, request.getUserEmail());
         return ResponseEntity.ok(ResponseDTO.success(updated, updated ? "메일 읽음 처리 성공" : "이미 읽은 메일"));
+    }
+
+    // [NEW] 개별 메일 중요 표시 토글 API
+    @Operation(summary = "메일 중요 표시 토글", description = "개별 메일의 중요 표시를 토글합니다.")
+    @PatchMapping("/{emailId}/favorite")
+    public ResponseEntity<ResponseDTO<Boolean>> toggleFavoriteStatus(
+            @PathVariable("emailId") Integer emailId,
+            @RequestBody(required = true) ToggleFavoriteRequestDTO request
+    ) {
+        boolean newStatus = emailService.toggleFavoriteStatus(emailId, request.getUserEmail());
+        return ResponseEntity.ok(ResponseDTO.success(newStatus, newStatus ? "중요 메일로 설정되었습니다." : "중요 메일 해제되었습니다."));
     }
     
     
@@ -392,6 +408,19 @@ public class EmailController {
     ) {
         Page<EmailResponseDTO> result = emailService.getScheduledMails(userEmail, page, size);
         return ResponseEntity.ok(ResponseDTO.success(result, "예약메일 조회 성공"));
+    }
+
+    // 중요 메일 목록 조회
+    @GetMapping("/favorite")
+    public ResponseEntity<ResponseDTO<Page<EmailResponseDTO>>> getFavoriteMails(
+            @RequestParam("userEmail") String userEmail,
+            @RequestParam(value="page", defaultValue="0") int page,
+            @RequestParam(value="size", defaultValue="10") int size,
+            @RequestParam(value="searchType", required=false) String searchType,
+            @RequestParam(value="keyword", required=false) String keyword
+    ) {
+        Page<EmailResponseDTO> result = emailService.getFavoriteMails(userEmail, page, size, searchType, keyword);
+        return ResponseEntity.ok(ResponseDTO.success(result, "중요 메일 조회 성공"));
     }
     
 }

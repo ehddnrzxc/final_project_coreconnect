@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import {
   Box, Button, List, ListItem, ListItemButton, ListItemText, Typography,
   IconButton, Chip, Badge
@@ -8,17 +8,33 @@ import StarBorderIcon from "@mui/icons-material/StarBorder";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { useNavigate } from "react-router-dom";
 import { MailCountContext } from "../../../App";
-import { emptyTrash, fetchDraftCount } from "../api/emailApi"; // ★ fetchDraftCount 추가!
+import { emptyTrash } from "../api/emailApi";
+import MailWriteButton from "./ui/MailWriteButton";
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
+import ConfirmDialog from "../../../components/utils/ConfirmDialog";
 
 const MailSideBar = () => {
+  const { showSnack } = useSnackbarContext();
   const navigate = useNavigate();
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   // context 값 받아오기: draftCount, unreadCount, …, refreshDraftCount 등
+  const mailCountContext = useContext(MailCountContext);
   const {
     draftCount = 0,
     unreadCount = 0,
     refreshDraftCount = () => {},
     refreshUnreadCount = () => {},
-  } = useContext(MailCountContext) || {};
+  } = mailCountContext || {};
+  
+  // 디버깅: context 값 확인
+  useEffect(() => {
+    console.log("[MailSideBar] MailCountContext 값:", {
+      mailCountContext,
+      unreadCount,
+      draftCount,
+      hasContext: !!mailCountContext
+    });
+  }, [mailCountContext, unreadCount, draftCount]);
 
   // ★ 이 부분에서 임시보관함 카운트를 동기화(앱 마운트/리프레시 시)
   useEffect(() => {
@@ -32,16 +48,20 @@ const MailSideBar = () => {
   const goAllMailTab = () => navigate("/email?tab=all");
 
   // 휴지통 비우기 핸들러
-  const handleEmptyTrash = async (e) => {
+  const handleEmptyTrash = (e) => {
     e.stopPropagation();
-    if (!window.confirm("정말 휴지통을 비우시겠습니까? (되돌릴 수 없습니다)")) return;
+    setConfirmDialogOpen(true);
+  };
+
+  const handleConfirmEmptyTrash = async () => {
+    setConfirmDialogOpen(false);
     try {
       await emptyTrash();
       refreshDraftCount();
       refreshUnreadCount();
-      alert("휴지통이 비워졌습니다.");
+      showSnack("휴지통이 비워졌습니다.", 'success');
     } catch (err) {
-      alert("휴지통 비우기 중 오류가 발생했습니다.");
+      showSnack("휴지통 비우기 중 오류가 발생했습니다.", 'error');
       console.error(err);
     }
   };
@@ -54,7 +74,19 @@ const MailSideBar = () => {
       }}
     >
       <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-        <Typography variant="h6" fontWeight={700} sx={{ flex: 1, fontSize: "1rem" }}>
+        <Typography 
+          variant="h6" 
+          fontWeight={700} 
+          sx={{ 
+            flex: 1, 
+            fontSize: "1rem",
+            cursor: "pointer",
+            "&:hover": {
+              color: "primary.main"
+            }
+          }}
+          onClick={goAllMailTab}
+        >
           메일
         </Typography>
         <IconButton size="small" sx={{ color: "grey.700" }}>
@@ -62,21 +94,7 @@ const MailSideBar = () => {
         </IconButton>
       </Box>
       <Box sx={{ mb: 1 }}>
-        <Button
-          variant="outlined"
-          fullWidth
-          size="small"
-          onClick={() => navigate("/email/write")}
-          sx={{
-            fontWeight: 700,
-            borderRadius: 2,
-            bgcolor: "#f6f7fc",
-            borderColor: "#e1e3ea",
-            py: 1,
-          }}
-        >
-          메일쓰기
-        </Button>
+        <MailWriteButton />
       </Box>
       <Box sx={{ flex: 1, overflowY: "auto" }}>
         {/* 즐겨찾기 */}
@@ -89,7 +107,7 @@ const MailSideBar = () => {
           </Box>
           <List dense sx={{ p: 0 }}>
             <ListItem disableGutters sx={{ py: 0.5, px: 0 }}>
-              <ListItemButton sx={{ borderRadius: 1, px: 1.3, py: 0.5 }}>
+              <ListItemButton sx={{ borderRadius: 1, px: 1.3, py: 0.5 }} onClick={() => navigate("/email/favorite")}>
                 <Box sx={{ display: "inline-block", pr: 0.7 }}>
                   <StarBorderIcon fontSize="small" />
                 </Box>
@@ -100,13 +118,35 @@ const MailSideBar = () => {
               <ListItemButton sx={{ borderRadius: 1, px: 1.3, py: 0.5 }} onClick={goUnreadMailTab}>
                 <ListItemText
                   primary={
-                    <Box sx={{ display: "flex", alignItems: "center" }}>
-                      <Typography variant="body2">안읽은 메일</Typography>
-                      <Badge
-                        color="error"
-                        badgeContent={unreadCount}
-                        sx={{ "& .MuiBadge-badge": { fontSize: 12, height: 18, minWidth: 20, borderRadius: 9, ml: 1 } }}
-                      />
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                      <Typography variant="body2" sx={{ lineHeight: 1.5 }}>안읽은 메일</Typography>
+                      {unreadCount != null && unreadCount > 0 && (
+                        <Badge
+                          color="error"
+                          badgeContent={unreadCount}
+                          anchorOrigin={{
+                            vertical: 'top',
+                            horizontal: 'right',
+                          }}
+                          sx={{ 
+                            flexShrink: 0,
+                            display: "flex",
+                            alignItems: "center",
+                            "& .MuiBadge-badge": { 
+                              fontSize: 12, 
+                              height: 18, 
+                              minWidth: 20, 
+                              borderRadius: 9,
+                              position: "relative",
+                              top: 0,
+                              right: 0,
+                              transform: "none",
+                            } 
+                          }}
+                        >
+                          <Box sx={{ width: 0, height: 0 }} />
+                        </Badge>
+                      )}
                     </Box>
                   }
                 />
@@ -141,13 +181,35 @@ const MailSideBar = () => {
               >
                 <ListItemText
                   primary={
-                    <Box sx={{ display: "flex", alignItems: "center" }}>
-                      <Typography variant="body2">받은메일함</Typography>
-                      <Badge
-                        color="primary"
-                        badgeContent={unreadCount}
-                        sx={{ "& .MuiBadge-badge": { fontSize: 12, height: 18, minWidth: 20, borderRadius: 9, ml: 1 } }}
-                      />
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Typography variant="body2" sx={{ lineHeight: 1.5 }}>받은메일함</Typography>
+                      {unreadCount != null && unreadCount > 0 && (
+                        <Badge
+                          color="primary"
+                          badgeContent={unreadCount}
+                          anchorOrigin={{
+                            vertical: 'top',
+                            horizontal: 'right',
+                          }}
+                          sx={{ 
+                            flexShrink: 0,
+                            display: "flex",
+                            alignItems: "center",
+                            "& .MuiBadge-badge": { 
+                              fontSize: 12, 
+                              height: 18, 
+                              minWidth: 20, 
+                              borderRadius: 9,
+                              position: "relative",
+                              top: 0,
+                              right: 0,
+                              transform: "none",
+                            } 
+                          }}
+                        >
+                          <Box sx={{ width: 0, height: 0 }} />
+                        </Badge>
+                      )}
                     </Box>
                   }
                 />
@@ -219,6 +281,14 @@ const MailSideBar = () => {
           </List>
         </Box>
       </Box>
+      
+      <ConfirmDialog
+        open={confirmDialogOpen}
+        title="휴지통 비우기"
+        message="정말 휴지통을 비우시겠습니까? (되돌릴 수 없습니다)"
+        onConfirm={handleConfirmEmptyTrash}
+        onCancel={() => setConfirmDialogOpen(false)}
+      />
     </Box>
   );
 };

@@ -11,7 +11,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.goodee.coreconnect.attendance.AttendanceConstants;
+import com.goodee.coreconnect.attendance.constants.AttendanceConstants;
 import com.goodee.coreconnect.attendance.dto.response.AttendanceStatisticsDTO;
 import com.goodee.coreconnect.attendance.dto.response.CompanyAttendanceResponseDTO;
 import com.goodee.coreconnect.attendance.dto.response.DailyAttendanceDTO;
@@ -19,10 +19,10 @@ import com.goodee.coreconnect.attendance.dto.response.MonthlyAttendanceDetailDTO
 import com.goodee.coreconnect.attendance.dto.response.TodayAttendanceResponseDTO;
 import com.goodee.coreconnect.attendance.dto.response.WeeklyAttendanceDetailDTO;
 import com.goodee.coreconnect.attendance.entity.Attendance;
-import com.goodee.coreconnect.attendance.entity.AttendanceStatus;
+import com.goodee.coreconnect.attendance.enums.AttendanceStatus;
 import com.goodee.coreconnect.attendance.repository.AttendanceRepository;
-import com.goodee.coreconnect.user.entity.Status;
 import com.goodee.coreconnect.user.entity.User;
+import com.goodee.coreconnect.user.enums.Status;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;

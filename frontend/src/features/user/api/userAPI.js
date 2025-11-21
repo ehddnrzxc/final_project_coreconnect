@@ -18,7 +18,7 @@ export async function uploadMyProfileImage(file) {
 }
 
 // 관리자용 사원 리스트 조회
-export const getAdminUsers = () => http.get("/user").then(res => res.data);
+export const getAdminUsers = () => http.get("/admin/users").then(res => res.data);
 
 // 조직도/사용자 조회
 export const getOrganizationChart = () => http.get("/user/organization");
@@ -41,6 +41,26 @@ export async function changePassword(currentPassword, newPassword, confirmPasswo
     currentPassword,
     newPassword,
     confirmPassword,
+  });
+  return res.data;
+}
+
+// 프로필 정보 조회
+export async function getDetailProfileInfo() {
+  const res = await http.get("/user/detail-profile");
+  return res.data;
+}
+
+// 프로필 정보 수정
+export async function updateDetailProfileInfo(profileData) {
+  const res = await http.put("/user/detail-profile", profileData);
+  return res.data;
+}
+
+// 생일자 목록 조회
+export async function getBirthdayUsers(year, month) {
+  const res = await http.get("/user/birthdays", {
+    params: { year, month },
   });
   return res.data;
 }

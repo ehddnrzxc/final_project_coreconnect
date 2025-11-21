@@ -47,6 +47,7 @@ import MyDocumentsPage from "./features/approval/pages/MyDocumentsPage";
 import MyDraftsPage from "./features/approval/pages/MyDraftsPage";
 import ReferDocumentPage from "./features/approval/pages/ReferDocumentPage";
 import MailReservedPage from "./features/email/pages/MailReservedPage";
+import MailFavoritePage from "./features/email/pages/MailFavoritePage";
 import AttendanceLayout from "./features/attendance/pages/AttendanceLayout";
 import MyAttendanceStatus from "./features/attendance/components/MyAttendanceStatus";
 import CompanyAttendanceStatus from "./features/attendance/components/CompanyAttendanceStatus";
@@ -92,6 +93,7 @@ const router = createBrowserRouter([
           { path: ":emailId", element: <MailDetailPage /> },
           { path: "draftbox", element: <DraftBoxPage /> }, // ★ 임시보관함 추가
           { path: "reserved", element: <MailReservedPage /> },   // <-- add here
+          { path: "favorite", element: <MailFavoritePage /> },   // 중요 메일
         ]
       },
       {
@@ -160,6 +162,7 @@ const router = createBrowserRouter([
           { path: "detail/:boardId", element: <BoardDetailPage /> },
           { path: "new", element: <BoardWritePage /> },
           { path: "edit/:boardId", element: <BoardWritePage /> },
+          { path: "category-admin", element: <AdminCategoryPage /> },
         ],
       },
       {
@@ -174,7 +177,6 @@ const router = createBrowserRouter([
           { path: "users/create", element: <UserCreateForm /> },
           { path: "users", element: <UserList /> },
           { path: "templates/create", element: <TemplateAdminCreate /> },
-          { path: "board/category", element: <AdminCategoryPage /> },
           { path: "password-reset-requests", element: <PasswordReset /> },
           { path: "leave-requests", element: <LeaveRequests /> },
           { path: "departments", element: <DepartmentManagementPage /> },

@@ -51,7 +51,7 @@ public class Notification {
    @Column(name = "notification_sent_yn")
    private Boolean notificationSentYn;
    
-   @Column(name = "notification_message")
+   @Column(name = "notification_message", length = 255)
    private String notificationMessage;
    
    @ManyToOne

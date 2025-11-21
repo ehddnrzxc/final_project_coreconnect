@@ -2,9 +2,12 @@
 import React, { useEffect, useState, useContext } from "react";
 import {
   Box, Typography, Paper, Table, TableHead, TableBody, TableRow, TableCell,
-  IconButton, Pagination, Chip, Snackbar, Alert
+  IconButton, Pagination, Chip, Snackbar, Alert, Menu, MenuItem
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
+import SyncIcon from "@mui/icons-material/Sync";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { fetchDraftbox, deleteDraftMail, fetchDraftCount } from "../api/emailApi"; // ★ fetchDraftCount 추가!
 import { UserProfileContext } from "../../../App";
 import { useNavigate } from "react-router-dom";
@@ -15,8 +18,9 @@ const DraftBoxPage = () => {
   const [drafts, setDrafts] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [size] = useState(20);
+  const [size, setSize] = useState(10); // 페이지당 항목 수 (5 또는 10 선택 가능)
   const [loading, setLoading] = useState(false);
+  const [sizeMenuAnchor, setSizeMenuAnchor] = useState(null); // 페이지 크기 선택 메뉴
   const [snack, setSnack] = useState({ open: false, severity: "info", message: "" });
   // ★ context에서 draftCount, refreshDraftCount 받아오기
   const { draftCount = 0, refreshDraftCount = () => {} } = useContext(MailCountContext) || {};
@@ -64,7 +68,7 @@ const DraftBoxPage = () => {
     reload();
     updateDraftCount();
     // eslint-disable-next-line
-  }, [page, userEmail]); // page, userEmail 변경시 갱신
+  }, [page, size, userEmail]); // page, size, userEmail 변경시 갱신
 
   // ★ 임시메일 삭제
   const handleDelete = async (draftId) => {
@@ -80,23 +84,72 @@ const DraftBoxPage = () => {
     }
   };
 
+  const handleRefresh = () => {
+    reload();
+    updateDraftCount();
+  };
+
   // 메일 클릭: 임시메일로 쓰기
   const handleRowClick = (draft) => {
     navigate(`/email/write?draftId=${draft.emailId}`);
   };
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: 3, position: 'relative' }}>
+      {/* 뒤로가기 버튼 - 상단 구석 */}
+      <Box sx={{ position: 'absolute', top: 16, right: 16, zIndex: 1000 }}>
+        <IconButton onClick={() => navigate(-1)} sx={{ bgcolor: '#fff', boxShadow: 1 }}>
+          <ArrowBackIcon />
+        </IconButton>
+      </Box>
       <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>
-          임시보관함
-          {/* Chip에 최신 draftCount 사용, fallback: total */}
-          <Chip
-            label={`총 ${draftCount ?? total}개`}
-            color={(draftCount ?? total) > 0 ? "primary" : "default"}
-            sx={{ ml: 2 }}
-          />
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            임시보관함
+            {/* Chip에 최신 draftCount 사용, fallback: total */}
+            <Chip
+              label={`총 ${draftCount ?? total}개`}
+              color={(draftCount ?? total) > 0 ? "primary" : "default"}
+              sx={{ ml: 2 }}
+            />
+          </Typography>
+          <Paper 
+            sx={{ display: 'inline-flex', alignItems: 'center', px: 0.5, cursor: 'pointer' }}
+            onClick={(e) => setSizeMenuAnchor(e.currentTarget)}
+          >
+            <Typography sx={{ px: 0.5, fontWeight: 500, fontSize: 15 }}>{size}</Typography>
+            <IconButton size="small"><MoreVertIcon fontSize="small" /></IconButton>
+          </Paper>
+          <IconButton onClick={handleRefresh} sx={{ ml: 1 }}>
+            <SyncIcon />
+          </IconButton>
+          <Menu
+            anchorEl={sizeMenuAnchor}
+            open={Boolean(sizeMenuAnchor)}
+            onClose={() => setSizeMenuAnchor(null)}
+          >
+            <MenuItem 
+              onClick={() => {
+                setSize(5);
+                setPage(1);
+                setSizeMenuAnchor(null);
+              }}
+              selected={size === 5}
+            >
+              5개씩 보기
+            </MenuItem>
+            <MenuItem 
+              onClick={() => {
+                setSize(10);
+                setPage(1);
+                setSizeMenuAnchor(null);
+              }}
+              selected={size === 10}
+            >
+              10개씩 보기
+            </MenuItem>
+          </Menu>
+        </Box>
         <Table sx={{ minWidth: 900 }}>
           <TableHead>
             <TableRow>

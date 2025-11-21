@@ -19,15 +19,26 @@ export default function AttendeeTimelinePanel({
   // 0시~19시까지만 30분 단위로 생성 (00:00 ~ 19:59)
   const allTimeSlots = (() => {
     const slots = [];
+    
     const baseDate = toBackendFormat(startDateTime);
-    if (!baseDate) return [];
+    
+    if (!baseDate) {
+      return [];
+    }
     
     const dateBase = baseDate.split(" ")[0];
-    if (!dateBase || !/^\d{4}-\d{2}-\d{2}$/.test(dateBase)) return [];
+    
+    if (!dateBase || !/^\d{4}-\d{2}-\d{2}$/.test(dateBase)) {
+      return [];
+    }
     
     // 하루의 시작 (00:00)
-    const dayStart = toDate(`${dateBase}T00:00:00`);
-    if (!dayStart || isNaN(dayStart.getTime())) return [];
+    const dayStartInput = `${dateBase}T00:00:00`;
+    const dayStart = toDate(dayStartInput);
+    
+    if (!dayStart || isNaN(dayStart.getTime())) {
+      return [];
+    }
     
     // 19:59까지 30분 단위로 생성 (20:00은 제외)
     const dayEnd = new Date(dayStart);
@@ -89,17 +100,23 @@ export default function AttendeeTimelinePanel({
 
   // 설정 시간 범위 계산
   const selectedTimeRange = (() => {
-    if (!startDateTime || !endDateTime) return null;
+    if (!startDateTime || !endDateTime) {
+      return null;
+    }
     
     const normalizedStart = toBackendFormat(startDateTime);
     const normalizedEnd = toBackendFormat(endDateTime);
     
-    if (!normalizedStart || !normalizedEnd) return null;
+    if (!normalizedStart || !normalizedEnd) {
+      return null;
+    }
     
     const start = toDate(normalizedStart);
     const end = toDate(normalizedEnd);
     
-    if (!start || !end || isNaN(start.getTime()) || isNaN(end.getTime())) return null;
+    if (!start || !end || isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return null;
+    }
     
     return { start, end };
   })();
@@ -135,6 +152,7 @@ export default function AttendeeTimelinePanel({
   // 참석자 이름 영역(70px) + 패딩(16px) 포함하여 전체 너비 설정
   const totalWidth = 25 + (12 * 50) + 70 + 16; // 약 711px
 
+
   return (
     <Box
       sx={{
@@ -151,29 +169,36 @@ export default function AttendeeTimelinePanel({
       </Typography>
 
       {/* 상단 시간 라벨 (시간대 그룹별) */}
-      <Stack direction="row" spacing={0} sx={{ mb: 1, ml: 8 }}>
-        {timeGroups.map((group, groupIndex) => (
-          <Box
-            key={groupIndex}
-            sx={{
-              width: group.width,
-              display: "flex",
-              justifyContent: "center",
-              borderRight: "1px solid #e0e0e0",
-            }}
-          >
-            <Typography
-              variant="caption"
+      <Stack direction="row" spacing={0} sx={{ mb: 1 }}>
+        {/* 참석자 이름 영역과 동일한 너비의 빈 공간 */}
+        <Box sx={{ width: 70, pr: 1 }} />
+        {timeGroups.map((group, groupIndex) => {
+          return (
+            <Box
+              key={groupIndex}
               sx={{
-                textAlign: "center",
-                color: "#666",
-                fontSize: "0.75rem",
+                width: `${group.width}px`,
+                minWidth: `${group.width}px`,
+                maxWidth: `${group.width}px`,
+                display: "flex",
+                justifyContent: "center",
+                borderRight: "1px solid #e0e0e0",
+                boxSizing: "border-box",
               }}
             >
-              {group.label}
-            </Typography>
-          </Box>
-        ))}
+              <Typography
+                variant="caption"
+                sx={{
+                  textAlign: "center",
+                  color: "#666",
+                  fontSize: "0.75rem",
+                }}
+              >
+                {group.label}
+              </Typography>
+            </Box>
+          );
+        })}
       </Stack>
 
       {/* 참석자별 행 */}
@@ -193,59 +218,109 @@ export default function AttendeeTimelinePanel({
               {u.name}
             </Typography>
             <Stack direction="row" spacing={0}>
-              {timeGroups.map((group, groupIndex) => (
-                <Box
-                  key={groupIndex}
-                  sx={{
-                    width: group.width,
-                    display: "flex",
-                    borderRight: "1px solid #e0e0e0",
-                  }}
-                >
-                  {group.slots.map((slot, slotIndex) => {
-                    const busy = isBusy(u.id, slot.dateTime);
-                    const selected = isSelectedTime(slot.dateTime);
-                    
-                    // 0~ 그룹은 슬롯을 더 작게 표시
-                    const isCompactGroup = group.label === "0~";
-                    const slotWidth = isCompactGroup ? 2 : undefined; // 0~ 그룹은 2px로 매우 작게
-                    
-                    return (
-                      <Tooltip
-                        key={`${u.id}-${slot.time}-${slotIndex}`}
-                        title={
-                          busy
-                            ? availabilityMap[u.id]
-                                ?.filter((s) => {
-                                  const sStart = toDate(s.startDateTime);
-                                  const sEnd = toDate(s.endDateTime);
-                                  if (!sStart || !sEnd || isNaN(sStart.getTime()) || isNaN(sEnd.getTime())) return false;
-                                  return slot.dateTime >= sStart && slot.dateTime < sEnd;
-                                })
-                                .map((s) => s.title)
-                                .join(", ")
-                            : selected
-                            ? "설정 시간"
-                            : "일정 없음"
-                        }
-                      >
-                        <Box
-                          sx={{
-                            flex: isCompactGroup ? 0 : 1,
-                            width: slotWidth,
-                            height: 20,
-                            bgcolor: busy ? "#ef5350" : "#c8e6c9",
-                            border: selected ? "2px solid #2196f3" : "none",
-                            borderRadius: "3px",
-                            transition: "background-color 0.2s ease",
-                            minWidth: isCompactGroup ? "2px" : 0,
-                          }}
-                        />
-                      </Tooltip>
-                    );
-                  })}
-                </Box>
-              ))}
+              {timeGroups.map((group, groupIndex) => {
+                const isCompactGroup = group.label === "0~";
+                // 각 슬롯의 너비 계산 (8~19시 그룹의 경우)
+                const slotWidth = isCompactGroup ? undefined : group.width / group.slots.length;
+                
+                return (
+                  <Box
+                    key={groupIndex}
+                    sx={{
+                      width: `${group.width}px`,
+                      minWidth: `${group.width}px`,
+                      maxWidth: `${group.width}px`,
+                      display: "flex",
+                      flexDirection: "row",
+                      borderRight: "1px solid #e0e0e0",
+                      boxSizing: "border-box",
+                    }}
+                  >
+                    {(() => {
+                      // 0~ 그룹은 전체를 하나의 통합 블록으로 표시 (명확성 향상)
+                      if (isCompactGroup) {
+                        // 0~ 그룹 내에 바쁜 시간이 있는지 확인
+                        const hasBusy = group.slots.some(slot => isBusy(u.id, slot.dateTime));
+                        // 0~ 그룹 내에 선택된 시간이 있는지 확인
+                        const hasSelected = group.slots.some(slot => isSelectedTime(slot.dateTime));
+                        
+                        return (
+                          <Tooltip
+                            title={
+                              hasBusy
+                                ? availabilityMap[u.id]
+                                    ?.filter((s) => {
+                                      const sStart = toDate(s.startDateTime);
+                                      const sEnd = toDate(s.endDateTime);
+                                      if (!sStart || !sEnd || isNaN(sStart.getTime()) || isNaN(sEnd.getTime())) return false;
+                                      return group.slots.some(slot => slot.dateTime >= sStart && slot.dateTime < sEnd);
+                                    })
+                                    .map((s) => s.title)
+                                    .join(", ")
+                                : hasSelected
+                                ? "설정 시간"
+                                : "일정 없음"
+                            }
+                          >
+                            <Box
+                              sx={{
+                                width: "100%",
+                                height: 20,
+                                bgcolor: hasBusy ? "#ef5350" : "#c8e6c9",
+                                border: hasSelected ? "2px solid #2196f3" : "none",
+                                borderRadius: "3px",
+                                transition: "background-color 0.2s ease",
+                                boxSizing: "border-box",
+                              }}
+                            />
+                          </Tooltip>
+                        );
+                      }
+                      
+                      // 8~19시 그룹은 각 슬롯별로 표시 (정확한 너비 사용)
+                      return group.slots.map((slot, slotIndex) => {
+                        const busy = isBusy(u.id, slot.dateTime);
+                        const selected = isSelectedTime(slot.dateTime);
+                        
+                        return (
+                          <Tooltip
+                            key={`${u.id}-${slot.time}-${slotIndex}`}
+                            title={
+                              busy
+                                ? availabilityMap[u.id]
+                                    ?.filter((s) => {
+                                      const sStart = toDate(s.startDateTime);
+                                      const sEnd = toDate(s.endDateTime);
+                                      if (!sStart || !sEnd || isNaN(sStart.getTime()) || isNaN(sEnd.getTime())) return false;
+                                      return slot.dateTime >= sStart && slot.dateTime < sEnd;
+                                    })
+                                    .map((s) => s.title)
+                                    .join(", ")
+                                : selected
+                                ? "설정 시간"
+                                : "일정 없음"
+                            }
+                          >
+                            <Box
+                              sx={{
+                                width: `${slotWidth}px`,
+                                minWidth: `${slotWidth}px`,
+                                maxWidth: `${slotWidth}px`,
+                                height: 20,
+                                bgcolor: busy ? "#ef5350" : "#c8e6c9",
+                                border: selected ? "2px solid #2196f3" : "none",
+                                borderRadius: "3px",
+                                transition: "background-color 0.2s ease",
+                                boxSizing: "border-box",
+                              }}
+                            />
+                          </Tooltip>
+                        );
+                      });
+                    })()}
+                  </Box>
+                );
+              })}
             </Stack>
           </Stack>
         ))}

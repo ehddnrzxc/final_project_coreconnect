@@ -8,9 +8,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.goodee.coreconnect.department.entity.Department;
 import com.goodee.coreconnect.department.repository.DepartmentRepository;
-import com.goodee.coreconnect.user.entity.JobGrade;
-import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.User;
+import com.goodee.coreconnect.user.enums.JobGrade;
+import com.goodee.coreconnect.user.enums.Role;
 import com.goodee.coreconnect.user.repository.UserRepository;
 import com.goodee.coreconnect.user.service.EmployeeNumberService;
 
