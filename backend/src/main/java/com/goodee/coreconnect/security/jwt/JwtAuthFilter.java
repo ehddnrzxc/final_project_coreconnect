@@ -65,7 +65,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String token = resolveTokenFromCookie(req);
 
         if (token == null) {
-            log.debug("[JWT] 요청에 access_token 쿠키가 없습니다.");
+            log.warn("[JWT] 요청에 access_token 쿠키가 없습니다. URI: {}", uri);
             // 토큰이 없으면 인증을 설정하지 않고 다음 필터로 진행
             // (인증이 필요한 엔드포인트라면 이후에 AuthenticationEntryPoint가 401 처리)
             chain.doFilter(req, res);

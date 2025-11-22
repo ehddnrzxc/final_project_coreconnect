@@ -33,8 +33,13 @@ http.interceptors.response.use(
     const { response, config } = error;
     if (!response) return Promise.reject(error);
 
-    // refresh 호출 자체가 401 나면 더 진행 X
+    // refresh 호출 자체가 401 나면 더 진행 X (로그인 필요)
     if (config?.url?.includes("/auth/refresh")) {
+      console.warn("[HTTP] Refresh 토큰 만료 또는 유효하지 않음. 로그인이 필요합니다.");
+      // 로그인 페이지로 리다이렉트 (필요시)
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
       return Promise.reject(error);
     }
 
@@ -45,13 +50,20 @@ http.interceptors.response.use(
       if (!isRefreshing) {
         isRefreshing = true;
         try {
+          console.log("[HTTP] 401 에러 발생, 토큰 갱신 시도...");
           await http.post("/auth/refresh", {});
+          console.log("[HTTP] 토큰 갱신 성공, 원래 요청 재시도");
           isRefreshing = false;
           onRefreshed();
           return http(config);
         } catch (e) {
+          console.error("[HTTP] 토큰 갱신 실패:", e);
           isRefreshing = false;
           waiters = [];
+          // refresh 실패 시 로그인 페이지로 리다이렉트
+          if (window.location.pathname !== "/login") {
+            window.location.href = "/login";
+          }
           return Promise.reject(e);
         }
       }
