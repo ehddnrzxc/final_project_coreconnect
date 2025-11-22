@@ -1400,11 +1400,61 @@ public class ChatMessageController {
         try {
             String email = customUserDetails.getEmail();
             User user = userRepository.findByEmail(email).orElseThrow();
+            log.info("🔔 [getAllUnreadNotifications] 요청 사용자: email={}, userId={}, name={}", email, user.getId(), user.getName());
+            
             List<NotificationType> allowedTypes = List.of(NotificationType.EMAIL, NotificationType.NOTICE, NotificationType.APPROVAL, NotificationType.SCHEDULE);
+            
+            // DB에서 직접 조회하여 확인
+            List<Notification> allUserNotifications = notificationRepository.findByUserIdOrderBySentAtDesc(user.getId());
+            log.info("🔔 [getAllUnreadNotifications] DB 직접 조회 - 전체 알림 개수: {}", allUserNotifications.size());
+            if (!allUserNotifications.isEmpty()) {
+                log.info("🔔 [getAllUnreadNotifications] 전체 알림 상세:");
+                allUserNotifications.forEach(n -> log.info("  - 알림 ID: {}, 타입: {}, 읽음여부: {}, 삭제여부: {}, user_id: {}", 
+                        n.getId(), n.getNotificationType(), n.getNotificationReadYn(), n.getNotificationDeletedYn(), n.getUser().getId()));
+            }
             
             List<Notification> unreadList = notificationRepository.findUnreadByUserIdAndTypesOrderBySentAtDesc(user.getId(), allowedTypes);
             
-            log.info("🔔 [getAllUnreadNotifications] 사용자 ID: {}, 안읽은 알림 개수: {}", user.getId(), unreadList.size());
+            log.info("🔔 [getAllUnreadNotifications] 사용자 ID: {}, 안읽은 알림 개수: {}, allowedTypes: {}", 
+                    user.getId(), unreadList.size(), allowedTypes);
+            
+            // 안읽은 알림 상세 로그
+            if (!unreadList.isEmpty()) {
+                log.info("🔔 [getAllUnreadNotifications] 안읽은 알림 상세:");
+                unreadList.forEach(n -> log.info("  - 알림 ID: {}, 타입: {}, 읽음여부: {}, 삭제여부: {}, user_id: {}, board_id: {}", 
+                        n.getId(), n.getNotificationType(), n.getNotificationReadYn(), n.getNotificationDeletedYn(), 
+                        n.getUser().getId(), n.getBoard() != null ? n.getBoard().getId() : null));
+            } else {
+                log.warn("🔔 [getAllUnreadNotifications] ⚠️ 안읽은 알림이 없습니다! 사용자 ID: {}", user.getId());
+            }
+            
+            // 디버깅: NOTICE 타입 알림이 있는지 확인
+            long noticeCount = unreadList.stream()
+                    .filter(n -> n.getNotificationType() == NotificationType.NOTICE)
+                    .count();
+            log.info("🔔 [getAllUnreadNotifications] NOTICE 타입 알림 개수: {}", noticeCount);
+            
+            // 전체 알림 조회 (필터 없이) - 디버깅용
+            List<Notification> allNotifications = notificationRepository.findByUserIdOrderBySentAtDesc(user.getId());
+            long totalNoticeCount = allNotifications.stream()
+                    .filter(n -> n.getNotificationType() == NotificationType.NOTICE)
+                    .count();
+            log.info("🔔 [getAllUnreadNotifications] 전체 알림 개수: {}, NOTICE 타입: {}", 
+                    allNotifications.size(), totalNoticeCount);
+            
+            // NOTICE 타입 알림 상세 로그
+            if (totalNoticeCount > 0) {
+                log.info("🔔 [getAllUnreadNotifications] NOTICE 타입 알림 상세:");
+                allNotifications.stream()
+                        .filter(n -> n.getNotificationType() == NotificationType.NOTICE)
+                        .forEach(n -> log.info("  - 알림 ID: {}, 읽음여부: {}, 삭제여부: {}, user_id: {}, board_id: {}", 
+                                n.getId(), n.getNotificationReadYn(), n.getNotificationDeletedYn(), 
+                                n.getUser().getId(), n.getBoard() != null ? n.getBoard().getId() : null));
+            }
+            
+            // 쿼리 조건 확인을 위한 로그
+            log.info("🔔 [getAllUnreadNotifications] 쿼리 조건: userId={}, notificationReadYn=false or null, notificationDeletedYn=false or null, types={}", 
+                    user.getId(), allowedTypes);
             
             List<UnreadNotificationListDTO> unreadDtos = new ArrayList<>();
             for (Notification n : unreadList) {

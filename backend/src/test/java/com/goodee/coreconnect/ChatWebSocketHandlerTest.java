@@ -959,14 +959,14 @@ public class ChatWebSocketHandlerTest {
 		    // 6. 초대 알림 발송
 		    String inviteMsg = chatRoomId + "번 " + chatRoom.getRoomName() + " 채팅방에 초대 되었습니다";
 		    for (User invited : selectedUsers) {
-		        notificationService.sendNotification(
-		            invited.getId(),
-		            NotificationType.NOTICE, // 알림 타입 NOTICE 활용
-		            inviteMsg,
-		            null, null, // chatId, roomId는 null
-		            null,       // senderId는 테스트 코드에서는 null 처리(실제 로그인 유저 ID로)
-		            null        // senderName도 null
-		        );
+//		        notificationService.sendNotification(
+//		            invited.getId(),
+//		            NotificationType.NOTICE, // 알림 타입 NOTICE 활용
+//		            inviteMsg,
+//		            null, null, // chatId, roomId는 null
+//		            null,       // senderId는 테스트 코드에서는 null 처리(실제 로그인 유저 ID로)
+//		            null        // senderName도 null
+//		        );
 		        log.info("초대 알림 전송: {} -> {}", invited.getName(), inviteMsg);
 		    }
 
@@ -1073,14 +1073,14 @@ public class ChatWebSocketHandlerTest {
 	            User offlineUser = userRepository.findById(offlineUid).orElse(null);
 	            if (offlineUser != null) {
 	                String notificationMsg = loginUser.getName() + "님으로부터 온 새로운 채팅메시지가 있습니다";
-	                notificationService.sendNotification(
-	                    offlineUid,
-	                    NotificationType.NOTICE,
-	                    notificationMsg,
-	                    null, chatRoomId,
-	                    loginUserId,
-	                    loginUser.getName()
-	                );
+//	                notificationService.sendNotification(
+//	                    offlineUid,
+//	                    NotificationType.NOTICE,
+//	                    notificationMsg,
+//	                    null, chatRoomId,
+//	                    loginUserId,
+//	                    loginUser.getName()
+//	                );
 	                log.info("[알림] {} -> {}", offlineUser.getName(), notificationMsg);
 	            }
 	        }

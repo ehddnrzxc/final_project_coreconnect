@@ -9,6 +9,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.goodee.coreconnect.board.dto.request.BoardRequestDTO;
 import com.goodee.coreconnect.board.dto.response.BoardFileResponseDTO;
@@ -22,14 +24,16 @@ import com.goodee.coreconnect.board.repository.BoardFileRepository;
 import com.goodee.coreconnect.board.repository.BoardRepository;
 import com.goodee.coreconnect.board.repository.BoardViewHistoryRepository;
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
-import com.goodee.coreconnect.notice.service.NotificationAsyncService;
+import com.goodee.coreconnect.common.notification.service.NotificationService;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.enums.Role;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -41,7 +45,7 @@ public class BoardServiceImpl implements BoardService {
     private final BoardViewHistoryRepository viewHistoryRepository;
     private final BoardFileRepository boardFileRepository;
     private final BoardFileService boardFileService; 
-    private final NotificationAsyncService notificationAsyncService;
+    private final NotificationService notificationService;
     
     // 미리보기 적용 메소드
     private void applyPreview(Board board, BoardResponseDTO dto) {
@@ -131,41 +135,73 @@ public class BoardServiceImpl implements BoardService {
         // 공지글일 경우 -> 알림 전송
         if (Boolean.TRUE.equals(dto.getNoticeYn())) {
             String message = "공지사항입니다: " + dto.getTitle();
-
+            
+            // 트랜잭션 내에서 수신자 목록 미리 조회 (트랜잭션 종료 전에 조회)
+            List<Integer> recipientIds = null;
+            
             if (user.getRole() == Role.ADMIN) {
                 // 전체 유저 조회
-                List<Integer> allUserIds = userRepository.findAll().stream()
-                                                         .map(u -> u.getId())
-                                                         .filter(id -> !id.equals(user.getId())) // 작성자 본인은 제외
-                                                         .toList();
-
-                // 비동기 알림 전송
-                notificationAsyncService.sendNoticeAsync(allUserIds,                           
-                                                         NotificationType.NOTICE,             
-                                                         message,                             
-                                                         user.getId(),                        
-                                                         user.getName(),
-                                                         saved.getId());
-                
-
+                recipientIds = userRepository.findAll().stream()
+                                             .map(u -> u.getId())
+                                             .filter(id -> !id.equals(user.getId())) // 작성자 본인은 제외
+                                             .toList();
             } else if (user.getRole() == Role.MANAGER) {
                 // 자신의 부서 유저만 조회
                 Integer deptId = user.getDepartment() != null ? user.getDepartment().getId() : null;
                 if (deptId != null) {
-                    List<Integer> deptUserIds = userRepository.findAll().stream()
-                                                              .filter(u -> u.getDepartment() != null && u.getDepartment().getId().equals(deptId))
-                                                              .map(u -> u.getId())
-                                                              .filter(id -> !id.equals(user.getId())) // 작성자 본인은 제외
-                                                              .toList();
-
-                    // 비동기 알림 전송
-                    notificationAsyncService.sendNoticeAsync(deptUserIds,                           
-                                                             NotificationType.NOTICE,             
-                                                             message,                             
-                                                             user.getId(),                        
-                                                             user.getName(),
-                                                             saved.getId());
+                    recipientIds = userRepository.findAll().stream()
+                                                  .filter(u -> u.getDepartment() != null && u.getDepartment().getId().equals(deptId))
+                                                  .map(u -> u.getId())
+                                                  .filter(id -> !id.equals(user.getId())) // 작성자 본인은 제외
+                                                  .toList();
                 }
+            }
+            
+            // 트랜잭션 커밋 후 알림 발송을 위해 변수 저장
+            final List<Integer> finalRecipientIds = recipientIds;
+            final Integer finalSenderId = user.getId();
+            final String finalSenderName = user.getName();
+            final Integer finalBoardId = saved.getId();
+            final String finalMessage = message;
+
+            // 트랜잭션 커밋 후 알림 발송
+            if (finalRecipientIds != null && !finalRecipientIds.isEmpty()) {
+                log.info("[BoardServiceImpl] 공지사항 알림 발송 준비: recipientCount={}, boardId={}, senderId={}", 
+                        finalRecipientIds.size(), finalBoardId, finalSenderId);
+                
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        try {
+                            log.info("[BoardServiceImpl][afterCommit] ===== 공지사항 알림 발송 시작 ===== recipientCount={}, boardId={}, senderId={}", 
+                                    finalRecipientIds.size(), finalBoardId, finalSenderId);
+                            
+                            // afterCommit 내부에서 직접 NotificationService 호출 (별도 트랜잭션에서 실행)
+                            // NotificationService.sendNotificationToUsers는 @Transactional(REQUIRES_NEW)로 새로운 트랜잭션에서 실행됨
+                            notificationService.sendNotificationToUsers(finalRecipientIds,
+                                                                       NotificationType.NOTICE,
+                                                                       finalMessage,
+                                                                       null,
+                                                                       null,
+                                                                       finalSenderId,
+                                                                       finalSenderName,
+                                                                       finalBoardId,
+                                                                       null);
+                            
+                            log.info("[BoardServiceImpl][afterCommit] ===== 공지사항 알림 발송 완료 ===== recipientCount={}, boardId={}", 
+                                    finalRecipientIds.size(), finalBoardId);
+                        } catch (Exception e) {
+                            log.error("[BoardServiceImpl][afterCommit] ===== 공지사항 알림 발송 실패 ===== boardId={}, recipientCount={}, senderId={}", 
+                                    finalBoardId, finalRecipientIds != null ? finalRecipientIds.size() : 0, finalSenderId, e);
+                            // 예외를 다시 던지지 않음 (이미 커밋된 트랜잭션이므로)
+                            // 하지만 로그는 상세하게 남김
+                            e.printStackTrace();
+                        }
+                    }
+                });
+            } else {
+                log.warn("[BoardServiceImpl] 알림 수신자 목록이 비어있습니다. role={}, deptId={}", 
+                        user.getRole(), user.getDepartment() != null ? user.getDepartment().getId() : null);
             }
         }
         
@@ -245,78 +281,139 @@ public class BoardServiceImpl implements BoardService {
         if (!wasNotice && Boolean.TRUE.equals(board.getNoticeYn())) { 
             String message = "공지사항입니다: " + board.getTitle();
             sentNotice = true; // 공지 알림 전송 표시
-
+            
+            // 트랜잭션 내에서 수신자 목록 미리 조회 (트랜잭션 종료 전에 조회)
+            List<Integer> recipientIds = null;
+            
             if (loginUser.getRole() == Role.ADMIN) {
-                List<Integer> allUserIds = userRepository.findAll().stream()
-                                                         .map(u -> u.getId())
-                                                         .filter(id -> !id.equals(loginUser.getId()))
-                                                         .toList();
-                
-                // 비동기 알림 전송
-                notificationAsyncService.sendNoticeAsync(allUserIds,              
-                                                         NotificationType.NOTICE,
-                                                         message,          
-                                                         loginUser.getId(),
-                                                         loginUser.getName(),
-                                                         board.getId());
-                
+                // 전체 유저 조회
+                recipientIds = userRepository.findAll().stream()
+                                             .map(u -> u.getId())
+                                             .filter(id -> !id.equals(loginUser.getId()))
+                                             .toList();
             } else if (loginUser.getRole() == Role.MANAGER) {
-                Integer deptId = loginUser.getDepartment() != null
-                        ? loginUser.getDepartment().getId() : null;
+                // 자신의 부서 유저만 조회
+                Integer deptId = loginUser.getDepartment() != null ? loginUser.getDepartment().getId() : null;
                 if (deptId != null) {
-                    List<Integer> deptUserIds = userRepository.findAll().stream()
-                                                              .filter(u -> u.getDepartment() != null && u.getDepartment().getId().equals(deptId))
-                                                              .map(u -> u.getId())
-                                                              .filter(id -> !id.equals(loginUser.getId()))
-                                                              .toList();
-                    
-                    // 비동기 알림 전송
-                    notificationAsyncService.sendNoticeAsync(deptUserIds,              
-                                                             NotificationType.NOTICE,
-                                                             message,          
-                                                             loginUser.getId(),
-                                                             loginUser.getName(),
-                                                             board.getId());
+                    recipientIds = userRepository.findAll().stream()
+                                                  .filter(u -> u.getDepartment() != null && u.getDepartment().getId().equals(deptId))
+                                                  .map(u -> u.getId())
+                                                  .filter(id -> !id.equals(loginUser.getId()))
+                                                  .toList();
                 }
+            }
+            
+            // 트랜잭션 커밋 후 알림 발송을 위해 변수 저장
+            final List<Integer> finalRecipientIds = recipientIds;
+            final Integer finalSenderId = loginUser.getId();
+            final String finalSenderName = loginUser.getName();
+            final Integer finalBoardId = board.getId();
+            
+            // 트랜잭션 커밋 후 알림 발송
+            if (finalRecipientIds != null && !finalRecipientIds.isEmpty()) {
+                final String finalMessage = message;
+                
+                log.info("[BoardServiceImpl] 공지사항 알림 발송 준비 (수정): recipientCount={}, boardId={}, senderId={}", 
+                        finalRecipientIds.size(), finalBoardId, finalSenderId);
+                
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        try {
+                            log.info("[BoardServiceImpl][afterCommit] ===== 공지사항 알림 발송 시작 (수정) ===== recipientCount={}, boardId={}, senderId={}", 
+                                    finalRecipientIds.size(), finalBoardId, finalSenderId);
+                            
+                            // afterCommit 내부에서 직접 NotificationService 호출 (별도 트랜잭션에서 실행)
+                            notificationService.sendNotificationToUsers(finalRecipientIds,
+                                                                       NotificationType.NOTICE,
+                                                                       finalMessage,
+                                                                       null,
+                                                                       null,
+                                                                       finalSenderId,
+                                                                       finalSenderName,
+                                                                       finalBoardId,
+                                                                       null);
+                            
+                            log.info("[BoardServiceImpl][afterCommit] ===== 공지사항 알림 발송 완료 (수정) ===== recipientCount={}, boardId={}", 
+                                    finalRecipientIds.size(), finalBoardId);
+                        } catch (Exception e) {
+                            log.error("[BoardServiceImpl][afterCommit] ===== 공지사항 알림 발송 실패 (수정) ===== boardId={}, recipientCount={}, senderId={}", 
+                                    finalBoardId, finalRecipientIds != null ? finalRecipientIds.size() : 0, finalSenderId, e);
+                            e.printStackTrace();
+                        }
+                    }
+                });
+            } else {
+                log.warn("[BoardServiceImpl] 알림 수신자 목록이 비어있습니다 (수정). role={}, deptId={}", 
+                        loginUser.getRole(), loginUser.getDepartment() != null ? loginUser.getDepartment().getId() : null);
             }
         }
 
         // 일반 → 상단고정 시 알림
         if (!wasPinned && Boolean.TRUE.equals(board.getPinned()) && !sentNotice && !wasNotice) {
             String message = "공지사항입니다: " + board.getTitle();
+            List<Integer> recipientIds = null;
 
             if (loginUser.getRole() == Role.ADMIN) {
-                List<Integer> allUserIds = userRepository.findAll().stream()
-                                                         .map(u -> u.getId())
-                                                         .filter(id -> !id.equals(loginUser.getId()))
-                                                         .toList();
-                
-                // 비동기 알림 전송
-                notificationAsyncService.sendNoticeAsync(allUserIds,              
-                                                         NotificationType.NOTICE,
-                                                         message,           
-                                                         loginUser.getId(), 
-                                                         loginUser.getName(),
-                                                         board.getId());
-                
+                // 전체 유저 조회
+                recipientIds = userRepository.findAll().stream()
+                                             .map(u -> u.getId())
+                                             .filter(id -> !id.equals(loginUser.getId())) // 작성자 본인은 제외
+                                             .toList();
             } else if (loginUser.getRole() == Role.MANAGER) {
-                Integer deptId = loginUser.getDepartment() != null
-                        ? loginUser.getDepartment().getId() : null;
+                // 자신의 부서 유저만 조회
+                Integer deptId = loginUser.getDepartment() != null ? loginUser.getDepartment().getId() : null;
                 if (deptId != null) {
-                    List<Integer> deptUserIds = userRepository.findAll().stream()
-                                                              .filter(u -> u.getDepartment() != null && u.getDepartment().getId().equals(deptId))
-                                                              .map(u -> u.getId())
-                                                              .filter(id -> !id.equals(loginUser.getId()))
-                                                              .toList();
-                    
-                    // 비동기 알림 전송
-                    notificationAsyncService.sendNoticeAsync(deptUserIds,              
-                                                             NotificationType.NOTICE,
-                                                             message,           
-                                                             loginUser.getId(), 
-                                                             loginUser.getName(),
-                                                             board.getId());
+                    recipientIds = userRepository.findAll().stream()
+                                                  .filter(u -> u.getDepartment() != null && u.getDepartment().getId().equals(deptId))
+                                                  .map(u -> u.getId())
+                                                  .filter(id -> !id.equals(loginUser.getId())) // 작성자 본인은 제외
+                                                  .toList();
                 }
+            }
+
+            // 트랜잭션 커밋 후 알림 발송을 위해 변수 저장
+            final List<Integer> finalRecipientIds = recipientIds;
+            final Integer finalSenderId = loginUser.getId();
+            final String finalSenderName = loginUser.getName();
+            final Integer finalBoardId = board.getId();
+            final String finalMessage = message;
+
+            // 트랜잭션 커밋 후 알림 발송
+            if (finalRecipientIds != null && !finalRecipientIds.isEmpty()) {
+                log.info("[BoardServiceImpl] 상단고정 알림 발송 준비: recipientCount={}, boardId={}, senderId={}", 
+                        finalRecipientIds.size(), finalBoardId, finalSenderId);
+                
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        try {
+                            log.info("[BoardServiceImpl][afterCommit] ===== 상단고정 알림 발송 시작 ===== recipientCount={}, boardId={}, senderId={}", 
+                                    finalRecipientIds.size(), finalBoardId, finalSenderId);
+                            
+                            // afterCommit 내부에서 직접 NotificationService 호출 (별도 트랜잭션에서 실행)
+                            notificationService.sendNotificationToUsers(finalRecipientIds,
+                                                                       NotificationType.NOTICE,
+                                                                       finalMessage,
+                                                                       null,
+                                                                       null,
+                                                                       finalSenderId,
+                                                                       finalSenderName,
+                                                                       finalBoardId,
+                                                                       null);
+                            
+                            log.info("[BoardServiceImpl][afterCommit] ===== 상단고정 알림 발송 완료 ===== recipientCount={}, boardId={}", 
+                                    finalRecipientIds.size(), finalBoardId);
+                        } catch (Exception e) {
+                            log.error("[BoardServiceImpl][afterCommit] ===== 상단고정 알림 발송 실패 ===== boardId={}, recipientCount={}, senderId={}", 
+                                    finalBoardId, finalRecipientIds != null ? finalRecipientIds.size() : 0, finalSenderId, e);
+                            e.printStackTrace();
+                        }
+                    }
+                });
+            } else {
+                log.warn("[BoardServiceImpl] 상단고정 알림 수신자 목록이 비어있습니다. role={}, deptId={}", 
+                        loginUser.getRole(), loginUser.getDepartment() != null ? loginUser.getDepartment().getId() : null);
             }
         }
 

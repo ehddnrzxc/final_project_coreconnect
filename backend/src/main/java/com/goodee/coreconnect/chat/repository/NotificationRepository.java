@@ -57,8 +57,8 @@ public interface NotificationRepository extends JpaRepository<Notification, Inte
     	       "LEFT JOIN FETCH n.board " +
     	       "LEFT JOIN FETCH n.schedule " +
     	       "WHERE n.user.id = :userId " +
-    	       "AND n.notificationReadYn = false " +
-    	       "AND n.notificationDeletedYn = false " +
+    	       "AND (n.notificationReadYn = false OR n.notificationReadYn IS NULL) " +
+    	       "AND (n.notificationDeletedYn = false OR n.notificationDeletedYn IS NULL) " +
     	       "AND n.notificationType IN (:types) " +
     	       "ORDER BY n.notificationSentAt DESC")
     	List<Notification> findUnreadByUserIdAndTypesOrderBySentAtDesc(

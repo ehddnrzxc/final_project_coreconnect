@@ -36,8 +36,8 @@ public class Notification {
    @GeneratedValue(strategy = GenerationType.IDENTITY)
    private Integer id;
    
-   @Column(name = "notification_read_yn")
-   private Boolean notificationReadYn;
+  @Column(name = "notification_read_yn")
+  private Boolean notificationReadYn = false;
    
    @Enumerated(EnumType.STRING)
    @Column(name = "notification_type", nullable = false)
@@ -106,13 +106,13 @@ public class Notification {
        notification.user = user;
        notification.notificationType = notificationType;
        notification.notificationMessage = notificationMessage;
-       notification.chat = chat;
-       notification.document = document;
-       notification.board = board;
-       notification.schedule = schedule;
-       notification.notificationReadYn = notificationReadYn;
-       notification.notificationSentYn = notificationSentYn;
-       notification.notificationDeletedYn = notificationDeletedYn != null ? notificationDeletedYn : false;
+      notification.chat = chat;
+      notification.document = document;
+      notification.board = board;
+      notification.schedule = schedule;
+      notification.notificationReadYn = notificationReadYn != null ? notificationReadYn : false;
+      notification.notificationSentYn = notificationSentYn;
+      notification.notificationDeletedYn = notificationDeletedYn != null ? notificationDeletedYn : false;
        notification.notificationSentAt = notificationSentAt;
        notification.notificationReadAt = notificationReadAt;
        notification.sender = sender;
