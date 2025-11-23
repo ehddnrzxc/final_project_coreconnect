@@ -33,12 +33,14 @@ public interface DocumentRepository extends JpaRepository<Document, Integer>{
       LEFT JOIN FETCH al.approver
       WHERE d.user = :user
       AND d.docDeletedYn = :deletedYn
+      AND d.documentStatus <> 'DRAFT'
       ORDER BY d.createdAt DESC
       """,
       countQuery = """
       SELECT count(d) FROM Document d
       WHERE d.user = :user
       AND d.docDeletedYn = :deletedYn
+      AND d.documentStatus <> 'DRAFT'
       """)
   Page<Document> findByUserAndDocDeletedYnOrderByCreatedAtDesc(
       @Param("user") User user,
