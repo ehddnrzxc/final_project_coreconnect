@@ -40,6 +40,8 @@ public class EmailResponseDTO {
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime reservedAt; // 예약시간
     
+    private Boolean favoriteStatus; // 중요 메일 표시 여부
+    
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor
     public static class AttachmentDTO {
         private Integer fileId;

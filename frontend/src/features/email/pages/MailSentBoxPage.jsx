@@ -16,6 +16,7 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import { fetchSentbox, moveToTrash, getEmailDetail } from '../api/emailApi';
 import { useNavigate } from 'react-router-dom';
 import { UserProfileContext } from '../../../App';
+import ConfirmDialog from '../../../components/utils/ConfirmDialog';
 
 /*
   상태에 따라 라벨 한글 변환 함수 (메일 상태 표시에 사용)
@@ -62,6 +63,7 @@ const MailSentBoxPage = () => {
   const [isRefreshing, setIsRefreshing] = useState(false); // 새로고침 로딩 상태
   const [selected, setSelected] = useState(new Set());
   const [snack, setSnack] = useState({ open: false, severity: 'info', message: '' });
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const navigate = useNavigate();
 
   /*
@@ -171,13 +173,18 @@ const MailSentBoxPage = () => {
     여러 메일을 휴지통(삭제) 처리
     - 체크박스 선택 후 삭제 버튼 클릭 시 동작
   */
-  const handleDeleteSelected = async () => {
+  const handleDeleteSelected = () => {
     const ids = Array.from(selected);
     if (ids.length === 0) {
       setSnack({ open: true, severity: 'warning', message: '삭제할 메일을 선택하세요.' });
       return;
     }
-    if (!window.confirm(`선택한 ${ids.length}개의 메일을 휴지통으로 이동하시겠습니까?`)) return;
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    const ids = Array.from(selected);
+    setDeleteDialogOpen(false);
 
     try {
       await moveToTrash(ids); // 휴지통으로 이동
@@ -581,6 +588,15 @@ const MailSentBoxPage = () => {
           {snack.message}
         </Alert>
       </Snackbar>
+
+      {/* 삭제 확인 다이얼로그 */}
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        title="메일 삭제"
+        message={`선택한 ${selected.size}개의 메일을 휴지통으로 이동하시겠습니까?`}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteDialogOpen(false)}
+      />
     </Box>
   );
 };
