@@ -361,9 +361,21 @@ const MailSentBoxPage = () => {
         {/* 툴바 버튼들 */}
         <Box sx={{ display: 'flex', alignItems: 'center', mt: 2, mb: 2 }}>
           <ButtonGroup variant="text" sx={{ gap: 1 }}>
-            <Button startIcon={<ReplyIcon />} onClick={handleReply}>답장</Button>
+            <Button 
+              startIcon={<ReplyIcon />} 
+              onClick={handleReply}
+              disabled={selected.size !== 1}
+            >
+              답장
+            </Button>
             <Button startIcon={<DeleteIcon />} onClick={handleDeleteSelected}>삭제</Button>
-            <Button startIcon={<ForwardIcon />} onClick={handleForward}>전달</Button>
+            <Button 
+              startIcon={<ForwardIcon />} 
+              onClick={handleForward}
+              disabled={selected.size !== 1}
+            >
+              전달
+            </Button>
           </ButtonGroup>
           <Box sx={{ flex: 1 }} />
           <IconButton onClick={handleSortByDate} title={sortOrder === "desc" ? "날짜순 내림차순 (최신순)" : "날짜순 오름차순 (오래된순)"}>

@@ -657,10 +657,22 @@ const MailInboxPage = () => {
             onChange={(e) => { e.stopPropagation(); toggleSelectAll(); }}
           />
           <ButtonGroup variant="text" sx={{ gap: 1 }}>
-            <Button startIcon={<ReplyIcon />} onClick={handleReply}>답장</Button>
+            <Button 
+              startIcon={<ReplyIcon />} 
+              onClick={handleReply}
+              disabled={selected.size !== 1}
+            >
+              답장
+            </Button>
             {/* 삭제(휴지통 이동) */}
             <Button startIcon={<DeleteIcon />} onClick={deleteSelected}>삭제</Button>
-            <Button startIcon={<ForwardIcon />} onClick={handleForward}>전달</Button>
+            <Button 
+              startIcon={<ForwardIcon />} 
+              onClick={handleForward}
+              disabled={selected.size !== 1}
+            >
+              전달
+            </Button>
             <Button startIcon={<MarkEmailReadIcon />} onClick={markSelectedAsRead}>읽음</Button>
           </ButtonGroup>
           <Box sx={{ flex: 1 }} />
