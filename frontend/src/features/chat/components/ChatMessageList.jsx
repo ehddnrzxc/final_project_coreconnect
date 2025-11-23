@@ -18,7 +18,7 @@ const formatTime = (time) => {
   return date.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
 };
 
-function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbove, loadingAbove, onMessagesLoaded }) {
+function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbove, loadingAbove, onMessagesLoaded, scrollToUnread = false, onScrollToUnreadComplete }) {
   // 👇 로그인 정보 받기!
   const { userProfile } = useContext(UserProfileContext) || {};
   const userEmail = userProfile?.email;
@@ -29,9 +29,12 @@ function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbov
   const [carouselStartIndex, setCarouselStartIndex] = useState(0);
   const [firstUnreadIndex, setFirstUnreadIndex] = useState(-1);
   const [showUnreadMarker, setShowUnreadMarker] = useState(false);
+  const [markerDismissed, setMarkerDismissed] = useState(false); // 마커가 한 번 사라졌는지 추적
   const previousMessagesLengthRef = useRef(messages.length);
+  const previousUnreadIndexRef = useRef(-1); // 이전 안읽은 메시지 인덱스 추적
   const scrollPositionRef = useRef({ scrollHeight: 0, scrollTop: 0 });
   const autoHideTimerRef = useRef(null);
+  const unreadMarkerRef = useRef(null);
 
   // 무한 스크롤(위로 올릴 때 loadMore) - 스크롤 위치 유지
   const handleScroll = () => {
@@ -51,17 +54,24 @@ function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbov
     }
     
     // 안읽은 메시지 마커 표시/숨김 처리
-    if (firstUnreadIndex >= 0) {
+    // 스크롤을 끝까지 내리면 마커 영구적으로 숨김
+    if (firstUnreadIndex >= 0 && !markerDismissed) {
       const scrollTop = el.scrollTop;
       const scrollHeight = el.scrollHeight;
       const clientHeight = el.clientHeight;
+      const isScrolledToBottom = scrollTop + clientHeight >= scrollHeight - 10;
       
-      // 스크롤을 맨 아래까지 내렸으면 마커 숨김
-      if (scrollTop + clientHeight >= scrollHeight - 10) {
+      // 스크롤을 끝까지 내리면 마커 영구적으로 숨김
+      if (isScrolledToBottom) {
         setShowUnreadMarker(false);
+        setMarkerDismissed(true); // 한 번 사라지면 다시 나타나지 않음
       } else {
+        // 스크롤이 끝까지 내려가지 않았으면 마커 표시
         setShowUnreadMarker(true);
       }
+    } else if (markerDismissed) {
+      // 마커가 이미 사라졌으면 표시하지 않음
+      setShowUnreadMarker(false);
     }
   };
   
@@ -92,54 +102,81 @@ function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbov
 
   // 첫 번째 안읽은 메시지 인덱스 찾기
   useEffect(() => {
-    const unreadIdx = messages.findIndex((msg) => msg.readYn === false);
+    // readYn이 false인 경우를 안읽은 메시지로 처리
+    // null이나 undefined는 읽은 것으로 간주
+    const unreadIdx = messages.findIndex((msg) => {
+      // readYn이 명시적으로 false인 경우만 안읽은 메시지로 처리
+      return msg.readYn === false;
+    });
     const hasUnreadMessages = unreadIdx >= 0;
+    const previousUnreadIdx = previousUnreadIndexRef.current;
+    
     setFirstUnreadIndex(unreadIdx);
     
-    // 스크롤이 필요 없는 경우 (모든 메시지가 화면에 다 보일 때) 처리
-    const el = scrollRef.current;
-    if (el) {
-      const scrollHeight = el.scrollHeight;
-      const clientHeight = el.clientHeight;
-      const needsScroll = scrollHeight > clientHeight;
-      
-      if (!needsScroll && hasUnreadMessages) {
-        // 스크롤이 필요 없고 안읽은 메시지가 있으면 마커 표시
-        setShowUnreadMarker(true);
-      } else if (!needsScroll && !hasUnreadMessages && showUnreadMarker) {
-        // 스크롤이 필요 없고 안읽은 메시지가 모두 읽음 처리되었고 마커가 표시 중이면
-        // 5초 후에 마커 숨김
-        if (autoHideTimerRef.current) {
-          clearTimeout(autoHideTimerRef.current);
-        }
-        autoHideTimerRef.current = setTimeout(() => {
-          setShowUnreadMarker(false);
-          console.log("📌 [ChatMessageList] 스크롤 없음 + 모든 메시지 읽음 → 5초 후 마커 자동 숨김");
-        }, 5000);
-      } else if (needsScroll) {
-        // 스크롤이 필요한 경우 기존 로직 사용 (handleScroll에서 처리)
-        setShowUnreadMarker(hasUnreadMessages);
-      } else {
-        // 스크롤이 필요 없고 안읽은 메시지도 없으면 마커 숨김
-        setShowUnreadMarker(false);
-      }
-    } else {
-      // 엘리먼트가 없으면 기본 로직 사용
-      setShowUnreadMarker(hasUnreadMessages);
+    // 안읽은 메시지 인덱스가 변경되면 (새로운 안읽은 메시지가 생기거나 채팅방이 변경되면) 마커 리셋
+    if (unreadIdx !== previousUnreadIdx) {
+      setMarkerDismissed(false);
+      previousUnreadIndexRef.current = unreadIdx;
     }
+    
+    // 안읽은 메시지가 있으면 항상 마커 표시 (markerDismissed가 false일 때만)
+    if (hasUnreadMessages && !markerDismissed) {
+      setShowUnreadMarker(true);
+      console.log("✅ [ChatMessageList] 마커 표시 설정: true", {
+        unreadIdx: unreadIdx,
+        markerDismissed: markerDismissed,
+        hasUnreadMessages: hasUnreadMessages,
+        firstUnreadMessage: messages[unreadIdx]
+      });
+      // 기존 타이머가 있으면 취소
+      if (autoHideTimerRef.current) {
+        clearTimeout(autoHideTimerRef.current);
+        autoHideTimerRef.current = null;
+      }
+    } else if (!hasUnreadMessages) {
+      // 안읽은 메시지가 없으면 마커 숨김
+      setShowUnreadMarker(false);
+      console.log("❌ [ChatMessageList] 마커 숨김: 안읽은 메시지 없음");
+      if (autoHideTimerRef.current) {
+        clearTimeout(autoHideTimerRef.current);
+        autoHideTimerRef.current = null;
+      }
+    } else if (markerDismissed && hasUnreadMessages) {
+      // markerDismissed가 true이면 마커 숨김
+      setShowUnreadMarker(false);
+      console.log("❌ [ChatMessageList] 마커 숨김: markerDismissed=true");
+    }
+    
+    // 디버깅 로그
+    console.log("📌 [ChatMessageList] 안읽은 메시지 상태:", {
+      unreadIdx: unreadIdx,
+      hasUnreadMessages: hasUnreadMessages,
+      showUnreadMarker: showUnreadMarker,
+      markerDismissed: markerDismissed,
+      messagesLength: messages.length,
+      readYnValues: messages.map((m, i) => ({ 
+        idx: i,
+        id: m.id, 
+        readYn: m.readYn, 
+        readYnType: typeof m.readYn,
+        isUnread: m.readYn === false
+      })),
+      firstUnreadMessage: unreadIdx >= 0 ? messages[unreadIdx] : null
+    });
     
     // cleanup: 컴포넌트 언마운트 시 타이머 정리
     return () => {
       if (autoHideTimerRef.current) {
         clearTimeout(autoHideTimerRef.current);
+        autoHideTimerRef.current = null;
       }
     };
-  }, [messages, showUnreadMarker]);
+  }, [messages, showUnreadMarker, markerDismissed]);
 
-  // 새 메시지 오면 항상 맨 아래로 스크롤
+  // 새 메시지 오면 항상 맨 아래로 스크롤 (안읽은 메시지가 없고 scrollToUnread가 false일 때만)
   useEffect(() => {
     const el = scrollRef.current;
-    if (el && messages.length > 0) {
+    if (el && messages.length > 0 && !scrollToUnread) {
       // 안읽은 메시지가 없을 때만 자동 스크롤
       if (firstUnreadIndex < 0) {
         // ⭐ 스크롤을 맨 아래로 내리기 (약간의 지연을 두어 DOM 업데이트 완료 후 실행)
@@ -150,12 +187,96 @@ function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbov
         }, 100);
       }
     }
-  }, [messages, firstUnreadIndex]);
+  }, [messages, firstUnreadIndex, scrollToUnread]);
   
-  // ⭐ 채팅방 선택 시 메시지 로드 후 최신 메시지로 스크롤
+  // ⭐ 안읽은 메시지 위치로 스크롤 (채팅방 선택 시)
+  useEffect(() => {
+    // scrollToUnread가 true이고 안읽은 메시지가 있고 메시지가 로드되었을 때만 실행
+    if (!scrollToUnread || messages.length === 0) {
+      if (scrollToUnread && firstUnreadIndex < 0 && onScrollToUnreadComplete) {
+        // 안읽은 메시지가 없으면 즉시 콜백 호출
+        onScrollToUnreadComplete();
+      }
+      return;
+    }
+
+    // firstUnreadIndex가 아직 계산되지 않았으면 대기
+    if (firstUnreadIndex < 0) {
+      // 안읽은 메시지가 없으면 콜백 호출
+      if (onScrollToUnreadComplete) {
+        onScrollToUnreadComplete();
+      }
+      return;
+    }
+
+    const el = scrollRef.current;
+    if (!el) return;
+    
+    // 마커가 렌더링될 때까지 기다리는 함수
+    const scrollToMarker = (retryCount = 0) => {
+      const markerEl = unreadMarkerRef.current;
+      
+      // 마커가 렌더링되어야 함 (showUnreadMarker 체크 제거 - 마커가 렌더링되면 표시)
+      if (el && markerEl) {
+        // scrollIntoView를 사용하여 더 정확한 스크롤
+        markerEl.scrollIntoView({ 
+          behavior: 'auto', 
+          block: 'start',
+          inline: 'nearest'
+        });
+        
+        // 추가로 약간의 여백을 위해 조정
+        setTimeout(() => {
+          if (el && markerEl) {
+            const markerTop = markerEl.offsetTop;
+            el.scrollTop = markerTop - 20; // 마커 위에 약간의 여백
+          }
+        }, 50);
+        
+        console.log("✅ [ChatMessageList] 안읽은 메시지 위치로 스크롤 성공:", {
+          scrollTop: el.scrollTop,
+          markerTop: markerEl.offsetTop,
+          firstUnreadIndex: firstUnreadIndex,
+          messagesLength: messages.length,
+          retryCount: retryCount
+        });
+        
+        // 스크롤 완료 후 콜백 호출
+        if (onScrollToUnreadComplete) {
+          onScrollToUnreadComplete();
+        }
+      } else if (el && !markerEl && retryCount < 30) {
+        // 마커가 아직 렌더링되지 않았으면 재시도 (최대 30번, 총 3초)
+        console.log("⏳ [ChatMessageList] 마커 대기 중...", {
+          retryCount: retryCount,
+          hasMarkerEl: !!markerEl,
+          firstUnreadIndex: firstUnreadIndex,
+          messagesLength: messages.length
+        });
+        setTimeout(() => scrollToMarker(retryCount + 1), 100);
+      } else {
+        // 재시도 횟수 초과 또는 조건 불만족 시
+        console.warn("❌ [ChatMessageList] 안읽은 메시지 위치로 스크롤 실패:", {
+          retryCount: retryCount,
+          hasMarkerEl: !!markerEl,
+          firstUnreadIndex: firstUnreadIndex,
+          messagesLength: messages.length
+        });
+        if (onScrollToUnreadComplete) {
+          onScrollToUnreadComplete();
+        }
+      }
+    };
+    
+    // DOM 업데이트 완료 후 스크롤 (약간의 지연)
+    // 메시지가 로드되고 마커가 렌더링될 시간을 줌
+    setTimeout(() => scrollToMarker(), 300);
+  }, [scrollToUnread, firstUnreadIndex, messages.length, onScrollToUnreadComplete]);
+
+  // ⭐ 채팅방 선택 시 메시지 로드 후 최신 메시지로 스크롤 (안읽은 메시지가 없을 때만)
   // onMessagesLoaded prop이 호출되면 스크롤을 맨 아래로 이동
   useEffect(() => {
-    if (onMessagesLoaded && messages.length > 0) {
+    if (onMessagesLoaded && messages.length > 0 && firstUnreadIndex < 0) {
       const el = scrollRef.current;
       if (el) {
         // DOM 업데이트 완료 후 스크롤 (약간의 지연)
@@ -171,7 +292,7 @@ function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbov
         }, 200);
       }
     }
-  }, [messages.length, onMessagesLoaded]);
+  }, [messages.length, onMessagesLoaded, firstUnreadIndex]);
 
   return (
     <Box
@@ -194,32 +315,6 @@ function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbov
         <Box sx={{ textAlign: "center", py: 1, color: "#889" }}>불러오는 중...</Box>
       )}
 
-      {/* 안읽은 메시지 마커 */}
-      {showUnreadMarker && firstUnreadIndex >= 0 && (
-        <Box
-          sx={{
-            textAlign: "center",
-            py: 2,
-            px: 2,
-            position: "sticky",
-            top: 0,
-            zIndex: 10,
-            bgcolor: "#fafbff",
-            borderBottom: "1px solid #e3e8ef",
-          }}
-        >
-          <Typography
-            sx={{
-              fontSize: 13,
-              color: "#666",
-              fontWeight: 500,
-            }}
-          >
-            여기서부터 안읽은 메시지입니다
-          </Typography>
-        </Box>
-      )}
-
       {/* 메시지가 없을 때 안내 */}
       {(!messages || messages.length === 0) ? (
         <Box sx={{ minHeight: 320, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -239,6 +334,35 @@ function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbov
         //   senderName: messages[0]?.senderName
         // }),
         messages.map((msg, idx) => {
+          // 안읽은 메시지의 첫 번째 메시지 위에 마커 표시
+          // 조건: markerDismissed가 false이고, firstUnreadIndex가 유효하고, 현재 인덱스가 첫 번째 안읽은 메시지 인덱스와 일치
+          const shouldShowMarker = !markerDismissed && firstUnreadIndex >= 0 && idx === firstUnreadIndex;
+          
+          // 디버깅: 모든 메시지에서 readYn 확인
+          if (msg.readYn === false) {
+            console.log("🔍 [ChatMessageList] 안읽은 메시지 발견:", {
+              idx: idx,
+              firstUnreadIndex: firstUnreadIndex,
+              msgId: msg.id,
+              msgReadYn: msg.readYn,
+              shouldShowMarker: shouldShowMarker,
+              markerDismissed: markerDismissed
+            });
+          }
+          
+          // 디버깅: 마커 표시 조건 확인 (첫 번째 안읽은 메시지 위치에서만)
+          if (idx === firstUnreadIndex) {
+            console.log("🔍 [ChatMessageList] 마커 표시 조건 확인 (첫 번째 안읽은 메시지):", {
+              idx: idx,
+              firstUnreadIndex: firstUnreadIndex,
+              showUnreadMarker: showUnreadMarker,
+              markerDismissed: markerDismissed,
+              shouldShowMarker: shouldShowMarker,
+              msgReadYn: msg.readYn,
+              msgId: msg.id,
+              msgContent: msg.messageContent
+            });
+          }
           // ⭐ 내 메시지 판별 로직
           // 1순위: senderEmail로 비교 (가장 정확함) - 백엔드에서 항상 포함하도록 수정됨
           // 2순위: senderEmail이 없을 경우 senderId로 비교 (fallback - 비권장)
@@ -301,49 +425,90 @@ function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbov
           //   });
           // }
 
+          // 안읽은 메시지 마커 (첫 번째 안읽은 메시지 위에 표시)
+          // ref는 첫 번째 안읽은 메시지에만 설정
+          const markerElement = shouldShowMarker ? (
+            <Box
+              key={`unread-marker-${idx}`}
+              ref={idx === firstUnreadIndex ? unreadMarkerRef : null}
+              sx={{
+                textAlign: "center",
+                py: 1.5,
+                px: 2,
+                mb: 2,
+                borderTop: "1px solid #e3e8ef",
+                borderBottom: "1px solid #e3e8ef",
+                bgcolor: "#fafbff",
+                width: "100%",
+              }}
+            >
+              <Typography
+                sx={{
+                  fontSize: 13,
+                  color: "#999",
+                  fontWeight: 500,
+                }}
+              >
+                여기서부터 안읽은 메시지입니다
+              </Typography>
+            </Box>
+          ) : null;
+          
+          // 디버깅: 마커 렌더링 확인
+          if (shouldShowMarker) {
+            console.log("✅ [ChatMessageList] 마커 렌더링:", {
+              idx: idx,
+              firstUnreadIndex: firstUnreadIndex,
+              markerElement: markerElement !== null
+            });
+          }
+
           // ========== 시스템 메시지 (가운데 정렬, 회색) ==========
           const isSystemMessage = msg.messageContent && msg.messageContent.includes("님이 입장했습니다");
           
           if (isSystemMessage) {
             return (
-              <Box
-                key={msg.id ?? idx}
-                sx={{
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  mb: 2,
-                  textAlign: "center",
-                }}
-              >
-                <Typography
+              <React.Fragment key={msg.id ?? idx}>
+                {markerElement}
+                <Box
                   sx={{
-                    fontSize: 13,
-                    color: "#999",
-                    fontWeight: 400,
-                    px: 2,
-                    py: 0.5,
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    mb: 2,
+                    textAlign: "center",
                   }}
                 >
-                  {msg.messageContent}
-                </Typography>
-              </Box>
+                  <Typography
+                    sx={{
+                      fontSize: 13,
+                      color: "#999",
+                      fontWeight: 400,
+                      px: 2,
+                      py: 0.5,
+                    }}
+                  >
+                    {msg.messageContent}
+                  </Typography>
+                </Box>
+              </React.Fragment>
             );
           }
 
           // ========== 내가 보낸 메시지 (오른쪽, 이름 없음, 파란 테마) ==========
           if (isMine) {
             return (
-              <Box
-                key={msg.id ?? idx}
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "flex-end",
-                  mb: 2,
-                  textAlign: "right",
-                }}
-              >
+              <React.Fragment key={msg.id ?? idx}>
+                {markerElement}
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-end",
+                    mb: 2,
+                    textAlign: "right",
+                  }}
+                >
                 <Box
                   sx={{
                     display: "flex",
@@ -353,12 +518,12 @@ function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbov
                     justifyContent: "flex-end",
                   }}
                 >
-                  {/* ⭐ 안읽은 사람 수 표시 (메시지 왼쪽) */}
+                  {/* ⭐ 안읽은 사람 수 표시 (메시지 왼쪽) - 파란색으로 표시 */}
                   {msg.unreadCount != null && msg.unreadCount > 0 && (
                     <Typography
                       sx={{
                         fontSize: 11,
-                        color: "#1976d2",
+                        color: "#1976d2", // 파란색으로 변경
                         fontWeight: 600,
                         alignSelf: "flex-start",
                         mt: 1.2,
@@ -376,8 +541,8 @@ function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbov
                       borderRadius: 2,
                       px: 2,
                       py: 1.2,
-                      maxWidth: 380,
-                      minWidth: 120,
+                      maxWidth: "70%", // 최대 너비 제한 (긴 메시지용)
+                      width: "fit-content", // 텍스트 크기만큼만 차지
                       wordBreak: "break-word",
                       boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.03)",
                     }}
@@ -390,68 +555,166 @@ function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbov
                     )}
 
                     {/* 첨부파일(이미지/파일 링크, 색상은 유지) */}
-                    {msg.fileYn && msg.fileUrl && (
-                      isImageFile(msg.fileUrl) ? (
-                        <Box
-                          component="img"
-                          src={msg.fileUrl}
-                          alt="첨부 이미지"
-                          onClick={() => {
-                            // 현재 메시지의 이미지들을 포함한 모든 이미지 URL 수집
-                            const imageUrls = messages
-                              .filter(m => m.fileYn && m.fileUrl && isImageFile(m.fileUrl))
-                              .map(m => m.fileUrl);
-                            const currentIndex = imageUrls.indexOf(msg.fileUrl);
-                            setCarouselImages(imageUrls);
-                            setCarouselStartIndex(currentIndex >= 0 ? currentIndex : 0);
-                            setCarouselOpen(true);
-                          }}
-                          sx={{
-                            width: "100%",
-                            maxWidth: 280,
-                            borderRadius: 1.5,
-                            border: "1px solid #e1e4eb",
-                            objectFit: "cover",
-                            mt: 1,
-                            cursor: "pointer",
-                            "&:hover": {
-                              opacity: 0.8,
-                            },
-                          }}
-                        />
-                      ) : (
+                    {msg.fileYn && (
+                      // ⭐ 여러 이미지가 있는 경우 가로로 나열 (상대방 메시지와 동일한 로직)
+                      msg.fileUrls && msg.fileUrls.length > 0 ? (
+                        // 여러 이미지인 경우
                         <Box
                           sx={{
-                            bgcolor: "#fff",
-                            border: "1px solid #90caf9",
-                            borderRadius: 1.5,
-                            px: 1.5,
-                            py: 0.8,
-                            mt: 1
+                            display: "flex",
+                            flexDirection: "row",
+                            flexWrap: "wrap",
+                            gap: 1.5,
+                            mt: 1.5,
+                            p: 1.5,
+                            bgcolor: "rgba(25, 118, 210, 0.05)",
+                            borderRadius: 2,
+                            border: "1px solid rgba(25, 118, 210, 0.15)",
                           }}
                         >
-                          <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 0.5, color: "#1976d2" }}>
-                            첨부 파일
-                          </Typography>
-                          <Link
-                            href={msg.fileUrl}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              // 파일 다운로드
-                              const link = document.createElement("a");
-                              link.href = msg.fileUrl;
-                              link.download = decodeURIComponent(msg.fileUrl.split("/").pop()?.split("?")[0] || "파일");
-                              document.body.appendChild(link);
-                              link.click();
-                              document.body.removeChild(link);
-                            }}
-                            underline="hover"
-                            sx={{ fontSize: 13, wordBreak: "break-all", color: "#1976d2", cursor: "pointer" }}
-                          >
-                            {decodeURIComponent(msg.fileUrl.split("/").pop()?.split("?")[0] || "파일 다운로드")}
-                          </Link>
+                          {msg.fileUrls.map((fileUrl, idx) => {
+                            if (!fileUrl) return null;
+                            const isImage = isImageFile(fileUrl);
+                            return isImage ? (
+                              <Box
+                                key={idx}
+                                component="img"
+                                src={fileUrl}
+                                alt={`첨부 이미지 ${idx + 1}`}
+                                onError={(e) => {
+                                  console.error("❌ [ChatMessageList] 이미지 로드 실패:", {
+                                    fileUrl,
+                                    messageId: msg.id,
+                                    index: idx
+                                  });
+                                  e.target.style.display = "none";
+                                }}
+                                onClick={() => {
+                                  // 현재 메시지의 모든 이미지 URL 수집
+                                  const imageUrls = msg.fileUrls.filter(url => url && isImageFile(url));
+                                  const currentIndex = imageUrls.indexOf(fileUrl);
+                                  setCarouselImages(imageUrls);
+                                  setCarouselStartIndex(currentIndex >= 0 ? currentIndex : 0);
+                                  setCarouselOpen(true);
+                                }}
+                                sx={{
+                                  width: msg.fileUrls.length === 1 ? 200 : 150,
+                                  height: msg.fileUrls.length === 1 ? 200 : 150,
+                                  borderRadius: 1.5,
+                                  border: "1px solid rgba(25, 118, 210, 0.2)",
+                                  objectFit: "cover",
+                                  cursor: "pointer",
+                                  transition: "all 0.2s ease",
+                                  "&:hover": {
+                                    opacity: 0.85,
+                                    transform: "scale(1.02)",
+                                    boxShadow: "0 4px 8px rgba(25, 118, 210, 0.2)",
+                                  },
+                                }}
+                              />
+                            ) : (
+                              <Box
+                                key={idx}
+                                sx={{
+                                  bgcolor: "#fff",
+                                  border: "1px solid #90caf9",
+                                  borderRadius: 1.5,
+                                  px: 2,
+                                  py: 1.5,
+                                  minWidth: 150,
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  justifyContent: "center",
+                                  alignItems: "center",
+                                }}
+                              >
+                                <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 0.5, color: "#1976d2" }}>
+                                  첨부 파일
+                                </Typography>
+                                <Link
+                                  href={fileUrl}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    const link = document.createElement("a");
+                                    link.href = fileUrl;
+                                    link.download = decodeURIComponent(fileUrl.split("/").pop()?.split("?")[0] || "파일");
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    document.body.removeChild(link);
+                                  }}
+                                  underline="hover"
+                                  sx={{ fontSize: 13, wordBreak: "break-all", color: "#1976d2", cursor: "pointer" }}
+                                >
+                                  {decodeURIComponent(fileUrl.split("/").pop()?.split("?")[0] || "파일 다운로드")}
+                                </Link>
+                              </Box>
+                            );
+                          })}
                         </Box>
-                      )
+                      ) : msg.fileUrl ? (
+                        // 단일 파일인 경우 (기존 로직 유지)
+                        isImageFile(msg.fileUrl) ? (
+                          <Box
+                            component="img"
+                            src={msg.fileUrl}
+                            alt="첨부 이미지"
+                            onClick={() => {
+                              // 현재 메시지의 이미지들을 포함한 모든 이미지 URL 수집
+                              const imageUrls = messages
+                                .filter(m => m.fileYn && m.fileUrl && isImageFile(m.fileUrl))
+                                .map(m => m.fileUrl);
+                              const currentIndex = imageUrls.indexOf(msg.fileUrl);
+                              setCarouselImages(imageUrls);
+                              setCarouselStartIndex(currentIndex >= 0 ? currentIndex : 0);
+                              setCarouselOpen(true);
+                            }}
+                            sx={{
+                              width: "100%",
+                              maxWidth: 280,
+                              borderRadius: 1.5,
+                              border: "1px solid #e1e4eb",
+                              objectFit: "cover",
+                              mt: 1,
+                              cursor: "pointer",
+                              "&:hover": {
+                                opacity: 0.8,
+                              },
+                            }}
+                          />
+                        ) : (
+                          <Box
+                            sx={{
+                              bgcolor: "#fff",
+                              border: "1px solid #90caf9",
+                              borderRadius: 1.5,
+                              px: 1.5,
+                              py: 0.8,
+                              mt: 1
+                            }}
+                          >
+                            <Typography sx={{ fontSize: 13, fontWeight: 600, mb: 0.5, color: "#1976d2" }}>
+                              첨부 파일
+                            </Typography>
+                            <Link
+                              href={msg.fileUrl}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                // 파일 다운로드
+                                const link = document.createElement("a");
+                                link.href = msg.fileUrl;
+                                link.download = decodeURIComponent(msg.fileUrl.split("/").pop()?.split("?")[0] || "파일");
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }}
+                              underline="hover"
+                              sx={{ fontSize: 13, wordBreak: "break-all", color: "#1976d2", cursor: "pointer" }}
+                            >
+                              {decodeURIComponent(msg.fileUrl.split("/").pop()?.split("?")[0] || "파일 다운로드")}
+                            </Link>
+                          </Box>
+                        )
+                      ) : null
                     )}
                   </Box>
                 </Box>
@@ -461,20 +724,22 @@ function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbov
                   {formatTime(msg.sendAt)}
                 </Typography>
               </Box>
+              </React.Fragment>
             );
           }
 
           // ========== 상대방 메시지 (왼쪽, 이름/프로필/회색 테마) ==========
           return (
-            <Box
-              key={msg.id ?? idx}
-              sx={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: 1.5,
-                mb: 2,
-              }}
-            >
+            <React.Fragment key={msg.id ?? idx}>
+              {markerElement}
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 1.5,
+                  mb: 2,
+                }}
+              >
               {/* ⭐ 프로필 아바타 - user_profile_image_key에서 가져온 이미지 표시 */}
               {/* 
                 프로필 이미지 표시 로직:
@@ -618,8 +883,8 @@ function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbov
                       borderRadius: 2,
                       px: 2,
                       py: 1.2,
-                      maxWidth: 380,
-                      minWidth: 120,
+                      maxWidth: "70%", // 최대 너비 제한 (긴 메시지용)
+                      width: "fit-content", // 텍스트 크기만큼만 차지
                       wordBreak: "break-word",
                       boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.03)",
                     }}
@@ -863,6 +1128,7 @@ function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbov
                 </Typography>
               </Box>
             </Box>
+            </React.Fragment>
           );
         })
       )}

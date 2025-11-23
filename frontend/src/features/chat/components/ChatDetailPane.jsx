@@ -14,7 +14,9 @@ function ChatDetailPane({
   selectedRoom, messages,
   unreadCount, firstUnreadIdx, formatTime, // eslint-disable-line no-unused-vars
   inputRef, onSend, onFileUpload, socketConnected,
-  onScrollTop, isLoadingMore, hasMoreAbove
+  onScrollTop, isLoadingMore, hasMoreAbove,
+  scrollToUnread = false, onScrollToUnreadComplete,
+  onMarkAllAsRead // 모두 읽음 처리 함수
 }) {
   const messagesEndRef = useRef(null);
   const [participantsDialogOpen, setParticipantsDialogOpen] = useState(false);
@@ -97,7 +99,7 @@ function ChatDetailPane({
           height: "100%",
           display: "flex",
           alignItems: "center",
-          gap: 2
+          gap: 1
         }}>
           <IconButton
             onClick={() => setInviteDialogOpen(true)}
@@ -120,6 +122,8 @@ function ChatDetailPane({
         onLoadMore={onScrollTop}
         hasMoreAbove={hasMoreAbove}
         loadingAbove={isLoadingMore}
+        scrollToUnread={scrollToUnread}
+        onScrollToUnreadComplete={onScrollToUnreadComplete}
       />
       <div ref={messagesEndRef} />
       <ChatMessageInputBox

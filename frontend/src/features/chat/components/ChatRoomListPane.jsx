@@ -6,6 +6,8 @@ import http from "../../../api/http"; // axios 인스턴스 불러오기
 function ChatRoomListPane({
   tabIdx, setTabIdx, roomList, selectedRoomId, setSelectedRoomId, formatTime
 }) {
+  // 정렬 상태: 기본값은 최신 메시지부터 (내림차순)
+  const sortOrder = 'desc';
   // 참여자 수 정보를 저장할 state: { [roomId]: 참여자수 }
   const [roomMemberCounts, setRoomMemberCounts] = useState({});
 
@@ -34,6 +36,25 @@ function ChatRoomListPane({
   // "전체"(0) 또는 "안읽음"(1) 탭 필터링
   const filteredRooms = tabIdx === 0 ? roomList : roomList.filter(r => r.unreadCount > 0);
 
+  // 마지막 메시지 시간 기준 정렬 함수
+  const sortRoomsByLastMessage = (rooms) => {
+    return [...rooms].sort((a, b) => {
+      const timeA = a.lasMessageTime ? new Date(a.lasMessageTime).getTime() : 0;
+      const timeB = b.lasMessageTime ? new Date(b.lasMessageTime).getTime() : 0;
+      
+      if (sortOrder === 'asc') {
+        // 오름차순: 오래된 메시지부터 (시간이 작은 것부터)
+        return timeA - timeB;
+      } else {
+        // 내림차순: 최신 메시지부터 (시간이 큰 것부터)
+        return timeB - timeA;
+      }
+    });
+  };
+
+  // 정렬된 채팅방 목록
+  const sortedRooms = sortRoomsByLastMessage(filteredRooms);
+
   // 참여자 수 기준 채팅방 유형 뱃지(1:1, 단체 채팅) 반환용
   function TypeBadge({ count }) {
     if (!count) return null; // 참여자 데이터 없음
@@ -52,7 +73,7 @@ function ChatRoomListPane({
       display: "flex", flexDirection: "column", p: 0,
     }}>
       {/* 탭 영역 */}
-      <Box sx={{ px: 0, pt: 0, pb: 1 }}>
+      <Box sx={{ px: 0, pt: 0, pb: 1, position: 'relative' }}>
         <Tabs
           value={tabIdx}
           onChange={(_, v) => setTabIdx(v)}
@@ -95,7 +116,7 @@ function ChatRoomListPane({
             />
           </ListItem>
         ) : (
-          filteredRooms.map(room => (
+          sortedRooms.map(room => (
             <ListItem
               key={room.roomId}
               disablePadding
@@ -141,7 +162,7 @@ function ChatRoomListPane({
                           badgeContent={room.unreadCount}
                           sx={{
                             "& .MuiBadge-badge": {
-                              background: "#ff7f1a",
+                              background: "#f44336",
                               color: "#fff",
                               fontWeight: 700,
                               fontSize: "13px",

@@ -93,5 +93,10 @@ public class Template {
   public void activate() {
     this.activeYn = true;
   }
+
+  public Object getName() {
+	// TODO Auto-generated method stub
+	return null;
+  }
   
 }

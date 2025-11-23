@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { connectNotification, disconnectNotification } from "./notificationSocket";
-import Snackbar from "@mui/material/Snackbar";
-import Alert from "@mui/material/Alert";
+import { useSnackbarContext } from "../../components/utils/SnackbarContext";
 
 // 실시간 알림 Context 생성
 const RealtimeNotificationContext = createContext({
@@ -19,8 +18,7 @@ export const useRealtimeNotifications = () => useContext(RealtimeNotificationCon
  */
 export function RealtimeNotificationProvider({ children }) {
   const [notifications, setNotifications] = useState([]);
-  const [snackOpen, setSnackOpen] = useState(false);
-  const [snackPayload, setSnackPayload] = useState(null);
+  const { showSnack } = useSnackbarContext();
 
   const pushNotification = useCallback((payload) => {
     setNotifications(prev => [payload, ...prev].slice(0, 100)); // 최근 100개만
@@ -35,6 +33,7 @@ export function RealtimeNotificationProvider({ children }) {
       case "SCHEDULE": return "success";
       case "APPROVAL": return "warning";
       case "EMAIL": return "info";
+      case "CHAT": return "info";
       default: return "info";
     }
   };
@@ -52,11 +51,24 @@ export function RealtimeNotificationProvider({ children }) {
         message: payload.message || payload.body || (payload.raw ? String(payload.raw) : ""),
         senderName: payload.senderName || payload.sender || "",
         createdAt: payload.createdAt || new Date().toISOString(),
+        roomId: payload.roomId || null, // 채팅 알림용 roomId
         raw: payload
       };
       pushNotification(notif);
-      setSnackPayload(notif);
-      setSnackOpen(true);
+      
+      // SnackbarContext를 사용하여 알림 표시
+      const message = notif.senderName 
+        ? `${notif.senderName} — ${notif.message}`
+        : notif.message;
+      showSnack(message, typeToSeverity(notif.type));
+      
+      // CHAT 타입 알림이고 roomId가 있으면 채팅방으로 이동
+      if (notif.type?.toUpperCase() === "CHAT" && notif.roomId) {
+        // 알림 표시 후 잠시 후 채팅방으로 이동
+        setTimeout(() => {
+          window.location.href = `/chat?roomId=${notif.roomId}`;
+        }, 500);
+      }
     };
 
     // SockJS를 사용하여 상대 경로로 연결 (Vite 프록시를 통해 쿠키 자동 전송)
@@ -70,29 +82,11 @@ export function RealtimeNotificationProvider({ children }) {
         console.warn("[RealtimeNotificationProvider] cleanup 중 오류 (무시):", err);
       }
     };
-  }, [pushNotification]); // baseUrl 제거 (더 이상 사용하지 않음)
+  }, [pushNotification, showSnack]); // showSnack 추가
 
   return (
     <RealtimeNotificationContext.Provider value={{ notifications, pushNotification, clearNotifications }}>
       {children}
-      <Snackbar
-        open={snackOpen}
-        autoHideDuration={6000}
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
-        onClose={() => setSnackOpen(false)}
-      >
-        {snackPayload ? (
-          <Alert
-            onClose={() => setSnackOpen(false)}
-            severity={typeToSeverity(snackPayload.type)}
-            sx={{ width: "100%" }}
-            variant="filled"
-          >
-            <strong>{snackPayload.senderName ? `${snackPayload.senderName} — ` : ""}</strong>
-            {snackPayload.message}
-          </Alert>
-        ) : null}
-      </Snackbar>
     </RealtimeNotificationContext.Provider>
   );
 }
