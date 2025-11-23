@@ -119,4 +119,9 @@ public class Chat {
     public void updateFileUrl(String fileUrl) {
         this.fileUrl = fileUrl;
     }
+    
+    // ⭐ 메시지 내용 업데이트 도메인 메서드 (초대 메시지를 입장 메시지로 변경용)
+    public void updateMessageContent(String messageContent) {
+        this.messageContent = messageContent;
+    }
 }

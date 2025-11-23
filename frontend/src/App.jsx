@@ -15,6 +15,9 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 // ----------- 채팅 컴포넌트 import 추가 -----------
 import { getMyPendingApprovalCount } from "./features/dashboard/api/dashboardAPI";
 import { fetchChatRoomsLatest } from "./features/chat/api/ChatRoomApi";
+// ----------- 알림 API import 추가 -----------
+import { getAllUnreadNotifications } from "./features/notification/api/notificationAPI";
+import { useRealtimeNotifications } from "./features/notification/RealtimeNotificationProvider";
 // -----------------------------------------------
 
 export const MailCountContext = createContext();
@@ -81,10 +84,16 @@ function App() {
   const [draftCount, setDraftCount] = useState(0);
   const navigate = useNavigate();
 
+  // 실시간 알림 구독
+  const { notifications } = useRealtimeNotifications();
+
   // ------------ 채팅 상태 추가 -------------
   const [chatRoomList, setChatRoomList] = useState([]);
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
   // --------------------------------------------
+
+  // 알림 미읽은 개수 상태
+  const [notificationUnreadCount, setNotificationUnreadCount] = useState(0);
 
   // 결재 대기 개수 상태
   const [approvalCount, setApprovalCount] = useState(0);
@@ -148,6 +157,23 @@ function App() {
     }
   }, [userProfile?.email]);
 
+  // 알림 미읽은 개수 새로고침
+  const refreshNotificationCount = useCallback(async () => {
+    try {
+      const allNotifications = await getAllUnreadNotifications();
+      const count = Array.isArray(allNotifications) ? allNotifications.length : 0;
+      setNotificationUnreadCount(count);
+    } catch (e) {
+      console.warn("알림 개수 조회 실패:", e);
+      setNotificationUnreadCount(0);
+    }
+  }, []);
+
+  // 알림 개수 직접 업데이트 (NotificationPopover에서 개수를 전달받을 때 사용)
+  const updateNotificationCount = useCallback((count) => {
+    setNotificationUnreadCount(count || 0);
+  }, []);
+
   const { logout } = useAuth();
 
   const handleLogout = async () => {
@@ -185,16 +211,26 @@ function App() {
     }
   };
 
-  // 최초 마운트 시 개수 상태 동기화 (안읽은+임시보관+채팅)
+  // 최초 마운트 시 개수 상태 동기화 (안읽은+임시보관+채팅+알림)
   useEffect(() => {
     if (userProfile?.email) {
       refreshUnreadCount();
       refreshDraftCount();
       refreshApprovalCount();
       refreshChatRooms();
+      refreshNotificationCount();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userProfile?.email]);
+
+  // 실시간 알림 수신 시 알림 개수 증가
+  useEffect(() => {
+    if (notifications && notifications.length > 0) {
+      // 실시간 알림이 올 때마다 알림 개수 새로고침
+      refreshNotificationCount();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notifications?.length]);
 
   // context value: count, set, refresh 함수
   // useMemo를 사용하여 항상 동일한 객체 참조를 유지하고, userProfile이 없어도 기본값 제공
@@ -231,6 +267,10 @@ function App() {
               onThemeChange={handleThemeChange}
               chatRoomList={chatRoomList}
               chatUnreadCount={chatUnreadCount}
+              refreshChatRooms={refreshChatRooms}
+              notificationUnreadCount={notificationUnreadCount}
+              refreshNotificationCount={refreshNotificationCount}
+              updateNotificationCount={updateNotificationCount}
             />
             {/* ----------------------------------------------- */}
             {/* MailCountContext Provider */}

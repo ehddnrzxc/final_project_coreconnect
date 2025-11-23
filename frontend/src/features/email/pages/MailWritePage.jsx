@@ -475,6 +475,11 @@ function MailWritePage() {
       setRecipientInputValue("");
       setCcInputValue("");
       setBccInputValue("");
+      
+      // 메일 전송 후 보낸 메일함으로 이동 (예약 메일이 아닌 경우만)
+      if (!reservedAt) {
+        navigate("/email/sent");
+      }
     } catch (e) {
       console.error("sendMail error:", e);
       showSnack("메일 전송 실패: " + (e?.response?.data?.message || e.message || "알 수 없는 오류"), "error");
@@ -853,11 +858,12 @@ function MailWritePage() {
           }
         }}
         initialSelectedEmails={
-          addressBookType === "recipient" 
-            ? form.recipientAddress 
-            : addressBookType === "cc"
-            ? form.ccAddresses
-            : form.bccAddresses
+          // 받는사람, 참조, 숨은참조 중 한 곳에라도 들어간 모든 이메일을 전달하여 선택 불가 처리
+          [...new Set([
+            ...(form.recipientAddress || []),
+            ...(form.ccAddresses || []),
+            ...(form.bccAddresses || [])
+          ])]
         }
       />
     </Box>

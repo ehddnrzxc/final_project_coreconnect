@@ -36,7 +36,7 @@ public class Notification {
    @GeneratedValue(strategy = GenerationType.IDENTITY)
    private Integer id;
    
-  @Column(name = "notification_read_yn")
+  @Column(name = "notification_read_yn", nullable = false)
   private Boolean notificationReadYn = false;
    
    @Enumerated(EnumType.STRING)
@@ -140,6 +140,14 @@ public class Notification {
    public void markRead() {
        this.notificationReadYn = true;
        this.notificationReadAt = LocalDateTime.now();
+   }
+   
+   /**
+    * 알림을 읽지 않음 상태로 변경하는 도메인 메서드
+    */
+   public void markUnread() {
+       this.notificationReadYn = false;
+       this.notificationReadAt = null;
    }
    
 }

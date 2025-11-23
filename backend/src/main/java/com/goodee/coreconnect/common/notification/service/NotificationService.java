@@ -184,32 +184,77 @@ public class NotificationService {
             log.info("[NotificationService] TransactionTemplate 생성 완료: propagation=REQUIRES_NEW");
         
         @SuppressWarnings("unchecked")
-        List<NotificationPayload> payloads = (List<NotificationPayload>) transactionTemplate.execute(status -> {
+        List<NotificationPayload> notificationPayloads = (List<NotificationPayload>) transactionTemplate.execute(status -> {
+            try {
             // 트랜잭션 활성 상태 확인
             boolean isTransactionActive = org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive();
             String transactionName = org.springframework.transaction.support.TransactionSynchronizationManager.getCurrentTransactionName();
             log.info("[NotificationService] TransactionTemplate 내부 - 트랜잭션 활성: {}, 트랜잭션 이름: {}, readOnly: {}", 
                     isTransactionActive, transactionName, status.isReadOnly());
             
+            log.info("[NotificationService] TransactionTemplate 내부 진입 확인: type={}, senderId={}, recipientIds.size()={}", 
+                    type, senderId, recipientIds != null ? recipientIds.size() : 0);
+            
             if (senderId == null) {
-                log.warn("[NotificationService] senderId가 null입니다. 여러명 알림 중단.");
-                return null;
+                log.warn("[NotificationService] senderId가 null입니다. 여러명 알림 중단. type={}", type);
+                return new ArrayList<>(); // null 대신 빈 리스트 반환
             }
+            
+            log.info("[NotificationService] senderId 검증 통과: senderId={}", senderId);
             
             User sender = null;
             try {
-                sender = userRepository.findById(senderId)
-                    .orElseThrow(() -> new EntityNotFoundException("알림 발신자 없음: " + senderId));
-                log.info("[NotificationService] 발신자 조회 성공: senderId={}, senderName={}", senderId, sender.getName());
+                log.info("[NotificationService] 발신자 조회 시작: senderId={}, type={}", senderId, type);
+                log.info("[NotificationService] userRepository 객체 확인: {}", userRepository != null ? "존재" : "null");
+                
+                // Optional로 조회하여 null 체크
+                log.info("[NotificationService] userRepository.findById() 호출 직전: senderId={}", senderId);
+                java.util.Optional<User> senderOpt = null;
+                try {
+                    senderOpt = userRepository.findById(senderId);
+                    log.info("[NotificationService] userRepository.findById() 호출 완료: senderId={}", senderId);
+                } catch (Exception findException) {
+                    log.error("[NotificationService] ⚠️ userRepository.findById() 호출 중 예외 발생: senderId={}, 예외 타입: {}, 메시지: {}", 
+                            senderId, findException.getClass().getName(), findException.getMessage(), findException);
+                    findException.printStackTrace();
+                    return new ArrayList<>();
+                }
+                
+                log.info("[NotificationService] 발신자 조회 완료 (Optional): senderId={}, isPresent={}", senderId, senderOpt != null && senderOpt.isPresent());
+                
+                if (!senderOpt.isPresent()) {
+                    log.error("[NotificationService] 발신자를 찾을 수 없습니다: senderId={}, type={}", senderId, type);
+                    return new ArrayList<>(); // 발신자가 없으면 빈 리스트 반환
+                }
+                
+                sender = senderOpt.get();
+                log.info("[NotificationService] 발신자 객체 추출 성공: senderId={}", senderId);
+                
+                if (sender == null) {
+                    log.error("[NotificationService] 발신자 객체가 null입니다: senderId={}, type={}", senderId, type);
+                    return new ArrayList<>();
+                }
+                
+                String actualSenderName = sender.getName();
+                log.info("[NotificationService] 발신자 조회 성공: senderId={}, actualSenderName={}", senderId, actualSenderName);
             } catch (Exception e) {
-                log.error("[NotificationService] 발신자 조회 실패: senderId={}", senderId, e);
-                throw new RuntimeException("발신자 조회 실패: " + e.getMessage(), e);
+                log.error("[NotificationService] ⚠️ 발신자 조회 중 예외 발생: senderId={}, type={}", senderId, type);
+                log.error("[NotificationService] 예외 타입: {}", e.getClass().getName());
+                log.error("[NotificationService] 예외 메시지: {}", e.getMessage());
+                log.error("[NotificationService] 예외 스택 트레이스:", e);
+                e.printStackTrace();
+                return new ArrayList<>(); // 예외 발생 시 빈 리스트 반환 (예외를 던지지 않음)
             }
             
+            log.info("[NotificationService] recipientIds 검증 시작: recipientIds={}, size={}", 
+                    recipientIds, recipientIds != null ? recipientIds.size() : 0);
+            
             if (recipientIds == null || recipientIds.isEmpty()) {
-                log.warn("[NotificationService] recipientIds가 비어있습니다. 중단.");
-                return null;
+                log.warn("[NotificationService] recipientIds가 비어있습니다. 중단. type={}, senderId={}", type, senderId);
+                return new ArrayList<>(); // null 대신 빈 리스트 반환
             }
+            
+            log.info("[NotificationService] recipientIds 검증 통과: size={}", recipientIds.size());
             
             // boardId가 있으면 Board 엔티티 조회
             // afterCommit 콜백 내부에서 새로운 트랜잭션을 시작할 때, 이전 트랜잭션의 커밋이 완전히 반영되기 전일 수 있으므로
@@ -261,7 +306,7 @@ public class NotificationService {
                 }
             }
             
-            List<NotificationPayload> payloads = new ArrayList<>(recipientIds.size());
+            List<NotificationPayload> resultPayloads = new ArrayList<>(recipientIds.size());
             int savedCount = 0;
             int failedCount = 0;
             
@@ -285,6 +330,10 @@ public class NotificationService {
                         LocalDateTime.now(), null, sender
                     );
                     
+                    // 알림 생성 직후 readYn 확인 로그
+                    log.info("[NotificationService] 알림 생성 직후 상태 확인: type={}, recipientId={}, readYn={}, sentYn={}, deletedYn={}", 
+                            type, rid, notification.getNotificationReadYn(), notification.getNotificationSentYn(), notification.getNotificationDeletedYn());
+                    
                     // notificationType이 제대로 설정되었는지 확인
                     if (notification.getNotificationType() == null) {
                         log.error("[NotificationService] ❌ 알림 생성 실패: notificationType이 null입니다! type={}, message={}, recipientId={}", 
@@ -304,9 +353,23 @@ public class NotificationService {
                             type, notification.getNotificationType(), message, receiver.getId(), sender.getId());
                     
                     // saveAndFlush를 사용하여 즉시 DB에 반영
-                    log.info("[NotificationService] DB 저장 시작: saveAndFlush 호출 전");
+                    log.info("[NotificationService] DB 저장 시작: saveAndFlush 호출 전, readYn={}", notification.getNotificationReadYn());
                     notification = notificationRepository.saveAndFlush(notification);
-                    log.info("[NotificationService] DB 저장 완료: saveAndFlush 호출 후, notificationId={}", notification.getId());
+                    log.info("[NotificationService] DB 저장 완료: saveAndFlush 호출 후, notificationId={}, readYn={}", 
+                            notification.getId(), notification.getNotificationReadYn());
+                    
+                    // 저장 후 flush하여 즉시 DB에 반영
+                    notificationRepository.flush();
+                    
+                    // 저장 직후 readYn 확인 (JPA 엔티티 상태)
+                    if (Boolean.TRUE.equals(notification.getNotificationReadYn())) {
+                        log.warn("[NotificationService] ⚠️ 저장 후 엔티티의 readYn이 true입니다! false로 강제 업데이트합니다. notificationId={}, type={}", 
+                                notification.getId(), type);
+                        notification.markUnread();
+                        notification = notificationRepository.saveAndFlush(notification);
+                        log.info("[NotificationService] 알림 강제 업데이트 완료: notificationId={}, readYn={}", 
+                                notification.getId(), notification.getNotificationReadYn());
+                    }
                     
                     // 저장 후 notificationType 재확인
                     if (notification.getNotificationType() != type) {
@@ -345,7 +408,7 @@ public class NotificationService {
                     payload.setNotificationType(type.name());
                     payload.setCreatedAt(savedNotification.getNotificationSentAt());
 
-                    payloads.add(payload);
+                    resultPayloads.add(payload);
                     savedCount++;
                     
                     log.info("[NotificationService] ✅ 알림 저장 성공: savedCount={}, failedCount={}", savedCount, failedCount);
@@ -360,24 +423,31 @@ public class NotificationService {
             log.info("[NotificationService] ===== 알림 저장 요약 ===== type={}, 총 요청={}, 성공={}, 실패={}", 
                     type, recipientIds.size(), savedCount, failedCount);
             
-            // 트랜잭션 커밋 후 WebSocket 전송을 위해 payloads를 저장
+            // 트랜잭션 커밋 후 WebSocket 전송을 위해 resultPayloads를 저장
             // TransactionTemplate의 afterCommit은 없으므로, 여기서 직접 WebSocket 전송
             // 하지만 트랜잭션이 커밋된 후에 전송해야 하므로, 별도로 처리
-            log.info("[NotificationService] ===== 트랜잭션 커밋 전 ===== type={}, 저장된 알림 수={}", type, payloads.size());
+            log.info("[NotificationService] ===== 트랜잭션 커밋 전 ===== type={}, 저장된 알림 수={}", type, resultPayloads.size());
             
             // WebSocket 전송은 트랜잭션 커밋 후에 실행되도록 별도 처리
             // 여기서는 저장만 하고, WebSocket 전송은 메서드 종료 후 처리
-            return payloads; // TransactionTemplate에서 반환
+            return resultPayloads; // TransactionTemplate에서 반환
+            } catch (Exception e) {
+                log.error("[NotificationService] TransactionTemplate 내부에서 예외 발생: type={}, recipientCount={}, senderId={}, 예외: {}", 
+                        type, recipientIds != null ? recipientIds.size() : 0, senderId, e.getMessage(), e);
+                e.printStackTrace();
+                // 예외가 발생해도 빈 리스트 반환 (일부 저장 성공 시를 위해)
+                return new ArrayList<>();
+            }
         });
         
         // TransactionTemplate 실행 후 (트랜잭션 커밋 완료)
-        log.info("[NotificationService] ===== TransactionTemplate 실행 완료 (트랜잭션 커밋됨) ===== type={}, payloads={}", 
-                type, payloads != null ? payloads.size() : 0);
+        log.info("[NotificationService] ===== TransactionTemplate 실행 완료 (트랜잭션 커밋됨) ===== type={}, notificationPayloads={}", 
+                type, notificationPayloads != null ? notificationPayloads.size() : 0);
         
         // 트랜잭션 커밋 후 WebSocket 전송
-        if (payloads != null && !payloads.isEmpty()) {
-            log.info("[NotificationService] ===== WebSocket 전송 시작 ===== count={}", payloads.size());
-            for (NotificationPayload p : payloads) {
+        if (notificationPayloads != null && !notificationPayloads.isEmpty()) {
+            log.info("[NotificationService] ===== WebSocket 전송 시작 ===== count={}", notificationPayloads.size());
+            for (NotificationPayload p : notificationPayloads) {
                 try {
                     webSocketDeliveryService.sendToUser(p.getRecipientId(), p);
                     
@@ -392,18 +462,19 @@ public class NotificationService {
                     log.warn("[NotificationService] WebSocket 전송 실패 recipientId={}: {}", p.getRecipientId(), e.getMessage(), e);
                 }
             }
-            log.info("[NotificationService] ===== WebSocket 전송 완료 ===== count={}", payloads.size());
+            log.info("[NotificationService] ===== WebSocket 전송 완료 ===== count={}", notificationPayloads.size());
         } else {
-            log.warn("[NotificationService] WebSocket 전송할 payloads가 없습니다. type={}", type);
+            log.warn("[NotificationService] WebSocket 전송할 notificationPayloads가 없습니다. type={}", type);
         }
         
         log.info("[NotificationService] ===== sendNotificationToUsers 종료 ===== type={}, 저장된 알림 수={}", 
-                type, payloads != null ? payloads.size() : 0);
+                type, notificationPayloads != null ? notificationPayloads.size() : 0);
         } catch (Exception e) {
             log.error("[NotificationService] ===== sendNotificationToUsers 실행 중 예외 발생 ===== type={}, recipientCount={}, senderId={}, 예외: {}", 
                     type, recipientIds != null ? recipientIds.size() : 0, senderId, e.getMessage(), e);
             e.printStackTrace(); // 스택 트레이스 출력
-            throw new RuntimeException("알림 전송 실패: " + e.getMessage(), e);
+            // 예외를 다시 던지지 않고 로그만 남김 (afterCommit에서 호출되므로 예외를 던지면 문제 발생 가능)
+            // 알림 전송 실패는 로그로만 처리하고, 게시글 저장 등의 주요 트랜잭션에는 영향을 주지 않음
         }
     }
 }
