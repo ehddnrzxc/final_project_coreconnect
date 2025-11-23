@@ -440,8 +440,8 @@ public class EmailController {
     /**
      * 선택된 메일들을 휴지통으로 이동(상태를 TRASH로 바꿈)
      * 요청자는 본인이 발신자이거나 수신자일 경우만 적용
+     * CORS는 SecurityConfig에서 전역으로 관리됨
      */
-    @CrossOrigin(origins="http://localhost:5173", allowCredentials="true")
     @PostMapping("/move-to-trash")
     public ResponseEntity<?> moveToTrash(@RequestBody List<Integer> emailIds, @AuthenticationPrincipal CustomUserDetails user) {
         // CustomUserDetails에서 이메일 가져오기 (getEmail() 또는 getUsername() 사용)
@@ -470,8 +470,8 @@ public class EmailController {
 
     /**
      * 휴지통에서 선택된 메일들을 복원
+     * CORS는 SecurityConfig에서 전역으로 관리됨
      */
-    @CrossOrigin(origins="http://localhost:5173", allowCredentials="true")
     @Operation(summary = "휴지통에서 메일 복원", description = "선택된 메일들을 휴지통에서 복원합니다.")
     @PostMapping("/restore-from-trash")
     public ResponseEntity<?> restoreFromTrash(@RequestBody List<Integer> emailIds, @AuthenticationPrincipal CustomUserDetails user) {
