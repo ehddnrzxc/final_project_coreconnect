@@ -13,6 +13,7 @@ import {
   Paper,
   CircularProgress,
   Alert,
+  Pagination,
 } from '@mui/material';
 import { format } from 'date-fns'; 
 import DocumentStatusChip from '../components/DocumentStatusChip';
@@ -22,6 +23,9 @@ function MyDraftsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   useEffect(() => {
     const fetchDrafts = async () => {
@@ -43,6 +47,10 @@ function MyDraftsPage() {
 
     fetchDrafts();
   }, []);
+
+  const handlePageChange = (e, value) => {
+    setPage(value - 1);
+  };
 
   const handleRowClick = (draft) => {
     
@@ -81,7 +89,8 @@ function MyDraftsPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              drafts.map((doc) => (
+              drafts.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                .map((doc) => (
                 <TableRow
                   key={doc.documentId}
                   hover
@@ -100,6 +109,24 @@ function MyDraftsPage() {
           </TableBody>
         </Table>
       </TableContainer>
+      {drafts.length > 0 && (
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 3, mb: 2 }}>
+          <Pagination
+            count={Math.ceil(drafts.length / rowsPerPage)}
+            page={page + 1} // 0-based index를 1-based UI로 변환
+            onChange={handlePageChange}
+            shape="circular"
+            showFirstButton={false}
+            showLastButton={false}
+            sx={{
+              "& .Mui-selected": {
+                backgroundColor: "#00bcd4 !important",
+                color: "#fff",
+              },
+            }}
+          />
+        </Box>
+      )}
     </Box>
   );
 }
