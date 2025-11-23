@@ -451,23 +451,79 @@ const MailSentBoxPage = () => {
                       onChange={() => toggleSelect(mail.emailId)}
                     />
                   </TableCell>
-                  <TableCell>
-                    {(mail.recipientAddresses || []).join(", ") || "-"}
+                  <TableCell
+                    sx={{
+                      maxWidth: 200,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        maxWidth: "100%",
+                        minWidth: 0,
+                      }}
+                    >
+                      {(mail.recipientAddresses || []).join(", ") || "-"}
+                    </Box>
                     {mail.ccAddresses && mail.ccAddresses.length > 0 && (
-                      <>
-                        <br />
-                        <span style={{ color: '#90b2cc', fontSize: 12 }}>cc: {mail.ccAddresses.join(", ")}</span>
-                      </>
+                      <Box
+                        sx={{
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          maxWidth: "100%",
+                          minWidth: 0,
+                          color: '#90b2cc',
+                          fontSize: 12,
+                          mt: 0.5,
+                        }}
+                      >
+                        cc: {mail.ccAddresses.join(", ")}
+                      </Box>
                     )}
                     {mail.bccAddresses && mail.bccAddresses.length > 0 && (
-                      <>
-                        <br />
-                        <span style={{ color: '#b09dcc', fontSize: 12 }}>bcc: {mail.bccAddresses.join(", ")}</span>
-                      </>
+                      <Box
+                        sx={{
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          maxWidth: "100%",
+                          minWidth: 0,
+                          color: '#b09dcc',
+                          fontSize: 12,
+                          mt: 0.5,
+                        }}
+                      >
+                        bcc: {mail.bccAddresses.join(", ")}
+                      </Box>
                     )}
                   </TableCell>
-                  <TableCell>
-                    {mail.emailTitle}
+                  <TableCell
+                    sx={{
+                      maxWidth: 400,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    <Box
+                      component="span"
+                      sx={{
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        maxWidth: "100%",
+                        minWidth: 0,
+                        display: "inline-block",
+                      }}
+                    >
+                      {mail.emailTitle}
+                    </Box>
                     {mail.fileIds && mail.fileIds.length > 0 && (
                       <Chip label={`첨부 ${mail.fileIds.length}개`} size="small" color="info" sx={{ ml: 1 }} />
                     )}

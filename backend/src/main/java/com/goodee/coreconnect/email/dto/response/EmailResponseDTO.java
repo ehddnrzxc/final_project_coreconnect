@@ -23,6 +23,7 @@ public class EmailResponseDTO {
     private LocalDateTime sentTime;           // 발송 시각
     private String emailStatus;               // 메일 상태 (SENT/FAILED/BOUNCE 등)
     private String senderName;                // ★ 발신자명 추가!
+    private Boolean emailReadYn;                // 읽음 여부 (받은메일함용)
     private List<String> recipientAddresses;  // To 수신자 리스트
     
     private List<String> ccAddresses;         // CC 목록
