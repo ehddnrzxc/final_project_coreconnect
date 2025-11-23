@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Box, Typography, Table, TableHead, TableRow, TableCell, TableBody, IconButton, TextField, Button, Paper, Tooltip, Divider } from "@mui/material";
+import { Box, Typography, Table, TableHead, TableRow, TableCell, TableBody, IconButton, TextField, Button, Paper, Tooltip, Divider, CircularProgress  } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SaveIcon from "@mui/icons-material/Save";
@@ -20,6 +20,8 @@ const AdminCategoryPage = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [targetId, setTargetId] = useState(null);
   const confirmMessage = "이 카테고리를 삭제하시겠습니까?";
+  const [loading, setLoading] = useState(true); // 로딩 상태 추가
+
 
   // 전체 카테고리 불러오기 (비동기 함수)
   const loadCategories = async () => {
@@ -87,7 +89,7 @@ const AdminCategoryPage = () => {
       showSnack("카테고리가 삭제되었습니다.", "success");
       loadCategories(); // 목록 새로 불러오기
     } catch (err) {
-      showSnack("카테고리 삭제 중 오류가 발생했습니다.", "error"); // 에러 발생 시 처리
+      showSnack("카테고리 삭제 중 오류가 발생했습니다.", "error");
     }
   };
 
@@ -103,7 +105,7 @@ const AdminCategoryPage = () => {
       setNewCategory({ name: "", orderNo: "" }); // 입력창 초기화
       loadCategories(); // 목록 새로고침
     } catch (err) {
-      showSnack("카테고리 등록 중 오류가 발생했습니다.", "error");
+      showSnack("카테고리 순서번호가 이미 존재합니다.", "error");
     }
   };
 
