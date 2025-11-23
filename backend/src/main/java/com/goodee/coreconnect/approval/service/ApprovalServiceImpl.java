@@ -47,6 +47,7 @@ import com.goodee.coreconnect.common.notification.dto.NotificationPayload;
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
 import com.goodee.coreconnect.common.notification.service.WebSocketDeliveryService;
 import com.goodee.coreconnect.common.service.S3Service;
+import com.goodee.coreconnect.leave.enums.LeaveType;
 import com.goodee.coreconnect.leave.service.LeaveService;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
@@ -551,6 +552,10 @@ public class ApprovalServiceImpl implements ApprovalService {
         for (Map.Entry<String, Object> entry : data.entrySet()) {
           String key = entry.getKey();
           String value = String.valueOf(entry.getValue());
+          
+          if ("vacationType".equals(key)) {
+            value = LeaveType.getKoreanByCode(value);
+          }
           
           if (entry.getValue() instanceof Map || entry.getValue() instanceof java.util.List) {
             continue;
