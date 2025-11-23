@@ -13,21 +13,36 @@ export default function useAuth() {
 
   // 서버 API로 인증 상태 확인
   useEffect(() => {
+    let isMounted = true; // 컴포넌트가 마운트되어 있는지 확인하는 플래그
+    
     const checkAuth = async () => {
       try {
         setIsChecking(true);
         // 인증이 필요한 API 호출로 로그인 상태 확인
         await getMyProfileInfo();
-        setIsLoggedIn(true);
+        // 컴포넌트가 마운트되어 있을 때만 상태 업데이트
+        if (isMounted) {
+          setIsLoggedIn(true);
+        }
       } catch (error) {
         // 401 또는 기타 에러 시 비로그인 상태
-        setIsLoggedIn(false);
+        // http.js에서 이미 리다이렉트를 처리하므로 여기서는 조용히 처리
+        if (isMounted) {
+          setIsLoggedIn(false);
+        }
       } finally {
-        setIsChecking(false);
+        if (isMounted) {
+          setIsChecking(false);
+        }
       }
     };
 
     checkAuth();
+    
+    // cleanup 함수: 컴포넌트 언마운트 시 플래그 설정
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const logout = async () => {

@@ -20,10 +20,11 @@ public interface EmailRepository extends JpaRepository<Email, Integer> {
 	 // [수정] senderId (정수)로 조회하는 메서드 (이메일 문자열 아님!)
     Page<Email> findBySenderId(Integer senderId, Pageable pageable);
 
-    // 보낸메일함 조회 시 휴지통/삭제 상태 제외
+    // 보낸메일함 조회 시 SENT 상태만 조회 (휴지통/삭제 상태 제외)
     @Query("SELECT e FROM Email e " +
            "WHERE e.senderId = :senderId " +
-           "AND e.emailStatus NOT IN ('TRASH', 'DELETED') " +
+           "AND e.emailStatus = com.goodee.coreconnect.email.enums.EmailStatusEnum.SENT " +
+           "AND e.emailSentTime IS NOT NULL " +
            "AND (" +
            "    :keyword IS NULL OR :keyword = '' OR (" +
            "        (:searchType = 'TITLE' AND LOWER(e.emailTitle) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
