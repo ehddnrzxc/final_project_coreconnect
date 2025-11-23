@@ -37,19 +37,11 @@ const MailInboxPage = () => {
   const [sortOrder, setSortOrder] = useState("desc"); // 날짜 정렬 순서: "desc" (내림차순, 최신순), "asc" (오름차순, 오래된순)
   const [isRefreshing, setIsRefreshing] = useState(false); // 새로고침 로딩 상태
   const pendingReadIdsRef = useRef(new Set());
-  const userProfileContext = useContext(UserProfileContext);
-  const { userProfile } = userProfileContext || {};
+  const { userProfile } = useContext(UserProfileContext) || {};
   const userEmail = userProfile?.email;
   const navigate = useNavigate();
   const location = useLocation();
   const mailCountContext = useContext(MailCountContext);
-  
-  // 디버깅: userProfile과 userEmail 확인
-  useEffect(() => {
-    console.log("[MailInboxPage] userProfileContext:", userProfileContext);
-    console.log("[MailInboxPage] userProfile:", userProfile);
-    console.log("[MailInboxPage] userEmail:", userEmail);
-  }, [userProfileContext, userProfile, userEmail]);
 
   // 쿼리파라미터에 따라 탭 상태 반영
   useEffect(() => {
@@ -665,10 +657,22 @@ const MailInboxPage = () => {
             onChange={(e) => { e.stopPropagation(); toggleSelectAll(); }}
           />
           <ButtonGroup variant="text" sx={{ gap: 1 }}>
-            <Button startIcon={<ReplyIcon />} onClick={handleReply}>답장</Button>
+            <Button 
+              startIcon={<ReplyIcon />} 
+              onClick={handleReply}
+              disabled={selected.size !== 1}
+            >
+              답장
+            </Button>
             {/* 삭제(휴지통 이동) */}
             <Button startIcon={<DeleteIcon />} onClick={deleteSelected}>삭제</Button>
-            <Button startIcon={<ForwardIcon />} onClick={handleForward}>전달</Button>
+            <Button 
+              startIcon={<ForwardIcon />} 
+              onClick={handleForward}
+              disabled={selected.size !== 1}
+            >
+              전달
+            </Button>
             <Button startIcon={<MarkEmailReadIcon />} onClick={markSelectedAsRead}>읽음</Button>
           </ButtonGroup>
           <Box sx={{ flex: 1 }} />

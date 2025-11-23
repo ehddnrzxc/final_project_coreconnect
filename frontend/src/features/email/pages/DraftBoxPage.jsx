@@ -31,12 +31,20 @@ const DraftBoxPage = () => {
 
   // 임시보관함 목록 조회 및 상태 세팅
   const reload = async () => {
-    if (!userEmail) return Promise.resolve();
+    if (!userEmail) {
+      console.warn("[DraftBoxPage] reload: userEmail이 없어서 메일 목록을 불러오지 않습니다.");
+      return Promise.resolve();
+    }
     setLoading(true);
     try {
+      console.log("[DraftBoxPage] fetchDraftbox 호출:", { userEmail, page: page - 1, size });
       const res = await fetchDraftbox(userEmail, page - 1, size);
+      console.log("[DraftBoxPage] fetchDraftbox 응답:", res);
       const boxData = res?.data?.data;
-      setDrafts(boxData?.content || []);
+      console.log("[DraftBoxPage] boxData:", boxData);
+      const mailList = Array.isArray(boxData?.content) ? boxData.content : [];
+      console.log("[DraftBoxPage] 메일 목록:", { mailListLength: mailList.length, totalElements: boxData?.totalElements });
+      setDrafts(mailList);
       setTotal(
         typeof boxData?.totalElements === "number"
           ? boxData.totalElements
