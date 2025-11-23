@@ -30,6 +30,7 @@ import { useContext } from "react";
 import { UserProfileContext } from "../../../App";
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 import AddressBookDialog from "../components/AddressBookDialog";
+import ConfirmDialog from "../../../components/utils/ConfirmDialog";
 
 
 const emailSuggestions = [
@@ -65,6 +66,9 @@ function MailWritePage() {
   // 주소록 팝업 상태
   const [addressBookOpen, setAddressBookOpen] = useState(false);
   const [addressBookType, setAddressBookType] = useState(null); // "recipient", "cc", "bcc"
+  
+  // 취소 확인 다이얼로그 상태
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
 
 
   const location = useLocation();
@@ -409,6 +413,9 @@ function MailWritePage() {
         console.warn("[MailWritePage] ⚠️ savedEmailId가 없어서 emailId를 유지할 수 없습니다.");
         // emailId가 없어도 폼은 유지 (사용자가 계속 편집할 수 있도록)
       }
+
+      // 임시저장 성공 후 임시보관함 목록 페이지로 이동
+      navigate("/email/draftbox");
     } catch (e) {
       console.error("[MailWritePage] saveDraft error:", e);
       console.error("[MailWritePage] error response:", e?.response);
@@ -567,11 +574,7 @@ function MailWritePage() {
         <Button
           variant="outlined"
           startIcon={<CancelIcon />}
-          onClick={() => {
-            if (window.confirm('작성 중인 메일을 취소하시겠습니까?')) {
-              navigate(-1);
-            }
-          }}
+          onClick={() => setCancelDialogOpen(true)}
           sx={{ ml: 1, bgcolor: '#fff', boxShadow: 1 }}
         >
           취소
@@ -930,6 +933,18 @@ function MailWritePage() {
             ...(form.bccAddresses || [])
           ])]
         }
+      />
+      
+      {/* 취소 확인 다이얼로그 */}
+      <ConfirmDialog
+        open={cancelDialogOpen}
+        title="메일 작성 취소"
+        message="작성 중인 메일을 취소하시겠습니까?"
+        onConfirm={() => {
+          setCancelDialogOpen(false);
+          navigate(-1);
+        }}
+        onCancel={() => setCancelDialogOpen(false)}
       />
     </Box>
   );

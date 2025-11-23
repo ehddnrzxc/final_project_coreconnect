@@ -18,6 +18,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { MailCountContext } from "../../../App"; // 메일 카운트 컨텍스트(사이드바 등 공유)
 import { UserProfileContext } from "../../../App";
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
+import ConfirmDialog from "../../../components/utils/ConfirmDialog";
 
 const MailInboxPage = () => {
   const { showSnack } = useSnackbarContext();
@@ -36,6 +37,7 @@ const MailInboxPage = () => {
   const [appliedKeyword, setAppliedKeyword] = useState("");
   const [sortOrder, setSortOrder] = useState("desc"); // 날짜 정렬 순서: "desc" (내림차순, 최신순), "asc" (오름차순, 오래된순)
   const [isRefreshing, setIsRefreshing] = useState(false); // 새로고침 로딩 상태
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const pendingReadIdsRef = useRef(new Set());
   const { userProfile } = useContext(UserProfileContext) || {};
   const userEmail = userProfile?.email;
@@ -446,13 +448,18 @@ const MailInboxPage = () => {
   };
 
   // 선택된 메일들 휴지통으로 이동 (moveToTrash 호출)
-  const deleteSelected = async () => {
+  const deleteSelected = () => {
     const ids = Array.from(selected);
     if (ids.length === 0) {
       showSnack('삭제할 메일을 선택하세요.', 'warning');
       return;
     }
-    if (!window.confirm(`선택한 ${ids.length}개의 메일을 휴지통으로 이동하시겠습니까?`)) return;
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    const ids = Array.from(selected);
+    setDeleteDialogOpen(false);
 
     try {
       await moveToTrash(ids); // 휴지통으로 이동
@@ -790,6 +797,15 @@ const MailInboxPage = () => {
           />
         </Box>
       </Paper>
+
+      {/* 삭제 확인 다이얼로그 */}
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        title="메일 삭제"
+        message={`선택한 ${selected.size}개의 메일을 휴지통으로 이동하시겠습니까?`}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteDialogOpen(false)}
+      />
     </Box>
   );
 };

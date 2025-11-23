@@ -238,6 +238,10 @@ public class EmailServiceImpl implements EmailService {
 	    response.setToRecipients(toRecipients);
 	    response.setCcRecipients(ccRecipients);
 	    response.setBccRecipients(bccRecipients);
+	    
+	    // 중요 메일 표시 여부 설정 (null이면 false로 처리)
+	    Boolean favoriteStatus = email.getFavoriteStatus();
+	    response.setFavoriteStatus(favoriteStatus != null && favoriteStatus);
 
 	    // 첨부파일 조회 및 세팅
 	    files = emailFileRepository.findByEmail(email);

@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
-import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMethod;
+import org.springframework.web.method.HandlerMethod;
 
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -26,7 +26,7 @@ public class DevMappingsController {
 
     @GetMapping("/dev/mappings")
     public Map<String, Object> getMappings() {
-        Map<RequestMappingInfo, RequestMappingHandlerMethod> handlerMethods = 
+        Map<RequestMappingInfo, HandlerMethod> handlerMethods = 
             requestMappingHandlerMapping.getHandlerMethods();
         
         log.info("========== 등록된 매핑 목록 ==========");
@@ -40,7 +40,7 @@ public class DevMappingsController {
                     return path + " -> " + methods;
                 },
                 entry -> {
-                    RequestMappingHandlerMethod method = entry.getValue();
+                    HandlerMethod method = entry.getValue();
                     return method.getMethod().getDeclaringClass().getSimpleName() + 
                            "." + method.getMethod().getName();
                 }
@@ -65,7 +65,7 @@ public class DevMappingsController {
      */
     @GetMapping("/dev/mappings/restore")
     public Map<String, Object> getRestoreMappings() {
-        Map<RequestMappingInfo, RequestMappingHandlerMethod> handlerMethods = 
+        Map<RequestMappingInfo, HandlerMethod> handlerMethods = 
             requestMappingHandlerMapping.getHandlerMethods();
         
         Map<String, Object> result = handlerMethods.entrySet().stream()
@@ -82,7 +82,7 @@ public class DevMappingsController {
                     return path + " -> " + methods;
                 },
                 entry -> {
-                    RequestMappingHandlerMethod method = entry.getValue();
+                    HandlerMethod method = entry.getValue();
                     return method.getMethod().getDeclaringClass().getSimpleName() + 
                            "." + method.getMethod().getName();
                 }
