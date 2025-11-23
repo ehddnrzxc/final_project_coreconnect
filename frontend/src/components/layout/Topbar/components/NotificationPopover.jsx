@@ -346,10 +346,11 @@ export default function NotificationPopover({
                   mb: 0.5,
                   cursor: "pointer",
                   "&:hover": { bgcolor: "action.hover" },
+                  overflow: "hidden",
                 }}
                 onClick={() => handleNotificationClick(notif)}
               >
-                <Box sx={{ width: "100%" }}>
+                <Box sx={{ width: "100%", minWidth: 0, overflow: "hidden" }}>
                   <Box
                     sx={{
                       display: "flex",
@@ -375,12 +376,28 @@ export default function NotificationPopover({
                     <Typography
                       variant="caption"
                       color="text.secondary"
-                      sx={{ display: "block", mb: 0.5 }}
+                      sx={{ 
+                        display: "block", 
+                        mb: 0.5,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        maxWidth: "100%"
+                      }}
                     >
                       {notif.senderName}
                     </Typography>
                   )}
-                  <Typography variant="body2">
+                  <Typography 
+                    variant="body2"
+                    sx={{
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      maxWidth: "100%",
+                      wordBreak: "break-word"
+                    }}
+                  >
                     {notif.message || ""}
                   </Typography>
                 </Box>

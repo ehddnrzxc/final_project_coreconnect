@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { login } from "../../auth/api/authAPI";
 import { createPasswordResetRequest } from "../../user/api/passwordResetAPI";
 import { clearAuthCache } from "../utils/authUtils";
+import { resetRedirectFlag } from "../../../api/http";
 import {
   Box, TextField, Button, IconButton, InputAdornment,
   Stack, Checkbox, FormControlLabel, Link,
@@ -44,6 +45,9 @@ export default function LoginForm({ onLoginSuccess }) {
       clearAuthCache();
       
       const data = await login(email, pw);
+      
+      // 로그인 성공 시 리다이렉트 플래그 리셋
+      resetRedirectFlag();
 
       if(remember) {
         localStorage.setItem("savedEmail", email);
