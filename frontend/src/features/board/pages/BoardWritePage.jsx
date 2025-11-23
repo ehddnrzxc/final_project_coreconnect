@@ -17,6 +17,7 @@ import {
   IconButton,
   Paper,
   Divider,
+  CircularProgress,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import DownloadIcon from "@mui/icons-material/Download";
@@ -50,6 +51,7 @@ const BoardWritePage = () => {
     pinned: false,
   });
   const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const location = useLocation();
   const fromCategoryId = location.state?.fromCategoryId || "";
@@ -81,6 +83,8 @@ const BoardWritePage = () => {
           }
         } catch {
           showSnack("카테고리를 불러오지 못했습니다.", "error");
+        } finally {
+          setLoading(false);
         }
       })();
     }
@@ -122,9 +126,29 @@ const BoardWritePage = () => {
         setFiles(existingFiles); // 변환된 구조로 세팅
       } catch (err) {
         showSnack("게시글 정보를 불러오지 못했습니다.", "error");
+      } finally {
+        setLoading(false);
       }
     })();
   }, [boardId]);
+
+  // 로딩 화면
+  if (loading) {
+    return (
+      <Box
+        sx={{
+          height: "70vh",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <CircularProgress />
+        <Typography sx={{ mt: 2 }}>게시글 정보를 불러오는 중...</Typography>
+      </Box>
+    );
+  }
 
   // 입력 핸들러
   const handleChange = (e) => {
