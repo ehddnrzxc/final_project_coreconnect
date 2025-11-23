@@ -23,6 +23,7 @@ export default function NotificationPopover({
   anchorEl,
   open,
   onClose,
+  onNotificationCountChange,
 }) {
   const navigate = useNavigate();
   const [unreadList, setUnreadList] = useState([]);
@@ -40,6 +41,8 @@ export default function NotificationPopover({
         return { bgcolor: "#d32f2f", color: "#fff" }; // 빨간색
       case "SCHEDULE":
         return { bgcolor: "#2e7d32", color: "#fff" }; // 초록색
+      case "CHAT":
+        return { bgcolor: "#9c27b0", color: "#fff" }; // 보라색
       default:
         return { bgcolor: "#757575", color: "#fff" }; // 회색
     }
@@ -49,9 +52,14 @@ export default function NotificationPopover({
   const handleNotificationClick = async (notif) => {
     try {
       // Optimistic Update: 읽음 처리 전에 즉시 목록에서 제거 (더 나은 UX)
-      setUnreadList(prevList => 
-        prevList.filter(item => item.notificationId !== notif.notificationId)
-      );
+      setUnreadList(prevList => {
+        const newList = prevList.filter(item => item.notificationId !== notif.notificationId);
+        // 알림 개수 변경 콜백 호출
+        if (onNotificationCountChange) {
+          onNotificationCountChange(newList.length);
+        }
+        return newList;
+      });
       
       // 알림 읽음 처리 (실패해도 페이지 이동은 진행)
       try {
@@ -105,6 +113,14 @@ export default function NotificationPopover({
             navigate(`/calendar?scheduleId=${notif.scheduleId}`);
           } else {
             navigate("/calendar");
+          }
+          break;
+        case "CHAT":
+          // 채팅 알림의 경우 roomId가 있으면 해당 채팅방으로 이동
+          if (notif.roomId) {
+            navigate("/chat", { state: { selectedRoomId: notif.roomId } });
+          } else {
+            navigate("/chat");
           }
           break;
         default:
@@ -179,6 +195,7 @@ export default function NotificationPopover({
               documentId: notif.documentId || null, // 백엔드에서 documentId 추가됨
               boardId: notif.boardId || null, // 백엔드에서 boardId 추가됨
               scheduleId: scheduleId, // 백엔드에서 scheduleId 추가됨
+              roomId: notif.roomId || null, // 백엔드에서 roomId 추가됨 (채팅 알림용)
             };
           })
           .filter(notif => notif.notificationId) // notificationId가 있는 것만 필터링
@@ -192,24 +209,40 @@ export default function NotificationPopover({
         console.log("🔔 [NotificationPopover] 최종 알림 개수:", sortedNotifications.length);
         
         setUnreadList(sortedNotifications);
+        // 알림 개수 변경 콜백 호출 (Topbar의 badge 업데이트용)
+        if (onNotificationCountChange) {
+          onNotificationCountChange(sortedNotifications.length);
+        }
       } else {
         console.warn("🔔 [NotificationPopover] 알림이 없거나 배열이 아님:", allNotifications);
         setUnreadList([]);
+        // 알림 개수 변경 콜백 호출
+        if (onNotificationCountChange) {
+          onNotificationCountChange(0);
+        }
       }
     } catch (err) {
       console.error("🔔 [NotificationPopover] 알림 조회 실패:", err);
       console.error("🔔 [NotificationPopover] 에러 상세:", err.response?.data || err.message);
       setUnreadList([]);
+      // 알림 개수 변경 콜백 호출
+      if (onNotificationCountChange) {
+        onNotificationCountChange(0);
+      }
     } finally {
       setLoadingNotifications(false);
     }
-  }, []);
+  }, [onNotificationCountChange]);
 
   // 모든 알림 읽음 처리 핸들러
   const handleMarkAllAsRead = async () => {
     try {
       // Optimistic Update: 즉시 목록에서 모든 알림 제거
       setUnreadList([]);
+      // 알림 개수 변경 콜백 호출
+      if (onNotificationCountChange) {
+        onNotificationCountChange(0);
+      }
       
       // "모두 읽음" 처리 시간 기록
       const currentTimestamp = Date.now();

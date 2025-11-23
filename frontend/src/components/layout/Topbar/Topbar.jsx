@@ -16,19 +16,17 @@ import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import CampaignOutlinedIcon from "@mui/icons-material/CampaignOutlined";
 import NoticeModal from "../../../features/dashboard/components/NoticeModal";
 import GroupwareNoticeModal from "../../../features/notice/components/GroupwareNoticeModal";
-import { useState, useContext, useEffect } from "react";
+import { useState, useContext } from "react";
 import { getJobGradeLabel } from "../../../utils/labelUtils";
 import { UserProfileContext } from "../../../App";
-import { getUnreadNotificationSummary } from "../../../features/notification/api/notificationAPI";
 import logoImage from "../../../assets/coreconnect-logo.png";
 import NotificationPopover from "./components/NotificationPopover";
 import ProfilePopover from "./components/ProfilePopover";
 import ThemeSelect from "./components/ThemeSelect";
 import SettingsDialog from "./settings/SettingsDialog";
 import ChatPopover from "../../../features/chat/components/ChatPopover";
-import { fetchChatRoomsLatest } from "../../../features/chat/api/ChatRoomApi";
 
-export default function Topbar({ onLogout, themeMode, themeOptions, onThemeChange, chatRoomList = [], chatUnreadCount = 0 }) {
+export default function Topbar({ onLogout, themeMode, themeOptions, onThemeChange, chatRoomList = [], refreshChatRooms, notificationUnreadCount = 0, updateNotificationCount, chatUnreadCount = 0 }) {
   const navigate = useNavigate();
   const theme = useTheme();
   const { userProfile } = useContext(UserProfileContext) || {};
@@ -46,12 +44,7 @@ export default function Topbar({ onLogout, themeMode, themeOptions, onThemeChang
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsView, setSettingsView] = useState("overview");
   const [notificationAnchor, setNotificationAnchor] = useState(null);
-  const [unreadSummary, setUnreadSummary] = useState(null);
   const [chatAnchor, setChatAnchor] = useState(null);
-
-  const handleOpenNotice = async () => {
-    setNoticeOpen(true);
-  };
 
   const handleCloseNotice = () => {
     setNoticeOpen(false);
@@ -100,23 +93,12 @@ export default function Topbar({ onLogout, themeMode, themeOptions, onThemeChang
     setChatAnchor(null);
   };
 
-  useEffect(() => {
-    // 주기적으로 알림 개수 갱신
-    const interval = setInterval(() => {
-      if (!notificationAnchor) {
-        getUnreadNotificationSummary()
-          .then(setUnreadSummary)
-          .catch((err) => console.error("알림 요약 조회 실패:", err));
-      }
-    }, 30000); // 30초마다 갱신
-
-    // 초기 로드
-    getUnreadNotificationSummary()
-      .then(setUnreadSummary)
-      .catch((err) => console.error("알림 요약 조회 실패:", err));
-
-    return () => clearInterval(interval);
-  }, [notificationAnchor]);
+  // 알림 개수 새로고침 함수 (ChatPopover에서 모두 읽음 처리 후 호출용)
+  const refreshNotificationSummary = async () => {
+    if (refreshChatRooms) {
+      await refreshChatRooms();
+    }
+  };
 
   const displayedJobGrade = getJobGradeLabel(userProfile?.jobGrade) || "";
   const displayedDept = userProfile?.deptName || "-";
@@ -206,23 +188,6 @@ export default function Topbar({ onLogout, themeMode, themeOptions, onThemeChang
               </Button>
             )}
 
-            {/* 채팅 */}
-            <Tooltip title="채팅" arrow>
-              <IconButton
-                size="small"
-                onClick={handleChatClick}
-                aria-label="Chat"
-                sx={{ color: "text.primary", position: "relative" }}
-              >
-                <Badge
-                  badgeContent={chatUnreadCount}
-                  color="error"
-                  max={99}
-                >
-                  <MessageIcon />
-                </Badge>
-              </IconButton>
-            </Tooltip>
 
             {/* 알림 */}
             <Tooltip title="알림" arrow>
@@ -233,11 +198,29 @@ export default function Topbar({ onLogout, themeMode, themeOptions, onThemeChang
                 sx={{ color: "text.primary", position: "relative" }}
               >
                 <Badge
-                  badgeContent={unreadSummary?.unreadCount || 0}
+                  badgeContent={notificationUnreadCount || 0}
                   color="error"
                   max={99}
                 >
                   <NotificationsNoneIcon />
+                </Badge>
+              </IconButton>
+            </Tooltip>
+
+            {/* 채팅 알림 */}
+            <Tooltip title="채팅 알림" arrow>
+              <IconButton
+                size="small"
+                onClick={handleChatClick}
+                aria-label="Chat Notifications"
+                sx={{ color: "text.primary", position: "relative" }}
+              >
+                <Badge
+                  badgeContent={chatUnreadCount || 0}
+                  color="error"
+                  max={99}
+                >
+                  <MessageIcon />
                 </Badge>
               </IconButton>
             </Tooltip>
@@ -321,6 +304,13 @@ export default function Topbar({ onLogout, themeMode, themeOptions, onThemeChang
         anchorEl={notificationAnchor}
         open={Boolean(notificationAnchor)}
         onClose={handleCloseNotification}
+        onNotificationCountChange={(count) => {
+          // NotificationPopover에서 알림 개수가 변경될 때마다 App.jsx의 상태 업데이트
+          // NotificationPopover에서 이미 알림 목록을 가지고 있으므로 개수를 직접 전달받아 업데이트
+          if (updateNotificationCount) {
+            updateNotificationCount(count);
+          }
+        }}
       />
 
       {/* 채팅 팝오버 */}
@@ -329,6 +319,8 @@ export default function Topbar({ onLogout, themeMode, themeOptions, onThemeChang
         open={Boolean(chatAnchor)}
         onClose={handleCloseChat}
         roomList={chatRoomList}
+        onRefreshRoomList={refreshChatRooms}
+        onRefreshNotificationSummary={refreshNotificationSummary}
       />
     </>
   );
