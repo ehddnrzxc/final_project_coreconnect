@@ -83,10 +83,16 @@ public class ApprovalServiceImpl implements ApprovalService {
   @Override
   @Transactional
   public Integer createDocument(DocumentCreateRequestDTO requestDTO, List<MultipartFile> files, String email) {
+    log.info("[ApprovalServiceImpl] ===== createDocument 메서드 시작 ===== email={}, templateId={}, approvalLinesCount={}", 
+            email, requestDTO != null ? requestDTO.getTemplateId() : "null", 
+            requestDTO != null && requestDTO.getApprovalLines() != null ? requestDTO.getApprovalLines().size() : 0);
 
     // 1. 기안자(User) 및 양식(Template) 조회
     User drafter = findUserByEmail(email);
+    log.info("[ApprovalServiceImpl] 기안자 조회 완료: drafterId={}, drafterName={}", drafter.getId(), drafter.getName());
+    
     Template template = findTemplateById(requestDTO.getTemplateId());
+    log.info("[ApprovalServiceImpl] 템플릿 조회 완료: templateId={}, templateName={}", template.getId(), template.getName());
     
     if (isLeaveTemplate(template)) {
       validateLeaveOverlap(drafter, template, requestDTO.getDocumentDataJson(), null);
@@ -171,15 +177,23 @@ public class ApprovalServiceImpl implements ApprovalService {
 
 
     // --- 알림 전송 로직 (첫번째 결재자에게) ---
+    log.info("[ApprovalServiceImpl] ===== 알림 전송 로직 시작 ===== documentId={}, drafterId={}", 
+            savedDocument.getId(), drafter.getId());
+    
     // 7. 첫번째 결재자 찾기
     ApprovalLine firstLine = savedDocument.getApprovalLines().stream()
         .filter(line -> line.getApprovalLineStatus() == ApprovalLineStatus.WAITING) // WAITING 상태인 사람 중에서
         .min(Comparator.comparing(ApprovalLine::getApprovalLineOrder)) // 가장 순서가 빠른 사람
         .orElse(null); // (모두 참조일 경우 null이 될 수 있으나, submit()에서 방어됨)
 
+    log.info("[ApprovalServiceImpl] 첫 번째 결재자 찾기 결과: firstLine={}, approvalLines.size()={}", 
+            firstLine != null ? "존재" : "null", savedDocument.getApprovalLines().size());
+
     if (firstLine != null) {
       User firstApprover = firstLine.getApprover();
       String message = drafter.getName() + "님으로부터 새로운 결재 요청이 도착했습니다.";
+      log.info("[ApprovalServiceImpl] 첫 번째 결재자에게 알림 전송 시작: firstApproverId={}, drafterId={}, documentId={}", 
+              firstApprover.getId(), drafter.getId(), savedDocument.getId());
 
       // 7-1. 페이로드 생성
       NotificationPayload payload = createNotificationPayload(
@@ -191,12 +205,39 @@ public class ApprovalServiceImpl implements ApprovalService {
           );
 
       // 7-2. DB에 알림 저장
+      log.info("[ApprovalServiceImpl] 첫 번째 결재자 알림 DB 저장 시작: saveNotificationToDB 호출");
       saveNotificationToDB(payload, firstApprover, savedDocument);
+      log.info("[ApprovalServiceImpl] 첫 번째 결재자 알림 DB 저장 완료");
 
       // 7-3. 실시간 알림 전송
       webSocketDeliveryService.sendToUser(firstApprover.getId(), payload);
+      log.info("[ApprovalServiceImpl] 첫 번째 결재자 WebSocket 전송 완료: firstApproverId={}", firstApprover.getId());
+    } else {
+      log.warn("[ApprovalServiceImpl] ⚠️ 첫 번째 결재자를 찾을 수 없습니다. 알림이 전송되지 않습니다. documentId={}", savedDocument.getId());
     }
     
+    // --- 상신 시 기안자 본인에게도 알림 전송 (선택사항) ---
+    // 기안자 본인에게 "결재 상신 완료" 알림 전송
+    log.info("[ApprovalServiceImpl] 기안자 본인에게 알림 전송 시작: drafterId={}, documentId={}", 
+            drafter.getId(), savedDocument.getId());
+    
+    String drafterMessage = "결재 상신이 완료되었습니다.";
+    NotificationPayload drafterPayload = createNotificationPayload(
+        drafter.getId(),     // 받는사람 (기안자 본인)
+        drafter.getId(),     // 보낸사람 (기안자 본인)
+        drafter.getName(),
+        drafterMessage,
+        savedDocument.getId()
+    );
+    
+    log.info("[ApprovalServiceImpl] 기안자 본인 알림 DB 저장 시작: saveNotificationToDB 호출");
+    saveNotificationToDB(drafterPayload, drafter, savedDocument);
+    log.info("[ApprovalServiceImpl] 기안자 본인 알림 DB 저장 완료");
+    
+    webSocketDeliveryService.sendToUser(drafter.getId(), drafterPayload);
+    log.info("[ApprovalServiceImpl] 기안자 본인 WebSocket 전송 완료: drafterId={}", drafter.getId());
+    
+    log.info("[ApprovalServiceImpl] ===== 알림 전송 로직 완료 ===== documentId={}", savedDocument.getId());
 
     return savedDocument.getId();
   }
@@ -851,8 +892,17 @@ public class ApprovalServiceImpl implements ApprovalService {
    * 알림 페이로드(DTO)를 Notification 엔티티로 변환하여 DB에 저장합니다.
    */
   private void saveNotificationToDB(NotificationPayload payload, User recipient, Document document) {
+    log.info("[ApprovalServiceImpl] ===== saveNotificationToDB 시작 ===== recipientId={}, senderId={}, documentId={}", 
+            recipient.getId(), payload.getSenderId(), document.getId());
     try {
       User senderUser = userRepository.findById(payload.getSenderId()).orElse(null); // sender 정보 조회
+      if (senderUser == null) {
+        log.error("[ApprovalServiceImpl] ⚠️ senderUser를 찾을 수 없습니다. senderId={}", payload.getSenderId());
+      }
+      
+      log.info("[ApprovalServiceImpl] senderUser 조회 완료: senderId={}, senderName={}", 
+              payload.getSenderId(), senderUser != null ? senderUser.getName() : "null");
+      
       // (Notification 팩토리 메소드 정상 사용 확인)
       Notification notification = Notification.createNotification(
           recipient, 
@@ -862,23 +912,69 @@ public class ApprovalServiceImpl implements ApprovalService {
           document, // Document
           null,     // Board
           null,     // Schedule
-          false,    // readYn
-          true,    // sentYn
+          false,    // readYn - 명시적으로 false 설정
+          true,     // sentYn
           false,    // deletedYn
           LocalDateTime.now(),     // sentAt
           null,      // readAt
           senderUser // sender
           );
 
-      Notification savedNotification = notificationRepository.save(notification);
+      // 알림 생성 직후 readYn 확인
+      log.info("[ApprovalServiceImpl] ✅ 알림 생성 직후 상태: recipientId={}, senderId={}, readYn={}, sentYn={}, deletedYn={}, notificationType={}", 
+              recipient.getId(), payload.getSenderId(), notification.getNotificationReadYn(), 
+              notification.getNotificationSentYn(), notification.getNotificationDeletedYn(), notification.getNotificationType());
+
+      // saveAndFlush를 사용하여 즉시 DB에 반영하고 flush
+      log.info("[ApprovalServiceImpl] DB 저장 시작: saveAndFlush 호출 전, readYn={}", notification.getNotificationReadYn());
+      Notification savedNotification = notificationRepository.saveAndFlush(notification);
+      
+      // 저장 직후 readYn 확인 (JPA 엔티티 상태)
+      log.info("[ApprovalServiceImpl] ✅ 알림 저장 직후 상태 (JPA 엔티티): notificationId={}, readYn={}, sentYn={}, deletedYn={}", 
+              savedNotification.getId(), savedNotification.getNotificationReadYn(), 
+              savedNotification.getNotificationSentYn(), savedNotification.getNotificationDeletedYn());
+      
+      // flush 후 영속성 컨텍스트를 새로 시작하여 DB에서 실제 값을 조회
+      notificationRepository.flush();
+      Notification dbNotification = notificationRepository.findById(savedNotification.getId()).orElse(null);
+      
+      if (dbNotification != null) {
+        log.info("[ApprovalServiceImpl] ✅ DB 재조회 결과: notificationId={}, readYn={}, sentYn={}, deletedYn={}", 
+                dbNotification.getId(), dbNotification.getNotificationReadYn(), 
+                dbNotification.getNotificationSentYn(), dbNotification.getNotificationDeletedYn());
+        
+        // 만약 DB에서 조회한 readYn이 true라면 강제로 false로 업데이트
+        if (Boolean.TRUE.equals(dbNotification.getNotificationReadYn())) {
+          log.error("[ApprovalServiceImpl] ❌❌❌ DB에 저장된 readYn이 true입니다! false로 강제 업데이트합니다. notificationId={}", 
+                  dbNotification.getId());
+          dbNotification.markUnread(); // markUnread() 메서드 사용
+          dbNotification = notificationRepository.saveAndFlush(dbNotification);
+          
+          // 다시 조회하여 확인
+          Notification reVerified = notificationRepository.findById(dbNotification.getId()).orElse(null);
+          if (reVerified != null) {
+            log.info("[ApprovalServiceImpl] ✅ 강제 업데이트 후 재조회: notificationId={}, readYn={}", 
+                    reVerified.getId(), reVerified.getNotificationReadYn());
+            savedNotification = reVerified;
+          }
+        } else {
+          log.info("[ApprovalServiceImpl] ✅ DB에 readYn=false로 정상 저장되었습니다. notificationId={}", dbNotification.getId());
+        }
+      } else {
+        log.error("[ApprovalServiceImpl] ❌ DB에서 알림을 찾을 수 없습니다! notificationId={}", savedNotification.getId());
+      }
+      
       payload.setNotificationId(savedNotification.getId());
+      log.info("[ApprovalServiceImpl] ===== saveNotificationToDB 완료 ===== notificationId={}, readYn={}", 
+              savedNotification.getId(), savedNotification.getNotificationReadYn());
 
     } catch (Exception e) {
-      log.error("알림 DB 저장 실패. (Recipient: {}, Document: {}). Error: {}", 
+      log.error("[ApprovalServiceImpl] ❌❌❌ 알림 DB 저장 실패. (Recipient: {}, Document: {}). Error: {}", 
           recipient.getId(), 
           document.getId(), 
-          e.getMessage()
-          );
+          e.getMessage(), 
+          e); // 예외 스택 트레이스도 출력
+      e.printStackTrace();
     }
   }
   
@@ -890,10 +986,14 @@ public class ApprovalServiceImpl implements ApprovalService {
       String startStr = (String) requestData.get("startDate");
       String endStr = (String) requestData.get("endDate");
       
-      if (startStr == null || endStr == null) return;
+      // null 또는 빈 문자열 체크
+      if (startStr == null || endStr == null || startStr.trim().isEmpty() || endStr.trim().isEmpty()) {
+        log.warn("validateLeaveOverlap: 날짜 필드가 null이거나 비어있습니다. startDate={}, endDate={}", startStr, endStr);
+        return;
+      }
       
-      LocalDate newStart = LocalDate.parse(startStr);
-      LocalDate newEnd = LocalDate.parse(endStr);
+      LocalDate newStart = LocalDate.parse(startStr.trim());
+      LocalDate newEnd = LocalDate.parse(endStr.trim());
       
       List<DocumentStatus> activeStatuses = Arrays.asList(
           DocumentStatus.IN_PROGRESS,
@@ -911,9 +1011,11 @@ public class ApprovalServiceImpl implements ApprovalService {
         String docStartStr = (String) docData.get("startDate");
         String docEndStr = (String) docData.get("endDate");
         
-        if (docStartStr != null && docEndStr != null) {
-          LocalDate oldStart = LocalDate.parse(docStartStr);
-          LocalDate oldEnd = LocalDate.parse(docEndStr);
+        // null 또는 빈 문자열 체크
+        if (docStartStr != null && docEndStr != null 
+            && !docStartStr.trim().isEmpty() && !docEndStr.trim().isEmpty()) {
+          LocalDate oldStart = LocalDate.parse(docStartStr.trim());
+          LocalDate oldEnd = LocalDate.parse(docEndStr.trim());
           
           if (!newStart.isAfter(oldEnd) && !newEnd.isBefore(oldStart)) {
             throw new IllegalStateException("이미 해당 기간에 신청된 휴가가 존재합니다. ("

@@ -129,6 +129,35 @@ public class ChatWebSocketHandler extends TextWebSocketHandler{
             if (roomId != null) {
                 log.info("🔥 [afterConnectionEstablished] 채팅방 접속 시 메시지 읽음 처리 시작 - roomId: {}, userId: {}", roomId, userId);
                 
+                // ⭐ 초대 메시지를 입장 메시지로 변경
+                User currentUser = userRepository.findById(userId).orElse(null);
+                if (currentUser != null) {
+                    // 현재 사용자의 초대 메시지 찾기 (최근 메시지 중, 최신순으로 조회)
+                    List<Chat> recentChats = chatRepository.findByChatRoomId(roomId);
+                    // 최신 메시지부터 확인 (최근에 초대된 경우를 위해)
+                    Collections.reverse(recentChats);
+                    for (Chat chat : recentChats) {
+                        if (chat.getMessageContent() != null && 
+                            chat.getMessageContent().contains(currentUser.getName() + "님이 초대되었습니다")) {
+                            // 초대 메시지를 입장 메시지로 변경
+                            String joinMsg = currentUser.getName() + "님이 입장했습니다";
+                            chat.updateMessageContent(joinMsg);
+                            chatRepository.save(chat);
+                            
+                            // WebSocket으로 메시지 업데이트 브로드캐스트
+                            Map<String, Object> updateMessage = new HashMap<>();
+                            updateMessage.put("type", "MESSAGE_UPDATE");
+                            updateMessage.put("chatId", chat.getId());
+                            updateMessage.put("messageContent", joinMsg);
+                            updateMessage.put("roomId", roomId);
+                            messagingTemplate.convertAndSend("/topic/chat.room." + roomId, updateMessage);
+                            
+                            log.info("🔥 [afterConnectionEstablished] 초대 메시지를 입장 메시지로 변경 - chatId: {}, userId: {}", chat.getId(), userId);
+                            break;
+                        }
+                    }
+                }
+                
                 // ⭐ 메시지 읽음 처리 및 읽음 처리된 메시지 ID 리스트 반환
                 List<Integer> readChatIds = chatRoomService.markMessagesAsRead(roomId, userId);
                 

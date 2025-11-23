@@ -240,7 +240,12 @@ const BoardWritePage = () => {
       }
 
       // 신규 작성 모드
-      const res = await createBoard(form);
+      // categoryId를 숫자로 변환 (빈 문자열이면 null로 처리)
+      const boardData = {
+        ...form,
+        categoryId: form.categoryId ? parseInt(form.categoryId, 10) : null,
+      };
+      const res = await createBoard(boardData);
       const newId = res.data.data.id;
 
       // 새 파일만 추출해서 업로드
@@ -251,10 +256,12 @@ const BoardWritePage = () => {
       if (uploadList.length > 0) await uploadFiles(newId, uploadList);
 
       showSnack("등록 완료!", "success");
-      navigate(`/board/${form.categoryId}`);
+      navigate(`/board/${boardData.categoryId}`);
 
-    } catch {
-      showSnack("저장 중 오류 발생", "error");
+    } catch (error) {
+      console.error("게시글 저장 오류:", error);
+      const errorMessage = error.response?.data?.message || error.message || "저장 중 오류 발생";
+      showSnack(errorMessage, "error");
     }
   };
 

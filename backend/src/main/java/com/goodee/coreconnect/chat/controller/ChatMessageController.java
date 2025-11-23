@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import io.jsonwebtoken.io.IOException;
+import java.io.IOException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -613,7 +613,8 @@ public class ChatMessageController {
 	  User sender = userRepository.findByEmailWithDepartment(email).orElseThrow();
 		Chat replyChat = chatRoomService.sendChatMessage(roomId, sender.getId(), req.getReplyContent());
 		if (replyChat == null) {
-			ChatResponseDTO.fromEntity(replyChat);
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(ResponseDTO.error("답신 메시지 저장 실패"));
 		}
 		
 		// ⭐ unreadCount는 sendChatMessage에서 실시간 접속자 수를 기반으로 계산되어 Chat 엔티티에 설정됨
@@ -1004,8 +1005,12 @@ public class ChatMessageController {
     @PostMapping("/{roomId}/invite")
     public ResponseEntity<ResponseDTO<List<ChatUserResponseDTO>>> inviteUsersToChatRoom(
             @PathVariable("roomId") Integer roomId,
-            @RequestBody InviteUsersRequestDTO req
+            @RequestBody InviteUsersRequestDTO req,
+            @AuthenticationPrincipal CustomUserDetails customUserDetails
     ) {
+        String email = customUserDetails.getEmail();
+        User inviter = userRepository.findByEmail(email).orElseThrow();
+        
         ChatRoom chatRoom = chatRoomService.findById(roomId);
         List<Integer> participantIds = chatRoomService.getParticipantIds(roomId);
         List<User> nonParticipants = userRepository.findAll()
@@ -1017,8 +1022,26 @@ public class ChatMessageController {
         for (User invited : invitedUsers) {
             ChatRoomUser cru = ChatRoomUser.createChatRoomUser(invited, chatRoom);
             chatRoomUserRepository.save(cru);
-            String joinMsg = invited.getName() + "님이 입장했습니다";
-            chatRoomService.sendChatMessage(roomId, invited.getId(), joinMsg);
+            
+            // ⭐ 초대 메시지 생성 (초대받은 사용자에게만 표시, 입장 전까지 유지)
+            String inviteMsg = invited.getName() + "님이 초대되었습니다";
+            Chat inviteChat = chatRoomService.sendChatMessage(roomId, inviter.getId(), inviteMsg);
+            
+            // ⭐ 초대 알림 전송 (초대받은 사용자에게만)
+            String notificationMsg = chatRoom.getRoomName() + " 채팅방에 " + invited.getName() + "님이 초대되었습니다";
+            notificationService.sendNotification(
+                invited.getId(),
+                NotificationType.CHAT,
+                notificationMsg,
+                inviteChat != null ? inviteChat.getId() : null,
+                roomId,
+                inviter.getId(),
+                inviter.getName(),
+                null
+            );
+            
+            log.info("[inviteUsersToChatRoom] 초대 완료 - roomId: {}, invitedUserId: {}, invitedUserName: {}, inviterId: {}, inviterName: {}", 
+                    roomId, invited.getId(), invited.getName(), inviter.getId(), inviter.getName());
         }
         List<ChatUserResponseDTO> dtoList = invitedUsers.stream()
                 .map(user -> ChatUserResponseDTO.fromEntity(user, s3Service))
@@ -1131,22 +1154,32 @@ public class ChatMessageController {
     }
 
     // 11. 미읽은 알림/채팅 메시지 요약
-    @Operation(summary = "미읽은 알림 요약", description = "가장 최근 알림만 띄우고 알림 개수 표시")
+    @Operation(summary = "미읽은 알림 요약", description = "가장 최근 알림만 띄우고 채팅 메시지 안읽은 개수만 표시")
     @GetMapping("/notifications/unread")
     public ResponseEntity<ResponseDTO<UnreadNotificationSummaryDTO>> getLatestUnreadNotificationSummary(
             @AuthenticationPrincipal CustomUserDetails customUserDetails
     ) {
         String email = customUserDetails.getEmail();
         User user = userRepository.findByEmail(email).orElseThrow();
+        
+        // ⭐ 채팅 메시지 안읽은 개수만 조회 (알림 개수는 제외)
+        List<ChatMessageReadStatus> unreadChatMessages = chatMessageReadStatusRepository.findByUserIdAndReadYnFalse(user.getId());
+        int chatUnreadCount = unreadChatMessages != null ? unreadChatMessages.size() : 0;
+        
+        log.info("[getLatestUnreadNotificationSummary] ⭐ 채팅 메시지 안읽은 개수만 반환: {}", chatUnreadCount);
+        
+        // 최신 알림 정보는 유지 (팝오버에서 사용할 수 있도록)
         List<NotificationType> allowedTypes = List.of(NotificationType.EMAIL, NotificationType.NOTICE, NotificationType.APPROVAL, NotificationType.SCHEDULE);
         List<Notification> unreadNotifications = notificationRepository.findUnreadByUserIdAndTypes(user.getId(), allowedTypes);
         List<Notification> filtered = unreadNotifications.stream()
                 .filter(n -> allowedTypes.contains(n.getNotificationType()))
                 .sorted(Comparator.comparing(Notification::getNotificationSentAt, Comparator.nullsLast(Comparator.naturalOrder())).reversed())
                 .toList();
-        int unreadCount = filtered.size();
+        
         Notification latest = filtered.isEmpty() ? null : filtered.get(0);
-        UnreadNotificationSummaryDTO dto = UnreadNotificationSummaryDTO.from(latest, unreadCount);
+        
+        // ⭐ 중요: unreadCount에는 채팅 메시지 안읽은 개수만 설정
+        UnreadNotificationSummaryDTO dto = UnreadNotificationSummaryDTO.from(latest, chatUnreadCount);
         return ResponseEntity.ok(ResponseDTO.success(dto, "미읽은 알림 요약 조회 성공"));
     }
     
@@ -1402,7 +1435,7 @@ public class ChatMessageController {
             User user = userRepository.findByEmail(email).orElseThrow();
             log.info("🔔 [getAllUnreadNotifications] 요청 사용자: email={}, userId={}, name={}", email, user.getId(), user.getName());
             
-            List<NotificationType> allowedTypes = List.of(NotificationType.EMAIL, NotificationType.NOTICE, NotificationType.APPROVAL, NotificationType.SCHEDULE);
+            List<NotificationType> allowedTypes = List.of(NotificationType.EMAIL, NotificationType.NOTICE, NotificationType.APPROVAL, NotificationType.SCHEDULE, NotificationType.CHAT);
             
             // DB에서 직접 조회하여 확인
             List<Notification> allUserNotifications = notificationRepository.findByUserIdOrderBySentAtDesc(user.getId());
@@ -1475,6 +1508,17 @@ public class ChatMessageController {
                         log.error("🔔 [getAllUnreadNotifications] Schedule 조회 실패 - 알림 ID: {}", n.getId(), e);
                     }
                     
+                    // CHAT 타입 알림의 경우 roomId 추출
+                    Integer roomIdValue = null;
+                    try {
+                        if (n.getChat() != null && n.getChat().getChatRoom() != null) {
+                            roomIdValue = n.getChat().getChatRoom().getId();
+                            log.info("🔔 [getAllUnreadNotifications] 알림 ID: {}, Chat Room ID: {}", n.getId(), roomIdValue);
+                        }
+                    } catch (Exception e) {
+                        log.error("🔔 [getAllUnreadNotifications] Chat Room 조회 실패 - 알림 ID: {}", n.getId(), e);
+                    }
+                    
                     UnreadNotificationListDTO dto = UnreadNotificationListDTO.builder()
                             .notificationId(n.getId())
                             .message(n.getNotificationMessage())
@@ -1486,6 +1530,8 @@ public class ChatMessageController {
                             .boardId(n.getBoard() != null ? n.getBoard().getId() : null)
                             .scheduleId(scheduleIdValue)
                             .build();
+                    // roomId는 setter로 설정 (Lombok 빌더 이슈 방지)
+                    dto.setRoomId(roomIdValue);
                     
                     unreadDtos.add(dto);
                 } catch (Exception e) {
