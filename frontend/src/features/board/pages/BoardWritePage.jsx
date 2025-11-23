@@ -305,9 +305,12 @@ const BoardWritePage = () => {
       showSnack("등록 완료!", "success");
 
       navigate(`/board/${form.categoryId}`);
-    } catch {
-      showSnack("저장 중 오류 발생", "error");
-
+    } catch (err) {
+      if (err?.response?.status === 403 && form.noticeYn) {
+       showSnack("공지글 작성 권한이 없습니다.", "error");
+     } else {
+       showSnack("저장 중 오류가 발생했습니다.", "error");
+     }
 
     }
   };
