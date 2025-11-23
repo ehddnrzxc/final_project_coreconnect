@@ -1,12 +1,16 @@
 import { Box, Button, Chip, LinearProgress, Typography, useTheme } from "@mui/material";
-import { checkIn, checkOut, getTodayAttendance } from "../api/attendanceAPI";
+import { checkIn, checkOut, getTodayAttendance } from "../../attendance/api/attendanceAPI";
 import { formatKoreanDate, formatKoreanTime, formatTime } from "../../../utils/TimeUtils";
 import { useState, useEffect } from "react";
+import { Link as RouterLink } from "react-router-dom";
 import Card from "../../../components/ui/Card";
 import { formatHM } from "../../../utils/TimeUtils";
 import http from "../../../api/http";
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
+import { getAttendanceStatusLabel } from "../../../utils/labelUtils";
 
-function AttendancePage() {
+function AttendanceCard() {
+  const { showSnack } = useSnackbarContext();
   const theme = useTheme();
   const [now, setNow] = useState(new Date());
   const [attendance, setAttendance] = useState(null);
@@ -19,15 +23,14 @@ function AttendancePage() {
   const dateString = formatKoreanDate(now);
   const timeString = formatKoreanTime(now);
   
-  // 데이터가 없을 때 기본값 처리
   const checkInTime = formatTime(attendance?.checkIn) || "-";
   const checkOutTime = formatTime(attendance?.checkOut) || "-";
   const status = attendance?.status || "ABSENT";
-  const canCheckIn = status === "ABSENT"; // 미출근일 때만 출근 가능
-  const canCheckOut = status === "PRESENT" || status === "LATE"; // 근무중/지각일 때만 퇴근 가능
+  const canCheckIn = status === "ABSENT"; 
+  const canCheckOut = status === "PRESENT" || status === "LATE"; 
 
-  const TARGET_WEEKLY_MINUTES = 40 * 60; // 40시간
-  const MAX_WEEKLY_MINUTES = 52 * 60 // 52시간(진행바 최대 기준)
+  const TARGET_WEEKLY_MINUTES = 40 * 60; 
+  const MAX_WEEKLY_MINUTES = 52 * 60 
   
   useEffect(() => {
     const timer = setInterval(() => {
@@ -59,7 +62,7 @@ function AttendancePage() {
         setLoadingWeekly(true);
         setWeeklyError("");
 
-        const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+        const today = new Date().toISOString().slice(0, 10); 
         const res = await http.get("/attendance/me/weekly", {
           params: {date: today},
         });
@@ -86,15 +89,14 @@ function AttendancePage() {
     }
   };
 
-
   const handleCheckIn = async () => {
     try {
       await checkIn();
       await loadAttendance();
-      alert("출근 처리되었습니다.");
+      showSnack("출근 처리되었습니다.", "success");
     } catch (err) {
       console.error(err);
-      alert("출근 처리에 실패했습니다.");
+      showSnack("출근 처리에 실패했습니다.", "error");
     }
   };
 
@@ -102,10 +104,10 @@ function AttendancePage() {
     try {
       await checkOut();
       await loadAttendance();
-      alert("퇴근 처리되었습니다.");
+      showSnack("퇴근 처리되었습니다.", "success");
     } catch (err) {
       console.error(err);
-      alert("퇴근 처리에 실패했습니다.");
+      showSnack("퇴근 처리에 실패했습니다.", "error");
     }
   };
 
@@ -116,18 +118,9 @@ function AttendancePage() {
     <Card
       title="근태"
       right={
-        <Chip
-          label={
-            status === "PRESENT" || status === "LATE"
-              ? "근무중"
-              : status === "LEAVE_EARLY" || status === "COMPLETED"
-              ? "퇴근"
-              : "미출근"
-          }
-          size="small"
-          variant="outlined"
-          sx={{ fontSize: 12, borderRadius: 999, px: 1 }}
-        />
+        <Button component={RouterLink} to="/attendance" size="small" sx={{ textTransform: "none" }}>
+          근태현황 바로가기
+        </Button>
       }
     >
       {/* 날짜 + 현재 시각 */}
@@ -144,6 +137,18 @@ function AttendancePage() {
             {dateString} {timeString}
           </Typography>
         </Box>
+        <Chip
+          label={
+            status === "PRESENT" || status === "LATE"
+              ? "근무중"
+              : status === "LEAVE_EARLY" || status === "COMPLETED"
+              ? "퇴근"
+              : getAttendanceStatusLabel(status)
+          }
+          size="small"
+          variant="outlined"
+          sx={{ fontSize: 12, borderRadius: 999, px: 1 }}
+        />
       </Box>
 
       {/* 출근 / 퇴근 박스 */}
@@ -299,4 +304,4 @@ function AttendancePage() {
     </Card>
   );
 }
-export default AttendancePage;
+export default AttendanceCard;

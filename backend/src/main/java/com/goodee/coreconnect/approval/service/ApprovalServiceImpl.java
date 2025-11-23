@@ -1,6 +1,7 @@
 package com.goodee.coreconnect.approval.service;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -10,6 +11,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -44,7 +47,6 @@ import com.goodee.coreconnect.common.notification.dto.NotificationPayload;
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
 import com.goodee.coreconnect.common.notification.service.WebSocketDeliveryService;
 import com.goodee.coreconnect.common.service.S3Service;
-import com.goodee.coreconnect.leave.dto.request.CreateLeaveRequestDTO;
 import com.goodee.coreconnect.leave.service.LeaveService;
 import com.goodee.coreconnect.user.entity.User;
 import com.goodee.coreconnect.user.repository.UserRepository;
@@ -85,6 +87,10 @@ public class ApprovalServiceImpl implements ApprovalService {
     // 1. 기안자(User) 및 양식(Template) 조회
     User drafter = findUserByEmail(email);
     Template template = findTemplateById(requestDTO.getTemplateId());
+    
+    if (isLeaveTemplate(template)) {
+      validateLeaveOverlap(drafter, template, requestDTO.getDocumentDataJson(), null);
+    }
 
     // 2. 문서 엔티티 생성
     Document document = requestDTO.toEntity(template, drafter);
@@ -144,8 +150,23 @@ public class ApprovalServiceImpl implements ApprovalService {
     
     // 휴가 템플릿이면 휴가 DB에 저장하는 로직
     if(isLeaveTemplate(template)) {
-      CreateLeaveRequestDTO leaveDTO = CreateLeaveRequestDTO.toCreateLeaveRequestDTO(requestDTO, savedDocument.getId(), objectMapper);
-      leaveService.createLeaveFromApproval(savedDocument, drafter, leaveDTO);
+      try {
+        // documentDataJson 파싱
+        TypeReference<Map<String, Object>> typeRef = new TypeReference<>() {};
+        Map<String, Object> data = objectMapper.readValue(requestDTO.getDocumentDataJson(), typeRef);
+
+        String type = (String) data.get("vacationType");
+        String reason = (String) data.get("reason");
+        String start = (String) data.get("startDate");
+        String end = (String) data.get("endDate");
+
+        LocalDate startDate = LocalDate.parse(start);
+        LocalDate endDate = LocalDate.parse(end);
+
+        leaveService.createLeaveFromApproval(savedDocument, drafter, startDate, endDate, type, reason);
+      } catch (Exception e) {
+        throw new IllegalStateException("휴가 데이터 파싱 중 오류 발생", e);
+      }
     }
 
 
@@ -247,6 +268,7 @@ public class ApprovalServiceImpl implements ApprovalService {
   /**
    * 1-2. 임시저장 문서 수정
    */
+  @Transactional
   @Override
   public Integer updateDraft(Integer documentId, DocumentUpdateRequestDTO requestDTO, List<MultipartFile> files,
       String email) {
@@ -266,11 +288,17 @@ public class ApprovalServiceImpl implements ApprovalService {
    * 1-3. 임시저장 문서 수정 후 상신
    */
   @Override
+  @Transactional
   public Integer updateAndSubmitDocument(Integer documentId, DocumentUpdateRequestDTO requestDTO,
       List<MultipartFile> files, String email) {
     User drafter = findUserByEmail(email);
     Document document = documentRepository.findDocumentDetailById(documentId)
         .orElseThrow(() -> new EntityNotFoundException("문서를 찾을 수 없습니다."));
+    
+    if (isLeaveTemplate(document.getTemplate())) {
+      validateLeaveOverlap(drafter, document.getTemplate(), requestDTO.getDocumentDataJson(), documentId);
+    }
+    
     validateDocumentUpdateAuthority(document, drafter);
     document.updateDraftDetails(requestDTO.getDocumentTitle(), requestDTO.getDocumentDataJson());
     updateApprovalLines(document, requestDTO.getApprovalLines());
@@ -288,19 +316,14 @@ public class ApprovalServiceImpl implements ApprovalService {
    * 내 상신함(내가 작성한 문서) 목록을 조회합니다.
    */
   @Override
-  public List<DocumentSimpleResponseDTO> getMyDocuments(String email) {
+  public Page<DocumentSimpleResponseDTO> getMyDocuments(String email, Pageable pageable) {
     User user = findUserByEmail(email);
 
     // 1. 리포지토리에서 조회
-    List<Document> documents = documentRepository.findByUserAndDocDeletedYnOrderByCreatedAtDesc(user, false);
+    Page<Document> documentPage = documentRepository.findByUserAndDocDeletedYnOrderByCreatedAtDesc(user, false, pageable);
 
     // 2. DTO로 변환
-    return documents.stream()
-        .map(document -> {
-          String approvalLineStr = generateApprovalLine(document.getApprovalLines());
-          return DocumentSimpleResponseDTO.toDTO(document, approvalLineStr);
-        })
-        .collect(Collectors.toList());
+    return documentPage.map(DocumentSimpleResponseDTO::toDTO);
   }
 
   /**
@@ -319,10 +342,7 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     // 2. DTO로 변환
     return documents.stream()
-        .map(document -> {
-          String approvalLineStr = generateApprovalLine(document.getApprovalLines());
-          return DocumentSimpleResponseDTO.toDTO(document, approvalLineStr);
-        })
+        .map(DocumentSimpleResponseDTO::toDTO)
         .collect(Collectors.toList());
   }
 
@@ -344,10 +364,7 @@ public class ApprovalServiceImpl implements ApprovalService {
     return currentTurnLines.stream()
         .map(ApprovalLine::getDocument) // 문서를 가져옴 (Fetch Join됨)
         .distinct() // 문서 중복 제거
-        .map(document -> {
-          String approvalStr = generateApprovalLine(document.getApprovalLines());
-          return DocumentSimpleResponseDTO.toDTO(document, approvalStr);
-        })
+        .map(DocumentSimpleResponseDTO::toDTO)
         .collect(Collectors.toList());
   }
   
@@ -373,10 +390,7 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     // 3. DTO로 변환 (목록이므로 SimpleDTO 사용)
     return documents.stream()
-        .map(document -> {
-          String approvalLineStr = generateApprovalLine(document.getApprovalLines());
-          return DocumentSimpleResponseDTO.toDTO(document, approvalLineStr);
-        })
+        .map(DocumentSimpleResponseDTO::toDTO)
         .collect(Collectors.toList());
   }
   
@@ -391,10 +405,7 @@ public class ApprovalServiceImpl implements ApprovalService {
     
     return referenceDocuments.stream()
         .distinct()
-        .map(document -> {
-          String approvalLineStr = generateApprovalLine(document.getApprovalLines());
-          return DocumentSimpleResponseDTO.toDTO(document, approvalLineStr);
-        })
+        .map(DocumentSimpleResponseDTO::toDTO)
         .collect(Collectors.toList());
   }
 
@@ -420,10 +431,7 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     // 3. DTO로 변환 (목록이므로 SimpleDTO 사용)
     return documents.stream()
-        .map(document -> {
-          String approvalLineStr = generateApprovalLine(document.getApprovalLines());
-          return DocumentSimpleResponseDTO.toDTO(document, approvalLineStr);
-        })
+        .map(DocumentSimpleResponseDTO::toDTO)
         .collect(Collectors.toList());
   }
 
@@ -461,9 +469,13 @@ public class ApprovalServiceImpl implements ApprovalService {
     boolean isMyTurn = false;
     
     if (document.getDocumentStatus() == DocumentStatus.IN_PROGRESS) {
-      isMyTurn = document.getApprovalLines().stream()
-          .anyMatch(line -> line.getApprover().getId().equals(currentUserId) &&
-              line.getApprovalLineStatus() == ApprovalLineStatus.WAITING);
+      ApprovalLine currentTurnLine = document.getApprovalLines().stream()
+          .filter(line -> line.getApprovalLineStatus() == ApprovalLineStatus.WAITING)
+          .min(Comparator.comparing(ApprovalLine::getApprovalLineOrder))
+          .orElse(null);
+
+      if (currentTurnLine != null && currentTurnLine.getApprover().getId().equals(currentUserId))
+        isMyTurn = true;
     }
     
     responseDTO.setMyTurnApprove(isMyTurn);
@@ -480,9 +492,19 @@ public class ApprovalServiceImpl implements ApprovalService {
       String processedHtml;
       
       if ("EXPENSE".equals(templateKey)) {
+        
+        String tempHtml = htmlTemplate;
+        for (Map.Entry<String, Object> entry : data.entrySet()) {
+          if (!(entry.getValue() instanceof Map) && !(entry.getValue() instanceof List)) {
+            String key = entry.getKey();
+            String value = String.valueOf(entry.getValue());
+            tempHtml = tempHtml.replace("${" + key + "}", value);
+          }
+        }
+        
         Context context = new Context();
         context.setVariables(data);
-        processedHtml = templateEngine.process(htmlTemplate, context);
+        processedHtml = templateEngine.process(tempHtml, context);
       } else {
         processedHtml = htmlTemplate;
         for (Map.Entry<String, Object> entry : data.entrySet()) {
@@ -749,28 +771,6 @@ public class ApprovalServiceImpl implements ApprovalService {
     return template;
   }
   
-  /**
-   * 결재선 목록을 받아 "이름(상태) -> 이름(상태)" 형태의 표시용 문자열로 변환하는 헬퍼메소드
-   * @param lines
-   * @return
-   */
-  private String generateApprovalLine(List<ApprovalLine> lines) {
-    if (lines == null || lines.isEmpty()) {
-      return "-";
-    }
-    
-    String displayString = lines.stream()
-        .filter(line -> line.getApprovalLineType() != ApprovalLineType.REFER)
-        .sorted(Comparator.comparing(ApprovalLine::getApprovalLineOrder))
-        .map(line -> {
-          String approverName = (line.getApprover() != null) ? line.getApprover().getName() : "정보없음";
-          String status = line.getApprovalLineStatus().name();
-          return String.format("%s(%s)", approverName, status);
-        })
-        .collect(Collectors.joining(" -> "));
-    return displayString.isEmpty() ? "-" : displayString;
-  }
-  
   // 문서 수정 권한 검사 헬퍼 메소드
   private void validateDocumentUpdateAuthority(Document document, User drafter) {
     if (!document.getUser().getId().equals(drafter.getId())) {
@@ -781,9 +781,7 @@ public class ApprovalServiceImpl implements ApprovalService {
     }
   }
   
-  private void updateApprovalLines(Document document, List<ApprovalLineRequestDTO> approvalLineDTOs) {
-    approvalLineRepository.deleteByDocumet(document);
-    
+  private void updateApprovalLines(Document document, List<ApprovalLineRequestDTO> approvalLineDTOs) {    
     document.getApprovalLines().clear();
     
     if (approvalLineDTOs != null && !approvalLineDTOs.isEmpty()) {
@@ -862,6 +860,8 @@ public class ApprovalServiceImpl implements ApprovalService {
           payload.getMessage(), 
           null,     // Chat
           document, // Document
+          null,     // Board
+          null,     // Schedule
           false,    // readYn
           true,    // sentYn
           false,    // deletedYn
@@ -879,6 +879,55 @@ public class ApprovalServiceImpl implements ApprovalService {
           document.getId(), 
           e.getMessage()
           );
+    }
+  }
+  
+  private void validateLeaveOverlap(User user, Template template, String jsonData, Integer currentDocId) {
+    try {
+      TypeReference<Map<String, Object>> typeRef = new TypeReference<>() {};
+      Map<String, Object> requestData = objectMapper.readValue(jsonData, typeRef);
+      
+      String startStr = (String) requestData.get("startDate");
+      String endStr = (String) requestData.get("endDate");
+      
+      if (startStr == null || endStr == null) return;
+      
+      LocalDate newStart = LocalDate.parse(startStr);
+      LocalDate newEnd = LocalDate.parse(endStr);
+      
+      List<DocumentStatus> activeStatuses = Arrays.asList(
+          DocumentStatus.IN_PROGRESS,
+          DocumentStatus.COMPLETED
+          );
+      
+      List<Document> existingDocs = documentRepository.findByUserAndTemplateIdAndStatusIn(user, template.getId(), activeStatuses);
+      
+      for (Document doc : existingDocs) {
+        if (currentDocId != null && doc.getId().equals(currentDocId)) {
+          continue;
+        }
+        
+        Map<String, Object> docData = objectMapper.readValue(doc.getDocumentDataJson(), typeRef);
+        String docStartStr = (String) docData.get("startDate");
+        String docEndStr = (String) docData.get("endDate");
+        
+        if (docStartStr != null && docEndStr != null) {
+          LocalDate oldStart = LocalDate.parse(docStartStr);
+          LocalDate oldEnd = LocalDate.parse(docEndStr);
+          
+          if (!newStart.isAfter(oldEnd) && !newEnd.isBefore(oldStart)) {
+            throw new IllegalStateException("이미 해당 기간에 신청된 휴가가 존재합니다. ("
+                + docStartStr + " ~ " + docEndStr + ")");
+          }
+        }
+      }
+      
+    } catch (IOException e) {
+      log.error("중복 검사 중 JSON 파싱 오류", e);
+    } catch (IllegalStateException e) {
+      throw e;
+    } catch (Exception e) {
+      log.error("중복 검사 중 알 수 없는 오류", e);
     }
   }
   

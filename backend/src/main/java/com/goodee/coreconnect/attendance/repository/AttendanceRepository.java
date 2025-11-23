@@ -20,5 +20,7 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Integer>
       LocalDate end
   );
   
+  // 특정 날짜의 모든 사용자 근태 조회
+  List<Attendance> findByWorkDate(LocalDate workDate);
 
 }

@@ -1,17 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { getEmailDetail, downloadAttachment, getUserEmailFromStorage, markMailAsRead } from '../api/emailApi';
+import { getEmailDetail, downloadAttachment, markMailAsRead, moveToTrash, toggleFavoriteStatus } from '../api/emailApi';
+import http from '../../../api/http';
+import JSZip from 'jszip';
 import {
-  Box, Typography, Divider, Paper, IconButton, Chip, Tooltip, Button
+  Box, Typography, Divider, Paper, IconButton, Chip, Tooltip, Button,
+  Snackbar, Alert
 } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ReplyIcon from '@mui/icons-material/Reply';
 import ForwardIcon from '@mui/icons-material/Forward';
 import DeleteIcon from '@mui/icons-material/Delete';
 import StarIcon from '@mui/icons-material/Star';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
-import ReportIcon from '@mui/icons-material/Report';
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
+import { useContext } from "react";
+import { UserProfileContext } from "../../../App";
 
 // 파일 사이즈 변환
 function formatBytes(bytes) {
@@ -21,12 +24,23 @@ function formatBytes(bytes) {
   return +(bytes / Math.pow(1024, i)).toFixed(1) + ' ' + sizes[i];
 }
 
+// 상태에 따라 라벨 한글 변환 함수 (메일 상태 표시에 사용)
+function getStatusLabel(emailStatus) {
+  if (emailStatus === "SENT") return "발신완료";
+  if (emailStatus === "FAILED" || emailStatus === "FAIL" || emailStatus === "BOUNCE") return "발신실패";
+  if (emailStatus === "TRASH") return "휴지통";
+  if (emailStatus === "DELETED") return "삭제됨";
+  return emailStatus;
+}
+
 function MailDetailPage() {
   const { emailId } = useParams();
   const navigate = useNavigate();
   const [mailDetail, setMailDetail] = useState(null);
+  const [snack, setSnack] = useState({ open: false, severity: 'info', message: '' });
   const { refreshUnreadCount } = useOutletContext();
-  const userEmail = getUserEmailFromStorage();
+  const { userProfile } = useContext(UserProfileContext) || {};
+  const userEmail = userProfile?.email;
 
   
   useEffect(() => {
@@ -36,10 +50,18 @@ function MailDetailPage() {
     const data = res.data.data;
     setMailDetail(data);
 
-    if (data.readYn === false) {
+    if (data.readYn === false || data.readYn === null || data.readYn === undefined) {
       markMailAsRead(emailId, userEmail)
         .then(() => {
-          if (refreshUnreadCount) refreshUnreadCount(); // ★여기!
+          // DB 반영을 위한 짧은 대기 후 카운트 업데이트
+          setTimeout(() => {
+            if (refreshUnreadCount) {
+              refreshUnreadCount(); // ★여기!
+            }
+          }, 100);
+        })
+        .catch(err => {
+          console.error("markMailAsRead error in MailDetailPage:", err);
         });
     }
   });
@@ -52,29 +74,233 @@ function MailDetailPage() {
     downloadAttachment(fileId, fileName);
   };
 
+  // 중요 메일 토글 핸들러
+  const handleToggleFavorite = async () => {
+    if (!emailId || !userEmail) {
+      setSnack({ open: true, severity: 'error', message: '메일 정보를 찾을 수 없습니다.' });
+      return;
+    }
+
+    try {
+      const res = await toggleFavoriteStatus(emailId, userEmail);
+      const newStatus = res?.data?.data;
+      
+      // 메일 상세 정보 업데이트
+      setMailDetail(prev => ({
+        ...prev,
+        favoriteStatus: newStatus
+      }));
+
+      setSnack({ 
+        open: true, 
+        severity: 'success', 
+        message: newStatus ? '중요 메일로 설정되었습니다.' : '중요 메일 해제되었습니다.' 
+      });
+    } catch (err) {
+      console.error('handleToggleFavorite error', err);
+      setSnack({ open: true, severity: 'error', message: '중요 메일 설정 중 오류가 발생했습니다.' });
+    }
+  };
+
+  // 전체 첨부파일 다운로드 (.zip)
+  const handleDownloadAll = async () => {
+    if (!mailDetail?.attachments || mailDetail.attachments.length === 0) {
+      setSnack({ open: true, severity: 'warning', message: '다운로드할 첨부파일이 없습니다.' });
+      return;
+    }
+
+    try {
+      const zip = new JSZip();
+      
+      // 모든 첨부파일을 다운로드하여 ZIP에 추가
+      const downloadPromises = mailDetail.attachments.map(async (file) => {
+        try {
+          const response = await http.get(`/email/file/download/${file.fileId}`, { 
+            responseType: 'blob' 
+          });
+          zip.file(file.fileName, response.data);
+        } catch (err) {
+          console.error(`Failed to download file ${file.fileName}:`, err);
+          throw err;
+        }
+      });
+
+      await Promise.all(downloadPromises);
+
+      // ZIP 파일 생성 및 다운로드
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const url = window.URL.createObjectURL(zipBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `attachments_${emailId || 'email'}.zip`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      setSnack({ open: true, severity: 'success', message: '모든 첨부파일이 다운로드되었습니다.' });
+    } catch (err) {
+      console.error('handleDownloadAll error', err);
+      setSnack({ open: true, severity: 'error', message: '첨부파일 다운로드 중 오류가 발생했습니다.' });
+    }
+  };
+
+  // 답장 핸들러
+  const handleReply = async () => {
+    if (!mailDetail) {
+      setSnack({ open: true, severity: 'error', message: '메일 정보를 찾을 수 없습니다.' });
+      return;
+    }
+
+    try {
+      // 메일 상세 정보 가져오기 (cc, bcc 정보 포함)
+      const detailRes = await getEmailDetail(emailId, userEmail);
+      const mailDetailData = detailRes?.data?.data || mailDetail;
+
+      // 답장 정보 구성
+      const replyData = {
+        originalEmail: {
+          emailId: mailDetailData.emailId,
+          senderEmail: mailDetailData.senderEmail || mailDetail.senderEmail,
+          senderName: mailDetailData.senderName || mailDetail.senderName,
+          emailTitle: mailDetailData.emailTitle || mailDetail.emailTitle,
+          sentTime: mailDetailData.sentTime || mailDetailData.emailSentTime || mailDetail.sentTime,
+          recipientAddresses: mailDetailData.recipientAddresses || mailDetail.toRecipients?.map(r => r.emailRecipientAddress) || [],
+          ccAddresses: mailDetailData.ccAddresses || mailDetail.ccRecipients?.map(r => r.emailRecipientAddress) || [],
+          bccAddresses: mailDetailData.bccAddresses || mailDetail.bccRecipients?.map(r => r.emailRecipientAddress) || [],
+          emailContent: mailDetailData.emailContent || mailDetail.emailContent || ''
+        }
+      };
+
+      // 메일쓰기 페이지로 이동 (location.state로 답장 정보 전달)
+      navigate('/email/write', { state: { replyData } });
+    } catch (err) {
+      console.error("handleReply error", err);
+      setSnack({ open: true, severity: 'error', message: '메일 상세 정보를 가져오는 중 오류가 발생했습니다.' });
+    }
+  };
+
+  // 전달 핸들러
+  const handleForward = async () => {
+    if (!mailDetail) {
+      setSnack({ open: true, severity: 'error', message: '메일 정보를 찾을 수 없습니다.' });
+      return;
+    }
+
+    try {
+      // 메일 상세 정보 가져오기 (cc, bcc 정보 포함)
+      const detailRes = await getEmailDetail(emailId, userEmail);
+      const mailDetailData = detailRes?.data?.data || mailDetail;
+
+      // 전달 정보 구성
+      const forwardData = {
+        originalEmail: {
+          emailId: mailDetailData.emailId,
+          senderEmail: mailDetailData.senderEmail || mailDetail.senderEmail,
+          senderName: mailDetailData.senderName || mailDetail.senderName,
+          emailTitle: mailDetailData.emailTitle || mailDetail.emailTitle,
+          sentTime: mailDetailData.sentTime || mailDetailData.emailSentTime || mailDetail.sentTime,
+          recipientAddresses: mailDetailData.recipientAddresses || mailDetail.toRecipients?.map(r => r.emailRecipientAddress) || [],
+          ccAddresses: mailDetailData.ccAddresses || mailDetail.ccRecipients?.map(r => r.emailRecipientAddress) || [],
+          bccAddresses: mailDetailData.bccAddresses || mailDetail.bccRecipients?.map(r => r.emailRecipientAddress) || [],
+          emailContent: mailDetailData.emailContent || mailDetail.emailContent || ''
+        }
+      };
+
+      // 메일쓰기 페이지로 이동 (location.state로 전달 정보 전달)
+      navigate('/email/write', { state: { forwardData } });
+    } catch (err) {
+      console.error("handleForward error", err);
+      setSnack({ open: true, severity: 'error', message: '메일 상세 정보를 가져오는 중 오류가 발생했습니다.' });
+    }
+  };
+
+  // 삭제 핸들러
+  const handleDelete = async () => {
+    if (!emailId) {
+      setSnack({ open: true, severity: 'error', message: '메일 ID를 찾을 수 없습니다.' });
+      return;
+    }
+
+    if (!window.confirm('이 메일을 휴지통으로 이동하시겠습니까?')) return;
+
+    try {
+      await moveToTrash([emailId]); // 휴지통으로 이동
+      setSnack({ open: true, severity: 'success', message: '메일을 휴지통으로 이동했습니다.' });
+      
+      // 이전 페이지로 이동
+      setTimeout(() => {
+        navigate(-1);
+      }, 1000);
+    } catch (err) {
+      console.error('handleDelete error', err);
+      setSnack({ open: true, severity: 'error', message: '메일 삭제 중 오류가 발생했습니다.' });
+    }
+  };
+
   return (
-    <Box sx={{ p: 4, minHeight: "100vh", bgcolor: "#f8fafb" }}>
+    <Box sx={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      height: '100vh', 
+      bgcolor: "#f8fafb",
+      overflow: 'hidden'
+    }}>
       {/* 상단 액션 버튼 */}
-      <Box sx={{ mb: 2, display: 'flex', alignItems: "center", justifyContent: 'space-between', gap: 1 }}>
+      <Box sx={{ 
+        p: 2, 
+        bgcolor: "#fff", 
+        borderBottom: "1px solid #e5e7eb",
+        display: 'flex', 
+        alignItems: "center", 
+        justifyContent: 'space-between', 
+        gap: 1,
+        flexShrink: 0
+      }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Tooltip title="뒤로가기"><IconButton onClick={() => navigate(-1)}><ArrowBackIcon /></IconButton></Tooltip>
-          <Tooltip title="스팸신고"><IconButton color="inherit"><ReportIcon /></IconButton></Tooltip>
-          <Tooltip title="답장"><IconButton color="inherit"><ReplyIcon /></IconButton></Tooltip>
-          <Tooltip title="전달"><IconButton color="inherit"><ForwardIcon /></IconButton></Tooltip>
-          <Tooltip title="삭제"><IconButton color="inherit"><DeleteIcon /></IconButton></Tooltip>
-          <Tooltip title="중요 표시"><IconButton color="warning"><StarIcon /></IconButton></Tooltip>
+          <Tooltip title="답장"><IconButton color="inherit" onClick={handleReply}><ReplyIcon /></IconButton></Tooltip>
+          <Tooltip title="전달"><IconButton color="inherit" onClick={handleForward}><ForwardIcon /></IconButton></Tooltip>
+          <Tooltip title="삭제"><IconButton color="inherit" onClick={handleDelete}><DeleteIcon /></IconButton></Tooltip>
+          <Tooltip title={mailDetail.favoriteStatus ? "중요 해제" : "중요 표시"}>
+            <IconButton 
+              color={mailDetail.favoriteStatus ? "warning" : "inherit"}
+              onClick={handleToggleFavorite}
+            >
+              <StarIcon sx={{ color: mailDetail.favoriteStatus ? "#f1ac00" : "inherit" }} />
+            </IconButton>
+          </Tooltip>
         </Box>
         <Box>
           <Tooltip title="더보기"><IconButton><MoreVertIcon /></IconButton></Tooltip>
         </Box>
       </Box>
-      <Paper elevation={0} sx={{ p: 4, borderRadius: 2, maxWidth: 900, mx: "auto", mb: 2, boxShadow: 2 }}>
+      
+      {/* 스크롤 가능한 메일 내용 영역 */}
+      <Box sx={{ 
+        flex: 1, 
+        overflowY: 'auto', 
+        overflowX: 'hidden',
+        bgcolor: "#fff"
+      }}>
+        <Box sx={{ 
+          maxWidth: '100%', 
+          mx: 'auto', 
+          p: 3,
+          height: '100%'
+        }}>
+          <Paper elevation={0} sx={{ 
+            p: 4, 
+            borderRadius: 2, 
+            boxShadow: 2,
+            height: 'fit-content',
+            minHeight: '100%'
+          }}>
         {/* 제목, 상태, 중요표시 */}
         <Box sx={{ pb: 1, mb: 2, borderBottom: "1px solid #ececec", display: 'flex', alignItems: 'center', gap: 1 }}>
           <Typography variant="h5" sx={{ fontWeight: 700, flex: 1 }}>{mailDetail.emailTitle}</Typography>
           {mailDetail.emailStatus && (
             <Chip
-              label={mailDetail.emailStatus}
+              label={getStatusLabel(mailDetail.emailStatus)}
               color={mailDetail.emailStatus === "SENT" ? "success" : mailDetail.emailStatus === "FAILED" ? "error" : "default"}
               size="small"
               sx={{ fontWeight: 500 }}
@@ -144,11 +370,24 @@ function MailDetailPage() {
             mt: 2, mb: 2, bgcolor: "#f6faff", borderRadius: 1,
             py: 1.2, border: "1px solid #e2ecfa"
           }}>
-            <Box sx={{ display: "flex", alignItems: "center", mb: 1, px: 2 }}>
-              <AttachFileIcon sx={{ color: "#7da8e3", mr: 1 }} />
-              <Typography fontWeight={600} fontSize={15}>
-                첨부파일 {mailDetail.attachments.length}개
-              </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1, px: 2 }}>
+              <Box sx={{ display: "flex", alignItems: "center" }}>
+                <AttachFileIcon sx={{ color: "#7da8e3", mr: 1 }} />
+                <Typography fontWeight={600} fontSize={15}>
+                  첨부파일 {mailDetail.attachments.length}개
+                </Typography>
+              </Box>
+              {mailDetail.attachments.length > 1 && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<AttachFileIcon />}
+                  onClick={handleDownloadAll}
+                  sx={{ ml: 2 }}
+                >
+                  전체 다운로드 (.zip)
+                </Button>
+              )}
             </Box>
             <Box sx={{
               display: "flex",
@@ -188,11 +427,27 @@ function MailDetailPage() {
           lineHeight: 1.7,
           mb: 2,
           whiteSpace: "pre-wrap",
-          border: "1px solid #efefef"
+          border: "1px solid #efefef",
+          wordBreak: "break-word",
+          overflowWrap: "break-word"
         }}>
           {mailDetail.emailContent}
         </Box>
-      </Paper>
+          </Paper>
+        </Box>
+      </Box>
+
+      {/* Snackbar 알림 */}
+      <Snackbar 
+        open={snack.open} 
+        autoHideDuration={5000} 
+        onClose={() => setSnack({ ...snack, open: false })}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setSnack({ ...snack, open: false })} severity={snack.severity} sx={{ width: '100%' }}>
+          {snack.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

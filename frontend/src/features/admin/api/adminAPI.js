@@ -26,7 +26,7 @@ export async function approvePasswordResetRequest(id) {
 export async function rejectPasswordResetRequest(id, rejectReason) {
   const res = await http.put(
     `/admin/users/password-reset/requests/${id}/reject`,
-    { rejectReason, }
+    { reason: rejectReason }
   );
   return res.data; 
 }
@@ -51,4 +51,19 @@ export async function approveLeaveRequest(id) {
 /** 휴가 요청 반려 */
 export async function rejectLeaveRequest(id, reason) {
   await http.post(`/admin/leave/${id}/reject`, { reason });
+}
+
+/** 로그인 이력 조회 */
+export async function getAccountLogs(page = 0, size = 20, email = null, actionType = null) {
+  const params = { page, size };
+  if (email) params.email = email;
+  if (actionType) params.actionType = actionType;
+  const res = await http.get("/admin/account-logs", { params });
+  return res.data;
+}
+
+/** 사용자 정보 수정 */
+export async function updateUser(userId, userData) {
+  const res = await http.put(`/admin/users/${userId}`, userData);
+  return res.data;
 }

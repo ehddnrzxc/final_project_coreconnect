@@ -1,10 +1,12 @@
 package com.goodee.coreconnect.dashboard.controller;
 
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,9 +16,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.goodee.coreconnect.approval.dto.response.DocumentSimpleResponseDTO;
-import com.goodee.coreconnect.approval.service.ApprovalService;
-import com.goodee.coreconnect.dashboard.dto.DashboardNoticeDTO;
-import com.goodee.coreconnect.dashboard.dto.MyInboxResponseDTO;
+import com.goodee.coreconnect.approval.entity.ApprovalLine;
+import com.goodee.coreconnect.approval.entity.Document;
+import com.goodee.coreconnect.approval.enums.ApprovalLineType;
+import com.goodee.coreconnect.dashboard.dto.response.DashboardNoticeDTO;
+import com.goodee.coreconnect.dashboard.dto.response.MyInboxResponseDTO;
 import com.goodee.coreconnect.dashboard.service.DashboardService;
 import com.goodee.coreconnect.department.service.DepartmentService;
 import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
@@ -77,19 +81,43 @@ public class DashboardController {
 	    Pageable referencesPageable = PageRequest.of(referencesPage, referencesSize);
 
 	    // 서비스에서 리스트 + 총합을 각각 가져옴
-	    var consentsPageResult   = dashboardService.findMyConsents(email, consentsPageable);
-	    var referencesPageResult = dashboardService.findMyReferences(email, referencesPageable);
+	    Page<Document> consentsPageResult   = dashboardService.findMyConsents(email, consentsPageable);
+	    Page<Document> referencesPageResult = dashboardService.findMyReferences(email, referencesPageable);
 
 	    MyInboxResponseDTO body = MyInboxResponseDTO.builder()
 	        .consents(consentsPageResult.getContent().stream()
-	                  .map(DocumentSimpleResponseDTO::toDTO).toList())
+	                  .map(DocumentSimpleResponseDTO::toDTO)
+	                  .collect(Collectors.toList()))
 	        .consentsTotal(consentsPageResult.getTotalElements())
 	        .references(referencesPageResult.getContent().stream()
-	                  .map(DocumentSimpleResponseDTO::toDTO).toList())
+	                  .map(DocumentSimpleResponseDTO::toDTO)
+	                  .collect(Collectors.toList()))
 	        .referencesTotal(referencesPageResult.getTotalElements())
 	        .build();
 
 	    return ResponseEntity.ok(body);
+	}
+
+	/**
+	 * 결재선을 문자열로 변환합니다.
+	 * @param lines 결재선 목록
+	 * @return "결재자1(상태) -> 결재자2(상태)" 형태의 문자열
+	 */
+	private String generateApprovalLine(List<ApprovalLine> lines) {
+	    if (lines == null || lines.isEmpty()) {
+	        return "-";
+	    }
+	    
+	    String displayString = lines.stream()
+	        .filter(line -> line.getApprovalLineType() != ApprovalLineType.REFER)
+	        .sorted(Comparator.comparing(ApprovalLine::getApprovalLineOrder))
+	        .map(line -> {
+	            String approverName = (line.getApprover() != null) ? line.getApprover().getName() : "정보없음";
+	            String status = line.getApprovalLineStatus().name();
+	            return String.format("%s(%s)", approverName, status);
+	        })
+	        .collect(Collectors.joining(" -> "));
+	    return displayString.isEmpty() ? "-" : displayString;
 	}
 
 }

@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.goodee.coreconnect.leave.entity.LeaveRequest;
 import com.goodee.coreconnect.schedule.entity.MeetingRoom;
 import com.goodee.coreconnect.schedule.entity.Schedule;
 import com.goodee.coreconnect.schedule.entity.ScheduleCategory;
@@ -53,11 +54,15 @@ public class RequestScheduleDTO {
   
   /** 추가 참여자 ID 목록 (OWNER 제외) */
   private List<Integer> participantIds;
+  
+  /** 휴가 요청 ID (휴가 일정인 경우) */
+  private Integer leaveRequestId;
 
   /** DTO → Entity 변환 */
   public Schedule toEntity(User user,
                             MeetingRoom meetingRoom,
-                            ScheduleCategory category) {
+                            ScheduleCategory category,
+                            LeaveRequest leaveRequest) {
     
     return Schedule.createSchedule(user,
                                     meetingRoom,
@@ -67,7 +72,8 @@ public class RequestScheduleDTO {
                                     startDateTime,
                                     endDateTime,
                                     location,
-                                    visibility != null ? visibility : ScheduleVisibility.PRIVATE);
+                                    visibility != null ? visibility : ScheduleVisibility.PRIVATE,
+                                    leaveRequest);
   }
     
 }

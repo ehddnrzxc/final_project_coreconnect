@@ -1,22 +1,25 @@
-import React, { useState, useEffect, createContext } from "react";
+import React, { useState, useMemo, useEffect, createContext, useCallback } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
-import Topbar from "./components/layout/Topbar";
+import Topbar from "./components/layout/Topbar/Topbar";
 import Sidebar from "./components/layout/Sidebar";
 import { getMyProfileInfo } from "./features/user/api/userAPI";
 import {
   fetchUnreadCount,
   fetchDraftbox,
-  getUserEmailFromStorage
 } from "./features/email/api/emailApi";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import { Box, CssBaseline } from "@mui/material";
 import useAuth from "./hooks/useAuth";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { SnackbarProvider } from "./components/utils/SnackbarContext";
+// ----------- 채팅 컴포넌트 import 추가 -----------
+import { getMyPendingApprovalCount } from "./features/dashboard/api/dashboardAPI";
+import { fetchChatRoomsLatest } from "./features/chat/api/ChatRoomApi";
+// -----------------------------------------------
 
 export const MailCountContext = createContext();
 export const UserProfileContext = createContext(null);
+export const ApprovalCountContext = createContext();
 
 const themeOptions = {
   light: {
@@ -72,20 +75,26 @@ const themeOptions = {
 };
 
 function App() {
-  const DEFAULT_AVATAR = "https://i.pravatar.cc/80?img=12";
   const [userProfile, setUserProfile] = useState(null);
-  const [avatarUrl, setAvatarUrl] = useState(DEFAULT_AVATAR);
 
   const [unreadCount, setUnreadCount] = useState(0);
   const [draftCount, setDraftCount] = useState(0);
   const navigate = useNavigate();
+
+  // ------------ 채팅 상태 추가 -------------
+  const [chatRoomList, setChatRoomList] = useState([]);
+  const [chatUnreadCount, setChatUnreadCount] = useState(0);
+  // --------------------------------------------
+
+  // 결재 대기 개수 상태
+  const [approvalCount, setApprovalCount] = useState(0);
 
   const [themeMode, setThemeMode] = useState(() => {
     const saved = localStorage.getItem("themeMode");
     return saved && themeOptions[saved] ? saved : "light";
   });
 
-  const theme = React.useMemo(() => {
+  const theme = useMemo(() => {
     const selectedTheme = themeOptions[themeMode];
     return createTheme({
       palette: {
@@ -107,16 +116,16 @@ function App() {
   };
 
   // 받은메일함(안읽은)
-  const refreshUnreadCount = async () => {
-    const userEmail = getUserEmailFromStorage();
+  const refreshUnreadCount = useCallback(async () => {
+    const userEmail = userProfile?.email;
     if (!userEmail) return;
     const count = await fetchUnreadCount(userEmail);
     setUnreadCount(count || 0);
-  };
+  }, [userProfile?.email]);
 
   // 임시보관함(임시저장 개수)
-  const refreshDraftCount = async () => {
-    const userEmail = getUserEmailFromStorage();
+  const refreshDraftCount = useCallback(async () => {
+    const userEmail = userProfile?.email;
     if (!userEmail) return setDraftCount(0);
 
     // 임시보관함 '목록' 조회를 통해 개수 얻음!
@@ -126,7 +135,18 @@ function App() {
         ? res.data.data.totalElements
         : 0;
     setDraftCount(count);
-  };
+  }, [userProfile?.email]);
+
+  const refreshApprovalCount = useCallback(async () => {
+    const userEmail = userProfile?.email;
+    if (!userEmail) return;
+    try {
+      const count = await getMyPendingApprovalCount();
+      setApprovalCount(count || 0);
+    } catch (e) {
+      console.warn("결재 대기 개수 조회 실패:", e);
+    }
+  }, [userProfile?.email]);
 
   const { logout } = useAuth();
 
@@ -141,50 +161,82 @@ function App() {
       try {
         const profileData = await getMyProfileInfo();
         setUserProfile(profileData);
-        console.log("profileData:", profileData);
-        setAvatarUrl(profileData.profileImageUrl || DEFAULT_AVATAR);
       } catch (e) {
         console.warn("프로필 정보 불러오기 실패:", e);
       }
     })();
   }, []);
 
-  // 최초 마운트 시 개수 상태 동기화 (안읽은+임시보관)
+  // 채팅방 목록 및 읽지 않은 메시지 개수 로드
+  const refreshChatRooms = async () => {
+    try {
+      const data = await fetchChatRoomsLatest();
+      const rooms = data?.data || [];
+      setChatRoomList(rooms);
+      // 안읽은 메시지의 총 개수 계산 (각 채팅방의 unreadCount 합계)
+      const totalUnreadCount = rooms.reduce((sum, room) => {
+        return sum + (room?.unreadCount || 0);
+      }, 0);
+      setChatUnreadCount(totalUnreadCount);
+    } catch (e) {
+      console.warn("채팅방 목록 불러오기 실패:", e);
+      setChatRoomList([]);
+      setChatUnreadCount(0);
+    }
+  };
+
+  // 최초 마운트 시 개수 상태 동기화 (안읽은+임시보관+채팅)
   useEffect(() => {
-    refreshUnreadCount();
-    refreshDraftCount();
-  }, []);
+    if (userProfile?.email) {
+      refreshUnreadCount();
+      refreshDraftCount();
+      refreshApprovalCount();
+      refreshChatRooms();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userProfile?.email]);
 
   // context value: count, set, refresh 함수
-  const mailCountContextValue = {
-    unreadCount, refreshUnreadCount,
-    draftCount, refreshDraftCount,
-    setAvatarUrl
-  };
+  // useMemo를 사용하여 항상 동일한 객체 참조를 유지하고, userProfile이 없어도 기본값 제공
+  const mailCountContextValue = useMemo(() => ({
+    unreadCount: unreadCount || 0,
+    refreshUnreadCount,
+    draftCount: draftCount || 0,
+    refreshDraftCount,
+  }), [unreadCount, draftCount, refreshUnreadCount, refreshDraftCount]);
+
+  const approvalCountContextValue = useMemo(() => ({
+    approvalCount: approvalCount || 0,
+    refreshApprovalCount
+  }), [approvalCount, refreshApprovalCount]);
 
   return (
     <ThemeProvider theme={theme}>
       <LocalizationProvider dateAdapter={AdapterDayjs}>
-        <SnackbarProvider>
-          <CssBaseline />
-          <UserProfileContext.Provider value={userProfile}>
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: "column",
-                minHeight: "100vh",
-                bgcolor: "background.default",
-              }}
-            >
-              <Topbar 
-                onLogout={handleLogout} 
-                themeMode={themeMode}
-                themeOptions={themeOptions}
-                onThemeChange={handleThemeChange}
-              />
-              <MailCountContext.Provider value={mailCountContextValue}>
+        <CssBaseline />
+        <UserProfileContext.Provider value={useMemo(() => ({ userProfile, setUserProfile }), [userProfile])}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              minHeight: "100vh",
+              bgcolor: "background.default",
+            }}
+          >
+            {/* ----------- Topbar(채팅아이콘 추가) ------------ */}
+            <Topbar 
+              onLogout={handleLogout}
+              themeMode={themeMode}
+              themeOptions={themeOptions}
+              onThemeChange={handleThemeChange}
+              chatRoomList={chatRoomList}
+              chatUnreadCount={chatUnreadCount}
+            />
+            {/* ----------------------------------------------- */}
+            {/* MailCountContext Provider */}
+            <MailCountContext.Provider value={mailCountContextValue}>
+              <ApprovalCountContext.Provider value={approvalCountContextValue}>
                 <Box sx={{ display: "flex", flex: 1, minHeight: 0 }}>
-                  {/* Sidebar는 Provider 내부에서 context 사용, undefined 안전 처리됨 */}
                   <Sidebar />
                   <Box
                     component="main"
@@ -196,13 +248,14 @@ function App() {
                       bgcolor: "background.default",
                     }}
                   >
-                    <Outlet context={{ setAvatarUrl, refreshUnreadCount }} />
+                    <Outlet context={{ refreshUnreadCount }} />
                   </Box>
                 </Box>
-              </MailCountContext.Provider>
-            </Box>
-          </UserProfileContext.Provider>
-        </SnackbarProvider>
+              </ApprovalCountContext.Provider>
+            </MailCountContext.Provider>
+
+          </Box>
+        </UserProfileContext.Provider>
       </LocalizationProvider>
     </ThemeProvider>
   );

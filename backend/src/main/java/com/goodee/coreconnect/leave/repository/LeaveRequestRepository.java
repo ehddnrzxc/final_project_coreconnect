@@ -1,14 +1,18 @@
 package com.goodee.coreconnect.leave.repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.goodee.coreconnect.leave.entity.LeaveRequest;
-import com.goodee.coreconnect.leave.entity.LeaveStatus;
+import com.goodee.coreconnect.leave.enums.LeaveStatus;
+import com.goodee.coreconnect.leave.enums.LeaveType;
 import com.goodee.coreconnect.user.entity.User;
 
 public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Integer> {
@@ -28,7 +32,48 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Inte
   List<LeaveRequest> findByUserAndStatusAndTypeAndYear(
       @Param("user") User user,
       @Param("status") LeaveStatus status,
-      @Param("type") String type,
+      @Param("type") LeaveType type,
       @Param("year") Integer year
+  );
+  
+  /**
+   * 주 단위 휴가자 수 조회
+   * 특정 기간 내에 승인된 휴가가 있는 날짜별 휴가자 수를 반환
+   * 각 날짜에 휴가 기간이 겹치는 모든 휴가를 카운트
+   */
+  @Query("""
+      SELECT l.startDate, l.endDate, l.user.id
+      FROM LeaveRequest l
+      WHERE l.status = 'APPROVED'
+        AND l.startDate <= :endDate
+        AND l.endDate >= :startDate
+      ORDER BY l.startDate
+      """)
+  List<Object[]> findLeavesByDateRange(
+      @Param("startDate") LocalDate startDate,
+      @Param("endDate") LocalDate endDate
+  );
+  
+  /**
+   * 전사 휴가 상세 목록 조회 (필터, 페이지네이션)
+   */
+  @Query("""
+      SELECT l FROM LeaveRequest l
+      JOIN FETCH l.user u
+      LEFT JOIN FETCH u.department d
+      WHERE l.status = 'APPROVED'
+        AND l.startDate <= :endDate
+        AND l.endDate >= :startDate
+        AND (:leaveTypeFilter IS NULL OR 
+             (:leaveTypeFilter = 'ANNUAL' AND l.type = :annualType) OR
+             (:leaveTypeFilter = 'ETC' AND l.type != :annualType))
+      ORDER BY l.startDate DESC, u.name ASC
+      """)
+  Page<LeaveRequest> findCompanyLeaves(
+      @Param("startDate") LocalDate startDate,
+      @Param("endDate") LocalDate endDate,
+      @Param("leaveTypeFilter") String leaveTypeFilter,
+      @Param("annualType") LeaveType annualType,
+      Pageable pageable
   );
 }

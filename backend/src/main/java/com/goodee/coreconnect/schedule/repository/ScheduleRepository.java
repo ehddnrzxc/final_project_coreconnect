@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import com.goodee.coreconnect.leave.entity.LeaveRequest;
 import com.goodee.coreconnect.schedule.entity.MeetingRoom;
 import com.goodee.coreconnect.schedule.entity.Schedule;
 import com.goodee.coreconnect.schedule.entity.ScheduleCategory;
@@ -60,15 +61,17 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Integer> {
       WHERE s.deletedYn = false
         AND (
              s.user.id = :userId
-          OR sp.user.id = :userId
+          OR (sp.user.id = :userId AND sp.deletedYn = false)
         )
         AND (:start < s.endDateTime AND :end > s.startDateTime)
+        AND (:excludeId IS NULL OR s.id <> :excludeId)
       ORDER BY s.startDateTime ASC
   """)
   List<Schedule> findOverlappingSchedules(
       @Param("userId") Integer userId,
       @Param("start") LocalDateTime start,
-      @Param("end") LocalDateTime end
+      @Param("end") LocalDateTime end,
+      @Param("excludeId") Integer excludeId
   );
   
   
@@ -143,11 +146,13 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Integer> {
       WHERE s.meetingRoom = :meetingRoom
         AND s.deletedYn = false
         AND (:start < s.endDateTime AND :end > s.startDateTime)
+        AND (:excludeId IS NULL OR s.id <> :excludeId)
   """)
   boolean existsOverlappingSchedule(
       @Param("meetingRoom") MeetingRoom meetingRoom,
       @Param("start") LocalDateTime start,
-      @Param("end") LocalDateTime end
+      @Param("end") LocalDateTime end,
+      @Param("excludeId") Integer excludeId
   );
 
   /**
@@ -170,5 +175,8 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Integer> {
       @Param("start") LocalDateTime start,
       @Param("end") LocalDateTime end
   );
+
+  /** 휴가 요청으로 생성된 일정 조회 */
+  Optional<Schedule> findByLeaveRequest(LeaveRequest leaveRequest);
 
 }

@@ -184,6 +184,7 @@ export default function CalendarCard() {
                   <Box
                     key={cell.iso}
                     onClick={() => handleSelectDate(cell)}
+                    data-grid-cancel="true"
                     sx={{
                       position: "relative",
                       borderRadius: 1.5,
@@ -219,7 +220,7 @@ export default function CalendarCard() {
                           minWidth: 14,
                           height: 14,
                           borderRadius: "50%",
-                          bgcolor: "primary.main",
+                          bgcolor: "error.main",
                           color: "#fff",
                           fontSize: "0.65rem",
                           display: "flex",

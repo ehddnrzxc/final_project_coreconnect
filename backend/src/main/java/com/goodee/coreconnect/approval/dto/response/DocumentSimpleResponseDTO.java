@@ -1,6 +1,8 @@
 package com.goodee.coreconnect.approval.dto.response;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.approval.enums.DocumentStatus;
@@ -24,9 +26,14 @@ public class DocumentSimpleResponseDTO {
   private LocalDateTime completedAt;
   private String templateName;
   private Integer templateId;
-  private String approvalLine;
+  private List<ApprovalLineResponseDTO> approvalLines;
   
-  public static DocumentSimpleResponseDTO toDTO(Document document, String approvalLine) {
+  public static DocumentSimpleResponseDTO toDTO(Document document) {
+    
+    List<ApprovalLineResponseDTO> approvalLineDTOs = document.getApprovalLines().stream()
+        .map(ApprovalLineResponseDTO::toDTO)
+        .collect(Collectors.toList());
+    
     return DocumentSimpleResponseDTO.builder()
         .documentId(document.getId())
         .documentTitle(document.getDocumentTitle())
@@ -39,7 +46,7 @@ public class DocumentSimpleResponseDTO {
         .completedAt(document.getCompletedAt())
         .templateName(document.getTemplate().getTemplateName())
         .templateId(document.getTemplate().getId())
-        .approvalLine(approvalLine)
+        .approvalLines(approvalLineDTOs)
         .build();
   }
   

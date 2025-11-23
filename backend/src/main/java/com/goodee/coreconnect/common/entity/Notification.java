@@ -3,8 +3,10 @@ package com.goodee.coreconnect.common.entity;
 import java.time.LocalDateTime;
 
 import com.goodee.coreconnect.approval.entity.Document;
+import com.goodee.coreconnect.board.entity.Board;
 import com.goodee.coreconnect.chat.entity.Chat;
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
+import com.goodee.coreconnect.schedule.entity.Schedule;
 import com.goodee.coreconnect.user.entity.User;
 
 import jakarta.persistence.Column;
@@ -18,6 +20,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.DynamicUpdate;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -26,14 +29,15 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor // ★ 롬복 기본 생성자(생략 가능, 직접 protected Notification() {} 써도 OK)
 @Entity
 @Table(name = "notification")
+@DynamicUpdate // 변경된 필드만 업데이트하도록 설정
 public class Notification {
   
    @Id
    @GeneratedValue(strategy = GenerationType.IDENTITY)
    private Integer id;
    
-   @Column(name = "notification_read_yn")
-   private Boolean notificationReadYn;
+  @Column(name = "notification_read_yn")
+  private Boolean notificationReadYn = false;
    
    @Enumerated(EnumType.STRING)
    @Column(name = "notification_type", nullable = false)
@@ -51,7 +55,7 @@ public class Notification {
    @Column(name = "notification_sent_yn")
    private Boolean notificationSentYn;
    
-   @Column(name = "notification_message")
+   @Column(name = "notification_message", length = 255)
    private String notificationMessage;
    
    @ManyToOne
@@ -66,6 +70,14 @@ public class Notification {
    @ManyToOne(fetch = FetchType.LAZY)
 	 @JoinColumn(name = "doc_id")
 	 private Document document;
+  
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "board_id")
+  private Board board;
+  
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "schedule_id")
+  private Schedule schedule;
    
    // N : 1 관계 (user 테이블과 매핑)
    // 알림 수신자
@@ -81,6 +93,8 @@ public class Notification {
            String notificationMessage,
            Chat chat,
            Document document,
+           Board board,
+           Schedule schedule,
            Boolean notificationReadYn,
            Boolean notificationSentYn,
            Boolean notificationDeletedYn,
@@ -92,11 +106,13 @@ public class Notification {
        notification.user = user;
        notification.notificationType = notificationType;
        notification.notificationMessage = notificationMessage;
-       notification.chat = chat;
-       notification.document = document;
-       notification.notificationReadYn = notificationReadYn;
-       notification.notificationSentYn = notificationSentYn;
-       notification.notificationDeletedYn = notificationDeletedYn != null ? notificationDeletedYn : false;
+      notification.chat = chat;
+      notification.document = document;
+      notification.board = board;
+      notification.schedule = schedule;
+      notification.notificationReadYn = notificationReadYn != null ? notificationReadYn : false;
+      notification.notificationSentYn = notificationSentYn;
+      notification.notificationDeletedYn = notificationDeletedYn != null ? notificationDeletedYn : false;
        notification.notificationSentAt = notificationSentAt;
        notification.notificationReadAt = notificationReadAt;
        notification.sender = sender;

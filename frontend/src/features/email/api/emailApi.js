@@ -1,16 +1,5 @@
 import http from '../../../api/http.js';
 
-// 로컬스토리지에서 로그인 사용자 email 추출
-export function getUserEmailFromStorage() {
-  const userString = localStorage.getItem("user");
-  if (!userString) return null;
-  try {
-    const userObj = JSON.parse(userString);
-    return userObj.email || null;
-  } catch {
-    return null;
-  }
-}
 
 // 기본 받은메일함 조회 (기본 옵션만)
 export const fetchInboxSimple = (userEmail, page, size, filter) =>
@@ -21,18 +10,20 @@ export const fetchInboxSimple = (userEmail, page, size, filter) =>
  */
 export const fetchInbox = (
   userEmail, page, size, filter,
-  sortField = null, sortDirection = null
+  sortField = null, sortDirection = null,
+  searchType = null, keyword = null
 ) => {
   const params = { userEmail, page, size, filter };
   if (sortField) params.sortField = sortField;
   if (sortDirection) params.sortDirection = sortDirection;
+  if (searchType) params.searchType = searchType;
+  if (keyword && keyword.trim().length > 0) params.keyword = keyword.trim();
   return http.get('/email/inbox', { params });
 };
 
 // '안읽은 메일' 개수 조회 (Controller의 /email/inbox/unread-count와 매칭)
 export const fetchUnreadCount = (userEmail) =>
-  http
-    .get('/email/inbox/unread-count', { params: { userEmail } })
+  http.get('/email/inbox/unread-count', { params: { userEmail } })
     .then(res => res.data.data);
 
 // 메일 상세 조회 (userEmail 동봉)
@@ -43,6 +34,10 @@ export const getEmailDetail = (emailId, userEmail) => {
 // 메일 읽음 처리 API (PATCH)
 export const markMailAsRead = (emailId, userEmail) =>
   http.patch(`/email/${emailId}/read`, { userEmail });
+
+// 메일 중요 표시 토글 API (PATCH)
+export const toggleFavoriteStatus = (emailId, userEmail) =>
+  http.patch(`/email/${emailId}/favorite`, { userEmail });
 
 // 파일 다운로드 (첨부파일)
 export const downloadAttachment = (fileId, fileName) => {
@@ -80,9 +75,11 @@ export const sendMail = (mailData) => {
   return http.post('/email/send', formData);
 };
 
-export const fetchSentbox = (page, size) => {
-  const userEmail = getUserEmailFromStorage();
-  return http.get('/email/sentbox', { params: { userEmail, page, size } });
+export const fetchSentbox = (userEmail, page, size, searchType = null, keyword = null) => {
+  const params = { userEmail, page, size };
+  if (searchType) params.searchType = searchType;
+  if (keyword && keyword.trim().length > 0) params.keyword = keyword.trim();
+  return http.get('/email/sentbox', { params });
 };
 
 export const downloadAllAttachments = (attachments = []) => {
@@ -144,9 +141,13 @@ export const fetchTrashList = (userEmail, page = 0, size = 20) =>
   http.get('/email/trash', { params: { userEmail, page, size } });
 
 // 선택된 mailIds를 삭제(휴지통) 처리
-export function deleteMails(mailIds) {
-  return http.delete('/email/trash', { data: { mailIds } })
-    .then(res => res.data);
+// api/emailApi.js (axios 인스턴스 http 이용 시)
+export function deleteMails(deleteMailsRequest) {
+  // 반드시 두번째 파라미터(config)에 data를 넣는다! (axios v0.19 이상)
+  return http.delete('/email/trash', {
+    data: deleteMailsRequest, // ← { mailIds: [...] }
+    headers: { 'Content-Type': 'application/json' } // 명시(일부 env에서 필요)
+  });
 }
 
 // fetchTrashMails wrapper returning axios response (older callers)
@@ -165,3 +166,15 @@ export async function fetchScheduledMails(userEmail, page = 0, size = 10) {
   });
   return res.data;
 }
+
+// 중요 메일 목록 조회
+export const fetchFavoriteMails = (
+  userEmail, page, size,
+  searchType = null, keyword = null
+) => {
+  const params = { userEmail, page, size };
+  if (searchType) params.searchType = searchType;
+  if (keyword && keyword.trim().length > 0) params.keyword = keyword.trim();
+  return http.get('/email/favorite', { params });
+};
+

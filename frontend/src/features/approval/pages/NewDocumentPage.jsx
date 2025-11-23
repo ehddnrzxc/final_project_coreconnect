@@ -1,17 +1,19 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useContext } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getTemplateDetail, submitDocument, saveDraft, getDocumentDetail, updateDraft, updateDocument } from '../api/approvalApi';
 import { Button, Alert, Box, CircularProgress, Paper, TextField, Typography, List, ListItem, ListItemText, TableContainer, Table, TableHead, TableRow, TableCell, TableBody } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import SendIcon from '@mui/icons-material/Send';
 import PeopleIcon from '@mui/icons-material/People';
-import ApprovalLineModal from './ApprovalLineModal';
+import ApprovalLineModal from '../components/ApprovalLineModal';
 import ApprovalTypeChip from '../components/ApprovalTypeChip';
-import VacationForm from './VacationForm';
+import VacationForm from '../forms/VacationForm';
 import DynamicApprovalTable from '../components/DynamicApprovalTable';
-import BusinessTripForm from './BusinessTripForm';
-import ExpenseForm from './ExpenseForm';
-import { getJobGradeLabel } from '../../../components/utils/labelUtils';
+import BusinessTripForm from '../forms/BusinessTripForm';
+import ExpenseForm from '../forms/ExpenseForm';
+import { getJobGradeLabel } from '../../../utils/labelUtils';
+import { useSnackbarContext } from '../../../components/utils/SnackbarContext';
+import { UserProfileContext } from '../../../App';
 
 // --- 헬퍼 함수들 ---
 const getTodayDate = () => {
@@ -31,18 +33,6 @@ export const calculateDuration = (startDate, endDate) => {
   if (diffTime < 0) return 0;
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
   return diffDays;
-};
-
-const getCurrentUser = () => {
-  try {
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      return JSON.parse(userStr);
-    }
-  } catch (error) {
-    console.error("로컬 스토리지 사용자 정보 파싱 실패:", error);
-  }
-  return null;
 };
 
 // 템플릿 키에 따라 적절한 폼 컴포넌트를 반환하는 헬퍼 컴포넌트
@@ -95,7 +85,7 @@ const getInitialFormData = templateKey => {
     case 'EXPENSE':
       return {
         ...commonData,
-        purpose: "",
+        purpose: " ",
         items: [],
         totalAmount: 0,
       }
@@ -112,6 +102,8 @@ function NewDocumentPage() {
   const { templateId, documentId } = useParams();
   const isEditMode = !!documentId;  // 수정 모드인지 확인하는 플래그
 
+  const { showSnack } = useSnackbarContext();
+
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [documentTitle, setDocumentTitle] = useState("");
   const [files, setFiles] = useState([]);
@@ -119,8 +111,7 @@ function NewDocumentPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  const currentUser = useMemo(() => getCurrentUser(), []);
+  const currentUser = useContext(UserProfileContext)?.userProfile;
 
   // formData의 초기값을 공통 값으로만 설정
   const [formData, setFormData] = useState({
@@ -152,8 +143,6 @@ function NewDocumentPage() {
 
   useEffect(() => {
     if (!currentUser) {
-      setError("로그인 정보가 없습니다.");
-      setLoading(false);
       return;
     }
 
@@ -179,7 +168,8 @@ function NewDocumentPage() {
           tempHtmlContent: doc.tempHtmlContent
         });
 
-        setFormData(JSON.parse(doc.documentContent || '{}'));
+        const parsedData = JSON.parse(doc.documentContent || '{}');
+        setFormData(parsedData);
 
       } catch (error) {
         console.error("Error fetching document detail for edit:", error);
@@ -193,7 +183,9 @@ function NewDocumentPage() {
       try {
         setLoading(true);
         setError(null);
+        setApprovalLine([]);
         const detailRes = await getTemplateDetail(templateId);
+        console.log("detailResponse", detailRes)
 
         if(!detailRes.data.temp_key) {
           setError("API 응답에 'temp_key'가 포함되어 있지 않습니다.");
@@ -242,19 +234,24 @@ function NewDocumentPage() {
 
   const handleSubmit = async isDraft => {
     if (!selectedTemplate) {
-      alert("템플릿 정보가 로드되지 않았습니다.");
+      showSnack("템플릿 정보가 로드되지 않았습니다.", "error");
       return;
     }
 
     if (!documentTitle.trim()) {
-      alert("문서 제목을 입력해주세요.");
+      showSnack("문서 제목을 입력해주세요.", "warning");
       return;
     }
   
-    if (!isDraft && approvalLine.length === 0) {
-      alert("결재선을 1명 이상 지정해야 합니다.");
-      setModalOpen(true);
-      return;
+    if (!isDraft) {
+      const hasApprover = approvalLine.some(line =>
+        (line.type || line.approvalType) === 'APPROVE'
+      );
+      if (!hasApprover) {
+        showSnack("최소 1명의 결재자를 지정해야 합니다.", "warning");
+        setModalOpen(true);
+        return;
+      }
     }
   
     const documentDataJson = JSON.stringify(formData);
@@ -274,6 +271,7 @@ function NewDocumentPage() {
 
       if (isEditMode) {
         const requestDTO = {
+          templateId: parseInt(selectedTemplate.templateId),
           documentTitle: documentTitle,
           documentDataJson: documentDataJson,
           approvalLines: formattedApprovalLines
@@ -282,10 +280,10 @@ function NewDocumentPage() {
 
         if (isDraft) {
           res = await updateDraft(documentId, formDataToSend);
-          alert(`문서가 수정되어 임시저장되었습니다.`);
+          showSnack(`문서가 수정되어 임시저장되었습니다.`, "success");
         } else {
           res = await updateDocument(documentId, formDataToSend);
-          alert(`문서가 수정되어 상신되었습니다.`);
+          showSnack(`문서가 수정되어 상신되었습니다.`, "success");
         }
         navigate(`/e-approval/doc/${documentId}`);
       } else {
@@ -303,10 +301,10 @@ function NewDocumentPage() {
 
         if (isDraft) {
           res = await saveDraft(formDataToSend);
-          alert(`문서가 임시저장되었습니다.`);
+          showSnack(`문서가 임시저장되었습니다.`, "success");
         } else {
           res = await submitDocument(formDataToSend);
-          alert(`문서가 성공적으로 상신되었습니다.`);
+          showSnack(`문서가 성공적으로 상신되었습니다.`, "success");
         }
 
         if (res && res.data) {
@@ -319,8 +317,7 @@ function NewDocumentPage() {
     } catch (error) {
       console.error("문서 처리 실패:", error);
       const errorMsg = error.response?.data?.message || `문서 ${isDraft ? '저장' : '상신'}에 실패했습니다.`;
-      setError(errorMsg)
-      alert(errorMsg);
+      showSnack(errorMsg, "error");
     } finally {
       setLoading(false);
     }
@@ -329,11 +326,26 @@ function NewDocumentPage() {
 
 
   if (loading) return <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}><CircularProgress /></Box>;
-  if (error) return <Alert severity='error'>{error}</Alert>;
+  if (error) return (
+    <Box sx={{ mt: 4 }}>
+      <Alert severity='error'>{error}</Alert>
+      <Button variant='outlined' sx={{ mt: 2 }} onClick={() => navigate(-1)}>뒤로 가기</Button>
+    </Box>
+  )
   if (!selectedTemplate) return <Alert severity='warning'>선택된 양식 정보를 찾을 수 없습니다.</Alert>;
 
   return (
     <Box>
+      {error && (
+        <Alert
+          severity='error'
+          onClose={() => setError(null)}
+          sx={{ mb: 2 }}
+        >
+          {error}
+        </Alert>
+      )}
+
       <Typography variant='h5' gutterBottom sx={{ fontWeight: "bold" }}>
         {isEditMode ? "결재 문서 수정" : "새 결재 문서 작성"}
       </Typography>
@@ -371,7 +383,7 @@ function NewDocumentPage() {
                   </tr>
                   <tr>
                     <td style={{ border: '1px solid #ccc', backgroundColor: '#f8f8f8', padding: '10px', textAlign: 'center', fontWeight: 'bold' }}>소속</td>
-                    <td style={{ border: '1px solid #ccc', padding: '10px' }}>{currentUser?.departmentName}</td>
+                    <td style={{ border: '1px solid #ccc', padding: '10px' }}>{currentUser?.deptName}</td>
                   </tr>
                   <tr>
                     <td style={{ border: '1px solid #ccc', backgroundColor: '#f8f8f8', padding: '10px', textAlign: 'center', fontWeight: 'bold' }}>기안일</td>
@@ -416,7 +428,7 @@ function NewDocumentPage() {
           ) : (
             <List dense>
               {approvalLine.map((line, index) => (
-                <ListItem key={line.userId} disablePadding>
+                <ListItem key={line.lineId} disablePadding>
                   <ApprovalTypeChip type={line.type || line.approvalType} size="small" sx={{ mr: 1.5, minWidth: '50px' }} />
                   <ListItemText primary={`${index + 1}. ${line.name} (${getJobGradeLabel(line.positionName)})`} secondary={line.deptName} />
                 </ListItem>

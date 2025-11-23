@@ -5,12 +5,6 @@
 
 import http from "../../../api/http";
 
-// 현재 사용자 프로필 이미지 URL 조회
-export async function getMyProfileImage() {
-  const { data } = await http.get("/user/profile-image");
-  return data?.imageUrl || "";
-}
-
 // 현재 사용자 프로필 이미지 업로드 (FormData)
 export async function uploadMyProfileImage(file) {
   // FormData: HTML <form> 데이터를 자바스크립트에서 직접 만드는 객체
@@ -24,7 +18,7 @@ export async function uploadMyProfileImage(file) {
 }
 
 // 관리자용 사원 리스트 조회
-export const getAdminUsers = () => http.get("/user").then(res => res.data);
+export const getAdminUsers = () => http.get("/admin/users").then(res => res.data);
 
 // 조직도/사용자 조회
 export const getOrganizationChart = () => http.get("/user/organization");
@@ -38,5 +32,35 @@ export async function getUserDeptId() {
 // 로그인된 사용자의 프로필 표시용 정보 조회
 export async function getMyProfileInfo() {
   const res = await http.get("/user/profile-info");
-  return res.data; // ResponseEntity.ok(dto)로 반환하므로 res.data가 UserDTO
+  return res.data; 
+}
+
+// 비밀번호 변경
+export async function changePassword(currentPassword, newPassword, confirmPassword) {
+  const res = await http.put("/user/password", {
+    currentPassword,
+    newPassword,
+    confirmPassword,
+  });
+  return res.data;
+}
+
+// 프로필 정보 조회
+export async function getDetailProfileInfo() {
+  const res = await http.get("/user/detail-profile");
+  return res.data;
+}
+
+// 프로필 정보 수정
+export async function updateDetailProfileInfo(profileData) {
+  const res = await http.put("/user/detail-profile", profileData);
+  return res.data;
+}
+
+// 생일자 목록 조회
+export async function getBirthdayUsers(year, month) {
+  const res = await http.get("/user/birthdays", {
+    params: { year, month },
+  });
+  return res.data;
 }

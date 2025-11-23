@@ -1,0 +1,245 @@
+import { Box, Chip, Typography, useTheme, Container, Paper, List, ListItemButton, ListItemText, Divider } from "@mui/material";
+import { checkIn, checkOut, getTodayAttendance } from "../api/attendanceAPI";
+import { formatKoreanDate, formatKoreanTime, formatTime } from "../../../utils/TimeUtils";
+import { useState, useEffect } from "react";
+import { Outlet, Link as RouterLink, useLocation } from "react-router-dom";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import CancelIcon from "@mui/icons-material/Cancel";
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
+import StyledButton from "../../../components/ui/StyledButton";
+import { getAttendanceStatusLabel } from "../../../utils/labelUtils";
+
+function AttendanceLayout() {
+  const { showSnack } = useSnackbarContext();
+  const theme = useTheme();
+  const location = useLocation();
+  const [now, setNow] = useState(new Date());
+  const [attendance, setAttendance] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  // 현재 경로에 따라 선택된 메뉴 결정
+  const isMyAttendance = location.pathname === "/attendance" || location.pathname === "/attendance/my";
+  const isCompanyAttendance = location.pathname === "/attendance/company";
+  
+  const dateString = formatKoreanDate(now);
+  const timeString = formatKoreanTime(now);
+  
+  // 데이터가 없을 때 기본값 처리
+  const checkInTime = formatTime(attendance?.checkIn) || "-";
+  const checkOutTime = formatTime(attendance?.checkOut) || "-";
+  const status = attendance?.status || "ABSENT";
+  const canCheckIn = status === "ABSENT"; // 미출근일 때만 출근 가능
+  const canCheckOut = status === "PRESENT" || status === "LATE"; // 근무중/지각일 때만 퇴근 가능
+  
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    loadAttendance();
+  }, []);
+
+  const loadAttendance = async () => {
+    try {
+      setLoading(true);
+      const data = await getTodayAttendance();
+      setAttendance(data);
+    } catch (err) {
+      console.error("근태 조회 실패:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCheckIn = async () => {
+    try {
+      await checkIn();
+      await loadAttendance();
+      showSnack("출근 처리되었습니다.", "success");
+    } catch (err) {
+      console.error(err);
+      showSnack("출근 처리에 실패했습니다.", "error");
+    }
+  };
+
+  const handleCheckOut = async () => {
+    try {
+      await checkOut();
+      await loadAttendance();
+      showSnack("퇴근 처리되었습니다.", "success");
+    } catch (err) {
+      console.error(err);
+      showSnack("퇴근 처리에 실패했습니다.", "error");
+    }
+  };
+
+  const getStatusInfo = () => {
+    const label = getAttendanceStatusLabel(status);
+    switch (status) {
+      case "PRESENT":
+        return { label, color: "success" };
+      case "LATE":
+        return { label, color: "warning" };
+      case "LEAVE_EARLY":
+      case "COMPLETED":
+        return { label: status === "LEAVE_EARLY" ? "조퇴" : "퇴근", color: "info" };
+      default:
+        return { label: "미출근", color: "default" };
+    }
+  };
+
+  const statusInfo = getStatusInfo();
+
+  return (
+    <Box sx={{ display: "flex", height: "100vh", overflow: "hidden" }}>
+      {/* 왼쪽 사이드바 */}
+      <Paper
+        elevation={2}
+        sx={{
+          width: 260,
+          minWidth: 260,
+          height: "100%",
+          borderRadius: 0,
+          display: "flex",
+          flexDirection: "column",
+          borderRight: "1px solid",
+          borderColor: "divider",
+        }}
+      >
+        {/* 근태 헤더 */}
+        <Box sx={{ p: 2, borderBottom: "1px solid", borderColor: "divider" }}>
+          <Typography variant="h6" fontWeight={600}>
+            근태
+          </Typography>
+        </Box>
+
+        {/* 현재 날짜/시간 및 상태 */}
+        <Box sx={{ p: 2, borderBottom: "1px solid", borderColor: "divider" }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              {dateString}
+            </Typography>
+            <Chip
+              label={statusInfo.label}
+              color={statusInfo.color}
+              size="small"
+              sx={{ fontSize: 12 }}
+            />
+          </Box>
+          <Typography variant="body2" color="text.secondary">
+            {timeString}
+          </Typography>
+        </Box>
+
+        {/* 출근/퇴근 시간 */}
+        <Box sx={{ p: 2, borderBottom: "1px solid", borderColor: "divider" }}>
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+              출근 시간
+            </Typography>
+            <Typography variant="body1" fontWeight={600}>
+              {checkInTime}
+            </Typography>
+          </Box>
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
+              퇴근 시간
+            </Typography>
+            <Typography variant="body1" fontWeight={600}>
+              {checkOutTime}
+            </Typography>
+          </Box>
+        </Box>
+
+        {/* 출근/퇴근 버튼 */}
+        <Box sx={{ p: 2, borderBottom: "1px solid", borderColor: "divider" }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            <StyledButton
+              fullWidth
+              onClick={handleCheckIn}
+              disabled={!canCheckIn}
+            >
+              출근하기
+            </StyledButton>
+            <StyledButton
+              fullWidth
+              onClick={handleCheckOut}
+              disabled={!canCheckOut}
+            >
+              퇴근하기
+            </StyledButton>
+          </Box>
+        </Box>
+
+        {/* 메뉴 */}
+        <Box sx={{ flex: 1, overflowY: "auto" }}>
+          <Box sx={{ p: 2 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1, fontWeight: 600 }}>
+              내 근태관리
+            </Typography>
+            <List sx={{ p: 0 }}>
+              <ListItemButton
+                component={RouterLink}
+                to="/attendance/my"
+                selected={isMyAttendance}
+                sx={{
+                  borderRadius: 1,
+                  mb: 0.5,
+                  "&.Mui-selected": {
+                    bgcolor: "transparent",
+                    color: "primary.main",
+                    "&:hover": {
+                      bgcolor: "transparent",
+                    },
+                  },
+                }}
+              >
+                <ListItemText primary="내 근태현황" />
+              </ListItemButton>
+            </List>
+          </Box>
+
+          <Divider />
+
+          <Box sx={{ p: 2 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1, fontWeight: 600 }}>
+              전사 근태관리
+            </Typography>
+            <List sx={{ p: 0 }}>
+              <ListItemButton
+                component={RouterLink}
+                to="/attendance/company"
+                selected={isCompanyAttendance}
+                sx={{
+                  borderRadius: 1,
+                  mb: 0.5,
+                  "&.Mui-selected": {
+                    bgcolor: "transparent",
+                    color: "primary.main",
+                    "&:hover": {
+                      bgcolor: "transparent",
+                    },
+                  },
+                }}
+              >
+                <ListItemText primary="전사 근태현황" />
+              </ListItemButton>
+            </List>
+          </Box>
+        </Box>
+      </Paper>
+
+      {/* 메인 콘텐츠 영역 */}
+      <Box sx={{ flex: 1, overflowY: "auto", bgcolor: "background.default" }}>
+        <Outlet />
+      </Box>
+    </Box>
+  );
+}
+
+export default AttendanceLayout;
+

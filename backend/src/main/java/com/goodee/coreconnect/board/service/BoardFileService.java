@@ -28,8 +28,8 @@ public interface BoardFileService {
     /** ZIP 전체 다운로드 */
     void downloadAllFiles(Integer boardId, HttpServletResponse response) throws Exception;
     
-    /** Presigned URL 내부 접근용 */
-    String getPresignedUrlInternal(String key);
+    /** Presigned URL 생성 */
+    String getPresignedUrlWithFilename(String key, String originalFileName);
     
     /** 단일 파일 다운로드 */
     void downloadSingleFile(Integer fileId, HttpServletResponse response) throws Exception;

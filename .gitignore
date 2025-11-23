@@ -1,2 +1,4 @@
 /.metadata/
 .cursorrules
+.vscode/
+.env

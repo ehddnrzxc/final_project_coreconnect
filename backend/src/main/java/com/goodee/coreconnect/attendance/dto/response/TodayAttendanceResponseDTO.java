@@ -3,11 +3,12 @@ package com.goodee.coreconnect.attendance.dto.response;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-import com.goodee.coreconnect.attendance.entity.AttendanceStatus;
+import com.goodee.coreconnect.attendance.enums.AttendanceStatus;
 
+/** 오늘 근태현황 조회용 DTO */
 public record TodayAttendanceResponseDTO(
-    LocalDate workDate, // 근무일
-    LocalDateTime checkIn, // 출근
-    LocalDateTime checkOut, // 퇴근
-    AttendanceStatus status // 상태 
+    LocalDate workDate, 
+    LocalDateTime checkIn, 
+    LocalDateTime checkOut, 
+    AttendanceStatus status 
     ) {}

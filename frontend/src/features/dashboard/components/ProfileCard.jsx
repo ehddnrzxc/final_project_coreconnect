@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useContext } from "react";
 import { getMyLeaveSummary } from "../../leave/api/leaveAPI";
 import { getMyPendingApprovalCount, getMyReceivedApprovalCount  } from "../api/dashboardAPI";
-import { Link, useOutletContext } from "react-router-dom";
+import { fetchUnreadCount } from "../../email/api/emailApi";
+import { Link } from "react-router-dom";
 import Card from "../../../components/ui/Card";
 import {
   Box,
@@ -10,6 +11,7 @@ import {
   ListItemButton,
   ListItemText,
   Typography,
+  Avatar,
 } from "@mui/material";
 import {
   uploadMyProfileImage,
@@ -21,9 +23,9 @@ import {
   getMyDeptBoardCategoryId,
 } from "../api/dashboardAPI";
 import { UserProfileContext } from "../../../App";
-import { jobGradeLabel } from "../../../utils/jobGradeUtils";
+import { getJobGradeLabel } from "../../../utils/labelUtils";
 
-const ProfilePage = () => {
+export default function ProfileCard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [scheduleError, setScheduleError] = useState(null);
@@ -33,22 +35,21 @@ const ProfilePage = () => {
   const [remainingLeaveDays, setRemainingLeaveDays] = useState(null);
   const [pendingApprovalCount, setPendingApprovalCount] = useState(null);
   const [receivedApprovalCount, setReceivedApprovalCount] = useState(null);
+  const [unreadMailCount, setUnreadMailCount] = useState(null);
 
-  const { setAvatarUrl } = useOutletContext();
-  const userProfile = useContext(UserProfileContext);
+  const { userProfile, setUserProfile } = useContext(UserProfileContext) || {};
 
   const email = userProfile?.email || "";
   const displayName = userProfile?.name || "";
-  const grade = userProfile?.jobGrade ? jobGradeLabel(userProfile.jobGrade) : "";
+  const grade = userProfile?.jobGrade ? getJobGradeLabel(userProfile.jobGrade) : "";
   const deptName = userProfile?.deptName || "";
-
-  const DEFAULT_AVATAR = "https://i.pravatar.cc/80?img=12";
 
   /** 오늘 일정 */
   useEffect(() => {
     (async () => {
       try {
         const list = await getMyTodaySchedules();
+        console.log("오늘 일정 리스트:", list);
         setTodayScheduleCount(list.length);
         setScheduleError(null);
       } catch (err) {
@@ -105,6 +106,20 @@ const ProfilePage = () => {
     })();
   }, []);
 
+  /** 안 읽은 메일 개수 로딩 */
+  useEffect(() => {
+    if (!email) return;
+    (async () => {
+      try {
+        const count = await fetchUnreadCount(email);
+        setUnreadMailCount(Number.isFinite(count) ? count : 0);
+      } catch (e) {
+        console.error("안 읽은 메일 개수 로딩 실패:", e);
+        setUnreadMailCount(null);
+      }
+    })();
+  }, [email]);
+
   /** 오늘 새 글 카운트 */ 
   useEffect(() => {
     if (!deptCategoryId) {
@@ -127,11 +142,22 @@ const ProfilePage = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
-      setError("이미지 파일을 선택해주세요.");
+    // 허용된 이미지 형식 검증
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      setError("지원하는 이미지 형식은 JPG, PNG, GIF, WEBP입니다.");
       event.target.value = "";
       return;
     }
+
+    // 파일 크기 검증 (5MB = 5 * 1024 * 1024 bytes)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      setError("파일 크기는 5MB 이하여야 합니다.");
+      event.target.value = "";
+      return;
+    }
+
     if (!email) {
       setError("로그인 정보가 없습니다. 다시 로그인해주세요.");
       event.target.value = "";
@@ -147,20 +173,26 @@ const ProfilePage = () => {
 
       // 업로드 후 프로필 정보 재조회
       const updatedProfile = await getMyProfileInfo();
-      setAvatarUrl(updatedProfile.profileImageUrl || DEFAULT_AVATAR);
+      
+      // UserProfileContext 업데이트 (즉시 반영)
+      if (setUserProfile) {
+        setUserProfile(updatedProfile);
+      }
     } catch (err) {
       console.error("이미지 업로드 실패:", err);
-      setError("이미지 업로드에 실패했습니다.");
+      // 서버에서 반환한 에러 메시지가 있으면 사용, 없으면 기본 메시지
+      const errorMessage = err.response?.data?.message || err.message || "이미지 업로드에 실패했습니다.";
+      setError(errorMessage);
     } finally {
       setLoading(false);
       event.target.value = ""; // 같은 파일 재선택 가능
     }
   };
 
-  // 안전한 아바타 경로 계산
+  // 프로필 이미지가 있을 때만 사용, 없으면 MUI Avatar 기본 아이콘 표시
   const avatarUrl = userProfile?.profileImageUrl && userProfile.profileImageUrl.trim() !== "" 
     ? userProfile.profileImageUrl 
-    : DEFAULT_AVATAR;
+    : undefined;
 
   const items = [
     {
@@ -169,12 +201,17 @@ const ProfilePage = () => {
       highlight: Number(deptNewCount) > 0,
       to: deptCategoryId ? `/board/${deptCategoryId}?sortType=latest&scope=today` : null,
     },
+    { label: "안 읽은 메일", 
+      value: unreadMailCount == null ? "-" : unreadMailCount,
+      highlight: Number(unreadMailCount) > 0, 
+      to: "/email?tab=unread", 
+    },
     { label: "결재/합의 대기 문서", 
       value: pendingApprovalCount == null ? "-" : pendingApprovalCount,
       highlight: Number(pendingApprovalCount) > 0, 
       to: "/e-approval/pending", 
     },
-    { label: "참조 대기 문서", 
+    { label: "내 참조 문서", 
       value: receivedApprovalCount == null ? "-" : receivedApprovalCount, 
       highlight: Number(receivedApprovalCount) > 0,
       to: "/e-approval/refer" 
@@ -205,21 +242,19 @@ const ProfilePage = () => {
             gap: 1,
           }}
         >
-          <Box
-            component="img"
+          <Avatar
             src={avatarUrl}
             alt="프로필 이미지"
             sx={{
               width: 100,
               height: 100,
-              borderRadius: "50%",
-              objectFit: "cover",
               border: "2px solid #e5e7eb",
               boxShadow: "0 1px 2px rgba(0,0,0,.06)",
             }}
           />
           <Box
             component="label"
+            data-grid-cancel="true"
             sx={{
               display: "inline-flex",
               alignItems: "center",
@@ -241,6 +276,15 @@ const ProfilePage = () => {
               disabled={loading}
             />
           </Box>
+          {error && (
+            <Typography
+              variant="body2"
+              color="error"
+              sx={{ fontSize: 12, mt: 0.5 }}
+            >
+              {error}
+            </Typography>
+          )}
         </Box>
 
         {/* 이름 / 부서 */}
@@ -327,18 +371,6 @@ const ProfilePage = () => {
           );
         })}
       </List>
-
-      {error && (
-        <Typography
-          variant="body2"
-          color="error"
-          sx={{ mt: 1, whiteSpace: "pre-line" }}
-        >
-          {error}
-        </Typography>
-      )}
     </Card>
   );
 };
-
-export default ProfilePage;

@@ -5,6 +5,8 @@ import java.time.LocalDateTime;
 
 import com.goodee.coreconnect.approval.entity.Document;
 import com.goodee.coreconnect.leave.dto.response.LeaveRequestResponseDTO;
+import com.goodee.coreconnect.leave.enums.LeaveStatus;
+import com.goodee.coreconnect.leave.enums.LeaveType;
 import com.goodee.coreconnect.user.entity.User;
 
 import jakarta.persistence.*;
@@ -37,15 +39,16 @@ public class LeaveRequest {
     @Column(name = "leave_req_end_date", nullable = false)
     private LocalDate endDate;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "leave_req_type", length = 50, nullable = false)
-    private String type; // 연차, 반차, 병가 등
+    private LeaveType type;
 
     @Column(name = "leave_req_reason", length = 255)
     private String reason;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "leave_req_status", length = 20, nullable = false)
-    private LeaveStatus status; // WAITING / APPROVED / REJECTED 등
+    private LeaveStatus status; // PENDING, APPROVED, REJECTED, CANCELED
 
     @Column(name = "leave_req_approved_date")
     private LocalDateTime approvedDate;
@@ -59,7 +62,7 @@ public class LeaveRequest {
     
     private Integer documentId;
     
-    private String approvalComment; // 결재자가 남긴 의견
+    private String approvalComment; 
     
     @Column(name = "leave_req_created_at", 
             nullable = false,
@@ -72,7 +75,7 @@ public class LeaveRequest {
             User user,
             LocalDate startDate,
             LocalDate endDate,
-            String type,
+            LeaveType type,
             String reason,
             Integer documentId
     ) {
@@ -82,7 +85,7 @@ public class LeaveRequest {
         leave.endDate = endDate;
         leave.type = type;
         leave.reason = reason;
-        leave.status = LeaveStatus.PENDING; // 기본값: 대기 상태
+        leave.status = LeaveStatus.PENDING; 
         leave.documentId = documentId;
         leave.createdAt = LocalDateTime.now();
         return leave;

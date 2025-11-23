@@ -13,10 +13,10 @@ const Card = ({ title, right, children, sx }) => (
       borderRadius: 2,
       boxShadow: 1,
       p: 3,
-      height: "100%",
       minWidth: 320,
       display: "flex",
       flexDirection: "column",
+      height: "100%",
       ...sx,
     }}
   >
@@ -27,6 +27,7 @@ const Card = ({ title, right, children, sx }) => (
           justifyContent: "space-between",
           alignItems: "center",
           mb: 2,
+          flexShrink: 0,
         }}
       >
         {title && (
@@ -37,7 +38,17 @@ const Card = ({ title, right, children, sx }) => (
         {right && <Box>{right}</Box>}
       </Box>
     )}
-    <CardContent sx={{ p: 0, flex: 1 }}>{children}</CardContent>
+    <CardContent 
+      sx={{ 
+        p: 0,
+        flex: 1,
+        overflow: "visible",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      {children}
+    </CardContent>
   </MuiCard>
 );
 

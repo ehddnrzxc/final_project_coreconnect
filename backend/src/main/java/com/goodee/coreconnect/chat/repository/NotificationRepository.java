@@ -47,19 +47,25 @@ public interface NotificationRepository extends JpaRepository<Notification, Inte
     List<Notification> findByUserIdOrderBySentAtDesc(@Param("userId") Integer userId);
 
     // 4. 나에게 온 안읽은 알림 조회 (참고)
-    @Query("SELECT n FROM Notification n WHERE n.user.id = :userId AND n.notificationReadYn = false ORDER BY n.notificationSentAt DESC")
+    @Query("SELECT n FROM Notification n WHERE n.user.id = :userId AND n.notificationReadYn = false AND (n.notificationDeletedYn = false OR n.notificationDeletedYn IS NULL) ORDER BY n.notificationSentAt DESC")
     List<Notification> findUnreadByUserId(@Param("userId") Integer userId);
     
-    @Query("SELECT n FROM Notification n " +
+    @Query("SELECT DISTINCT n FROM Notification n " +
     	       "JOIN FETCH n.user " +
     	       "LEFT JOIN FETCH n.sender " +
+    	       "LEFT JOIN FETCH n.document " +
+    	       "LEFT JOIN FETCH n.board " +
+    	       "LEFT JOIN FETCH n.schedule " +
     	       "WHERE n.user.id = :userId " +
-    	       "AND n.notificationReadYn = false " +
-    	       "AND n.notificationDeletedYn = false " +
+    	       "AND (n.notificationReadYn = false OR n.notificationReadYn IS NULL) " +
+    	       "AND (n.notificationDeletedYn = false OR n.notificationDeletedYn IS NULL) " +
     	       "AND n.notificationType IN (:types) " +
     	       "ORDER BY n.notificationSentAt DESC")
     	List<Notification> findUnreadByUserIdAndTypesOrderBySentAtDesc(
     	    @Param("userId") Integer userId,
     	    @Param("types") List<NotificationType> types
     	);
+    
+    /** 특정 사용자가 보낸 모든 알림 조회 (sentYn 보정용) */
+    List<Notification> findBySenderId(Integer senderId);
 }

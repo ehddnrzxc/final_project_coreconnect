@@ -2,6 +2,7 @@ package com.goodee.coreconnect.account.entity;
 
 import java.time.LocalDateTime;
 
+import com.goodee.coreconnect.account.enums.LogActionType;
 import com.goodee.coreconnect.user.entity.User;
 
 import jakarta.persistence.*;
@@ -33,29 +34,25 @@ public class AccountLog {
     @Column(name = "log_action_time", nullable = false)
     private LocalDateTime actionTime;
 
-    @Column(name = "log_ip_address", length = 45) // IPv6 대비
-    private String ipAddress;
+    @Column(name = "log_ipv4", length = 15) // IPv4 주소
+    private String ipv4;
+
+    @Column(name = "log_ipv6", length = 45) // IPv6 주소
+    private String ipv6;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id")
     private User user;
 
 
-    // 정적 팩토리 메서드 (생성자 대체)
- 
-    public static AccountLog createAccountLog(User user, LogActionType actionType, String ipAddress) {
+    /** 정적 팩토리 메서드 */
+    public static AccountLog createAccountLog(User user, LogActionType actionType, String ipv4, String ipv6) {
         AccountLog log = new AccountLog();
         log.user = user;
         log.actionType = actionType;
-        log.ipAddress = ipAddress;
-        log.actionTime = LocalDateTime.now(); // 자동 시간 기록
+        log.ipv4 = ipv4;
+        log.ipv6 = ipv6;
+        log.actionTime = LocalDateTime.now();
         return log;
-    }
-
-
-    // 도메인 로직 (필요시 확장 가능)
-
-    public void updateIp(String newIp) {
-        this.ipAddress = newIp;
     }
 }

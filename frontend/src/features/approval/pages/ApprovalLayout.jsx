@@ -10,7 +10,8 @@ import {
   Divider,
   ListSubheader,
 } from "@mui/material";
-import TemplateSelectModal from "./TemplateSelectModal";
+import TemplateSelectModal from "../components/TemplateSelectModal";
+import StyledButton from "../../../components/ui/StyledButton"
 
 const navSections = [
   {
@@ -18,13 +19,13 @@ const navSections = [
     items: [
       { text: "결재홈", path: "/e-approval" }, // index: true
       { text: "결재/합의 대기 문서", path: "/e-approval/pending" },
-      { text: "참조 대기 문서", path: "/e-approval/refer"}
     ],
   },
   {
     title: "개인 문서함",
     items: [
       { text: "내 상신함", path: "/e-approval/my-documents" },
+      { text: "내 참조 문서", path: "/e-approval/refer"},
       { text: "임시저장함", path: "/e-approval/my-drafts" },
     ],
   },
@@ -41,7 +42,7 @@ function ApprovalLayout() {
       {/* 1. 왼쪽 서브 네비게이션 (MUI 컴포넌트 활용) */}
       <Box
         sx={{
-          width: 240,
+          width: 260,
           flexShrink: 0,
           bgcolor: '#ffffff',
           borderRight: "1px solid",
@@ -55,15 +56,9 @@ function ApprovalLayout() {
           <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold", letterSpacing: -2 }}>
             전자결재
           </Typography>
-          <Button
-            variant="contained"
-            color="primary"
-            fullWidth
-            onClick={handleOpenModal}
-            size="large"
-          >
+          <StyledButton onClick={handleOpenModal}>
             새 결재 진행
-          </Button>
+          </StyledButton>
         </Box>
 
         <Divider />

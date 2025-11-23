@@ -2,6 +2,8 @@ package com.goodee.coreconnect.chat.repository;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -15,8 +17,8 @@ public interface ChatRepository extends JpaRepository<Chat, Integer> {
     // 1. 채팅방의 모든 메시지
     List<Chat> findByChatRoomId(Integer id);
 
-    // 2. 여러 채팅방의 모든 메시지
-    @Query("SELECT c FROM Chat c WHERE c.chatRoom.id IN :roomIds")
+    // 2. 여러 채팅방의 모든 메시지 (sender도 함께 로드)
+    @Query("SELECT c FROM Chat c LEFT JOIN FETCH c.sender WHERE c.chatRoom.id IN :roomIds")
     List<Chat> findByChatRoomIds(@Param("roomIds") List<Integer> roomIds);
 
     // 3. 채팅방의 모든 메시지(오름차순)
@@ -40,7 +42,8 @@ public interface ChatRepository extends JpaRepository<Chat, Integer> {
     List<Chat> findLatestMessageByChatRoomIds(@Param("roomIds") List<Integer> roomIds);
 
     // 6. 채팅방 내에서 특정 메시지의 미읽은 인원 조회 (ChatMessageReadStatus 활용)
-    @Query("SELECT r.chat.id, COUNT(r) FROM ChatMessageReadStatus r WHERE r.chat.chatRoom.id = :roomId AND r.readYn = false GROUP BY r.chat.id")
+    // ⭐ 복합키 사용으로 COUNT(r) 대신 COUNT(1) 사용
+    @Query("SELECT r.chat.id, COUNT(1) FROM ChatMessageReadStatus r WHERE r.chat.chatRoom.id = :roomId AND r.readYn = false GROUP BY r.chat.id")
     List<Object[]> countUnreadByRoomId(@Param("roomId") Integer roomId);
     
     // 7. 각 채팅방의 가장 마지막(최신) 메시지
@@ -51,9 +54,19 @@ public interface ChatRepository extends JpaRepository<Chat, Integer> {
     // 8. 채팅방에서 메시지를 불러올때 파일이 있는 경우 파일들도 함께 조회
     @Query("SELECT DISTINCT c FROM Chat c " + 
     	   "LEFT JOIN FETCH c.messageFiles " + 
+    	   "LEFT JOIN FETCH c.sender " +
     		"WHERE c.chatRoom.id = :roomId " + 
     	   "ORDER BY c.sendAt ASC")
     List<Chat> findAllChatsWithFilesByRoomId(@Param("roomId") Integer roomId);
+    
+    // 8-1. 채팅방에서 메시지를 페이징으로 불러올때 파일이 있는 경우 파일들도 함께 조회 (최신 메시지부터)
+    // sender도 함께 JOIN FETCH하여 user_profile_image_key를 가져올 수 있도록 함
+    @Query("SELECT DISTINCT c FROM Chat c " + 
+    	   "LEFT JOIN FETCH c.messageFiles " + 
+    	   "LEFT JOIN FETCH c.sender " +
+    		"WHERE c.chatRoom.id = :roomId " + 
+    	   "ORDER BY c.sendAt DESC")
+    Page<Chat> findChatsWithFilesByRoomIdPaged(@Param("roomId") Integer roomId, Pageable pageable);
     
 
     /** 
@@ -73,6 +86,14 @@ public interface ChatRepository extends JpaRepository<Chat, Integer> {
     
     
     // 10. 채팅방 목록 불러올 때 unreadcount 필드 채워서 DTO로 변환
-    @Query("SELECT c.chat.chatRoom.id AS roomId, COUNT(c) AS unreadCount FROM ChatMessageReadStatus c WHERE c.user.id = :userId AND c.readYn = false GROUP BY c.chat.chatRoom.id")
+    // ⭐ 복합키 사용으로 COUNT(c) 대신 COUNT(1) 사용
+    @Query("SELECT c.chat.chatRoom.id AS roomId, COUNT(1) AS unreadCount FROM ChatMessageReadStatus c WHERE c.user.id = :userId AND c.readYn = false GROUP BY c.chat.chatRoom.id")
     List<Object[]> countUnreadMessagesByUserId(@Param("userId") Integer userId);
+    
+    // 11. 특정 Chat ID로 messageFiles와 sender를 함께 조회
+    @Query("SELECT DISTINCT c FROM Chat c " +
+           "LEFT JOIN FETCH c.messageFiles " +
+           "LEFT JOIN FETCH c.sender " +
+           "WHERE c.id = :chatId")
+    Chat findByIdWithMessageFiles(@Param("chatId") Integer chatId);
 }

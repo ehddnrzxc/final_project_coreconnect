@@ -41,6 +41,7 @@ import com.goodee.coreconnect.common.dto.response.ResponseDTO;
 import com.goodee.coreconnect.email.dto.request.DeleteMailsRequest;
 import com.goodee.coreconnect.email.dto.request.EmailSendRequestDTO;
 import com.goodee.coreconnect.email.dto.request.MarkMailReadRequestDTO;
+import com.goodee.coreconnect.email.dto.request.ToggleFavoriteRequestDTO;
 import com.goodee.coreconnect.email.dto.response.DeleteMailsResponse;
 import com.goodee.coreconnect.email.dto.response.EmailResponseDTO;
 import com.goodee.coreconnect.email.entity.EmailFile;
@@ -134,9 +135,10 @@ public class EmailController {
 
         EmailResponseDTO result = null;
         try {
-            result = emailService.sendEmail(requestDTO, attachments);
+            // 실제 이메일 발송 (SendGrid 사용)
+            result = emailService.sendEmailViaSendGrid(requestDTO, attachments);
         } catch (IOException e) {
-            log.error("[send] sendEmail failed", e);
+            log.error("[send] sendEmailViaSendGrid failed", e);
             throw new RuntimeException(e);
         }
         return ResponseEntity.ok(ResponseDTO.success(result, "이메일 발송 성공"));
@@ -157,12 +159,13 @@ public class EmailController {
     		@RequestParam("userEmail") String userEmail, /* 이름 명확히 */
     	    @RequestParam(value = "page", defaultValue = "0") int page,
     	    @RequestParam(value = "size", defaultValue = "1") int size,
-    	    @RequestParam(value = "filter", required = false) String filter
+    	    @RequestParam(value = "filter", required = false) String filter,
+    	    @RequestParam(value = "searchType", required = false) String searchType,
+    	    @RequestParam(value = "keyword", required = false) String keyword
     ) {
     	// filter: null or "today"/"unread"
-        Page<EmailResponseDTO> result = emailService.getInbox(userEmail, page, size, filter);
-        int unreadCount = emailRecipientRepository.countByEmailRecipientAddressAndEmailReadYn(userEmail, false);
-        // {"data":result, "unreadCount":unreadCount} 형태로 응답  
+        Page<EmailResponseDTO> result = emailService.getInbox(userEmail, page, size, filter, searchType, keyword);
+        // 안읽은 메일 개수는 별도 API로 조회하므로 여기서는 제거
         return ResponseEntity.ok(ResponseDTO.success(result, "받은메일함 조회 성공"));
     }
 
@@ -172,10 +175,12 @@ public class EmailController {
     public ResponseEntity<ResponseDTO<Page<EmailResponseDTO>>> getSentbox(
     	@RequestParam("userEmail") String userEmail,
         @RequestParam(value = "page", defaultValue = "0") int page,
-        @RequestParam(value = "size", defaultValue = "1") int size
+        @RequestParam(value = "size", defaultValue = "1") int size,
+        @RequestParam(value = "searchType", required = false) String searchType,
+        @RequestParam(value = "keyword", required = false) String keyword
     ) {
     	log.info("userEmail: {}", userEmail);
-        Page<EmailResponseDTO> result = emailService.getSentbox(userEmail, page, size);
+        Page<EmailResponseDTO> result = emailService.getSentbox(userEmail, page, size, searchType, keyword);
         return ResponseEntity.ok(ResponseDTO.success(result, "보낸메일함 조회 성공"));
     }
 
@@ -195,7 +200,7 @@ public class EmailController {
     @Operation(summary = "받은메일함 안읽은 메일 개수", description = "받은메일함 중 안읽은 메일 개수를 반환합니다.")
     @GetMapping("/inbox/unread-count")
     public ResponseEntity<ResponseDTO<Integer>> getUnreadInboxCount(@RequestParam("userEmail") String userEmail) {
-        int unreadCount = emailRecipientRepository.countByEmailRecipientAddressAndEmailReadYn(userEmail, false);
+        int unreadCount = emailRecipientRepository.countUnreadInboxMails(userEmail);
         return ResponseEntity.ok(ResponseDTO.success(unreadCount, "안읽은 메일 개수 조회 성공"));
     }
 
@@ -208,6 +213,17 @@ public class EmailController {
     ) {
         boolean updated = emailService.markMailAsRead(emailId, request.getUserEmail());
         return ResponseEntity.ok(ResponseDTO.success(updated, updated ? "메일 읽음 처리 성공" : "이미 읽은 메일"));
+    }
+
+    // [NEW] 개별 메일 중요 표시 토글 API
+    @Operation(summary = "메일 중요 표시 토글", description = "개별 메일의 중요 표시를 토글합니다.")
+    @PatchMapping("/{emailId}/favorite")
+    public ResponseEntity<ResponseDTO<Boolean>> toggleFavoriteStatus(
+            @PathVariable("emailId") Integer emailId,
+            @RequestBody(required = true) ToggleFavoriteRequestDTO request
+    ) {
+        boolean newStatus = emailService.toggleFavoriteStatus(emailId, request.getUserEmail());
+        return ResponseEntity.ok(ResponseDTO.success(newStatus, newStatus ? "중요 메일로 설정되었습니다." : "중요 메일 해제되었습니다."));
     }
     
     
@@ -287,7 +303,7 @@ public class EmailController {
     // 임시보관함 개수 (Redis 활용)
     @GetMapping("/draftbox/count")
     public ResponseEntity<ResponseDTO<Long>> getDraftCount(@RequestParam String userEmail) {
-    	 System.out.println("userEmail = " + userEmail); 
+    	 log.debug("userEmail = {}", userEmail); 
         long count = emailService.getDraftCount(userEmail); // 내부에 Redis/caching 사용
         return ResponseEntity.ok(ResponseDTO.success(count, "임시보관함 개수 조회 성공"));
     }
@@ -325,17 +341,37 @@ public class EmailController {
     @CrossOrigin(origins="http://localhost:5173", allowCredentials="true")
     @PostMapping("/move-to-trash")
     public ResponseEntity<?> moveToTrash(@RequestBody List<Integer> emailIds, @AuthenticationPrincipal CustomUserDetails user) {
-        String userEmail = user != null ? user.getName() : null; // 프로젝트에 맞게 수정(예: CustomUserDetails)
-        emailService.moveEmailsToTrash(emailIds, userEmail);
-        return ResponseEntity.ok().build();
+        // CustomUserDetails에서 이메일 가져오기 (getEmail() 또는 getUsername() 사용)
+        String userEmail = user != null ? user.getEmail() : null;
+        log.info("moveToTrash API 호출 - emailIds={}, userEmail={}, user={}", emailIds, userEmail, user != null ? "exists" : "null");
+        
+        if (userEmail == null || userEmail.isEmpty()) {
+            log.error("moveToTrash API: userEmail is null or empty. user={}", user != null ? "exists" : "null");
+            return ResponseEntity.status(400).body("User email is required");
+        }
+        
+        if (emailIds == null || emailIds.isEmpty()) {
+            log.error("moveToTrash API: emailIds is null or empty");
+            return ResponseEntity.status(400).body("Email IDs are required");
+        }
+        
+        try {
+            emailService.moveEmailsToTrash(emailIds, userEmail);
+            log.info("moveToTrash API 완료 - emailIds={}, userEmail={}", emailIds, userEmail);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            log.error("moveToTrash API 오류 - emailIds={}, userEmail={}", emailIds, userEmail, e);
+            return ResponseEntity.status(500).body("Failed to move emails to trash: " + e.getMessage());
+        }
     }
+
 
     /**
      * 현재 사용자의 휴지통 비우기: TRASH -> DELETED
      */
     @PostMapping("/trash/empty")
     public ResponseEntity<?> emptyTrash(@AuthenticationPrincipal CustomUserDetails user) {
-        String userEmail = user != null ? user.getName() : null;
+        String userEmail = user != null ? user.getEmail() : null;
         emailService.emptyTrash(userEmail);
         return ResponseEntity.ok().build();
     }
@@ -347,7 +383,8 @@ public class EmailController {
      */
     @DeleteMapping("/trash")
     public ResponseEntity<DeleteMailsResponse> deleteMails(@RequestBody DeleteMailsRequest req) {
-        DeleteMailsResponse res = emailService.deleteMailsForCurrentUser(req);
+    	log.info("휴지통 비우기 요청 들어옴====== req: {}", req);
+    	DeleteMailsResponse res = emailService.deleteMailsForCurrentUser(req);
         return ResponseEntity.ok(res);
     }
     
@@ -358,6 +395,7 @@ public class EmailController {
             @RequestParam(value="page", defaultValue="0") int page,
             @RequestParam(value="size", defaultValue="10") int size
     ) {
+    	
         Page<EmailResponseDTO> result = emailService.getTrashMails(userEmail, page, size);
         return ResponseEntity.ok(ResponseDTO.success(result, "휴지통 조회 성공"));
     }
@@ -371,6 +409,19 @@ public class EmailController {
     ) {
         Page<EmailResponseDTO> result = emailService.getScheduledMails(userEmail, page, size);
         return ResponseEntity.ok(ResponseDTO.success(result, "예약메일 조회 성공"));
+    }
+
+    // 중요 메일 목록 조회
+    @GetMapping("/favorite")
+    public ResponseEntity<ResponseDTO<Page<EmailResponseDTO>>> getFavoriteMails(
+            @RequestParam("userEmail") String userEmail,
+            @RequestParam(value="page", defaultValue="0") int page,
+            @RequestParam(value="size", defaultValue="10") int size,
+            @RequestParam(value="searchType", required=false) String searchType,
+            @RequestParam(value="keyword", required=false) String keyword
+    ) {
+        Page<EmailResponseDTO> result = emailService.getFavoriteMails(userEmail, page, size, searchType, keyword);
+        return ResponseEntity.ok(ResponseDTO.success(result, "중요 메일 조회 성공"));
     }
     
 }

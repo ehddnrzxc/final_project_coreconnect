@@ -17,12 +17,19 @@ import {
   Tooltip,
   Avatar,
   Stack,
-  Tooltip as MuiTooltip
+  Tooltip as MuiTooltip,
+  Menu,
+  MenuItem
 } from "@mui/material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import CancelIcon from "@mui/icons-material/Cancel";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { useNavigate } from "react-router-dom";
-import { getUserEmailFromStorage, fetchScheduledMails } from "../api/emailApi";
+import {  fetchScheduledMails } from "../api/emailApi";
+import { useContext } from "react";
+import { UserProfileContext } from "../../../App";
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
+import ConfirmDialog from "../../../components/utils/ConfirmDialog";
 
 /**
  * 예약메일함 페이지 (테이블형)
@@ -32,14 +39,19 @@ import { getUserEmailFromStorage, fetchScheduledMails } from "../api/emailApi";
  */
 
 const MailReservedPage = () => {
+  const { showSnack } = useSnackbarContext();
   const [page, setPage] = useState(1); // UI: 1-based
-  const [size, setSize] = useState(10);
+  const [size, setSize] = useState(10); // 페이지당 항목 수 (5 또는 10 선택 가능)
   const [total, setTotal] = useState(0);
   const [mails, setMails] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState(new Set());
+  const [sizeMenuAnchor, setSizeMenuAnchor] = useState(null); // 페이지 크기 선택 메뉴
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [confirmEmailId, setConfirmEmailId] = useState(null);
 
-  const userEmail = getUserEmailFromStorage();
+  const { userProfile } = useContext(UserProfileContext) || {};
+  const userEmail = userProfile?.email;
   const navigate = useNavigate();
 
   const safe = (fn, def) => {
@@ -125,8 +137,15 @@ const MailReservedPage = () => {
   };
 
   // 예약 취소 (서버에 cancel API가 있다면 /api/v1/email/{id}/cancel 같은 엔드포인트 호출)
-  const cancelScheduled = async (emailId) => {
-    if (!window.confirm("선택한 예약메일을 취소하시겠습니까?")) return;
+  const cancelScheduled = (emailId) => {
+    setConfirmEmailId(emailId);
+    setConfirmDialogOpen(true);
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!confirmEmailId) return;
+    const emailId = confirmEmailId;
+    setConfirmDialogOpen(false);
     try {
       // Try calling expected cancel endpoint. If your backend path differs, adapt it.
       const resp = await fetch(`/api/v1/email/${emailId}/cancel`, {
@@ -138,26 +157,55 @@ const MailReservedPage = () => {
         const text = await resp.text();
         throw new Error(text || "예약취소 실패");
       }
-      alert("예약이 취소되었습니다.");
+      showSnack("예약이 취소되었습니다.", 'success');
       load(page);
     } catch (err) {
       console.error("cancelScheduled failed:", err);
-      alert("예약 취소 중 오류가 발생했습니다.");
+      showSnack("예약 취소 중 오류가 발생했습니다.", 'error');
+    } finally {
+      setConfirmEmailId(null);
     }
   };
 
-  const handleCancelSelected = async () => {
+  const handleCancelSelected = () => {
     if (selected.size === 0) {
-      alert("취소할 예약메일을 선택하세요.");
+      showSnack("취소할 예약메일을 선택하세요.", 'warning');
       return;
     }
-    if (!window.confirm("선택한 예약메일들을 취소하시겠습니까?")) return;
+    setConfirmEmailId('batch');
+    setConfirmDialogOpen(true);
+  };
+
+  const handleConfirmBatchCancel = async () => {
+    setConfirmDialogOpen(false);
     // iterate and cancel (could be optimized server-side with batch API)
+    let successCount = 0;
+    let failCount = 0;
     for (const id of Array.from(selected)) {
-      // eslint-disable-next-line no-await-in-loop
-      await cancelScheduled(id);
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const resp = await fetch(`/api/v1/email/${id}/cancel`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" }
+        });
+        if (resp.ok) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch (err) {
+        failCount++;
+      }
+    }
+    if (successCount > 0) {
+      showSnack(`${successCount}개의 예약메일이 취소되었습니다.`, 'success');
+    }
+    if (failCount > 0) {
+      showSnack(`${failCount}개의 예약메일 취소에 실패했습니다.`, 'error');
     }
     load(page);
+    setConfirmEmailId(null);
   };
 
   const formatDateTime = (v) => {
@@ -181,7 +229,7 @@ const MailReservedPage = () => {
   };
 
   return (
-    <Box sx={{ p: 4, minHeight: "100vh", bgcolor: "#fafbfd" }}>
+    <Box sx={{ p: 4, minHeight: "100vh", bgcolor: "#fafbfd", position: 'relative' }}>
       <Paper elevation={0} sx={{ p: 3, borderRadius: 2 }}>
         <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
           <Typography variant="h5" sx={{ fontWeight: 700 }}>
@@ -202,6 +250,39 @@ const MailReservedPage = () => {
           >
             선택 취소
           </Button>
+          <Paper 
+            sx={{ display: 'inline-flex', alignItems: 'center', px: 0.5, cursor: 'pointer', ml: 2 }}
+            onClick={(e) => setSizeMenuAnchor(e.currentTarget)}
+          >
+            <Typography sx={{ px: 0.5, fontWeight: 500, fontSize: 15 }}>{size}</Typography>
+            <IconButton size="small"><MoreVertIcon fontSize="small" /></IconButton>
+          </Paper>
+          <Menu
+            anchorEl={sizeMenuAnchor}
+            open={Boolean(sizeMenuAnchor)}
+            onClose={() => setSizeMenuAnchor(null)}
+          >
+            <MenuItem 
+              onClick={() => {
+                setSize(5);
+                setPage(1);
+                setSizeMenuAnchor(null);
+              }}
+              selected={size === 5}
+            >
+              5개씩 보기
+            </MenuItem>
+            <MenuItem 
+              onClick={() => {
+                setSize(10);
+                setPage(1);
+                setSizeMenuAnchor(null);
+              }}
+              selected={size === 10}
+            >
+              10개씩 보기
+            </MenuItem>
+          </Menu>
         </Stack>
 
         <Table sx={{ minWidth: 900 }}>
@@ -335,6 +416,21 @@ const MailReservedPage = () => {
           />
         </Box>
       </Paper>
+      
+      <ConfirmDialog
+        open={confirmDialogOpen}
+        title="예약메일 취소"
+        message={
+          confirmEmailId === 'batch'
+            ? `선택한 ${selected.size}개의 예약메일을 취소하시겠습니까?`
+            : "선택한 예약메일을 취소하시겠습니까?"
+        }
+        onConfirm={confirmEmailId === 'batch' ? handleConfirmBatchCancel : handleConfirmCancel}
+        onCancel={() => {
+          setConfirmDialogOpen(false);
+          setConfirmEmailId(null);
+        }}
+      />
     </Box>
   );
 };

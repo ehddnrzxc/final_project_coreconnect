@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Box,
-  Button,
   Card,
   CardContent,
   Divider,
@@ -17,6 +16,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
+import StyledButton from "../../../components/ui/StyledButton";
 import {
   fetchDepartmentsFlat,
   createDepartment,
@@ -216,7 +216,7 @@ export default function DepartmentManagementPage() {
     ));
 
   return (
-    <Box sx={{ px: 4, py: 3, width: "100%", maxWidth: 1200, mx: "auto" }}>
+    <Box sx={{ px: 4, py: 3, width: "100%", maxWidth: 1400, mx: "auto" }}>
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 3 }}>
         <Box>
           <Typography variant="h4" fontWeight={700} sx={{ mb: 0.5 }}>
@@ -281,18 +281,21 @@ export default function DepartmentManagementPage() {
               </Stack>
 
               <Stack direction="row" spacing={1.5} sx={{ mt: 3 }}>
-                <Button
+                <StyledButton
                   type="submit"
                   variant="contained"
+                  color="primary"
                   startIcon={<AddIcon />}
                   disabled={submitting}
+                  fullWidth={false}
+                  sx={{ color: "primary.main" }}
                 >
                   {editingId ? "수정 저장" : "부서 생성"}
-                </Button>
+                </StyledButton>
                 {editingId && (
-                  <Button variant="text" onClick={resetForm} disabled={submitting}>
+                  <StyledButton variant="text" onClick={resetForm} disabled={submitting} fullWidth={false}>
                     취소
-                  </Button>
+                  </StyledButton>
                 )}
               </Stack>
             </CardContent>

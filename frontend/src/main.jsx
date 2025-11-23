@@ -5,15 +5,16 @@ import {
   RouterProvider,
   Navigate,
 } from "react-router-dom";
+import { SnackbarProvider } from "./components/utils/SnackbarContext";
 import App from "./App";
 import LoginPage from "./features/auth/pages/LoginPage";
 import HomePage from "./features/dashboard/pages/HomePage";
 import UserCreateForm from "./features/admin/components/UserCreateForm";
 import AdminRoute from "./features/admin/utils/AdminRoute";
-import "@fortawesome/fontawesome-free/css/all.min.css";
 import ApprovalHomePage from "./features/approval/pages/ApprovalHomePage";
 import ApprovalLayout from "./features/approval/pages/ApprovalLayout";
 import AdminHomePage from "./features/admin/pages/AdminHomePage";
+import AccountLogPage from "./features/admin/pages/AccountLogPage";
 import UserList from "./features/admin/components/UserList";
 import ChatHomePage from "./features/chat/pages/ChatHomePage";
 import ChatLayout from "./features/chat/pages/ChatLayout";
@@ -23,20 +24,22 @@ import BoardLayout from "./features/board/pages/BoardLayout";
 import BoardListPage from "./features/board/pages/BoardListPage";
 import BoardDetailPage from "./features/board/pages/BoardDetailPage";
 import BoardWritePage from "./features/board/pages/BoardWritePage";
-import ProtectedRoute from "./features/auth/ProtectedRoute";
+import ProtectedRoute from "./features/auth/components/ProtectedRoute";
 import CalendarPage from "./features/schedule/pages/CalendarPage";
 import AdminCategoryPage from "./features/board/pages/AdminCategoryPage";
 import MailInboxPage from "./features/email/pages/MailInboxPage";
 import MailWritePage from "./features/email/pages/MailWritePage";
 import MailTrashPage from "./features/email/pages/MailTrashPage";
-import PasswordResetPage from "./features/admin/components/PasswordReset";
+import PasswordReset from "./features/admin/components/PasswordReset";
 import NewDocumentPage from "./features/approval/pages/NewDocumentPage";
 import MailSentBoxPage from "./features/email/pages/MailSentBoxPage";
 import MailDetailPage from "./features/email/pages/MailDetailPage";
 import DocumentDetailPage from "./features/approval/pages/DocumentDetailPage";
 import DraftBoxPage from "./features/email/pages/DraftBoxPage";
-import LeavePage from "./features/leave/pages/LeavePage";
-import LeaveRequestsPage from "./features/admin/components/LeaveRequests";
+import LeaveLayout from "./features/leave/pages/LeaveLayout";
+import LeaveHistory from "./features/leave/components/LeaveHistory";
+import CompanyLeaveStatus from "./features/leave/components/CompanyLeaveStatus";
+import LeaveRequests from "./features/admin/components/LeaveRequests";
 import DepartmentManagementPage from "./features/admin/pages/DepartmentManagementPage";
 import { RealtimeNotificationProvider } from "./features/notification/RealtimeNotificationProvider";
 import PendingDocuments from "./features/approval/pages/PendingDocumentPage";
@@ -44,6 +47,10 @@ import MyDocumentsPage from "./features/approval/pages/MyDocumentsPage";
 import MyDraftsPage from "./features/approval/pages/MyDraftsPage";
 import ReferDocumentPage from "./features/approval/pages/ReferDocumentPage";
 import MailReservedPage from "./features/email/pages/MailReservedPage";
+import MailFavoritePage from "./features/email/pages/MailFavoritePage";
+import AttendanceLayout from "./features/attendance/pages/AttendanceLayout";
+import MyAttendanceStatus from "./features/attendance/components/MyAttendanceStatus";
+import CompanyAttendanceStatus from "./features/attendance/components/CompanyAttendanceStatus";
 
 /* 전체 라우트 구조 */
 const router = createBrowserRouter([
@@ -86,6 +93,7 @@ const router = createBrowserRouter([
           { path: ":emailId", element: <MailDetailPage /> },
           { path: "draftbox", element: <DraftBoxPage /> }, // ★ 임시보관함 추가
           { path: "reserved", element: <MailReservedPage /> },   // <-- add here
+          { path: "favorite", element: <MailFavoritePage /> },   // 중요 메일
         ]
       },
       {
@@ -118,9 +126,27 @@ const router = createBrowserRouter([
         path: "leave",
         element: (
           <ProtectedRoute>
-            <LeavePage />
+            <LeaveLayout />
           </ProtectedRoute>
         ),
+        children: [
+          { index: true, element: <LeaveHistory /> },
+          { path: "history", element: <LeaveHistory /> },
+          { path: "company", element: <CompanyLeaveStatus /> },
+        ],
+      },
+      {
+        path: "attendance",
+        element: (
+          <ProtectedRoute>
+            <AttendanceLayout />
+          </ProtectedRoute>
+        ),
+        children: [
+          { index: true, element: <MyAttendanceStatus /> },
+          { path: "my", element: <MyAttendanceStatus /> },
+          { path: "company", element: <CompanyAttendanceStatus /> },
+        ],
       },
       {
         path: "board",
@@ -136,25 +162,30 @@ const router = createBrowserRouter([
           { path: "detail/:boardId", element: <BoardDetailPage /> },
           { path: "new", element: <BoardWritePage /> },
           { path: "edit/:boardId", element: <BoardWritePage /> },
+          { path: "category-admin", element: <AdminCategoryPage /> },
         ],
       },
       {
         path: "admin",
-        element: <AdminRoute />,
+        element: (
+          <ProtectedRoute>
+            <AdminRoute />
+          </ProtectedRoute>
+        ),
         children: [
-          { path: "", element: <AdminHomePage /> },
+          { index: true, element: <AdminHomePage /> },
           { path: "users/create", element: <UserCreateForm /> },
           { path: "users", element: <UserList /> },
           { path: "templates/create", element: <TemplateAdminCreate /> },
-          { path: "board/category", element: <AdminCategoryPage /> },
-          { path: "password-reset-requests", element: <PasswordResetPage /> },
-          { path: "leave-requests", element: <LeaveRequestsPage /> },
-          { path: "departments", element: <DepartmentManagementPage /> }
+          { path: "password-reset-requests", element: <PasswordReset /> },
+          { path: "leave-requests", element: <LeaveRequests /> },
+          { path: "departments", element: <DepartmentManagementPage /> },
+          { path: "account-logs", element: <AccountLogPage /> }
         ],
       },
       {
         index: true,
-        element: <Navigate to="/home" replace />,
+        element: <Navigate to="/home" replace />, // 루트 경로일 때는 /home으로 이동
       },
     ],
   },
@@ -171,8 +202,10 @@ const router = createBrowserRouter([
 /* 렌더링 */
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <RealtimeNotificationProvider>
-      <RouterProvider router={router} />
-    </RealtimeNotificationProvider>
+    <SnackbarProvider>
+      <RealtimeNotificationProvider>
+        <RouterProvider router={router} />
+      </RealtimeNotificationProvider>
+    </SnackbarProvider>
   </React.StrictMode>
 );

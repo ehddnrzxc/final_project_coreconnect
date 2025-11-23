@@ -3,6 +3,7 @@ package com.goodee.coreconnect.user.entity;
 import java.time.LocalDateTime;
 
 import com.goodee.coreconnect.admin.dto.request.RejectLeaveRequestDTO;
+import com.goodee.coreconnect.user.enums.ResetStatus;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

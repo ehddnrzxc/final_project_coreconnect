@@ -14,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.goodee.coreconnect.common.notification.enums.NotificationType;
 import com.goodee.coreconnect.common.notification.service.NotificationService;
+import com.goodee.coreconnect.leave.entity.LeaveRequest;
+import com.goodee.coreconnect.leave.repository.LeaveRequestRepository;
 import com.goodee.coreconnect.schedule.dto.request.RequestScheduleDTO;
 import com.goodee.coreconnect.schedule.dto.response.ResponseScheduleDTO;
 import com.goodee.coreconnect.schedule.dto.response.ScheduleDailySummaryDTO;
@@ -29,8 +31,8 @@ import com.goodee.coreconnect.schedule.repository.MeetingRoomRepository;
 import com.goodee.coreconnect.schedule.repository.ScheduleCategoryRepository;
 import com.goodee.coreconnect.schedule.repository.ScheduleParticipantRepository;
 import com.goodee.coreconnect.schedule.repository.ScheduleRepository;
-import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.User;
+import com.goodee.coreconnect.user.enums.Role;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -46,6 +48,7 @@ public class ScheduleServiceImpl implements ScheduleService {
   private final ScheduleCategoryRepository categoryRepository;
   private final ScheduleParticipantRepository scheduleParticipantRepository;
   private final NotificationService notificationService;
+  private final LeaveRequestRepository leaveRequestRepository;
 
 
   /** 일정 생성 */
@@ -63,12 +66,20 @@ public class ScheduleServiceImpl implements ScheduleService {
         ? categoryRepository.findById(dto.getCategoryId()).orElse(null)
         : null;
 
-    // 회의실 중복 예약 방지
-    if (meetingRoom != null) {
+    // LeaveRequest 조회 (휴가 일정인 경우만)
+    LeaveRequest leaveRequest = null;
+    if (dto.getLeaveRequestId() != null) {
+        leaveRequest = leaveRequestRepository.findById(dto.getLeaveRequestId())
+            .orElseThrow(() -> new IllegalArgumentException("휴가를 찾을 수 없습니다."));
+    }
+
+    // 회의실 중복 예약 방지 (휴가 일정은 제외)
+    if (meetingRoom != null && leaveRequest == null) {
       boolean overlap = scheduleRepository.existsOverlappingSchedule(
               meetingRoom,
               dto.getStartDateTime(),
-              dto.getEndDateTime()
+              dto.getEndDateTime(),
+              null
       );
 
       if (overlap) {
@@ -79,12 +90,14 @@ public class ScheduleServiceImpl implements ScheduleService {
       meetingRoom.changeAvailability(false);
     }
     
-    // OWNER(본인) 일정 겹침 여부 확인
-    boolean ownerHasConflict = scheduleRepository.existsUserOverlappingSchedule(
-        user, dto.getStartDateTime(), dto.getEndDateTime());
+    // OWNER(본인) 일정 겹침 여부 확인 (휴가 일정은 제외)
+    if (leaveRequest == null) {
+        boolean ownerHasConflict = scheduleRepository.existsUserOverlappingSchedule(
+            user, dto.getStartDateTime(), dto.getEndDateTime());
 
-    if (ownerHasConflict) {
-      throw new IllegalArgumentException("본인은 해당 시간대에 이미 다른 일정이 있습니다.");
+        if (ownerHasConflict) {
+          throw new IllegalArgumentException("본인은 해당 시간대에 이미 다른 일정이 있습니다.");
+        }
     }
     
     // 시간 검증 
@@ -94,7 +107,7 @@ public class ScheduleServiceImpl implements ScheduleService {
     }
 
     // 일정 생성
-    Schedule schedule = dto.toEntity(user, meetingRoom, category);
+    Schedule schedule = dto.toEntity(user, meetingRoom, category, leaveRequest);
     Schedule savedSchedule = scheduleRepository.save(schedule);
     
     // 일정 생성자(owner) 자동 등록
@@ -105,8 +118,8 @@ public class ScheduleServiceImpl implements ScheduleService {
     );
     scheduleParticipantRepository.save(owner);
     
-    // 추가 참여자 목록 : MEMBER 등록
-    if (dto.getParticipantIds() != null && !dto.getParticipantIds().isEmpty()) {
+    // 추가 참여자 목록 : MEMBER 등록 (휴가 일정은 참여자 없음)
+    if (dto.getParticipantIds() != null && !dto.getParticipantIds().isEmpty() && leaveRequest == null) {
       for (Integer participantId : dto.getParticipantIds()) {          
         // 본인(OWNER)은 제외
         if (participantId.equals(user.getId())) continue;
@@ -134,23 +147,29 @@ public class ScheduleServiceImpl implements ScheduleService {
                 "[일정 등록] '" + savedSchedule.getTitle() + "' 일정에 초대되었습니다.",
                 null, null,
                 user.getId(),
-                user.getName()
+                user.getName(),
+                savedSchedule.getId()
         );
       }
     }
     
-    // 본인(OWNER)에게도 알림
-    notificationService.sendNotification(
-            user.getId(),
-            NotificationType.SCHEDULE,
-            "[일정 등록 완료] '" + savedSchedule.getTitle() + "' 일정이 생성되었습니다.",
-            null, null,
-            user.getId(),
-            user.getName()
-    );
+    // 본인(OWNER)에게도 알림 (휴가 일정은 제외)
+    if (leaveRequest == null) {  
+      notificationService.sendNotification(
+              user.getId(),
+              NotificationType.SCHEDULE,
+              "[일정 등록 완료] '" + savedSchedule.getTitle() + "' 일정이 생성되었습니다.",
+              null, null,
+              user.getId(),
+              user.getName(),
+              savedSchedule.getId()
+      );
+    }
 
     return ResponseScheduleDTO.toDTO(savedSchedule);
   }
+  
+  
 
   /** 일정 수정 (회의실 상태 자동 갱신 포함) */
   @Override
@@ -171,58 +190,64 @@ public class ScheduleServiceImpl implements ScheduleService {
         : null;
 
     // 수정 권한 확인 (OWNER 또는 MEMBER)
+    // 작성자(OWNER)이거나 참여자 목록에 있으면 수정 가능
+    boolean isScheduleOwner = schedule.getUser().getId().equals(user.getId());
     boolean isParticipant = scheduleParticipantRepository
         .findByScheduleAndDeletedYnFalse(schedule)
         .stream()
         .anyMatch(p -> p.getUser().getId().equals(user.getId()));
 
-    if (!isParticipant) {
+    if (!isScheduleOwner && !isParticipant) {
         throw new SecurityException("이 일정의 참여자가 아닙니다. 수정 권한이 없습니다.");
     }
     
+    // 시간 검증을 먼저 수행해서 잘못된 요청은 바로 차단 (불필요한 DB 락 방지)
+    if (dto.getStartDateTime().isAfter(dto.getEndDateTime()) || 
+        dto.getStartDateTime().isEqual(dto.getEndDateTime())) {
+        throw new IllegalArgumentException("종료 시간은 시작 시간보다 이후여야 합니다.");
+    }
     
-    // 기존 회의실 저장 (나중에 복구를 위해)
+    // 기존 회의실 저장 (나중에 상태 변경을 위해)
     MeetingRoom oldMeetingRoom = schedule.getMeetingRoom();
 
-    // 회의실 중복 예약 방지 (자기 자신 제외)
+    // 회의실 중복 예약 방지 로직에서 "상태 변경"은 나중에 하고,
+    // 여기서는 SELECT를 통한 검증만 수행해서 Deadlock 위험을 줄임
     if (newMeetingRoom != null) {
       
       // 회의실 겹치는 일정이 있는지 확인
       boolean overlap = scheduleRepository.existsOverlappingSchedule(
               newMeetingRoom,
               dto.getStartDateTime(),
-              dto.getEndDateTime()
+              dto.getEndDateTime(),
+              schedule.getId()
       );
 
-      // 단, 자기 자신(same id)은 제외해야 함
       if (overlap) {
-        
-        // 기존 일정이 동일 회의실 및 동일 시간대면 예외로 판단하지 않음
-        boolean sameRoomSameTime =
-                 newMeetingRoom.equals(oldMeetingRoom)
-                 && schedule.getStartDateTime().equals(dto.getStartDateTime())
-                 && schedule.getEndDateTime().equals(dto.getEndDateTime());
-
-        if (!sameRoomSameTime) {
-          throw new IllegalArgumentException("해당 시간대에 이미 예약된 회의실입니다.");
-        }
+        throw new IllegalArgumentException("해당 시간대에 이미 예약된 회의실입니다.");
       }
-
-      // 새 회의실 예약 시 비활성화 처리
-      newMeetingRoom.changeAvailability(false);
     }
 
-    // 기존 회의실과 다른 회의실로 변경된 경우 → 기존 회의실 다시 사용 가능하게
-    if (oldMeetingRoom != null && newMeetingRoom != null && !oldMeetingRoom.equals(newMeetingRoom)) {
-      oldMeetingRoom.changeAvailability(true);
+    // 기존 참여자 전부 한 번만 조회해서 재사용 (SELECT 중복 제거)
+    List<ScheduleParticipant> existingParticipants =
+        scheduleParticipantRepository.findByScheduleAndDeletedYnFalse(schedule);
+
+    // 모든 참여자 일정 중복 검사 (SELECT만 수행, schedule.update 이전에 실행)
+    for (ScheduleParticipant p : existingParticipants) {
+      User participantUser = p.getUser();
+
+      boolean hasConflict = scheduleRepository.existsUserOverlappingScheduleExceptSelf(
+          participantUser, schedule.getId(), dto.getStartDateTime(), dto.getEndDateTime()
+      );
+
+      if (hasConflict) {
+        throw new IllegalArgumentException(
+            "참여자 '" + participantUser.getName() + "'님은 해당 시간에 이미 다른 일정이 있습니다."
+        );
+      }
     }
     
-    // 시간 검증 
-    if (dto.getStartDateTime().isAfter(dto.getEndDateTime()) || 
-        dto.getStartDateTime().isEqual(dto.getEndDateTime())) {
-        throw new IllegalArgumentException("종료 시간은 시작 시간보다 이후여야 합니다.");
-    }
-
+    // 여기까지는 모두 "검증용 SELECT"만 수행.
+    // 이제부터 실제 엔티티 변경(UPDATE/INSERT/DELETE)을 수행해서 Deadlock 가능성을 최소화.
 
     // 일정 정보 수정
     schedule.update(
@@ -235,37 +260,23 @@ public class ScheduleServiceImpl implements ScheduleService {
         newMeetingRoom,
         category);
     
-    // 기존 참여자 전부 불러오기 (OWNER + MEMBER)
-    List<ScheduleParticipant> participants =
-        scheduleParticipantRepository.findByScheduleAndDeletedYnFalse(schedule);
-    
-    // 모든 참여자 일정 중복 검사
-    for (ScheduleParticipant p : participants) {
-      User participantUser = p.getUser();
-
-      boolean hasConflict = scheduleRepository.existsUserOverlappingScheduleExceptSelf(
-          participantUser, schedule.getId(), dto.getStartDateTime(), dto.getEndDateTime()
-      );
-
-      if (hasConflict) {
-        throw new IllegalArgumentException(
-            "참여자 '" + user.getName() + "'님은 해당 시간에 이미 다른 일정이 있습니다."
-        );
-      }
+    // 회의실 사용 가능 상태 갱신 로직 정리
+    // - 이전 회의실과 다르면 이전 회의실은 다시 사용 가능(true)
+    // - 새로운 회의실이 있고, 이전과 다르면 새 회의실을 사용 불가(false)
+    if (oldMeetingRoom != null && !oldMeetingRoom.equals(newMeetingRoom)) {
+      oldMeetingRoom.changeAvailability(true);
+    }
+    if (newMeetingRoom != null && !newMeetingRoom.equals(oldMeetingRoom)) {
+      newMeetingRoom.changeAvailability(false);
     }
     
-    // 참여자 수정 로직 
+    // 참여자 수정 로직에서 기존 조회 결과 재사용
     if (dto.getParticipantIds() != null && !dto.getParticipantIds().isEmpty()) {
       
-      List<ScheduleParticipant> existingParticipants =
-              scheduleParticipantRepository.findByScheduleAndDeletedYnFalse(schedule);
-
-      // 기존 참여자 ID 목록 추출
       List<Integer> existingIds = existingParticipants.stream()
               .map(p -> p.getUser().getId())
               .toList();
 
-      // 요청된 ID 중 새로 추가된 사람들
       List<Integer> newIds = dto.getParticipantIds().stream()
               .filter(id2 -> !existingIds.contains(id2))
               .toList();
@@ -294,8 +305,9 @@ public class ScheduleServiceImpl implements ScheduleService {
                   "[일정 수정] '" + schedule.getTitle() + "' 일정에 새로 추가되었습니다.",
                   null, null,
                   schedule.getUser().getId(),
-                  schedule.getUser().getName()
-          );
+                  schedule.getUser().getName(),
+                  schedule.getId()
+          );  
         }
       }
     }
@@ -303,20 +315,23 @@ public class ScheduleServiceImpl implements ScheduleService {
     // 모든 참여자에게 수정 알림
     List<ScheduleParticipant> allParticipants = scheduleParticipantRepository.findByScheduleAndDeletedYnFalse(schedule);
     
-    for (ScheduleParticipant p : allParticipants) {
-        notificationService.sendNotification(
-                p.getUser().getId(),
-                NotificationType.SCHEDULE,
-                "[일정 수정] '" + schedule.getTitle() + "' 일정이 변경되었습니다.",
-                null, null,
-                schedule.getUser().getId(),
-                schedule.getUser().getName()
-        );   
+    for (ScheduleParticipant p : allParticipants) {  
+      notificationService.sendNotification(
+              p.getUser().getId(),
+              NotificationType.SCHEDULE,
+              "[일정 수정] '" + schedule.getTitle() + "' 일정이 변경되었습니다.",
+              null, null,
+              schedule.getUser().getId(),
+              schedule.getUser().getName(),
+              schedule.getId()
+      );
     }
         
     return ResponseScheduleDTO.toDTO(schedule);
   }
 
+  
+  
   /** 일정 삭제 (Soft Delete + 회의실 해제 포함) */
   @Override
   public void deleteSchedule(Integer id) {
@@ -353,18 +368,29 @@ public class ScheduleServiceImpl implements ScheduleService {
         schedules = scheduleRepository.findAccessibleSchedules(user)
           .stream()
           .filter(s -> {
-            // PRIVATE → 본인 + 참가자만
+            // 작성자가 참여자 목록에 포함되어 있는지 확인 (삭제되지 않은 참여자만)
+            boolean isOwnerInParticipants = s.getParticipants().stream()
+                .anyMatch(p -> p.getUser().getId().equals(s.getUser().getId()) && !p.getDeletedYn());
+            
+            // 현재 조회하는 사용자가 작성자인 경우:
+            // 작성자가 참여자 목록에 없으면 제외 (작성자의 캘린더에서 사라짐)
+            // 참석자는 여전히 자신의 캘린더에서 일정을 볼 수 있음
+            if (s.getUser().equals(user) && !isOwnerInParticipants) {
+                return false;
+            }
+            
+            // PRIVATE → 본인 + 참가자만 (삭제되지 않은 참여자만)
             if (s.getVisibility() == ScheduleVisibility.PRIVATE) {
                 return s.getUser().equals(user)
                     || s.getParticipants().stream()
-                         .anyMatch(p -> p.getUser().equals(user));
+                         .anyMatch(p -> p.getUser().equals(user) && !p.getDeletedYn());
             }
 
-            // PUBLIC → 본인 + 참가자만 (다른 유저의 PUBLIC은 제외)
+            // PUBLIC → 본인 + 참가자만 (다른 유저의 PUBLIC은 제외, 삭제되지 않은 참여자만)
             if (s.getVisibility() == ScheduleVisibility.PUBLIC) {
                 return s.getUser().equals(user)
                     || s.getParticipants().stream()
-                         .anyMatch(p -> p.getUser().equals(user));
+                         .anyMatch(p -> p.getUser().equals(user) && !p.getDeletedYn());
             }
 
             return false;
@@ -428,14 +454,15 @@ public class ScheduleServiceImpl implements ScheduleService {
       List<Integer> userIds,
       LocalDate date,
       LocalDateTime start,
-      LocalDateTime end
+      LocalDateTime end,
+      Integer scheduleId
   ) {
     LocalDateTime startTime = (start != null) ? start : date.atStartOfDay();
     LocalDateTime endTime = (end != null) ? end : date.atTime(23, 59, 59);
 
     Map<Integer, List<ResponseScheduleDTO>> result = new HashMap<>();
     for (Integer userId : userIds) {
-        List<Schedule> schedules = scheduleRepository.findOverlappingSchedules(userId, startTime, endTime);
+        List<Schedule> schedules = scheduleRepository.findOverlappingSchedules(userId, startTime, endTime, scheduleId);
         result.put(userId, schedules.stream()
             .map(ResponseScheduleDTO::toDTO)
             .toList());

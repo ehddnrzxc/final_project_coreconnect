@@ -17,8 +17,30 @@ import org.springframework.data.repository.query.Param;
 
 public interface EmailRepository extends JpaRepository<Email, Integer> {
 
-	 // 이메일(문자열)로 조회
-	 Page<Email> findBySenderEmail(String email, Pageable pageable);
+	 // [수정] senderId (정수)로 조회하는 메서드 (이메일 문자열 아님!)
+    Page<Email> findBySenderId(Integer senderId, Pageable pageable);
+
+    // 보낸메일함 조회 시 휴지통/삭제 상태 제외
+    @Query("SELECT e FROM Email e " +
+           "WHERE e.senderId = :senderId " +
+           "AND e.emailStatus NOT IN ('TRASH', 'DELETED') " +
+           "AND (" +
+           "    :keyword IS NULL OR :keyword = '' OR (" +
+           "        (:searchType = 'TITLE' AND LOWER(e.emailTitle) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+           "        (:searchType = 'CONTENT' AND LOWER(e.emailContent) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+           "        (:searchType = 'TITLE_CONTENT' AND (" +
+           "            LOWER(e.emailTitle) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "            LOWER(e.emailContent) LIKE LOWER(CONCAT('%', :keyword, '%'))" +
+           "        ))" +
+           "    )" +
+           ") " +
+           "ORDER BY e.emailSentTime DESC")
+    Page<Email> findBySenderIdExcludingTrash(
+        @Param("senderId") Integer senderId,
+        Pageable pageable,
+        @Param("searchType") String searchType,
+        @Param("keyword") String keyword
+    );
 
 	// 내가 보낸 이메일 중 특정 상태(Bounce 등)만 페이징
 	Page<com.goodee.coreconnect.email.entity.Email> findBySenderIdAndEmailStatus(Integer userId, EmailStatusEnum bounce, Pageable pageable);
@@ -39,7 +61,8 @@ public interface EmailRepository extends JpaRepository<Email, Integer> {
     @Query("UPDATE Email e SET e.emailStatus = :status WHERE e.emailId IN :ids")
     int updateEmailStatusByIds(@Param("ids") List<Integer> ids, @Param
     		("status") EmailStatusEnum status);
-    
+ // 정렬기준 추가 (emailSentTime 내림차순)
+    Page<Email> findBySenderEmailAndEmailStatusOrderByEmailSentTimeDesc(String senderEmail, EmailStatusEnum emailStatus, Pageable pageable);
 
     /*
      * 기존 JPQL 방식(수신자 주소 기준)도 유지되어 있으면 괜찮지만,
@@ -105,11 +128,34 @@ public interface EmailRepository extends JpaRepository<Email, Integer> {
  Page<Email> findTrashEmailsByUserId(@Param("userId") Integer userId, Pageable pageable);
  
  // Spring Data method 이름 기반 쿼리로 간단히 추가합니다.
- Page<Email> findBySenderIdAndEmailStatusAndReservedAtAfter(
+    Page<Email> findBySenderIdAndEmailStatusAndReservedAtAfter(
          Integer senderId,
          EmailStatusEnum emailStatus,
          LocalDateTime now,
          Pageable pageable);
+
+    // 발신한 중요 메일 조회
+    @Query("SELECT e FROM Email e " +
+           "WHERE e.senderId = :senderId " +
+           "AND e.favoriteStatus = true " +
+           "AND e.emailStatus NOT IN ('TRASH', 'DELETED') " +
+           "AND (" +
+           "    :keyword IS NULL OR :keyword = '' OR (" +
+           "        (:searchType = 'TITLE' AND LOWER(e.emailTitle) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+           "        (:searchType = 'CONTENT' AND LOWER(e.emailContent) LIKE LOWER(CONCAT('%', :keyword, '%'))) OR " +
+           "        (:searchType = 'TITLE_CONTENT' AND (" +
+           "            LOWER(e.emailTitle) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "            LOWER(e.emailContent) LIKE LOWER(CONCAT('%', :keyword, '%'))" +
+           "        ))" +
+           "    )" +
+           ") " +
+           "ORDER BY e.emailSentTime DESC")
+    Page<Email> findFavoriteSentMails(
+        @Param("senderId") Integer senderId,
+        Pageable pageable,
+        @Param("searchType") String searchType,
+        @Param("keyword") String keyword
+    );
 }
 
 

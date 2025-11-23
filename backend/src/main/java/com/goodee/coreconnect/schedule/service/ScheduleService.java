@@ -36,7 +36,8 @@ public interface ScheduleService {
       List<Integer> userIds,
       LocalDate date,
       LocalDateTime start,
-      LocalDateTime end);
+      LocalDateTime end,
+      Integer scheduleId);
   
   /** 특정 회의실의 일정 목록 조회 (삭제되지 않은 일정만 반환) */
   List<ResponseScheduleDTO> getSchedulesByMeetingRoom(Integer meetingRoomId);

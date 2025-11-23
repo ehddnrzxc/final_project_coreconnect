@@ -63,7 +63,8 @@ public interface ChatRoomService {
     
     List<ChatRoomSummaryResponseDTO> getChatRoomSummariesByUserId(Integer userId);
 
-    void markMessagesAsRead(Integer roomId, Integer userId);
+    // ⭐ 읽음 처리된 메시지 ID 리스트 반환 (WebSocket 알림용)
+    List<Integer> markMessagesAsRead(Integer roomId, Integer userId);
 
     /** 채팅방에서 현재 접속 중인 인원 id 리스트 반환 */
     List<Integer> getConnectedUserIdsInRoom(Integer roomId);
@@ -80,9 +81,14 @@ public interface ChatRoomService {
     // 채팅 메시지에 파일이 있는 경우 파일을 조회
     List<Chat> getChatsWithFilesByRoomId(Integer roomId);
     
+    // 채팅 메시지를 페이징으로 조회 (파일 포함)
+    org.springframework.data.domain.Page<Chat> getChatsWithFilesByRoomIdPaged(Integer roomId, org.springframework.data.domain.Pageable pageable);
+    
     boolean existsRoom(Integer roomId);
     
     // user 참여 chatRoom 목록 가져오기
     List<ChatRoomListDTO> getChatRoomListWithUnreadCount(Integer userId);
+
+	boolean existsByRoomId(Integer roomId);
 
 }

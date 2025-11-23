@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import {
   Box,
@@ -18,9 +18,8 @@ import {
   Button,
   IconButton,
 } from "@mui/material";
-import Grid from "@mui/material/Grid";
-import NavigateBeforeIcon from "@mui/icons-material/NavigateBefore"
-import NavigateNextIcon from "@mui/icons-material/NavigateNext"
+import NavigateBeforeIcon from "@mui/icons-material/NavigateBefore";
+import NavigateNextIcon from "@mui/icons-material/NavigateNext";
 
 import {
   getPendingDocuments,
@@ -29,10 +28,13 @@ import {
 } from "../api/approvalApi";
 
 import DocumentStatusChip from "../components/DocumentStatusChip";
+import { UserProfileContext } from "../../../App";
 
 const ITEMS_PER_PAGE = 4;
 
 function ApprovalHomePage() {
+  const { userProfile } = useContext(UserProfileContext);
+
   const [myTasks, setMyTasks] = useState([]);
   const [pendingDocs, setPendingDocs] = useState([]);
   const [completedDocs, setCompletedDocs] = useState([]);
@@ -69,7 +71,21 @@ function ApprovalHomePage() {
     fetchDocs();
   }, []);
 
-  const handleRowClick = documentId => {
+  const getActionButtonLabel = doc => {
+    if (!userProfile || !doc.approvalLines) return "결재하기";
+
+    const myLine = doc.approvalLines.find(
+      line => line.userId === userProfile.id
+    );
+
+    if (myLine && myLine.type === "AGREE") {
+      return "합의하기";
+    }
+
+    return "결재하기";
+  };
+
+  const handleRowClick = (documentId) => {
     navigate(`/e-approval/doc/${documentId}`);
   };
 
@@ -102,76 +118,90 @@ function ApprovalHomePage() {
 
       {/* --- 1. 내가 결재할 문서 (Cards) --- */}
       <Typography variant="h5" sx={{ mt: 4, mb: 2 }}>
-        결재 대기 문서
+        결재/합의 대기 문서
       </Typography>
       {myTasks.length === 0 ? (
-        <Typography>결재 대기중인 문서가 없습니다.</Typography>
+        <Alert severity="info">결재 대기중인 문서가 없습니다.</Alert>
       ) : (
         <>
-          <Grid container spacing={2}>
+          <Box
+            sx={{
+              display: "grid",
+              gap: 2, // spacing={2}와 동일
+
+              // (xs) 기본 1개 컬럼
+              gridTemplateColumns: "1fr",
+
+              // (sm) 600px 이상일 때 2개 컬럼 (sm={6})
+              "@media (min-width: 600px)": {
+                gridTemplateColumns: "repeat(2, 1fr)",
+              },
+
+              // (md) 900px 이상일 때 4개 컬럼 (md={3})
+              "@media (min-width: 900px)": {
+                gridTemplateColumns: "repeat(4, 1fr)",
+              },
+            }}
+          >
             {paginatedTasks.map((doc) => (
-              <Grid item xs={12} sm={6} md={3} key={doc.documentId}>
-                <Card
-                  sx={{
-                    textDecoration: "none",
-                    height: "100%",
-                    borderRadius: 2,
-                    transition: "all 0.2s ease-in-out",
-                    "&:hover": {
-                      boxShadow: 8,
-                      transform: "translateY(-4px)",
-                    },
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "space-between",
-                  }}
-                  variant="outlined"
-                >
-                  <CardContent sx={{ pb: 1 }}>
-                    <DocumentStatusChip status={doc.documentStatus} />
+              <Card
+                key={doc.documentId} // <Grid item>이 사라졌으므로 key를 Card로 이동
+                sx={{
+                  textDecoration: "none",
+                  height: "100%",
+                  borderRadius: 2,
+                  transition: "all 0.2s ease-in-out",
+                  "&:hover": {
+                    boxShadow: 8,
+                    transform: "translateY(-4px)",
+                  },
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                }}
+                variant="outlined"
+              >
+                <CardContent sx={{ pb: 1 }}>
+                  <DocumentStatusChip status={doc.documentStatus} />
 
-                    <Typography
-                      variant="h6"
-                      sx={{ fontWeight: "bold", my: 0.5 }}
-                    >
-                      {doc.documentTitle}
+                  <Typography variant="h6" sx={{ fontWeight: "bold", my: 0.5 }}>
+                    {doc.documentTitle}
+                  </Typography>
+                  <Stack spacing={0.5}>
+                    <Typography variant="body2" color="text.secondary">
+                      기안자: {doc.writerName}
                     </Typography>
-                    <Stack spacing={0.5}>
-                      <Typography variant="body2" color="text.secondary">
-                        기안자: {doc.writerName}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        기안일: {new Date(doc.createdAt).toLocaleDateString()}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        결재양식: {doc.templateName}
-                      </Typography>
-                    </Stack>
-                  </CardContent>
+                    <Typography variant="body2" color="text.secondary">
+                      기안일: {new Date(doc.createdAt).toLocaleDateString()}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      결재양식: {doc.templateName}
+                    </Typography>
+                  </Stack>
+                </CardContent>
 
-                  <Box sx={{ p: 2, pt: 1 }}>
-                    <Button
-                      component={RouterLink}
-                      to={`/e-approval/doc/${doc.documentId}`}
-                      variant="outlined"
-                      fullWidth
-                      sx={{
-                        color: "text.primary",
-                        borderColor: "grey.300",
-                        backgroundColor: "grey.50",
-                        "&:hover": {
-                          backgroundColor: "grey.100",
-                          borderColor: "grey.400",
-                        },
-                      }}
-                    >
-                      결재하기
-                    </Button>
-                  </Box>
-                </Card>
-              </Grid>
+                <Box sx={{ p: 2, pt: 1 }}>
+                  <Button
+                    component={RouterLink}
+                    to={`/e-approval/doc/${doc.documentId}`}
+                    variant="outlined"
+                    fullWidth
+                    sx={{
+                      color: "text.primary",
+                      borderColor: "grey.300",
+                      backgroundColor: "grey.50",
+                      "&:hover": {
+                        backgroundColor: "grey.100",
+                        borderColor: "grey.400",
+                      },
+                    }}
+                  >
+                    {getActionButtonLabel(doc)}
+                  </Button>
+                </Box>
+              </Card>
             ))}
-          </Grid>
+          </Box>
 
           {pageCount > 1 && (
             <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
@@ -196,21 +226,29 @@ function ApprovalHomePage() {
       <Typography variant="h5" sx={{ mt: 4, mb: 2 }}>
         진행중인 문서 (내가 상신한 문서)
       </Typography>
-      {pendingDocs.length === 0 ? (
-        <Typography>진행중인 문서가 없습니다.</Typography>
-      ) : (
-        <TableContainer component={Paper} variant="outlined">
-          <Table sx={{ minWidth: 650 }} aria-label="진행중인 문서 테이블">
-            <TableHead>
-              <TableRow sx={{ backgroundColor: "#f8f9fa" }}>
-                <TableCell>문서 제목</TableCell>
-                <TableCell>결재 양식</TableCell>
-                <TableCell>기안일</TableCell>
-                <TableCell>상태</TableCell>
+      <TableContainer component={Paper} variant="outlined">
+        <Table sx={{ minWidth: 650 }} aria-label="진행중인 문서 테이블">
+          <TableHead>
+            <TableRow sx={{ backgroundColor: "#f8f9fa" }}>
+              <TableCell>문서 제목</TableCell>
+              <TableCell>결재 양식</TableCell>
+              <TableCell>기안일</TableCell>
+              <TableCell>상태</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {displayPendingDocs.length === 0 ? (
+              /* 데이터가 없을 때 보여줄 행 */
+              <TableRow>
+                <TableCell colSpan={4} align="center" sx={{ py: 5 }}>
+                  <Typography color="textSecondary">
+                    아직 진행중인 문서가 없습니다.
+                  </Typography>
+                </TableCell>
               </TableRow>
-            </TableHead>
-            <TableBody>
-              {displayPendingDocs.map((doc) => (
+            ) : (
+              /* 데이터가 있을 때 매핑 */
+              displayPendingDocs.map((doc) => (
                 <TableRow
                   key={doc.documentId}
                   hover
@@ -231,31 +269,39 @@ function ApprovalHomePage() {
                     <DocumentStatusChip status={doc.documentStatus} />
                   </TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
       {/* --- 3. 완료된 문서 (Table) --- */}
       <Typography variant="h5" sx={{ mt: 4, mb: 2 }}>
         완료된 문서
       </Typography>
-      {completedDocs.length === 0 ? (
-        <Typography>완료된 문서가 없습니다.</Typography>
-      ) : (
-        <TableContainer component={Paper} variant="outlined">
-          <Table sx={{ minWidth: 650 }} aria-label="완료된 문서 테이블">
-            <TableHead>
-              <TableRow sx={{ backgroundColor: "#f8f9fa" }}>
-                <TableCell>문서 제목</TableCell>
-                <TableCell>결재 양식</TableCell>
-                <TableCell>완료일</TableCell>
-                <TableCell>상태</TableCell>
+      <TableContainer component={Paper} variant="outlined">
+        <Table sx={{ minWidth: 650 }} aria-label="완료된 문서 테이블">
+          <TableHead>
+            <TableRow sx={{ backgroundColor: "#f8f9fa" }}>
+              <TableCell>문서 제목</TableCell>
+              <TableCell>결재 양식</TableCell>
+              <TableCell>완료일</TableCell>
+              <TableCell>상태</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {displayCompletedDocs.length === 0 ? (
+              /* 데이터가 없을 때 보여줄 행 */
+              <TableRow>
+                <TableCell colSpan={4} align="center" sx={{ py: 5 }}>
+                  <Typography color="textSecondary">
+                    완료된 문서가 없습니다.
+                  </Typography>
+                </TableCell>
               </TableRow>
-            </TableHead>
-            <TableBody>
-              {displayCompletedDocs.map(doc => (
+            ) : (
+              /* 데이터가 있을 때 매핑 */
+              displayCompletedDocs.map((doc) => (
                 <TableRow
                   key={doc.documentId}
                   hover
@@ -276,11 +322,11 @@ function ApprovalHomePage() {
                     <DocumentStatusChip status={doc.documentStatus} />
                   </TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
     </Box>
   );
 }

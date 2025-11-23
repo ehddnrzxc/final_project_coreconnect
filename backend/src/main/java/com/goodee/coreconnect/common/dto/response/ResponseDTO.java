@@ -56,4 +56,32 @@ public class ResponseDTO<T> {
                 .data(null)
                 .build();
     }
+
+    /**
+     * 범용 에러 응답 생성
+     * @param message 에러 메시지
+     * @return ResponseDTO with status 500
+     */
+    public static <T> ResponseDTO<T> error(String message) {
+        return ResponseDTO.<T>builder()
+                .status(500)
+                .message(message)
+                .data(null)
+                .build();
+    }
+
+    /**
+     * 범용 에러 응답 생성 (HTTP 상태 코드 지정)
+     * @param <T> 제네릭 타입
+     * @param status HTTP 상태 코드
+     * @param message 에러 메시지
+     * @return ResponseDTO with specified status
+     */
+    public static <T> ResponseDTO<T> error(int status, String message) {
+        return ResponseDTO.<T>builder()
+                .status(status)
+                .message(message)
+                .data(null)
+                .build();
+    }
 }	

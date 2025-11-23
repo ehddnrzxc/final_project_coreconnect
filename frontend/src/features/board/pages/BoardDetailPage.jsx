@@ -1,47 +1,19 @@
-import React, { useEffect, useMemo, useState, useRef } from "react";
-// React 훅
-// useEffect: 생명주기 제어
-// useState: 상태 관리
-// useMemo: 렌더링 최적화 (계산 결과 캐싱)
-// useRef: DOM 요소나 값 저장 (리렌더링과 무관)
-import { useParams, useNavigate } from "react-router-dom";
-// React Router 훅
-// useParams: URL 파라미터 추출 (예: /board/:id)
-// useNavigate: 페이지 이동 함수
-import { Box, Typography, TextField, Button, Stack, Paper } from "@mui/material";
-// MUI 컴포넌트
-// Box: 레이아웃 컨테이너
-// Typography: 텍스트 표시
-// Divider: 구분선
-// TextField: 입력 필드
-// Button: 버튼
-// Stack: Flexbox 정렬 컨테이너
-// Paper: 카드형 컨테이너 (그림자 포함)
-import ReplyIcon from "@mui/icons-material/Reply"; // 답글 아이콘 (화살표)
-import EditIcon from "@mui/icons-material/Edit"; // 수정 아이콘
-import DeleteIcon from "@mui/icons-material/Delete"; // 삭제 아이콘
+import React, { useEffect, useMemo, useState, useRef, useContext } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { Box, Typography, TextField, Button, Stack, Paper, Modal, Card, CardMedia, CardContent, IconButton, Avatar } from "@mui/material";
+import ReplyIcon from "@mui/icons-material/Reply";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 import { getBoardDetail, deleteBoard } from "../api/boardAPI";
-// 게시글 API
-// getBoardDetail: 게시글 상세 조회
-// deleteBoard: 게시글 삭제
-import { getFilesByBoard, getFile, downloadZipFiles } from "../api/boardFileAPI"; // 파일 API: 특정 게시글의 첨부파일 목록 조회
+import { getFilesByBoard, getFile, downloadZipFiles } from "../api/boardFileAPI";
 import { getRepliesByBoard, createReply, updateReply, deleteReply } from "../api/boardReplyAPI";
-// 댓글 API
-// getRepliesByBoard: 게시글 댓글 목록 조회
-// createReply: 댓글 등록
-// updateReply: 댓글 수정
-// deleteReply: 댓글 삭제
-import { useSnackbarContext } from "../../../components/utils/SnackbarContext"; // 전역 스낵바 컨텍스트
-import ConfirmDialog from "../../../components/utils/ConfirmDialog"; // 공용 확인창 컴포넌트 임포트
-import { Modal, Card, CardMedia, CardContent, IconButton } from "@mui/material";
-// Modal: 첨부파일 미리보기 모달
-// Card: 첨부파일 카드
-// CardMedia: 카드 안 이미지
-// CardContent: 카드 하단 텍스트 영역
-// IconButton: 카드 우측 상단 X 버튼
-import CloseIcon from "@mui/icons-material/Close";             // 카드 X 버튼
-import DownloadIcon from "@mui/icons-material/Download";       // 다운로드 버튼
-import DescriptionIcon from "@mui/icons-material/Description"; // 비이미지 파일 아이콘
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
+import ConfirmDialog from "../../../components/utils/ConfirmDialog";
+import CloseIcon from "@mui/icons-material/Close";
+import DownloadIcon from "@mui/icons-material/Download";
+import DescriptionIcon from "@mui/icons-material/Description";
+import { UserProfileContext } from "../../../App";
+import { getJobGradeLabel } from "../../../utils/labelUtils";
 
 
 // 파일이 이미지인지 판단하는 헬퍼 함수 (확장자 기준)
@@ -54,12 +26,14 @@ const isImage = (name) => {
 const BoardDetailPage = () => {
   const { boardId } = useParams(); // URL 경로에서 /board/:boardId 의 boardId 값을 문자열로 가져옴
   const navigate = useNavigate(); // 다른 페이지로 이동(뒤로가기, 특정 경로 이동 등)에 사용하는 함수
+  const location = useLocation();
+  const fromAllBoard = location.state?.fromAllBoard ?? false;
   const { showSnack } = useSnackbarContext(); // 스낵바 훅 사용
 
   // 로그인 사용자 정보 로드
-  const user = JSON.parse(localStorage.getItem("user") || "{}"); // localStorage에 "user" 키로 저장된 JSON 문자열을 읽고 객체로 변환, 없으면 {} 사용
-  const loginName = user?.name || "익명"; // 로그인 이름 (user.name 이 없거나 undefined면 "익명"으로 대체)
-  const loginRole = user?.role; // 사용자 역할(권한). 예: "ADMIN", "USER" 등
+  const { userProfile } = useContext(UserProfileContext) || {};
+  const loginName = userProfile?.name || "익명"; // 로그인 이름 (user.name 이 없거나 undefined면 "익명"으로 대체)
+  const loginRole = userProfile?.role; // 사용자 역할(권한). 예: "ADMIN", "USER" 등
 
   // 상태 정의
   const [board, setBoard] = useState(null); // 게시글 상세 데이터 상태 (초기값 null → 아직 로딩 전이라는 의미)
@@ -68,7 +42,7 @@ const BoardDetailPage = () => {
 
   // 첨부파일 미리보기 모달용 상태
   const [previewFile, setPreviewFile] = useState(null); // 현재 모달에서 보고 있는 파일 정보
-  const [openModal, setOpenModal] = useState(false);    // 모달 열림 여부
+  const [openModal, setOpenModal] = useState(false); // 모달 열림 여부
 
   // 댓글 입력/수정 상태
   const [replyText, setReplyText] = useState(""); // 일반 댓글 입력창의 내용
@@ -87,9 +61,9 @@ const BoardDetailPage = () => {
     if (!str) return ""; // 값이 없으면 빈 문자열 반환 (표시 안 함)
     const d = new Date(str); // 문자열을 Date 객체로 변환 (ISO 날짜 문자열 가정)
     const pad = (n) => String(n).padStart(2, "0"); // 숫자를 항상 2자리 문자열로 만들기 위해 0을 앞에 채움
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(
-      d.getHours()
-    )}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; // "YYYY-MM-DD HH:mm:ss" 형식으로 문자열 반환
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
+      d.getDate()
+    )} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; // "YYYY-MM-DD HH:mm:ss" 형식으로 문자열 반환
   };
 
   const alertShownRef = useRef(false); // 알럿 중복 방지용 ref
@@ -162,7 +136,14 @@ const BoardDetailPage = () => {
     try {
       await deleteBoard(boardId);
       showSnack("게시글이 삭제되었습니다.", "success");
-      navigate(-1);
+      // 전체 게시판에서 온 경우
+      if (fromAllBoard) {
+        navigate("/board");
+      }
+      // 특정 카테고리에서 온 경우
+      else {
+        navigate(`/board/${board.categoryId}`);
+      }
     } catch (err) {
       showSnack("게시글 삭제 중 오류가 발생했습니다.", "error");
     }
@@ -229,7 +210,7 @@ const BoardDetailPage = () => {
   const handleReplyDelete = async (replyId) => {
     showSnack("댓글 삭제 중입니다...", "info");
     try {
-      await deleteReply(replyId); // 댓글 삭제 API 호출 
+      await deleteReply(replyId); // 댓글 삭제 API 호출
       await loadAll(); // 삭제 후 댓글 목록 재조회
       showSnack("댓글이 삭제되었습니다.", "success");
     } catch (err) {
@@ -265,15 +246,15 @@ const BoardDetailPage = () => {
 
   // 단일 파일 Blob 다운로드 방식으로 완전 교체
   const handleSingleDownload = async (file) => {
-  const res = await getFile(file.id);
-  const data = res.data.data;
+    const res = await getFile(file.id);
+    const data = res.data.data;
 
-  const link = document.createElement("a");
-  link.href = data.fileUrl;  // presigned URL 직접 사용
-  link.download = data.fileName; // 다운로드 이름
-  link.target = "_self";
-  link.click();
-};
+    const link = document.createElement("a");
+    link.href = data.fileUrl; // presigned URL 직접 사용
+    link.download = data.fileName; // 다운로드 이름
+    link.target = "_self";
+    link.click();
+  };
 
   // ZIP 다운로드는 fileNames만 전달
   const handleDownloadAll = async () => {
@@ -285,7 +266,6 @@ const BoardDetailPage = () => {
       link.href = URL.createObjectURL(blob);
       link.download = `attachments_${boardId}.zip`;
       link.click();
-
     } catch (err) {
       showSnack("ZIP 다운로드 실패", "error");
     }
@@ -314,10 +294,24 @@ const BoardDetailPage = () => {
       <Typography variant="h5" sx={{ mb: 1 }}>
         {board.title} {/* 게시글 제목 */}
       </Typography>
-      <Typography variant="body2" sx={{ mb: 2, color: "text.secondary" }}>
-        {board.writerName} | {formatDateTime(board.createdAt)} | 조회수{" "}
-        {board.viewCount ?? 0} {/* 조회수가 null/undefined일 경우 0으로 대체 */}
-      </Typography>
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+
+        {/* 프로필 이미지 */}
+        <Avatar
+          src={board.writerProfileImageUrl || undefined}
+          sx={{ width: 27, height: 27 }}
+        />
+
+        {/* 이름 + 직급 + 날짜 + 조회수 */}
+        <Typography variant="body2" color="text.secondary">
+          {board.writerName}
+          {board.writerJobGrade ? ` ${getJobGradeLabel(board.writerJobGrade)}` : ""}
+          {" / "}
+          {formatDateTime(board.createdAt)}
+          {" / 조회 "}
+          {board.viewCount}
+        </Typography>
+      </Stack>
 
       {/* 게시글 작성자 or 관리자만 수정/삭제 버튼 표시 */}
       {canEditOrDeletePost && (
@@ -328,7 +322,14 @@ const BoardDetailPage = () => {
             size="small"
             sx={{ fontSize: "0.8rem", py: 0.5, px: 1.5 }}
             startIcon={<EditIcon />} // 수정 아이콘
-            onClick={() => navigate(`/board/edit/${board.id}`)} // 수정 페이지로 이동
+            onClick={() =>
+              navigate(`/board/edit/${board.id}`, {
+                state: {
+                  fromCategoryId: location.state?.fromAllBoard ? "" : board.categoryId,
+                  fromAllBoard: location.state?.fromAllBoard ?? false
+                }
+              })
+            }
           >
             수정
           </Button>
@@ -364,9 +365,12 @@ const BoardDetailPage = () => {
           color="text.secondary"
           sx={{
             fontStyle: "italic",
-            minHeight: "330px", // 약 15줄 정도 기본 높이 확보
-            lineHeight: 1.6, // 줄 간격
-            whiteSpace: "pre-wrap", // 줄바꿈(\n) 유지
+            minHeight: "330px",
+            lineHeight: 1.6,
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-all",
+            overflowWrap: "break-word",
+            minWidth: 0,
           }}
         >
           {board.content?.trim() ? board.content : "등록된 내용이 없습니다."}
@@ -386,11 +390,7 @@ const BoardDetailPage = () => {
           >
             <Typography variant="h6">
               첨부파일{" "}
-              <Typography
-                component="span"
-                variant="h6"
-                color="primary"
-              >
+              <Typography component="span" variant="h6" color="primary">
                 ({files.length}개)
               </Typography>
             </Typography>
@@ -418,8 +418,8 @@ const BoardDetailPage = () => {
               <Card
                 key={file.id}
                 sx={{
-                  width: 150, // 작성 페이지와 동일
-                  p: 1,
+                  width: 150, // 작성 페이지와 
+                  height: 160,
                   borderRadius: 2,
                   boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
                   position: "relative",
@@ -427,8 +427,6 @@ const BoardDetailPage = () => {
                 }}
                 onClick={() => openPreview(file)} // 카드 클릭 → 미리보기 모달
               >
-                {/* X 버튼 (상세에선 실제 삭제가 아니라 단순 UI 제거는 아니므로, 제거 버튼은 넣지 않음) */}
-
                 {/* 썸네일 */}
                 {isImage(file.fileName) ? (
                   <CardMedia
@@ -440,7 +438,7 @@ const BoardDetailPage = () => {
                 ) : (
                   <Box
                     sx={{
-                      height: 120,
+                      height: 100,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -502,7 +500,7 @@ const BoardDetailPage = () => {
           </IconButton>
 
           <Typography variant="h6" sx={{ mb: 2 }}>
-            파일 미리보기
+            {previewFile?.fileName || "파일 미리보기"}
           </Typography>
 
           {previewFile && isImage(previewFile.fileName) ? (
@@ -545,7 +543,10 @@ const BoardDetailPage = () => {
 
       {/* 댓글이 없을 경우 안내문 */}
       {rootReplies.length === 0 && (
-        <Typography color="text.secondary" sx={{ ml: 0.5, mb: 2, width: "80%" }}>
+        <Typography
+          color="text.secondary"
+          sx={{ ml: 0.5, mb: 2, width: "80%" }}
+        >
           아직 댓글이 없습니다.
         </Typography>
       )}
@@ -566,7 +567,11 @@ const BoardDetailPage = () => {
                 {/* 부모 댓글 카드 */}
                 <Paper
                   variant="outlined"
-                  sx={{ p: 1.5, bgcolor: "#fff", opacity: r.deletedYn ? 0.6 : 1 }}
+                  sx={{
+                    p: 1.5,
+                    bgcolor: "#fff",
+                    opacity: r.deletedYn ? 0.6 : 1,
+                  }}
                 >
                   {/* 댓글 상단 영역 */}
                   <Stack
@@ -574,16 +579,24 @@ const BoardDetailPage = () => {
                     justifyContent="space-between"
                     alignItems="center"
                   >
-                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                      {r.writerName || "익명"}{" "}
-                      <Typography
-                        component="span"
-                        variant="caption"
-                        sx={{ color: "text.secondary" }}
-                      >
-                        ({formatDateTime(r.createdAt)})
+                    <Stack direction="row" alignItems="center" spacing={1}>
+                      <Avatar
+                        src={r.writerProfileImageUrl || undefined}
+                        sx={{ width: 27, height: 27 }}
+                      />
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                        {r.writerName || "익명"}
+                        {r.writerJobGrade ? ` ${getJobGradeLabel(r.writerJobGrade)}` : ""}
+                        <Typography component="span" variant="caption" sx={{ color: "text.secondary" }}>
+                          (
+                          {r.updatedAt
+                            ? `${formatDateTime(r.updatedAt)} · 수정됨`
+                            : formatDateTime(r.createdAt)
+                          }
+                          )
+                        </Typography>
                       </Typography>
-                    </Typography>
+                    </Stack>
 
                     {/* 댓글 수정/삭제 */}
                     {!r.deletedYn &&
@@ -658,7 +671,15 @@ const BoardDetailPage = () => {
                     />
                   ) : (
                     // 일반 모드일 때: 텍스트로 내용 표시
-                    <Typography variant="body2" sx={{ mt: 0.5 }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        mt: 0.5,
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-all",
+                        overflowWrap: "break-word",
+                      }}
+                    >
                       {r.content?.trim() ? r.content : "내용 없음"}
                     </Typography>
                   )}
@@ -674,8 +695,9 @@ const BoardDetailPage = () => {
                         display: "inline-flex",
                         alignItems: "center",
                       }}
-                      onClick={() =>
-                        setReplyParentId(replyParentId === r.id ? null : r.id)
+                      onClick={
+                        () =>
+                          setReplyParentId(replyParentId === r.id ? null : r.id)
                         // 이미 같은 부모에 대한 답글 입력창이 열려 있으면 닫고, 아니면 해당 댓글에 대한 입력창 열기
                       }
                     >
@@ -731,10 +753,10 @@ const BoardDetailPage = () => {
                     variant="outlined"
                     sx={{
                       ml: 4,
-                      mt: idx === 0 ? "2px" : "4px",  // 첫 대댓글은 완전 붙이기 
+                      mt: idx === 0 ? "2px" : "4px", // 첫 대댓글은 완전 붙이기
                       mb: idx === children.length - 1 ? "16px" : "2px", // 마지막만 띄움
                       p: 1.5,
-                      bgcolor: "#fcfcfc"
+                      bgcolor: "#fcfcfc",
                     }}
                   >
                     {/* 대댓글 상단: 작성자, 작성일, 수정/삭제 */}
@@ -743,16 +765,24 @@ const BoardDetailPage = () => {
                       justifyContent="space-between"
                       alignItems="center"
                     >
-                      <Typography variant="subtitle2">
-                        ↳ {child.writerName}{" "}
-                        <Typography
-                          component="span"
-                          variant="caption"
-                          sx={{ color: "text.secondary" }}
-                        >
-                          ({formatDateTime(child.createdAt)})
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <Avatar
+                          src={child.writerProfileImageUrl || undefined}
+                          sx={{ width: 27, height: 27 }}
+                        />
+                        <Typography variant="subtitle2">
+                          ↳ {child.writerName}
+                          {child.writerJobGrade ? ` ${getJobGradeLabel(child.writerJobGrade)}` : ""}
+                          <Typography component="span" variant="caption" sx={{ color: "text.secondary" }}>
+                            (
+                            {child.updatedAt
+                              ? `${formatDateTime(child.updatedAt)} · 수정됨`
+                              : formatDateTime(child.createdAt)
+                            }
+                            )
+                          </Typography>
                         </Typography>
-                      </Typography>
+                      </Stack>
 
                       {(loginRole === "ADMIN" ||
                         child.writerName === loginName) && (
@@ -818,10 +848,16 @@ const BoardDetailPage = () => {
                       />
                     ) : (
                       // 일반 모드일 때 텍스트 출력
-                      <Typography variant="body2" sx={{ mt: 0.5 }}>
-                        {child.content?.trim()
-                          ? child.content
-                          : "내용 없음"}
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          mt: 0.5,
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-all",
+                          overflowWrap: "break-word",
+                        }}
+                      >
+                        {child.content?.trim() ? child.content : "내용 없음"}
                       </Typography>
                     )}
                   </Paper>

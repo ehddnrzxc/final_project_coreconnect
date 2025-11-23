@@ -19,12 +19,11 @@ public class ApprovalLineResponseDTO {
   private String approvalComment; // 결재 의견
   private LocalDateTime processedAt; // 처리 일시
 
-  private UserInfoResponseDTO approver; // 결재자 정보
+  private Integer userId;
   private String name;
   private String positionName;
   private String deptName;
-  
-  private String approvalType;  // 결재 타입
+  private String type;  // 결재 타입
 
   public static ApprovalLineResponseDTO toDTO(ApprovalLine line) {
     User approver = line.getApprover();
@@ -39,10 +38,10 @@ public class ApprovalLineResponseDTO {
         .approvalComment(line.getApprovalLineComment())
         .processedAt(line.getApprovalLineProcessedAt())
         .name(approver.getName())
-        .positionName(approver.getJobGrade().toString())
+        .positionName(approver.getJobGrade().name())
         .deptName(approver.getDepartment().getDeptName())
-        .approver(UserInfoResponseDTO.toDTO(line.getApprover()))
-        .approvalType(typeName)
+        .userId(approver.getId())
+        .type(typeName)
         .build();
   }
 

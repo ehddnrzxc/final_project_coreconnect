@@ -6,18 +6,21 @@ import {
   CardHeader,
   CardContent,
   TextField,
-  Button,
   MenuItem,
   Select,
   InputLabel,
   FormControl,
   Typography,
-  Alert,
   Stack,
   Divider,
 } from "@mui/material";
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
+import { getJobGradeLabel } from "../../../utils/labelUtils";
+import StyledButton from "../../../components/ui/StyledButton";
 
 export default function UserCreateForm() {
+  const { showSnack } = useSnackbarContext();
+  
   const [form, setForm] = useState({
     email: "",
     name: "",
@@ -32,9 +35,6 @@ export default function UserCreateForm() {
   const [roles, setRoles] = useState([]);
   const [jobGrades, setJobGrades] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState({ type: "", text: "" });
-  const [roleMsg, setRoleMsg] = useState("");
-  const [jobGradeMsg, setJobGradeMsg] = useState("");
 
   /** ─ 부서 목록 로드 ─ */
   useEffect(() => {
@@ -42,12 +42,9 @@ export default function UserCreateForm() {
       .get("/departments/flat")
       .then(({ data }) => setDepartments(data))
       .catch(() =>
-        setMsg({
-          type: "info",
-          text: "부서 목록을 불러오지 못했습니다. (부서 없이 생성 가능)",
-        })
+        showSnack("부서 목록을 불러오지 못했습니다. (부서 없이 생성 가능)", "info")
       );
-  }, []);
+  }, [showSnack]);
 
   /** Role 목록 로드 */
   useEffect(() => {
@@ -55,9 +52,9 @@ export default function UserCreateForm() {
       .get("/admin/users/roles")
       .then(({ data }) => setRoles(data))
       .catch(() => {
-        setRoleMsg("권한 목록을 불러오지 못했습니다.")
+        showSnack("권한 목록을 불러오지 못했습니다.", "warning");
       });
-  }, []);
+  }, [showSnack]);
 
   /** JobGrade 목록 로드 */
   useEffect(() => {
@@ -65,23 +62,55 @@ export default function UserCreateForm() {
       .get("/admin/users/job-grades")
       .then(({ data }) => setJobGrades(data))
       .catch(() => {
-        setJobGradeMsg("직급 목록을 불러오지 못했습니다.")
+        showSnack("직급 목록을 불러오지 못했습니다.", "warning");
       });
-  }, []);
+  }, [showSnack]);
+
+  /** 전화번호 포맷팅 함수 (숫자만 받아서 하이픈 추가 - UI 표시용) */
+  const formatPhoneNumber = (phone) => {
+    if (!phone) return "";
+    // 숫자만 추출
+    const numbers = phone.replace(/\D/g, "");
+    
+    // 길이에 따라 하이픈 추가
+    if (numbers.length <= 3) {
+      return numbers;
+    } else if (numbers.length <= 7) {
+      // 010-1234
+      return `${numbers.slice(0, 3)}-${numbers.slice(3)}`;
+    } else if (numbers.length <= 10) {
+      // 02-1234-5678 또는 031-123-4567
+      if (numbers.startsWith("02")) {
+        return `${numbers.slice(0, 2)}-${numbers.slice(2, 6)}-${numbers.slice(6)}`;
+      } else {
+        return `${numbers.slice(0, 3)}-${numbers.slice(3, 6)}-${numbers.slice(6)}`;
+      }
+    } else {
+      // 010-1234-5678 (11자리)
+      return `${numbers.slice(0, 3)}-${numbers.slice(3, 7)}-${numbers.slice(7, 11)}`;
+    }
+  };
 
   /** ─ 입력 변경 핸들러 ─ */
   const onChange = (e) => {
     const { name, value } = e.target;
-    setForm((f) => ({ ...f, [name]: value }));
+    
+    // 전화번호 필드인 경우 숫자만 허용하여 저장
+    if (name === "phone") {
+      // 숫자만 추출하여 저장 (하이픈은 UI 표시용으로만 사용)
+      const numbersOnly = value.replace(/\D/g, "");
+      setForm((f) => ({ ...f, [name]: numbersOnly }));
+    } else {
+      setForm((f) => ({ ...f, [name]: value }));
+    }
   };
 
   /** ─ 폼 제출 ─ */
   const submit = async (e) => {
     e.preventDefault();
-    setMsg({ type: "", text: "" });
 
     if (!form.email || !form.name || !form.tempPassword) {
-      setMsg({ type: "error", text: "이메일 / 이름 / 임시비밀번호는 필수입니다." });
+      showSnack("이메일 / 이름 / 임시비밀번호는 필수입니다.", "error");
       return;
     }
 
@@ -89,7 +118,8 @@ export default function UserCreateForm() {
       email: form.email.trim(),
       name: form.name.trim(),
       tempPassword: form.tempPassword,
-      phone: form.phone.trim() || undefined,
+      // 전화번호는 숫자만 저장 (하이픈 제거)
+      phone: form.phone ? form.phone.replace(/\D/g, "") : undefined,
       role: form.role,
       jobGrade: form.jobGrade,
       ...(form.deptId ? { deptId: Number(form.deptId) } : {}), // 부서를 선택한 경우에만 추가 
@@ -98,7 +128,7 @@ export default function UserCreateForm() {
     setLoading(true);
     try {
       const { data } = await http.post("/admin/users", payload);
-      setMsg({ type: "success", text: `생성 완료: ${data.name} (${data.email})` });
+      showSnack(`생성 완료: ${data.name} (${data.email})`, "success");
 
       // 폼 초기화
       setForm({
@@ -115,32 +145,20 @@ export default function UserCreateForm() {
       const message = e.response?.data?.message;
 
       if (status === 401) {
-        setMsg({
-          type: "error",
-          text: "인증이 만료되었거나 권한이 없습니다. 다시 로그인하세요.",
-        });
+        showSnack("인증이 만료되었거나 권한이 없습니다. 다시 로그인하세요.", "error");
       } else {
-        setMsg({
-          type: "error",
-          text: `유저 생성 실패: ${message || "서버 오류"}`,
-        });
+        showSnack(`유저 생성 실패: ${message || "서버 오류"}`, "error");
       }
     } finally {
       setLoading(false);
     }
   };
 
-  const getSeverity = (type) => {
-    if (type === "success") return "success";
-    if (type === "error") return "error";
-    return "info";
-  };
-
   /** ─ 렌더링 ─ */
   return (
     <Box
       sx={{
-        maxWidth: 640,
+        maxWidth: 1400,
         mx: "auto",
         mt: 4,
         px: 2,
@@ -158,16 +176,10 @@ export default function UserCreateForm() {
         <Divider />
         <CardContent sx={{ pt: 3, pb: 4 }}>
           <Stack spacing={2.5}>
-            {msg.text && (
-              <Alert severity={getSeverity(msg.type)} variant="outlined">
-                {msg.text}
-              </Alert>
-            )}
-
             <Box component="form" noValidate onSubmit={submit}>
               <Stack spacing={2.5}>
                 <TextField
-                  label="이메일 *"
+                  label="이메일"
                   name="email"
                   type="email"
                   value={form.email}
@@ -179,7 +191,7 @@ export default function UserCreateForm() {
                 />
 
                 <TextField
-                  label="이름 *"
+                  label="이름"
                   name="name"
                   value={form.name}
                   onChange={onChange}
@@ -190,7 +202,7 @@ export default function UserCreateForm() {
                 />
 
                 <TextField
-                  label="임시 비밀번호 *"
+                  label="임시 비밀번호"
                   name="tempPassword"
                   type="text"
                   value={form.tempPassword}
@@ -204,11 +216,14 @@ export default function UserCreateForm() {
                 <TextField
                   label="전화번호"
                   name="phone"
-                  value={form.phone}
+                  value={formatPhoneNumber(form.phone)}
                   onChange={onChange}
                   fullWidth
                   size="medium"
-                  placeholder="전화번호를 입력하세요."
+                  placeholder="숫자만 입력하세요 (예: 01012345678)"
+                  inputProps={{
+                    maxLength: 13, // 010-1234-5678 형식 최대 길이
+                  }}
                 />
 
                 <FormControl fullWidth size="medium">
@@ -265,7 +280,7 @@ export default function UserCreateForm() {
                     ) : (
                       jobGrades.map((g) => (
                         <MenuItem key={g.value} value={g.value}>
-                          {g.label}
+                          {getJobGradeLabel(g.value)}
                         </MenuItem>
                       ))
                     )}
@@ -274,15 +289,17 @@ export default function UserCreateForm() {
 
 
                 <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1 }}>
-                  <Button
+                  <StyledButton
                     type="submit"
                     variant="contained"
+                    color="primary"
                     size="large"
                     disabled={loading}
-                    sx={{ px: 4, py: 1.2, fontWeight: 600, borderRadius: 2 }}
+                    fullWidth={false}
+                    sx={{ px: 4, py: 1.2, fontWeight: 600, borderRadius: 2, color: "primary.main" }}
                   >
                     {loading ? "생성 중..." : "유저 생성"}
-                  </Button>
+                  </StyledButton>
                 </Box>
               </Stack>
             </Box>

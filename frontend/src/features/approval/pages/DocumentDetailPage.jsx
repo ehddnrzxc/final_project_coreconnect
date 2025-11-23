@@ -1,85 +1,122 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { approveDocument, getDocumentDetail, rejectDocument } from '../api/approvalApi';
-import { Alert, Box, Button, CircularProgress, Paper, Typography } from '@mui/material';
+import { approveDocument, downloadFile, getDocumentDetail, rejectDocument } from '../api/approvalApi';
+import { Alert, Box, Button, Chip, CircularProgress, Paper, Typography } from '@mui/material';
 import DynamicApprovalTable from '../components/DynamicApprovalTable';
 import DrafterInfoTable from '../components/DrafterInfoTable';
-import ApprovalRejectModal from './ApprovalRejectModal';
+import ApprovalProcessModal from '../components/ApprovalProcessModal';
 import EditIcon from '@mui/icons-material/Edit';
 import DocumentStatusChip from '../components/DocumentStatusChip';
-
-const getCurrentUser = () => {
-  try {
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      return JSON.parse(userStr);
-    }
-  } catch (error) {
-    console.error("로컬 스토리지 사용자 정보 파싱 실패:", error);
-  }
-  return null;
-};
+import { useSnackbarContext } from '../../../components/utils/SnackbarContext';
+import { UserProfileContext } from '../../../App';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 function DocumentDetailPage() {
   const { documentId } = useParams();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [documentData, setDocumentData] = useState(null);
-  const [openRejectModal, setOpenRejectModal] = useState(false);
+  const [modalConfig, setModalConfig] = useState({
+    open: false,
+    type: null
+  });
 
+  const { showSnack } = useSnackbarContext();
   const navigate = useNavigate();
+  const { userProfile } = useContext(UserProfileContext);
+  const printRef = useRef(null);
 
-  const currentUser = useMemo(() => getCurrentUser(), []);
+  const handleDownload = (fileId, fileName) => {
+    downloadFile(fileId, fileName);
+  };
 
-  useEffect(() => {
-    const fetchDocument = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const res = await getDocumentDetail(documentId);
-        setDocumentData(res.data);
-      } catch (error) {
-        console.error("문서 상세 정보 조회 실패:", error);
-        setError(error.response?.data?.message || "문서 정보를 불러오는 데 실패했습니다.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchDocument();
-  }, [documentId]);
-
-  const handleApprove = async () => {
-    const comment = prompt("결재 의견을 입력하세요. 하기 싫음 말고");
-    if (comment === null) {
-      return;
-    }
+  const handlePdfDownload = async () => {
+    const element = printRef.current;
+    if (!element) return;
 
     try {
-      const requestDTO = { approvalComment: comment || ""};
-      await approveDocument(documentId, requestDTO);
-      alert("결재가 승인되었습니다.");
-      navigate("/e-approval");
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 210;
+      const pageHeight = 297;
+
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save(`${documentData.documentTitle || '결재문서'}.pdf`);
+
     } catch (error) {
-      console.error("승인 처리 실패:", error);
-      alert(error.response?.data?.message || "승인 처리에 실패했습니다.");
+      console.error("PDF 생성 실패:", error);
+      showSnack("PDF 생성 중 오류 발생", "error");
     }
   };
 
-  const handleOpenRejectModal = () => setOpenRejectModal(true);
-
-  const handleCloseRejectModal = () => setOpenRejectModal(false);
-
-  const handleRejectConfirm = async reason => {
+  const fetchDocument = async () => {
     try {
-      const requestDTO = { approvalComment: reason };
-      await rejectDocument(documentId, requestDTO);
-
-      alert("결재가 반려되었습니다.");
-      handleCloseRejectModal();
-      navigate("/e-approval");
+      setLoading(true);
+      setError(null);
+      const res = await getDocumentDetail(documentId);
+      setDocumentData(res.data);
     } catch (error) {
-      console.error("반려 처리 실패:", error);
-      alert(error.response?.data?.message || "반려 처리에 실패했습니다.");
+      console.error("문서 상세 정보 조회 실패:", error);
+      setError(error.response?.data?.message || "문서 정보를 불러오는 데 실패했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDocument();
+  }, [documentId]);
+
+  const handleOpenApprove = () => setModalConfig({ open: true, type: 'APPROVE' });
+
+  const handleOpenReject = () => setModalConfig({ open: true, type: 'REJECT' });
+
+  const handleCloseModal = () => setModalConfig({ ...modalConfig, open: false });
+
+  const handleProcessComplete = async comment => {
+    try {
+      const requestDTO = { approvalComment: comment };
+
+      if (modalConfig.type === 'APPROVE') {
+        await approveDocument(documentId, requestDTO);
+        showSnack("결재가 승인되었습니다.", "success");
+      } else {
+        await rejectDocument(documentId, requestDTO);
+        showSnack("결재가 반려되었습니다.", "warning");
+      }
+
+      handleCloseModal();
+
+      await fetchDocument();
+
+    } catch (error) {
+      console.error("결재 처리 실패:", error);
+      const actionName = modalConfig.type === 'APPROVE' ? "승인" : "반려";
+      showSnack(error.response?.data?.message || `${actionName} 처리에 실패했습니다.`, "error");
     }
   };
 
@@ -97,19 +134,17 @@ function DocumentDetailPage() {
 
   const isDrafter = useMemo(() => {
     
-    if (!currentUser || !currentUser.email) {
-      return false;
-    }
+    if (!userProfile || !userProfile.email) return false;
 
     if (!documentData || !documentData.drafter || !documentData.drafter.userEmail) {
       return false;
     }
 
-    const userEmail = currentUser.email.trim().toLowerCase();
+    const userEmail = userProfile.email.trim().toLowerCase();
     const drafterEmail = documentData.drafter.userEmail.trim().toLowerCase();
 
     return userEmail === drafterEmail;
-  }, [currentUser, documentData]);
+  }, [userProfile, documentData]);
 
   if (loading) return <Box sx={{ display: 'flex', justifyContent: "center", mt: 4 }}><CircularProgress /></Box>;
   if (error) return <Alert severity='error'>{error}</Alert>;
@@ -123,7 +158,7 @@ function DocumentDetailPage() {
       </Typography>
 
       <Paper elevation={3} sx={{ p: 4}}>
-        <div style={{ width: '750px', margin: '0 auto', padding: '30px', border: '1px solid #ddd', fontFamily: "'Malgun Gothic', sans-serif", position: 'relative' }}>
+        <div ref={printRef} style={{ width: '750px', margin: '0 auto', padding: '30px', backgroundColor: 'white', border: '1px solid #ddd', fontFamily: "'Malgun Gothic', sans-serif", position: 'relative' }}>
           <h1 style={{ fontSize: '32px', margin: '0', textAlign: 'center', paddingBottom: '10px', marginBottom: '20px' }}>
             {documentData.templateName}
           </h1>
@@ -141,6 +176,11 @@ function DocumentDetailPage() {
             </div>
           </div>
           <div
+            style={{
+              wordBreak: "break-all",
+              overflowWrap: "break-word",
+              whiteSpace: "pre-wrap"
+            }}
             dangerouslySetInnerHTML={{ __html: mergedHtml }}
           />
         </div>
@@ -150,10 +190,23 @@ function DocumentDetailPage() {
           {documentData.files && documentData.files.length > 0 ? (
             <ul>
               {documentData.files.map(file => (
-                <li key={file.fileId}>
-                  <a href={file.fileUrl} target='_blank' rel='noopener noreferrer'>
-                    {file.fileName}
-                  </a>
+                <li key={file.fileId} >
+                  <Chip
+                  icon={<AttachFileIcon />}
+                  label={`${file.fileName}`}
+                  onClick={() => handleDownload(file.fileId, file.fileName)}
+                  clickable
+                  key={file.fileId}
+                  sx={{
+                    mr: 1,
+                    px: 1.8,
+                    py: 1.1,
+                    fontWeight: 500,
+                    bgcolor: "#f4f6fa",
+                    borderRadius: "6px",
+                    fontSize: "15px"
+                  }}
+                />
                 </li>
               ))}
             </ul>
@@ -162,10 +215,20 @@ function DocumentDetailPage() {
           )}
         </Box>
         <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+          <Button
+            variant='outlined'
+            color='primary'
+            startIcon={<PictureAsPdfIcon />}
+            onClick={handlePdfDownload}
+          >
+            PDF 다운로드
+          </Button>
           {documentData.myTurnApprove && (
             <>
-              <Button variant='outlined' color='primary' onClick={handleApprove}>승인</Button>
-              <Button variant='outlined' color='error' onClick={handleOpenRejectModal}>반려</Button>
+              <Button variant='outlined' sx={{ color: '#66bb6a', borderColor: '#66bb6a'}} onClick={handleOpenApprove}>
+                승인
+              </Button>
+              <Button variant='outlined' color='error' onClick={handleOpenReject}>반려</Button>
             </>
           )}
           {documentData.documentStatus === 'DRAFT' && isDrafter && (
@@ -175,10 +238,11 @@ function DocumentDetailPage() {
           )}
         </Box>
       </Paper>
-      <ApprovalRejectModal
-        open={openRejectModal}
-        handleClose={handleCloseRejectModal}
-        handleSubmit={handleRejectConfirm}
+      <ApprovalProcessModal
+        open={modalConfig.open}
+        type={modalConfig.type}
+        handleClose={handleCloseModal}
+        handleSubmit={handleProcessComplete}
       />
     </Box>
   )

@@ -3,6 +3,8 @@ package com.goodee.coreconnect.approval.repository;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -22,7 +24,7 @@ public interface DocumentRepository extends JpaRepository<Document, Integer>{
    * @param user
    * @return
    */
-  @Query("""
+  @Query(value = """
       SELECT DISTINCT d FROM Document d
       JOIN FETCH d.user u
       LEFT JOIN FETCH u.department
@@ -32,10 +34,17 @@ public interface DocumentRepository extends JpaRepository<Document, Integer>{
       WHERE d.user = :user
       AND d.docDeletedYn = :deletedYn
       ORDER BY d.createdAt DESC
+      """,
+      countQuery = """
+      SELECT count(d) FROM Document d
+      WHERE d.user = :user
+      AND d.docDeletedYn = :deletedYn
       """)
-  List<Document> findByUserAndDocDeletedYnOrderByCreatedAtDesc(
+  Page<Document> findByUserAndDocDeletedYnOrderByCreatedAtDesc(
       @Param("user") User user,
-      @Param("deletedYn") Boolean docDeletedYn
+      @Param("deletedYn") Boolean docDeletedYn,
+      Pageable pageable
+      
   );
 
   /**
@@ -110,5 +119,21 @@ public interface DocumentRepository extends JpaRepository<Document, Integer>{
       ORDER BY d.createdAt DESC
       """)
   List<Document> findByUserAndStatusInWithJoins(@Param("user") User user, @Param("statuses") List<DocumentStatus> statuses, @Param("deletedYn") Boolean deletedYn);
+  
+  /**
+   * 중복 검사를 위해 특정 유저의 특정 템플릿 문서 중 유효한(진행중, 완료) 문서 조회
+   * @param user
+   * @param templateId
+   * @param statuses
+   * @return
+   */
+  @Query("""
+      SELECT d FROM Document d
+      WHERE d.user = :user
+      AND d.template.id = :templateId
+      AND d.docDeletedYn = false
+      AND d.documentStatus IN :statuses
+      """)
+  List<Document> findByUserAndTemplateIdAndStatusIn(@Param("user") User user, @Param("templateId") Integer templateId, @Param("statuses") List<DocumentStatus> statuses);
 
 }

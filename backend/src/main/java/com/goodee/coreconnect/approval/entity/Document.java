@@ -103,7 +103,7 @@ public class Document {
       throw new IllegalStateException("임시 저장 상태의 문서만 상신할 수 있습니다.");
     
     boolean hasRequiredLine = this.approvalLines.stream()
-        .anyMatch(line -> line.getApprovalLineType() == ApprovalLineType.AGREE || line.getApprovalLineType() == ApprovalLineType.APPROVE);
+        .anyMatch(line -> line.getApprovalLineType() == ApprovalLineType.APPROVE);
     
     if (!hasRequiredLine)
       throw new IllegalStateException("결재선(결재 또는 합의)이 지정되지 않은 문서는 상신할 수 없습니다.");

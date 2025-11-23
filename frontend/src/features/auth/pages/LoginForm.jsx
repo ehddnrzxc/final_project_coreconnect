@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { login } from "../../auth/api/authAPI";
-import { getMyProfileImage } from "../../user/api/userAPI";
 import { createPasswordResetRequest } from "../../user/api/passwordResetAPI";
+import { clearAuthCache } from "../utils/authUtils";
 import {
   Box, TextField, Button, IconButton, InputAdornment,
-  Alert, Stack, Checkbox, FormControlLabel, Link,
-  Dialog, DialogTitle, DialogContent, DialogActions
+  Stack, Checkbox, FormControlLabel, Link,
 } from "@mui/material";
 import { Visibility, VisibilityOff, Close as CloseIcon } from "@mui/icons-material";
 import PasswordResetDialog from "../components/PasswordResetDialog";
+import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 
 export default function LoginForm({ onLoginSuccess }) {
+  const { showSnack } = useSnackbarContext();
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -18,7 +19,6 @@ export default function LoginForm({ onLoginSuccess }) {
     // savedEmail이 있으면 true, 없으면 false
     return !!localStorage.getItem("savedEmail");
   });
-  const [error, setError] = useState("");
   const [resetOpen, setResetOpen] = useState(false);
 
   // 처음 렌더 시 savedEmail 복원
@@ -35,20 +35,15 @@ export default function LoginForm({ onLoginSuccess }) {
     e.preventDefault();
 
     if(!email.trim() || !pw.trim()) {
-      setError("아이디와 비밀번호를 모두 입력해주세요.");
+      showSnack("아이디와 비밀번호를 모두 입력해주세요.", "error");
       return;
     }
     
     try {
+      // 로그인 성공 시 이전 사용자 정보 캐시 초기화
+      clearAuthCache();
+      
       const data = await login(email, pw);
-      const user = {
-        email: data.email,
-        name: data.name,
-        role: data.role,
-        departmentName: data.departmentName,
-        jobGrade: data.jobGrade,
-      }
-      localStorage.setItem("user", JSON.stringify(user));
 
       if(remember) {
         localStorage.setItem("savedEmail", email);
@@ -56,20 +51,11 @@ export default function LoginForm({ onLoginSuccess }) {
         localStorage.removeItem("savedEmail");
       }
 
-      // 프로필 이미지 동기화 - 실패해도 로그인은 유지
-      try {
-        const imageUrl = await getMyProfileImage();
-        const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
-        const nextUser = { ...storedUser, imageUrl: imageUrl || "" };
-        localStorage.setItem("user", JSON.stringify(nextUser));
-      } catch (err) {
-        console.warn("프로필 이미지 불러오기 실패:", err);
-      }
-      
+      // onLoginSuccess가 존재할 경우에만 호출
       onLoginSuccess?.();
     } catch (e) {
       console.error("에러:", e);
-      setError("아이디 또는 비밀번호가 올바르지 않습니다.");
+      showSnack("아이디 또는 비밀번호가 올바르지 않습니다.", "error");
     }
   };
 
@@ -142,9 +128,6 @@ export default function LoginForm({ onLoginSuccess }) {
             비밀번호 초기화
           </Link>
         </Box>
-
-        {/* 에러 */}
-        {error && <Alert severity="error">{error}</Alert>}
 
         {/* 로그인 버튼 */}
         <Button

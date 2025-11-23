@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetUrlRequest;
@@ -18,6 +19,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
  * S3 업로드용 Service 파일
  */
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class S3Service {
@@ -43,13 +45,30 @@ public class S3Service {
 
     /** 공용: 업로드된 S3 객체의 key를 받아, 해당 파일에 접근할 수 있는 전체 URL을 생성하여 반환 */
     public String getFileUrl(String key) {
+        if (key == null || key.isBlank()) {
+            throw new IllegalArgumentException("S3 key는 null이거나 빈 문자열일 수 없습니다.");
+        }
+        
         GetUrlRequest request = GetUrlRequest.builder()
                 .bucket(bucket)
                 .key(key)
                 .build();
 
         URL url = s3Client.utilities().getUrl(request);
-        return url.toString();
+        String urlString = url.toString();
+        
+        // 디버깅: S3 URL 생성 로그 (프로필 이미지 문제 추적용)
+        // 생성된 URL이 완전한 URL인지 확인 (https://로 시작해야 함)
+        log.info("[S3Service] getFileUrl 호출 - key: {}, bucket: {}, 생성된URL: {}", key, bucket, urlString);
+        
+        // URL 형식 검증: https:// 또는 http://로 시작해야 함
+        if (!urlString.startsWith("http://") && !urlString.startsWith("https://")) {
+            log.error("[S3Service] ⚠️ 경고: 생성된 URL이 완전한 URL 형식이 아닙니다! key: {}, url: {}", key, urlString);
+        } else {
+            log.debug("[S3Service] ✅ 완전한 URL 생성 성공: {}", urlString);
+        }
+        
+        return urlString;
     }
     
     /**

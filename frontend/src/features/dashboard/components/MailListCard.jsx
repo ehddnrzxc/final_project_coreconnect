@@ -1,30 +1,33 @@
-import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useContext } from "react";
+import { useNavigate } from "react-router-dom";
 import Card from "../../../components/ui/Card";
 import {
-  Button,
   Typography,
   List,
   ListItem,
   ListItemText,
+  Box,
 } from "@mui/material";
-import { fetchInbox, getUserEmailFromStorage } from "../../email/api/emailApi";
+import { fetchInbox } from "../../email/api/emailApi";
+import { UserProfileContext } from "../../../App";
 
 export default function MailListCard() {
   const navigate = useNavigate();
   const [recentMails, setRecentMails] = useState([]);
   const [mailLoading, setMailLoading] = useState(true);
+  const { userProfile } = useContext(UserProfileContext) || {};
+  const userEmail = userProfile?.email; 
 
   // 받은메일함 최근 메일 가져오기
   useEffect(() => {
+    if (!userEmail) {
+      setMailLoading(false);
+      return;
+    }
+    
     (async () => {
-      const userEmail = getUserEmailFromStorage();
-      if (!userEmail) {
-        setMailLoading(false);
-        return;
-      }
       try {
-        const res = await fetchInbox(userEmail, 0, 5, "all"); // 최근 5개만
+        const res = await fetchInbox(userEmail, 0, 5, "all"); 
         setRecentMails(res.data.data.content || []);
       } catch (err) {
         console.error("메일 목록 불러오기 실패:", err);
@@ -33,21 +36,32 @@ export default function MailListCard() {
         setMailLoading(false);
       }
     })();
-  }, []);
+  }, [userEmail]);
+
+  const formatMailTime = (sentTime) => {
+    if (!sentTime) return "";
+    const date = new Date(sentTime);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    const diffWeeks = Math.floor(diffDays / 7);
+    const diffMonths = Math.floor(diffDays / 30);
+
+    if (diffMins < 1) return "방금 전";
+    if (diffMins < 60) return `${diffMins}분 전`;
+    if (diffHours < 24) return `${diffHours}시간 전`;
+    if (diffDays < 7) return `${diffDays}일 전`;
+    if (diffWeeks < 4) return `${diffWeeks}주 전`;
+    if (diffMonths < 12) return `${diffMonths}개월 전`;
+    return `${Math.floor(diffDays / 365)}년 전`;
+  };
 
   return (
     <Card
       title="메일 리스트"
-      right={
-        <Button
-          component={Link}
-          to="/email/inbox"
-          size="small"
-          sx={{ textTransform: "none" }}
-        >
-          받은메일함
-        </Button>
-      }
+      sx={{ minWidth: 400 }}
     >
       {mailLoading ? (
         <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>
@@ -62,51 +76,55 @@ export default function MailListCard() {
           {recentMails.map((mail) => (
             <ListItem
               key={mail.emailId}
+              data-grid-cancel="true"
               sx={{
                 px: 0,
-                py: 0.75,
-                borderBottom: "1px solid #e5e7eb",
+                py: 1,
+                flexDirection: "column",
+                alignItems: "flex-start",
+                borderBottom: "1px solid",
+                borderColor: "divider",
                 cursor: "pointer",
                 "&:hover": {
                   bgcolor: "action.hover",
                 },
+                "&:last-child": { borderBottom: "none" }
               }}
               onClick={() => navigate(`/email/${mail.emailId}`)}
-              secondaryAction={
-                <Button
-                  size="small"
-                  sx={{ textTransform: "none" }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`/email/${mail.emailId}`);
+            >
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", mb: 0.5 }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    flex: 1,
+                    mr: 1
                   }}
                 >
-                  보기
-                </Button>
-              }
-            >
+                  {mail.senderName || mail.senderEmail || "알 수 없음"}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {formatMailTime(mail.sentTime)}
+                </Typography>
+              </Box>
               <ListItemText
                 primary={
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ mb: 0.25 }}
-                  >
-                    {mail.senderName || mail.senderEmail || "알 수 없음"}
-                  </Typography>
-                }
-                secondary={
                   <Typography
                     variant="body2"
                     sx={{
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
+                      wordBreak: "break-word"
                     }}
                   >
                     {mail.emailTitle || "(제목 없음)"}
                   </Typography>
                 }
+                sx={{ mt: 0 }}
               />
             </ListItem>
           ))}

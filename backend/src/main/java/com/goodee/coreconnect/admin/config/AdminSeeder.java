@@ -8,10 +8,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.goodee.coreconnect.department.entity.Department;
 import com.goodee.coreconnect.department.repository.DepartmentRepository;
-import com.goodee.coreconnect.user.entity.JobGrade;
-import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.User;
+import com.goodee.coreconnect.user.enums.JobGrade;
+import com.goodee.coreconnect.user.enums.Role;
 import com.goodee.coreconnect.user.repository.UserRepository;
+import com.goodee.coreconnect.user.service.EmployeeNumberService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +29,8 @@ public class AdminSeeder {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final DepartmentRepository departmentRepository; 
+    private final DepartmentRepository departmentRepository;
+    private final EmployeeNumberService employeeNumberService; 
 
     private static final String ADMIN_EMAIL = "admin@gmail.com";
     private static final String ADMIN_NAME  = "시스템관리자";
@@ -58,6 +60,9 @@ public class AdminSeeder {
         // 비밀번호 암호화
         String encoded = passwordEncoder.encode(ADMIN_RAW_PASSWORD);
 
+        // 사번 자동 생성 (연도 4자리 + 자동 증가 3자리)
+        String employeeNumber = employeeNumberService.generateEmployeeNumber();
+
         User admin = User.createUser(
                 encoded,               
                 ADMIN_NAME,             
@@ -65,7 +70,8 @@ public class AdminSeeder {
                 ADMIN_EMAIL,           
                 ADMIN_PHONE,           
                 dept,                   
-                JobGrade.PRESIDENT                   
+                JobGrade.PRESIDENT,
+                employeeNumber
         );
 
         userRepository.save(admin);

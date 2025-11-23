@@ -10,7 +10,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
+import com.goodee.coreconnect.attendance.dto.response.AttendanceStatisticsDTO;
+import com.goodee.coreconnect.attendance.dto.response.CompanyAttendanceResponseDTO;
+import com.goodee.coreconnect.attendance.dto.response.MonthlyAttendanceDetailDTO;
 import com.goodee.coreconnect.attendance.dto.response.TodayAttendanceResponseDTO;
+import com.goodee.coreconnect.attendance.dto.response.WeeklyAttendanceDetailDTO;
 import com.goodee.coreconnect.attendance.service.AttendanceService;
 import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
 
@@ -53,6 +59,53 @@ public class AttendanceController {
                                         @RequestParam("date") LocalDate date) {
     String email = user.getEmail();
     return attendanceService.getWeeklyWorkMinutes(email, date);
+  }
+
+  /** 주간 근태 통계 조회 */
+  @GetMapping("/me/weekly-stats")
+  public ResponseEntity<AttendanceStatisticsDTO> getWeeklyStatistics(
+      @AuthenticationPrincipal CustomUserDetails user,
+      @RequestParam("date") LocalDate date) {
+    String email = user.getEmail();
+    AttendanceStatisticsDTO stats = attendanceService.getWeeklyStatistics(email, date);
+    return ResponseEntity.ok(stats);
+  }
+
+  /** 월간 근태 통계 조회 */
+  @GetMapping("/me/monthly-stats")
+  public ResponseEntity<AttendanceStatisticsDTO> getMonthlyStatistics(
+      @AuthenticationPrincipal CustomUserDetails user,
+      @RequestParam("date") LocalDate date) {
+    String email = user.getEmail();
+    AttendanceStatisticsDTO stats = attendanceService.getMonthlyStatistics(email, date);
+    return ResponseEntity.ok(stats);
+  }
+
+  /** 전사원 오늘 근태 현황 조회 */
+  @GetMapping("/company/today")
+  public ResponseEntity<List<CompanyAttendanceResponseDTO>> getCompanyAttendanceToday() {
+    List<CompanyAttendanceResponseDTO> result = attendanceService.getCompanyAttendanceToday();
+    return ResponseEntity.ok(result);
+  }
+
+  /** 주간 일별 근태 상세 조회 */
+  @GetMapping("/me/weekly-detail")
+  public ResponseEntity<WeeklyAttendanceDetailDTO> getWeeklyAttendanceDetail(
+      @AuthenticationPrincipal CustomUserDetails user,
+      @RequestParam("date") LocalDate date) {
+    String email = user.getEmail();
+    WeeklyAttendanceDetailDTO detail = attendanceService.getWeeklyAttendanceDetail(email, date);
+    return ResponseEntity.ok(detail);
+  }
+
+  /** 월간 일별 근태 상세 조회 */
+  @GetMapping("/me/monthly-detail")
+  public ResponseEntity<MonthlyAttendanceDetailDTO> getMonthlyAttendanceDetail(
+      @AuthenticationPrincipal CustomUserDetails user,
+      @RequestParam("date") LocalDate date) {
+    String email = user.getEmail();
+    MonthlyAttendanceDetailDTO detail = attendanceService.getMonthlyAttendanceDetail(email, date);
+    return ResponseEntity.ok(detail);
   }
 
 }

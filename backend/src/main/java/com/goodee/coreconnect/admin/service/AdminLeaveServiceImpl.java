@@ -7,7 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.goodee.coreconnect.admin.dto.request.AdminLeaveRequestDTO;
 import com.goodee.coreconnect.leave.entity.LeaveRequest;
-import com.goodee.coreconnect.leave.entity.LeaveStatus;
+import com.goodee.coreconnect.leave.enums.LeaveStatus;
 import com.goodee.coreconnect.leave.repository.LeaveRequestRepository;
 import com.goodee.coreconnect.user.repository.UserRepository;
 

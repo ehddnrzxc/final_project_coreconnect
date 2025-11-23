@@ -1,5 +1,6 @@
 import http from "../../../api/http";
 
+
 // 댓글 등록
 export const createReply = (data) => http.post(`/board-reply`, data);
 

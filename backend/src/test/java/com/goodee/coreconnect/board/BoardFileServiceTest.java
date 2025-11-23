@@ -33,8 +33,8 @@ import com.goodee.coreconnect.board.repository.BoardFileRepository;
 import com.goodee.coreconnect.board.repository.BoardRepository;
 import com.goodee.coreconnect.board.service.BoardFileServiceImpl;
 import com.goodee.coreconnect.common.service.S3Service;
-import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.User;
+import com.goodee.coreconnect.user.enums.Role;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -79,6 +79,7 @@ class BoardFileServiceTest {
                 Role.USER,
                 "test@example.com",
                 "010-1234-5678",
+                null,
                 null,
                 null
         );

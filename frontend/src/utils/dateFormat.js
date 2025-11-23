@@ -25,11 +25,16 @@ const log = (fn, input, output) => {
  * JS Date / ISO / LocalDateTime → 백엔드(LocalDateTime: "yyyy-MM-dd HH:mm:ss")
  */
 export const toBackendFormat = (input) => {
-  if (!input) return null;
+  if (!input) {
+    return null;
+  }
+  
   let result;
+  const inputType = typeof input;
+  const isDate = input instanceof Date;
 
   // Date 객체
-  if (input instanceof Date && !isNaN(input)) {
+  if (isDate && !isNaN(input)) {
     const pad = (n) => String(n).padStart(2, "0");
     result = `${input.getFullYear()}-${pad(input.getMonth() + 1)}-${pad(
       input.getDate()
@@ -39,13 +44,42 @@ export const toBackendFormat = (input) => {
   }
 
   // 문자열 ("T" or " " 모두 지원)
-  else if (typeof input === "string") {
-    let temp = input.includes("T") ? input.replace("T", " ") : input;
+  else if (inputType === "string") {
+    let temp = input.trim();
+    
+    // 타임존 오프셋 제거 (+09:00, -05:00, Z 등) - 먼저 처리
+    temp = temp.replace(/[+-]\d{2}:\d{2}$/, "").replace(/Z$/, "");
+    
+    // 잘못된 형식 정리: "2025-11-24 08:00:00+09:00 09:00:00" 같은 경우
+    // 타임존 오프셋이 제거된 후에도 중복 시간이 남아있을 수 있음
+    // 정규식으로 올바른 형식만 추출: "yyyy-MM-dd HH:mm:ss" 또는 "yyyy-MM-ddTHH:mm:ss"
+    const dateTimeMatch = temp.match(/^(\d{4}-\d{2}-\d{2})[T\s](\d{2}:\d{2}(?::\d{2})?)/);
+    if (dateTimeMatch) {
+      const [, datePart, timePart] = dateTimeMatch;
+      // 시간 부분에 초가 없으면 추가
+      const normalizedTime = timePart.includes(':') && timePart.split(':').length === 2 
+        ? `${timePart}:00` 
+        : timePart;
+      temp = `${datePart} ${normalizedTime}`;
+    } else {
+      // 매칭되지 않으면 기본 처리
+      // 공백 이후의 중복 시간 부분 제거
+      if (temp.includes(" ") && temp.split(" ").length > 2) {
+        const parts = temp.split(" ");
+        // 날짜 부분과 첫 번째 시간 부분만 사용
+        if (parts.length >= 2) {
+          temp = `${parts[0]} ${parts[1]}`;
+        }
+      }
+      
+      // "T"를 " "로 변환
+      temp = temp.includes("T") ? temp.replace("T", " ") : temp;
 
-    // 초(:ss)가 없는 경우 자동으로 ":00" 추가
-    // 예: "2025-11-07 11:00" → "2025-11-07 11:00:00"
-    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(temp)) {
-      temp += ":00";
+      // 초(:ss)가 없는 경우 자동으로 ":00" 추가
+      // 예: "2025-11-07 11:00" → "2025-11-07 11:00:00"
+      if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(temp)) {
+        temp += ":00";
+      }
     }
 
     result = temp.trim();
@@ -53,9 +87,57 @@ export const toBackendFormat = (input) => {
 
   // 기타 타입
   else {
-    result = String(input);
+    // Date 객체의 toString() 결과를 처리 (예: "Mon Nov 24 2025 09:00:00 GMT+0900")
+    // 또는 다른 형식의 날짜 문자열
+    const inputStr = String(input);
+    
+    // Date 객체의 toString() 형식 감지
+    const dateStringMatch = inputStr.match(/^[A-Za-z]{3}\s+[A-Za-z]{3}\s+\d{1,2}\s+\d{4}\s+\d{2}:\d{2}:\d{2}/);
+    if (dateStringMatch) {
+      try {
+        const dateObj = new Date(inputStr);
+        if (!isNaN(dateObj.getTime())) {
+          const pad = (n) => String(n).padStart(2, "0");
+          result = `${dateObj.getFullYear()}-${pad(dateObj.getMonth() + 1)}-${pad(
+            dateObj.getDate()
+          )} ${pad(dateObj.getHours())}:${pad(dateObj.getMinutes())}:${pad(
+            dateObj.getSeconds()
+          )}`;
+          log("toBackendFormat", input, result);
+          return result;
+        }
+      } catch (err) {
+        // Date 생성 실패
+      }
+    }
+    
+    // 마지막 시도: String 변환 후 Date 생성
+    try {
+      const dateObj = new Date(inputStr);
+      if (!isNaN(dateObj.getTime())) {
+        const pad = (n) => String(n).padStart(2, "0");
+        result = `${dateObj.getFullYear()}-${pad(dateObj.getMonth() + 1)}-${pad(
+          dateObj.getDate()
+        )} ${pad(dateObj.getHours())}:${pad(dateObj.getMinutes())}:${pad(
+          dateObj.getSeconds()
+        )}`;
+        log("toBackendFormat", input, result);
+        return result;
+      }
+    } catch (err) {
+      // 모든 변환 실패
+    }
+    
+    // 변환 실패 시 null 반환 (잘못된 형식 방지)
+    return null;
   }
 
+  // 최종 검증: 올바른 형식인지 확인
+  if (result && !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(result)) {
+    return null;
+  }
+
+  log("toBackendFormat", input, result);
   return result;
 };
 
@@ -74,14 +156,77 @@ export const toISO = (input) => {
 
   // 문자열 (" " or "T")
   else if (typeof input === "string") {
-    result = input.includes("T")
-      ? input.trim()
-      : input.replace(" ", "T").trim();
+    let temp = input.trim();
+    
+    // Date 객체의 toString() 결과를 처리 (예: "Mon Nov 24 2025 09:00:00 GMT+0900")
+    // 이런 형식은 정규식으로 파싱하여 ISO 형식으로 변환
+    const dateStringMatch = temp.match(/^[A-Za-z]{3}\s+[A-Za-z]{3}\s+\d{1,2}\s+\d{4}\s+\d{2}:\d{2}:\d{2}/);
+    if (dateStringMatch) {
+      try {
+        const dateObj = new Date(temp);
+        if (!isNaN(dateObj.getTime())) {
+          result = dateObj.toISOString().slice(0, 19);
+          log("toISO", input, result);
+          return result;
+        }
+      } catch (err) {
+        // Date 생성 실패 시 아래 로직으로 계속 진행
+      }
+    }
+    
+    // 타임존 오프셋 제거 (+09:00, -05:00, Z 등)
+    temp = temp.replace(/[+-]\d{2}:\d{2}$/, "").replace(/Z$/, "");
+    
+    // 잘못된 형식 정리: "2025-11-24T09:00:00+09:00 09:00:00" 같은 경우
+    // 공백 이후의 중복 시간 부분 제거
+    if (temp.includes("T") && temp.includes(" ")) {
+      const tIndex = temp.indexOf("T");
+      const spaceIndex = temp.indexOf(" ", tIndex);
+      if (spaceIndex > 0) {
+        // "T" 이후 첫 번째 공백까지만 사용
+        temp = temp.substring(0, spaceIndex);
+      }
+    }
+    
+    // " "를 "T"로 변환
+    result = temp.includes("T") ? temp : temp.replace(" ", "T");
+    
+    // 최종 검증: 올바른 ISO 형식인지 확인 (yyyy-MM-ddTHH:mm:ss)
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(result)) {
+      // 유효하지 않은 형식이면 null 반환
+      return null;
+    }
   }
 
-  // 기타
+  // 기타 타입 (Date 객체가 아닌 객체 등)
   else {
-    result = String(input);
+    // Date 객체인데 instanceof 체크를 통과하지 못한 경우 (다른 컨텍스트)
+    if (input && typeof input.getTime === "function") {
+      try {
+        const dateObj = new Date(input);
+        if (!isNaN(dateObj.getTime())) {
+          result = dateObj.toISOString().slice(0, 19);
+          log("toISO", input, result);
+          return result;
+        }
+      } catch (err) {
+        // Date 생성 실패
+      }
+    }
+    
+    // 마지막 시도: String 변환 후 Date 생성
+    try {
+      const dateObj = new Date(String(input));
+      if (!isNaN(dateObj.getTime())) {
+        result = dateObj.toISOString().slice(0, 19);
+        log("toISO", input, result);
+        return result;
+      }
+    } catch (err) {
+      // 모든 변환 실패
+    }
+    
+    return null;
   }
 
   log("toISO", input, result);
@@ -93,9 +238,27 @@ export const toISO = (input) => {
  * 타임존 오프셋과 초를 제거하여 datetime-local input에 맞게 변환
  */
 export const toDateTimeLocal = (input) => {
-  if (!input) return "";
+  if (!input) {
+    // 빈 값일 때 오늘 날짜 + 현재 시간을 기본값으로 반환
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = pad(now.getMonth() + 1);
+    const day = pad(now.getDate());
+    const hours = pad(now.getHours());
+    const minutes = pad(now.getMinutes());
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  }
   const iso = toISO(input);
-  if (!iso) return "";
+  if (!iso) {
+    // toISO 변환 실패 시에도 기본값 반환
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = pad(now.getMonth() + 1);
+    const day = pad(now.getDate());
+    const hours = pad(now.getHours());
+    const minutes = pad(now.getMinutes());
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  }
   
   // 타임존 오프셋 제거 (+09:00, -05:00 등)
   let result = iso.replace(/[+-]\d{2}:\d{2}$/, "");
@@ -129,7 +292,6 @@ export const toDate = (input) => {
     log("toDate", input, date);
     return date;
   } catch (err) {
-    console.error(`[toDate] 변환 실패:`, input, err);
     return null;
   }
 };

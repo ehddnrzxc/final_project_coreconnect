@@ -1,13 +1,23 @@
 package com.goodee.coreconnect.approval.controller;
 
+import java.io.InputStream;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -23,12 +33,16 @@ import com.goodee.coreconnect.approval.dto.response.DocumentDetailResponseDTO;
 import com.goodee.coreconnect.approval.dto.response.DocumentSimpleResponseDTO;
 import com.goodee.coreconnect.approval.dto.response.TemplateDetailResponseDTO;
 import com.goodee.coreconnect.approval.dto.response.TemplateSimpleResponseDTO;
+import com.goodee.coreconnect.approval.entity.File;
+import com.goodee.coreconnect.approval.repository.FileRepository;
 import com.goodee.coreconnect.approval.service.ApprovalService;
+import com.goodee.coreconnect.approval.service.FileStorageService;
 import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
@@ -40,6 +54,8 @@ import lombok.RequiredArgsConstructor;
 public class ApprovalController {
 
   private final ApprovalService approvalService;
+  private final FileRepository fileRepository;
+  private final FileStorageService fileStorageService;
 
   /**
    * 1. 새 결재 문서 상신 (파일 첨부 포함)
@@ -92,9 +108,10 @@ public class ApprovalController {
    * @param user
    * @return
    */
+  @PutMapping("/drafts/{documentId}")
   public ResponseEntity<Integer> updateDraft(
       @PathVariable("documentId") Integer documentId,
-      @Valid @RequestPart("dto") DocumentUpdateRequestDTO requestDTO,
+      @RequestPart("dto") DocumentUpdateRequestDTO requestDTO,
       @RequestPart(value = "files", required = false) List<MultipartFile> files,
       @AuthenticationPrincipal CustomUserDetails user
       ) {
@@ -104,6 +121,7 @@ public class ApprovalController {
     
   }
   
+  @PutMapping("/{documentId}")
   public ResponseEntity<Integer> updateAndSubmitDocument(
       @PathVariable("documentId") Integer documentId,
       @Valid @RequestPart("dto") DocumentUpdateRequestDTO requestDTO,
@@ -121,11 +139,12 @@ public class ApprovalController {
    */
   @Operation(summary = "목록 조회", description = "내가 작성한 문서 목록 조회")
   @GetMapping("/my-documents")
-  public ResponseEntity<List<DocumentSimpleResponseDTO>> getMyDrafts(
-      @AuthenticationPrincipal CustomUserDetails user
+  public ResponseEntity<Page<DocumentSimpleResponseDTO>> getMyDrafts(
+      @AuthenticationPrincipal CustomUserDetails user,
+      @PageableDefault(page = 0, size = 10) Pageable pageable
       ) {
     String email = user.getEmail();
-    List<DocumentSimpleResponseDTO> myDrafts = approvalService.getMyDocuments(email);
+    Page<DocumentSimpleResponseDTO> myDrafts = approvalService.getMyDocuments(email, pageable);
     return ResponseEntity.ok(myDrafts);
   }
 
@@ -136,7 +155,8 @@ public class ApprovalController {
   @Operation(summary = "임시저장함 조회", description = "내가 임시저장한(DRAFT 상태) 문서 목록 조회")
   @GetMapping("/drafts")
   public ResponseEntity<List<DocumentSimpleResponseDTO>> getMyDraftBox(
-      @AuthenticationPrincipal CustomUserDetails user
+      @AuthenticationPrincipal CustomUserDetails user,
+      @PageableDefault(page = 0, size = 10) Pageable pageable
       ) {
     String email = user.getEmail();
     List<DocumentSimpleResponseDTO> myDrafts = approvalService.getMyDraftBox(email);
@@ -273,5 +293,30 @@ public class ApprovalController {
       ) {
     TemplateDetailResponseDTO templateDetail = approvalService.getTemplateDetail(templateId);
     return ResponseEntity.ok(templateDetail);
+  }
+  
+  @GetMapping("/file/download/{fileId}")
+  public ResponseEntity<InputStreamResource> downloadAttachment(@PathVariable("fileId") Integer fileId, HttpServletResponse response) {
+      // 1. DB에서 첨부파일 엔티티 조회
+      File file = fileRepository.findById(fileId)
+          .orElseThrow(() -> new RuntimeException("첨부파일 정보를 찾을 수 없습니다."));
+
+      // 2. 실파일(InputStream 등) 읽기 (S3스토리지/로컬 구현에 따라 분기)
+      InputStream inputStream = fileStorageService.loadFileAsInputStream(file);
+
+      // 3. Content-Disposition 헤더(filename 인코딩 주의)
+      String encodedFilename = URLEncoder.encode(file.getFileName(), StandardCharsets.UTF_8)
+                                         .replaceAll("\\+", "%20");
+      HttpHeaders headers = new HttpHeaders();
+      headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFilename);
+
+      // 4. Content-Type (기본 바이너리, 혹은 확장자별 지정)
+      MediaType contentType = MediaType.APPLICATION_OCTET_STREAM;
+
+      return ResponseEntity.ok()
+              .headers(headers)
+              .contentLength(file.getFileSize())
+              .contentType(contentType)
+              .body(new InputStreamResource(inputStream));
   }
 }

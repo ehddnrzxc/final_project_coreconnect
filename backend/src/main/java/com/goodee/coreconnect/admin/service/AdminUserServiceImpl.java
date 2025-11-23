@@ -9,11 +9,12 @@ import com.goodee.coreconnect.admin.dto.request.UpdateUserReqDTO;
 import com.goodee.coreconnect.department.entity.Department;
 import com.goodee.coreconnect.department.repository.DepartmentRepository;
 import com.goodee.coreconnect.user.dto.response.UserDTO;
-import com.goodee.coreconnect.user.entity.JobGrade;
-import com.goodee.coreconnect.user.entity.Role;
-import com.goodee.coreconnect.user.entity.Status;
 import com.goodee.coreconnect.user.entity.User;
+import com.goodee.coreconnect.user.enums.JobGrade;
+import com.goodee.coreconnect.user.enums.Role;
+import com.goodee.coreconnect.user.enums.Status;
 import com.goodee.coreconnect.user.repository.UserRepository;
+import com.goodee.coreconnect.user.service.EmployeeNumberService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -26,6 +27,7 @@ public class AdminUserServiceImpl implements AdminUserService {
   private final UserRepository userRepository;
   private final DepartmentRepository departmentRepository;
   private final PasswordEncoder passwordEncoder;
+  private final EmployeeNumberService employeeNumberService;
 
   /** 신규 사용자 생성 */
   @Override
@@ -40,6 +42,9 @@ public class AdminUserServiceImpl implements AdminUserService {
           .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 부서 ID: " + req.deptId()));
     }
 
+    // 사번 자동 생성 (연도 4자리 + 자동 증가 3자리)
+    String employeeNumber = employeeNumberService.generateEmployeeNumber();
+
     User user = User.createUser(
         passwordEncoder.encode(req.tempPassword()),
         req.name(),
@@ -47,7 +52,8 @@ public class AdminUserServiceImpl implements AdminUserService {
         req.email(),
         req.phone(),
         department,
-        req.jobGrade());
+        req.jobGrade(),
+        employeeNumber);
 
     return UserDTO.toDTO(userRepository.save(user));
   }
@@ -60,6 +66,14 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     if (req.name() != null && !req.name().isBlank()) {
       user.changeName(req.name());
+    }
+
+    if (req.email() != null && !req.email().isBlank()) {
+      // 이메일 중복 체크 (현재 사용자의 이메일이 아닌 경우에만)
+      if (!user.getEmail().equals(req.email()) && userRepository.existsByEmail(req.email())) {
+        throw new IllegalArgumentException("이미 등록된 이메일입니다: " + req.email());
+      }
+      user.changeEmail(req.email());
     }
 
     if (req.phone() != null) {
@@ -89,51 +103,6 @@ public class AdminUserServiceImpl implements AdminUserService {
     }
 
     return UserDTO.toDTO(user);
-  }
-
-  /** 사용자 상태 변경 */
-  @Override
-  public void changeStatus(Integer userId, Status status) {
-    User user = userRepository.findById(userId)
-        .orElseThrow(() -> new IllegalArgumentException("사용자가 존재하지 않습니다: " + userId));
-
-    if (status == Status.ACTIVE) {
-      user.activate();
-    } else if (status == Status.INACTIVE) {
-      user.deactivate();
-    }
-  }
-
-  /** 사용자 부서 변경 */
-  @Override
-  public void changeUserDepartment(Integer userId, Integer deptId) {
-    User user = userRepository.findById(userId)
-        .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-
-    if (deptId == null) {
-      user.changeDepartment(null);
-      return;
-    }
-
-    Department department = departmentRepository.findById(deptId)
-        .orElseThrow(() -> new IllegalArgumentException("부서를 찾을 수 없습니다."));
-    user.changeDepartment(department);
-  }
-
-  /** 사용자 직급 변경 */
-  @Override
-  public void changeUserJobGrade(Integer userId, JobGrade jobGrade) {
-    User user = userRepository.findById(userId)
-        .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-    user.changeJobGrade(jobGrade);
-  }
-
-  /** 사용자 권한(Role) 변경 */
-  @Override
-  public void changeUserRole(Integer userId, Role newRole) {
-    User user = userRepository.findById(userId)
-        .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-    user.changeRole(newRole);
   }
 
   /** 전체 사용자 수 조회 */

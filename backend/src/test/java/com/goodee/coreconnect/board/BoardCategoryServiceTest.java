@@ -21,8 +21,8 @@ import com.goodee.coreconnect.board.dto.response.BoardCategoryResponseDTO;
 import com.goodee.coreconnect.board.entity.BoardCategory;
 import com.goodee.coreconnect.board.repository.BoardCategoryRepository;
 import com.goodee.coreconnect.board.service.BoardCategoryServiceImpl;
-import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.User;
+import com.goodee.coreconnect.user.enums.Role;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
 import org.springframework.security.access.AccessDeniedException;
@@ -54,6 +54,7 @@ class BoardCategoryServiceTest {
                 "admin@test.com",
                 "010-1111-2222",
                  null,
+                 null,
                  null
         );
 
@@ -64,6 +65,7 @@ class BoardCategoryServiceTest {
                 Role.USER,
                 "user@test.com",
                 "010-3333-4444",
+                null,
                 null,
                 null
         );

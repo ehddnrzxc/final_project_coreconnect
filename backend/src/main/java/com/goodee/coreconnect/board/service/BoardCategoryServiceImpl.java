@@ -13,8 +13,8 @@ import com.goodee.coreconnect.board.entity.Board;
 import com.goodee.coreconnect.board.entity.BoardCategory;
 import com.goodee.coreconnect.board.repository.BoardCategoryRepository;
 import com.goodee.coreconnect.board.repository.BoardRepository;
-import com.goodee.coreconnect.user.entity.Role;
 import com.goodee.coreconnect.user.entity.User;
+import com.goodee.coreconnect.user.enums.Role;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -64,15 +64,44 @@ public class BoardCategoryServiceImpl implements BoardCategoryService {
 
         BoardCategory category = categoryRepository.findByIdAndDeletedYnFalse(categoryId)
                 .orElseThrow(() -> new EntityNotFoundException("카테고리를 찾을 수 없습니다."));
-        
-        if (!dto.getOrderNo().equals(category.getOrderNo()) &&
-            categoryRepository.existsByOrderNoAndDeletedYnFalse(dto.getOrderNo())) {
-            throw new IllegalArgumentException("이미 사용 중인 순서 번호입니다: " + dto.getOrderNo());
+
+        // 기존 순서번호와 변경 요청 순서번호가 다른 경우만 처리
+        if (!dto.getOrderNo().equals(category.getOrderNo())) {
+
+            // 변경하려는 orderNo 를 가진 카테고리가 존재하는지 조회
+            BoardCategory conflictCategory = categoryRepository
+                    .findByOrderNoAndDeletedYnFalse(dto.getOrderNo())
+                    .orElse(null);
+
+            if (conflictCategory != null) {
+
+                // 기존 번호 저장 (swap을 위해 반드시 필요)
+                Integer oldOrderNo = category.getOrderNo(); // ★ 추가: 기존 번호 저장
+
+                // 1) 충돌 카테고리 임시 번호(-1)로 이동
+                conflictCategory.updateCategory(conflictCategory.getName(), -1);
+                categoryRepository.flush();
+
+                // 2) 현재 category 에 새 번호 적용
+                category.updateCategory(dto.getName(), dto.getOrderNo());
+                categoryRepository.flush();
+
+                // 3) 충돌 카테고리에 기존 번호(oldOrderNo) 부여
+                conflictCategory.updateCategory(conflictCategory.getName(), oldOrderNo); // ★ category.getOrderNo() 아님!!
+
+            } else {
+                // 충돌 없으면 단순 변경
+                category.updateCategory(dto.getName(), dto.getOrderNo());
+            }
+
+        } else {
+            // 번호 동일 → 이름만 변경
+            category.updateCategory(dto.getName(), dto.getOrderNo());
         }
 
-        category.updateCategory(dto.getName(), dto.getOrderNo());
         return BoardCategoryResponseDTO.toDTO(category);
     }
+
 
     /** 카테고리 삭제 (관리자 전용, Soft Delete) */
     @Override

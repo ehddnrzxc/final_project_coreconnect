@@ -30,9 +30,9 @@ public interface MeetingRoomService {
   List<ResponseScheduleDTO> getSchedulesByMeetingRoom(Integer meetingRoomId);
   
   /** 특정 시간대에 단일 회의실 예약 가능 여부 검사 */
-  boolean isMeetingRoomAvailable(Integer meetingRoomId, LocalDateTime start, LocalDateTime end);
+  boolean isMeetingRoomAvailable(Integer meetingRoomId, LocalDateTime start, LocalDateTime end, Integer scheduleId);
   
   /** 특정 시간대 예약 가능한 회의실 조회 */
-  List<MeetingRoomDTO> getAvailableRooms(LocalDateTime start, LocalDateTime end);
+  List<MeetingRoomDTO> getAvailableRooms(LocalDateTime start, LocalDateTime end, Integer scheduleId);
   
 }

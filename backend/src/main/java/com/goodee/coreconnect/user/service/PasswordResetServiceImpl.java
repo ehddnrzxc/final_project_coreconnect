@@ -13,8 +13,8 @@ import com.goodee.coreconnect.admin.dto.request.RejectLeaveRequestDTO;
 import com.goodee.coreconnect.admin.service.MailService;
 import com.goodee.coreconnect.user.dto.response.PasswordResetResponseDTO;
 import com.goodee.coreconnect.user.entity.PasswordResetRequest;
-import com.goodee.coreconnect.user.entity.ResetStatus;
 import com.goodee.coreconnect.user.entity.User;
+import com.goodee.coreconnect.user.enums.ResetStatus;
 import com.goodee.coreconnect.user.repository.PasswordResetRequestRepository;
 import com.goodee.coreconnect.user.repository.UserRepository;
 
@@ -40,6 +40,12 @@ public class PasswordResetServiceImpl implements PasswordResetService {
         throw new IllegalArgumentException("이름이 일치하지 않습니다.");
     }
 
+    // 이미 대기 중인 요청이 있는지 확인
+    List<PasswordResetRequest> pendingRequests = passwordResetRequestRepository.findByUserAndStatus(user, ResetStatus.PENDING);
+    if (!pendingRequests.isEmpty()) {
+        throw new IllegalStateException("이미 대기 중인 비밀번호 초기화 요청이 있습니다. 관리자의 승인을 기다려주세요.");
+    }
+
     PasswordResetRequest req = dto.toEntity(user);
     passwordResetRequestRepository.save(req);
     
@@ -52,10 +58,10 @@ public class PasswordResetServiceImpl implements PasswordResetService {
     List<PasswordResetRequest> requests;
     
     if(status == null || status.isBlank()) {
-      requests = passwordResetRequestRepository.findAll();
+      requests = passwordResetRequestRepository.findAllByOrderByCreatedAtDesc();
     } else {
       ResetStatus resetStatus = ResetStatus.valueOf(status.toUpperCase());
-      requests = passwordResetRequestRepository.findByStatus(resetStatus);
+      requests = passwordResetRequestRepository.findByStatusOrderByCreatedAtDesc(resetStatus);
     }
     
     return requests.stream()
