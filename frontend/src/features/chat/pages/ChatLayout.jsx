@@ -1082,6 +1082,30 @@ export default function ChatLayout() {
     }
   }, []);
 
+  // ---------- 채팅방 나가기 핸들러 ----------
+  const handleLeaveRoom = useCallback(async (roomId) => {
+    try {
+      // WebSocket 연결 해제
+      await disconnectStomp();
+      
+      // 채팅방 목록에서 제거
+      setRoomList(prev => prev.filter(room => room.roomId !== roomId));
+      
+      // 선택된 채팅방 해제
+      if (selectedRoomId === roomId) {
+        setSelectedRoomId(null);
+        setMessages([]);
+      }
+      
+      // 채팅방 목록 새로고침
+      await loadRooms();
+      
+      console.log("[ChatLayout] 채팅방 나가기 완료 - roomId:", roomId);
+    } catch (error) {
+      console.error("[ChatLayout] 채팅방 나가기 처리 중 오류:", error);
+    }
+  }, [selectedRoomId, loadRooms]);
+
   // ---------- 채팅방 선택 핸들러 (안읽은 메시지가 있으면 읽음 처리) ----------
   const handleRoomSelect = useCallback(async (roomId) => {
     // 먼저 채팅방 선택 (즉시 UI 반영)
@@ -1813,6 +1837,7 @@ export default function ChatLayout() {
                 }
               }
             }}
+            onLeaveRoom={handleLeaveRoom}
           />
         </Box>
       </Box>
