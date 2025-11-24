@@ -121,10 +121,20 @@ const AdminCategoryPage = () => {
       return;
     }
     try {
-      await createCategory(newCategory); // 등록 API 요청
+      const res = await createCategory(newCategory); // 등록 API 요청
+      const created = res.data.data; // 서버가 반환한 새 카테고리
+
+      // 화면 즉시 반영
+      setCategories((prev) =>
+        [...prev, created].sort((a, b) => (a.orderNo ?? 0) - (b.orderNo ?? 0))
+      );
+
+      setNewCategory({ name: "", orderNo: "" });
       showSnack("새 카테고리가 등록되었습니다.", "success");
-      setNewCategory({ name: "", orderNo: "" }); // 입력창 초기화
-      loadCategories(); // 목록 새로고침
+
+      // 서버와 싱크 맞추기 위해 백그라운드에서 새로 불러오기
+      loadCategories();
+
     } catch (err) {
       showSnack("카테고리 순서번호가 이미 존재합니다.", "error");
     }
