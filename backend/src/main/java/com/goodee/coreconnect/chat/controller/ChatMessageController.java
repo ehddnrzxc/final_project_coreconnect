@@ -1557,12 +1557,17 @@ public class ChatMessageController {
     // ⭐ 각 메시지의 unreadCount를 -1 감소시키고 WebSocket으로 실시간 업데이트 알림
     @Operation(summary = "나에게 온 안읽은 메시지를 채팅방을 접속해서 다 읽으면 채팅방목록에서 안읽은 메시지 개수가 없어지게 만들기", description = "나에게 온 안읽은 메시지를 채팅방을 접속해서 다 읽으면 채팅방목록에서 안읽은 메시지 개수가 없어지게 만들기")
     @PatchMapping("/rooms/{roomId}/messages/read")
+    @org.springframework.transaction.annotation.Transactional
     public ResponseEntity<?> markRoomMessagesAsRead(@PathVariable Integer roomId, @AuthenticationPrincipal CustomUserDetails customUserDetails) {
       String email = customUserDetails.getEmail();
     	User user = userRepository.findByEmail(email).orElseThrow();
     	
+    	log.info("[markRoomMessagesAsRead] 읽음 처리 요청 - roomId: {}, userId: {}, email: {}", roomId, user.getId(), email);
+    	
     	// ⭐ 메시지 읽음 처리 및 읽음 처리된 메시지 ID 리스트 반환
     	List<Integer> readChatIds = chatRoomService.markMessagesAsRead(roomId, user.getId());
+    	
+    	log.info("[markRoomMessagesAsRead] 읽음 처리 완료 - roomId: {}, userId: {}, 처리된 메시지 수: {}", roomId, user.getId(), readChatIds.size());
     	
     	// ⭐ WebSocket을 통해 실시간으로 unreadCount 업데이트 알림
     	// 각 메시지의 업데이트된 unreadCount를 전송 (발신자에게만 알림)
