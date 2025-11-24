@@ -244,6 +244,21 @@ public class EmailServiceImpl implements EmailService {
 	    Boolean favoriteStatus = email.getFavoriteStatus();
 	    response.setFavoriteStatus(favoriteStatus != null && favoriteStatus);
 
+	    // 읽음 여부 설정 (viewerEmail에 해당하는 수신자의 읽음 상태)
+	    // 읽음 처리를 한 후 업데이트된 recipient의 상태를 반영
+	    if (myRecipientOpt.isPresent()) {
+	        EmailRecipient myRecipient = myRecipientOpt.get();
+	        // 읽음 처리를 했으므로 엔티티가 이미 업데이트되어 있음 (flush 했으므로 최신 상태)
+	        // 읽음 처리 후 업데이트된 상태를 반영
+	        Boolean readYn = myRecipient.getEmailReadYn();
+	        response.setEmailReadYn(readYn);
+	        log.info("getEmailDetail: 응답 DTO에 emailReadYn 설정 - emailId={}, viewerEmail={}, emailReadYn={}", 
+	                emailId, viewerEmail, readYn);
+	    } else {
+	        // 수신자가 아닌 경우 (발신자 등)
+	        response.setEmailReadYn(null);
+	    }
+
 	    // 첨부파일 조회 및 세팅
 	    files = emailFileRepository.findByEmail(email);
 	    List<EmailResponseDTO.AttachmentDTO> attachments = files.stream()

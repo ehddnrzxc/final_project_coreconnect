@@ -261,6 +261,7 @@ function App() {
     refreshInboxCount,
     unreadCount: unreadCount || 0,
     refreshUnreadCount,
+    setUnreadCountDirectly: setUnreadCount,
     draftCount: draftCount || 0,
     refreshDraftCount,
     favoriteCount: favoriteCount || 0,
