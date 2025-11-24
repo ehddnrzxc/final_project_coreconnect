@@ -55,12 +55,12 @@ function ChatDetailPane({
         height: 64, position: "relative",
       }}>
         <Avatar sx={{
-          bgcolor: "#10c16d",
+          bgcolor: "primary.main",
           mr: 2, width: 33, height: 33, ml: 2
         }}>{selectedRoom.roomName?.[0]?.toUpperCase()}
         </Avatar>
         <Typography sx={{
-          fontWeight: 700, fontSize: 18, color: "#1aaf54",
+          fontWeight: 700, fontSize: 18, color: "primary.main",
         }}>
           {selectedRoom.roomName}
         </Typography>
@@ -84,7 +84,7 @@ function ChatDetailPane({
                 <Avatar
                   key={user.id}
                   src={user.profileImageUrl}
-                  sx={{ bgcolor: "#10c16d" }}
+                  sx={{ bgcolor: "primary.main" }}
                 >
                   {user.name?.[0]?.toUpperCase() || "?"}
                 </Avatar>
