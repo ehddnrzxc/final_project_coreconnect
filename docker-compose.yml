@@ -26,6 +26,8 @@ services:
       AWS_BUCKET_NAME: ${AWS_BUCKET_NAME}
       SENDGRID_API_KEY: ${SENDGRID_API_KEY}
       ALLOWED_ORIGIN: ${ALLOWED_ORIGIN}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
   
   # 2. frontend 서비스 생성
   frontend:
