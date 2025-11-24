@@ -910,7 +910,9 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 			ChatResponseDTO responseDto = new ChatResponseDTO();
 			responseDto.setId(leaveChat.getId());
 			responseDto.setMessageContent(leaveChat.getMessageContent());
-			responseDto.setSendAt(leaveChat.getSendAt() != null ? leaveChat.getSendAt() : LocalDateTime.now());
+			// LocalDateTime을 String으로 변환
+			LocalDateTime sendAt = leaveChat.getSendAt() != null ? leaveChat.getSendAt() : LocalDateTime.now();
+			responseDto.setSendAt(sendAt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")));
 			responseDto.setRoomId(roomId);
 			responseDto.setSenderId(user.getId());
 			responseDto.setSenderName(user.getName());
