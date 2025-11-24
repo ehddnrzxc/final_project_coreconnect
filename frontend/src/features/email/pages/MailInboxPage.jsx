@@ -19,7 +19,7 @@ import { MailCountContext } from "../../../App"; // 메일 카운트 컨텍스�
 import { UserProfileContext } from "../../../App";
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 import ConfirmDialog from "../../../components/utils/ConfirmDialog";
-import { UNREAD_REFRESH_FLAG, UNREAD_PENDING_IDS_KEY } from "../constants/storageKeys.js";
+import { UNREAD_REFRESH_FLAG, UNREAD_PENDING_IDS_KEY } from "../constants";
 
 const MailInboxPage = () => {
   const { showSnack } = useSnackbarContext();

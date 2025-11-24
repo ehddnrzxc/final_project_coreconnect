@@ -47,6 +47,7 @@ import com.goodee.coreconnect.email.dto.response.EmailResponseDTO;
 import com.goodee.coreconnect.email.entity.EmailFile;
 import com.goodee.coreconnect.email.repository.EmailFileRepository;
 import com.goodee.coreconnect.email.repository.EmailRecipientRepository;
+import com.goodee.coreconnect.email.repository.EmailRepository;
 import com.goodee.coreconnect.email.service.EmailFileStorageService;
 import com.goodee.coreconnect.email.service.EmailService;
 import com.goodee.coreconnect.security.userdetails.CustomUserDetails;
@@ -67,6 +68,7 @@ public class EmailController {
     private final UserRepository userRepository;
     private final EmailRecipientRepository emailRecipientRepository;
     private final EmailFileRepository emailFileRepository;
+    private final EmailRepository emailRepository;
     private final EmailFileStorageService emFileStorageService;
     
     // 이메일 발송
