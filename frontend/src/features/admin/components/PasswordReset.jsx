@@ -82,13 +82,19 @@ export default function PasswordReset() {
     
     try {
       setActioningId(id);
-      await approvePasswordResetRequest(id);
+      const response = await approvePasswordResetRequest(id);
       setApproveDialogOpen(false);
-      showSnack("승인되었습니다. 임시 비밀번호가 사용자 이메일로 발송되었습니다.", "success");
+      const externalEmail = response?.externalEmail || response?.data?.externalEmail;
+      showSnack(`승인되었습니다. 임시 비밀번호가 외부 이메일(${externalEmail})로 발송되었습니다.`, "success");
       loadRequests(statusFilter); // 현재 필터 기준으로 목록 새로 불러오기
     } catch (e) {
       console.error("승인 실패:", e);
-      showSnack("승인 처리 중 오류가 발생했습니다.", "error");
+      // 백엔드에서 보낸 에러 메시지 표시
+      const errorMessage = e.response?.data?.message || 
+                          e.response?.data || 
+                          e.message || 
+                          "승인 처리 중 오류가 발생했습니다.";
+      showSnack(errorMessage, "error");
     } finally {
       setApproveProcessing(false);
       setActioningId(null);

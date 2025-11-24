@@ -17,6 +17,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import StyledButton from "../../../components/ui/StyledButton";
+import ConfirmDialog from "../../../components/utils/ConfirmDialog";
 import {
   fetchDepartmentsFlat,
   createDepartment,
@@ -35,6 +36,8 @@ export default function DepartmentManagementPage() {
   const [editingId, setEditingId] = useState(null);
   const [originParent, setOriginParent] = useState(null);
   const [form, setForm] = useState({ name: "", orderNo: 10, parentId: "" });
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const parentMap = useMemo(() => {
     const map = new Map();
@@ -141,18 +144,21 @@ export default function DepartmentManagementPage() {
 
   const handleEdit = (dept) => applyEdit(dept);
 
-  const handleDelete = async (dept) => {
-    const confirmDelete = window.confirm(
-      `부서 "${dept.name}" 을(를) 삭제하시겠습니까?\n하위 부서가 있는 경우 삭제할 수 없습니다.`
-    );
-    if (!confirmDelete) return;
+  const handleDeleteClick = (dept) => {
+    setDeleteTarget(dept);
+    setDeleteConfirmOpen(true);
+  };
 
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+
+    setDeleteConfirmOpen(false);
     setSubmitting(true);
     setMessage(null);
     try {
-      await deleteDepartment(dept.id);
+      await deleteDepartment(deleteTarget.id);
       setMessage({ type: "success", text: "부서가 삭제되었습니다." });
-      if (editingId === dept.id) {
+      if (editingId === deleteTarget.id) {
         resetForm();
       }
       await loadDepartments();
@@ -162,7 +168,13 @@ export default function DepartmentManagementPage() {
       setMessage({ type: "error", text: msg });
     } finally {
       setSubmitting(false);
+      setDeleteTarget(null);
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirmOpen(false);
+    setDeleteTarget(null);
   };
 
   const availableParents = useMemo(() => {
@@ -201,7 +213,7 @@ export default function DepartmentManagementPage() {
               size="small"
               color="error"
               onClick={() =>
-                handleDelete({
+                handleDeleteClick({
                   id: node.id,
                   name: node.name,
                 })
@@ -324,6 +336,14 @@ export default function DepartmentManagementPage() {
           </Card>
         </Grid>
       </Grid>
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        title="부서 삭제 확인"
+        message={`부서 "${deleteTarget?.name}" 을(를) 삭제하시겠습니까?\n하위 부서가 있는 경우 삭제할 수 없습니다.`}
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+      />
     </Box>
   );
 }
