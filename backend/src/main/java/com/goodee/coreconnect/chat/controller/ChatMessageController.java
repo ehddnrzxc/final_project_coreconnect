@@ -669,13 +669,23 @@ public class ChatMessageController {
 		String fileUrl;
 		
 		try {
-			// s3에 업로드
-			s3Key = s3Service.uploadProfileImage(uploadFile, sender.getName());
+			// s3에 업로드 (모든 파일 타입 허용)
+			s3Key = s3Service.uploadChatFile(uploadFile, sender.getId());
 			fileUrl = s3Service.getFileUrl(s3Key);
 			
+			log.info("[uploadFileMessage] 파일 업로드 성공 - fileName: {}, fileSize: {}, contentType: {}, s3Key: {}", 
+			        uploadFile.getOriginalFilename(), uploadFile.getSize(), uploadFile.getContentType(), s3Key);
+			
 		} catch (IOException e) {
+			log.error("[uploadFileMessage] 파일 s3 업로드 실패 - fileName: {}, error: {}", 
+			        uploadFile.getOriginalFilename(), e.getMessage(), e);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 					.body(ResponseDTO.internalError("파일 s3 업로드 실패: "+ e.getMessage()));
+		} catch (IllegalArgumentException e) {
+			log.error("[uploadFileMessage] 파일 업로드 검증 실패 - fileName: {}, error: {}", 
+			        uploadFile.getOriginalFilename(), e.getMessage());
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+					.body(ResponseDTO.error(400, "파일 업로드 검증 실패: " + e.getMessage()));
 		}		
 		
 		// ⭐ MessageFile에는 S3 키를 저장 (URL이 아닌 키)
@@ -775,13 +785,17 @@ public class ChatMessageController {
 			String s3Key;
 			String fileUrl;
 			try {
-				// s3에 업로드
-				s3Key = s3Service.uploadProfileImage(uploadFile, sender.getName());
+				// s3에 업로드 (모든 파일 타입 허용)
+				s3Key = s3Service.uploadChatFile(uploadFile, sender.getId());
 				fileUrl = s3Service.getFileUrl(s3Key);
-				log.info("[uploadMultipleFileMessage] 파일 {} S3 업로드 성공: {} -> {}", fileIndex, uploadFile.getOriginalFilename(), s3Key);
+				log.info("[uploadMultipleFileMessage] 파일 {} S3 업로드 성공: {} -> {}, contentType: {}, size: {} bytes", 
+				        fileIndex, uploadFile.getOriginalFilename(), s3Key, uploadFile.getContentType(), uploadFile.getSize());
 			} catch (IOException e) {
 				log.error("[uploadMultipleFileMessage] 파일 {} S3 업로드 실패: {}", fileIndex, e.getMessage(), e);
 				continue; // 개별 파일 업로드 실패 시 건너뛰기
+			} catch (IllegalArgumentException e) {
+				log.error("[uploadMultipleFileMessage] 파일 {} 업로드 검증 실패: {}", fileIndex, e.getMessage());
+				continue; // 개별 파일 업로드 검증 실패 시 건너뛰기
 			}
 			
 			// ⭐ MessageFile에는 S3 키를 저장 (URL이 아닌 키)
