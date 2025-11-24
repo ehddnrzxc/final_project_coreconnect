@@ -20,8 +20,10 @@ const MailSideBar = () => {
   const {
     draftCount = 0,
     unreadCount = 0,
+    favoriteCount = 0,
     refreshDraftCount = () => {},
     refreshUnreadCount = () => {},
+    refreshFavoriteCount = () => {},
   } = mailCountContext || {};
   
   // 디버깅: context 값 확인
@@ -105,7 +107,42 @@ const MailSideBar = () => {
                 <Box sx={{ display: "inline-block", pr: 0.7 }}>
                   <StarBorderIcon fontSize="small" />
                 </Box>
-                <ListItemText primary={<Typography variant="body2">중요 메일</Typography>} />
+                <ListItemText
+                  primary={
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                      <Typography variant="body2" sx={{ lineHeight: 1.5 }}>중요 메일</Typography>
+                      {favoriteCount != null && favoriteCount > 0 && (
+                        <Badge
+                          badgeContent={favoriteCount}
+                          anchorOrigin={{
+                            vertical: 'top',
+                            horizontal: 'right',
+                          }}
+                          sx={{ 
+                            flexShrink: 0,
+                            display: "flex",
+                            alignItems: "center",
+                            "& .MuiBadge-badge": { 
+                              fontSize: 12, 
+                              height: 18, 
+                              minWidth: 20, 
+                              borderRadius: 9,
+                              position: "relative",
+                              top: 0,
+                              right: 0,
+                              transform: "none",
+                              bgcolor: "#d32f2f",
+                              color: "#fff",
+                              fontWeight: 600,
+                            } 
+                          }}
+                        >
+                          <Box sx={{ width: 0, height: 0 }} />
+                        </Badge>
+                      )}
+                    </Box>
+                  }
+                />
               </ListItemButton>
             </ListItem>
             <ListItem disableGutters sx={{ py: 0.5, px: 0 }}>
