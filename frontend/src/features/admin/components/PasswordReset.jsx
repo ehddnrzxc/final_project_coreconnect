@@ -17,6 +17,7 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  Button,
 } from "@mui/material";
 import LockResetIcon from "@mui/icons-material/LockReset";
 import StyledButton from "../../../components/ui/StyledButton";
@@ -386,23 +387,21 @@ export default function PasswordReset() {
           )}
         </DialogContent>
         <DialogActions>
-          <StyledButton 
+          <Button 
             onClick={() => setApproveDialogOpen(false)} 
             disabled={approveProcessing}
-            fullWidth={false}
           >
             취소
-          </StyledButton>
-          <StyledButton 
+          </Button>
+          <Button 
             onClick={handleApprove} 
             variant="contained" 
             color="success"
             disabled={approveProcessing}
             startIcon={approveProcessing ? <CircularProgress size={16} /> : null}
-            fullWidth={false}
           >
             승인
-          </StyledButton>
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -429,10 +428,10 @@ export default function PasswordReset() {
           />
         </DialogContent>
         <DialogActions>
-          <StyledButton onClick={() => setRejectReasonDialogOpen(false)} fullWidth={false}>취소</StyledButton>
-          <StyledButton onClick={handleRejectReasonSubmit} variant="contained" color="error" fullWidth={false}>
+          <Button onClick={() => setRejectReasonDialogOpen(false)}>취소</Button>
+          <Button onClick={handleRejectReasonSubmit} variant="contained" color="error">
             다음
-          </StyledButton>
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -471,23 +470,21 @@ export default function PasswordReset() {
           )}
         </DialogContent>
         <DialogActions>
-          <StyledButton 
+          <Button 
             onClick={() => setRejectConfirmDialogOpen(false)} 
             disabled={rejectProcessing}
-            fullWidth={false}
           >
             취소
-          </StyledButton>
-          <StyledButton 
+          </Button>
+          <Button 
             onClick={handleReject} 
             variant="contained" 
             color="error"
             disabled={rejectProcessing}
             startIcon={rejectProcessing ? <CircularProgress size={16} /> : null}
-            fullWidth={false}
           >
             거절
-          </StyledButton>
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>
