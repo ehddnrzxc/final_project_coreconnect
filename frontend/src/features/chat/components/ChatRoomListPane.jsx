@@ -61,7 +61,7 @@ function ChatRoomListPane({
     if (count === 2)
       return <Chip label="1:1" size="small" color="primary" sx={{ fontWeight: 700, ml: 0.5, flexShrink: 0 }} />;
     if (count > 2)
-      return <Chip label="단체 채팅" size="small" color="success" sx={{ fontWeight: 700, ml: 0.5, flexShrink: 0 }} />;
+      return <Chip label="단체 채팅" size="small" color="primary" sx={{ fontWeight: 700, ml: 0.5, flexShrink: 0 }} />;
     return null;
   }
 
@@ -139,7 +139,7 @@ function ChatRoomListPane({
                 }}
               >
                 <ListItemAvatar>
-                  <Avatar sx={{ bgcolor: "#10c16d", mr: 1 }}>
+                  <Avatar sx={{ bgcolor: "primary.main", mr: 1 }}>
                     {room.roomName?.[0]?.toUpperCase()}
                   </Avatar>
                 </ListItemAvatar>
