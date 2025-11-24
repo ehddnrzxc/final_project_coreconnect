@@ -340,9 +340,12 @@ const MailInboxPage = () => {
       const count = await fetchUnreadCount(userEmail);
       const finalCount = count || 0;
       setUnreadCount(finalCount);
-      // 컨텍스트도 직접 업데이트하여 사이드바에 반영 (refreshUnreadCount 호출)
+      // 컨텍스트도 직접 업데이트하여 사이드바에 반영 (refreshUnreadCount, refreshInboxCount 호출)
       if (mailCountContext?.refreshUnreadCount) {
         await mailCountContext.refreshUnreadCount();
+      }
+      if (mailCountContext?.refreshInboxCount) {
+        await mailCountContext.refreshInboxCount();
       }
     } catch (err) {
       console.error("loadUnreadCount error:", err);
@@ -471,6 +474,10 @@ const MailInboxPage = () => {
       });
       await loadInbox();      // 새로고침: 이동한 항목 즉시 사라짐
       await loadUnreadCount();// 언리드카운트까지 새로고침
+      // 받은 메일함 전체 개수도 새로고침
+      if (mailCountContext?.refreshInboxCount) {
+        await mailCountContext.refreshInboxCount();
+      }
     } catch (err) {
       console.error('deleteSelected error', err);
       showSnack('메일 삭제 중 오류가 발생했습니다.', 'error');

@@ -46,7 +46,7 @@ function MailDetailPage() {
   const { refreshUnreadCount } = useOutletContext();
   const { userProfile } = useContext(UserProfileContext) || {};
   const mailCountContext = useContext(MailCountContext);
-  const { refreshFavoriteCount } = mailCountContext || {};
+  const { refreshInboxCount, refreshFavoriteCount } = mailCountContext || {};
   const userEmail = userProfile?.email;
 
   
@@ -72,6 +72,9 @@ function MailDetailPage() {
           setTimeout(() => {
             if (refreshUnreadCount) {
               refreshUnreadCount(); // ★여기!
+            }
+            if (refreshInboxCount) {
+              refreshInboxCount(); // 받은 메일함 전체 개수도 새로고침
             }
           }, 100);
         })
