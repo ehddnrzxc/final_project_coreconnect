@@ -12,6 +12,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -307,8 +308,24 @@ public class EmailServiceImpl implements EmailService {
 	    log.info("[getInbox] 조회 결과 - totalElements: {}, content size: {}", recipientPage.getTotalElements(), recipientPage.getContent().size());
 
 	    // EmailRecipient를 직접 DTO로 변환 (각 사용자별 읽음 상태 포함)
-	    List<EmailResponseDTO> dtoList = recipientPage.stream().map(recipient -> {
+	    // emailId 기준으로 중복 제거 (같은 메일이 TO, CC, BCC로 여러 번 들어올 수 있음)
+	    Map<Integer, EmailResponseDTO> dtoMap = new LinkedHashMap<>();
+	    
+	    recipientPage.getContent().forEach(recipient -> {
 	        com.goodee.coreconnect.email.entity.Email email = recipient.getEmail();
+	        Integer emailId = email.getEmailId();
+	        
+	        // 이미 같은 emailId의 DTO가 있으면 읽음 상태만 업데이트 (안읽은 상태 우선)
+	        if (dtoMap.containsKey(emailId)) {
+	            EmailResponseDTO existingDto = dtoMap.get(emailId);
+	            // 안읽은 상태가 하나라도 있으면 안읽은 것으로 표시
+	            if (recipient.getEmailReadYn() == null || !recipient.getEmailReadYn()) {
+	                existingDto.setEmailReadYn(false);
+	            }
+	            return;
+	        }
+	        
+	        // 새로운 DTO 생성
 	        EmailResponseDTO dto = new EmailResponseDTO();
 	        
 	        // Email 엔티티의 기본 필드
@@ -333,13 +350,16 @@ public class EmailServiceImpl implements EmailService {
 	            });
 	        }
 	        
-	        return dto;
-	    }).collect(Collectors.toList());
-
-	    log.info("[getInbox] DTO 변환 완료 - dtoList size: {}", dtoList.size());
+	        dtoMap.put(emailId, dto);
+	    });
 	    
-	    // Page 반환(dto)
-	    return new PageImpl<>(dtoList, pageable, recipientPage.getTotalElements());
+	    List<EmailResponseDTO> dtoList = new ArrayList<>(dtoMap.values());
+
+	    log.info("[getInbox] DTO 변환 완료 - dtoList size: {} (중복 제거 후)", dtoList.size());
+	    
+	    // Page 반환(dto) - totalElements는 중복 제거 전 개수이므로 dtoList.size()로 조정
+	    long adjustedTotal = dtoMap.size();
+	    return new PageImpl<>(dtoList, pageable, adjustedTotal);
 	}
 	@Override
 	public Page<EmailResponseDTO> getSentbox(String userEmail, int page, int size, String searchType, String keyword) {
@@ -375,24 +395,27 @@ public class EmailServiceImpl implements EmailService {
 	        // 수신자 정보
 	        List<EmailRecipient> recipients = emailRecipientRepository.findByEmail(email);
 
-	        // 수신자 정보 추가
+	        // 수신자 정보 추가 (중복 제거)
 	        List<String> toAddresses = recipients.stream()
 	            .filter(r -> "TO".equalsIgnoreCase(r.getEmailRecipientType()))
 	            .map(EmailRecipient::getEmailRecipientAddress)
+	            .distinct()
 	            .collect(Collectors.toList());
 	        dto.setRecipientAddresses(toAddresses);
 
-	        // 참조 정보 추가
+	        // 참조 정보 추가 (중복 제거)
 	        List<String> ccAddresses = recipients.stream()
 	            .filter(r -> "CC".equalsIgnoreCase(r.getEmailRecipientType()))
 	            .map(EmailRecipient::getEmailRecipientAddress)
+	            .distinct()
 	            .collect(Collectors.toList());
 	        dto.setCcAddresses(ccAddresses);
 
-	        // 숨은 참조 정보 추가
+	        // 숨은 참조 정보 추가 (중복 제거)
 	        List<String> bccAddresses = recipients.stream()
 	            .filter(r -> "BCC".equalsIgnoreCase(r.getEmailRecipientType()))
 	            .map(EmailRecipient::getEmailRecipientAddress)
+	            .distinct()
 	            .collect(Collectors.toList());
 	        dto.setBccAddresses(bccAddresses);
 
