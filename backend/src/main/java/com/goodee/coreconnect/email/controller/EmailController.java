@@ -208,6 +208,14 @@ public class EmailController {
         return ResponseEntity.ok(ResponseDTO.success(unreadCount, "안읽은 메일 개수 조회 성공"));
     }
 
+    // 중요 메일 개수만 반환 (프론트 뱃지 Badge 표시용)
+    @Operation(summary = "중요 메일 개수", description = "중요 메일 개수를 반환합니다.")
+    @GetMapping("/favorite/count")
+    public ResponseEntity<ResponseDTO<Integer>> getFavoriteCount(@RequestParam("userEmail") String userEmail) {
+        int favoriteCount = emailRecipientRepository.countFavoriteInboxMails(userEmail);
+        return ResponseEntity.ok(ResponseDTO.success(favoriteCount, "중요 메일 개수 조회 성공"));
+    }
+
     // [NEW] 개별 메일 "읽음" 처리 API (프론트 상세 진입 후 읽음뷰 반영 위한 별도 PATCH)
     @Operation(summary = "메일 읽음처리", description = "개별 메일을 읽음 처리합니다.")
     @PatchMapping("/{emailId}/read")

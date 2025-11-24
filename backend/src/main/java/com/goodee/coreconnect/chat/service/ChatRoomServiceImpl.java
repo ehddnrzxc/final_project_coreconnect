@@ -595,9 +595,13 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	// ⭐ 각 메시지의 unreadCount를 -1 감소시키는 로직 추가
 	@Transactional
 	public List<Integer> markMessagesAsRead(Integer roomId, Integer userId) {
+	    log.info("[markMessagesAsRead] 읽음 처리 시작 - roomId: {}, userId: {}", roomId, userId);
+	    
 	    // 1. 해당 채팅방에서 내가 안읽은 메시지 상태 전부 조회
 	    List<ChatMessageReadStatus> unreadStatuses =
 	        chatMessageReadStatusRepository.findUnreadMessagesByRoomIdAndUserId(roomId, userId);
+	    
+	    log.info("[markMessagesAsRead] 안읽은 메시지 수: {}", unreadStatuses.size());
 
 	    // ⭐ 읽음 처리된 메시지 ID 리스트 (unreadCount 업데이트용)
 	    List<Integer> readChatIds = new ArrayList<>();
@@ -607,7 +611,13 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	    	// 확실히 안읽음 상태일 때만 markRead() 수행
 	    	if (Boolean.FALSE.equals(status.getReadYn()) && status.getReadAt() == null) {
 	    		status.markRead();// 내부적으로 readYn = true, readAt= now로 세팅
-	    		chatMessageReadStatusRepository.save(status);
+	    		// ⭐ 배포 환경에서 즉시 DB 반영을 위해 saveAndFlush 사용
+	    		ChatMessageReadStatus saved = chatMessageReadStatusRepository.saveAndFlush(status);
+	    		
+	    		log.debug("[markMessagesAsRead] 읽음 처리 완료 - chatId: {}, userId: {}, readYn: {}, readAt: {}", 
+	    		        saved.getChat() != null ? saved.getChat().getId() : null, 
+	    		        saved.getUser() != null ? saved.getUser().getId() : null,
+	    		        saved.getReadYn(), saved.getReadAt());
 	    		
 	    		// ⭐ 읽음 처리된 메시지 ID 추가
 	    		if (status.getChat() != null && status.getChat().getId() != null) {
@@ -618,7 +628,13 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	    	// 불일치 row 강제 동기화 (optional)
 	        if (status.getReadAt() != null && Boolean.FALSE.equals(status.getReadYn())) {
 	            status.markRead();
-	            chatMessageReadStatusRepository.save(status);
+	            // ⭐ 배포 환경에서 즉시 DB 반영을 위해 saveAndFlush 사용
+	            ChatMessageReadStatus saved = chatMessageReadStatusRepository.saveAndFlush(status);
+	            
+	            log.debug("[markMessagesAsRead] 불일치 상태 동기화 완료 - chatId: {}, userId: {}, readYn: {}, readAt: {}", 
+	                    saved.getChat() != null ? saved.getChat().getId() : null, 
+	                    saved.getUser() != null ? saved.getUser().getId() : null,
+	                    saved.getReadYn(), saved.getReadAt());
 	            
 	            // ⭐ 읽음 처리된 메시지 ID 추가
 	            if (status.getChat() != null && status.getChat().getId() != null) {
@@ -627,9 +643,11 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	        }
 	    }
 	    
-	    // ⭐ ChatMessageReadStatus 읽음 처리 후 즉시 DB에 반영 (flush)
-	    // 이렇게 하면 바로 unreadCount를 실시간으로 계산할 수 있음
+	    // ⭐ ChatMessageReadStatus 읽음 처리 후 즉시 DB에 반영 (추가 flush로 확실히 반영)
+	    // 배포 환경에서 트랜잭션 커밋 보장
 	    chatMessageReadStatusRepository.flush();
+	    
+	    log.info("[markMessagesAsRead] 읽음 처리된 메시지 수: {}, chatIds: {}", readChatIds.size(), readChatIds);
 	    
 	    // ⭐ 3. 각 메시지의 unreadCount를 -1 감소시키기 (DB 동기화용, 실제로는 실시간 계산값 사용)
 	    for (Integer chatId : readChatIds) {
@@ -640,10 +658,18 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	            // unreadCount가 0보다 클 때만 -1 감소 - 도메인 메서드 사용
 	            if (currentUnreadCount > 0) {
 	                chat.updateUnreadCount(currentUnreadCount - 1);
-	                chatRepository.save(chat);
+	                // ⭐ 배포 환경에서 즉시 DB 반영을 위해 saveAndFlush 사용
+	                chatRepository.saveAndFlush(chat);
 	            }
 	        }
 	    }
+	    
+	    // ⭐ 최종 flush로 모든 변경사항 확실히 반영
+	    chatMessageReadStatusRepository.flush();
+	    chatRepository.flush();
+	    
+	    log.info("[markMessagesAsRead] 읽음 처리 완료 - roomId: {}, userId: {}, 처리된 메시지 수: {}", 
+	            roomId, userId, readChatIds.size());
 	    
 	    // ⭐ 읽음 처리된 메시지 ID 리스트 반환 (WebSocket 알림용)
 	    return readChatIds;

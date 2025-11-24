@@ -33,6 +33,18 @@ public interface EmailRecipientRepository extends JpaRepository<EmailRecipient, 
         @Param("emailRecipientAddress") String emailRecipientAddress
     );
 
+    // 중요 메일 개수 (수신자 이메일, 중요 표시된 메일, 삭제되지 않은 것만)
+    @Query("SELECT COUNT(r) FROM EmailRecipient r " +
+           "WHERE r.emailRecipientAddress = :emailRecipientAddress " +
+           "AND r.email.favoriteStatus = true " +
+           "AND r.email.emailStatus = 'SENT' " +
+           "AND r.email.emailStatus NOT IN ('TRASH', 'DELETED') " +
+           "AND (r.deleted IS NULL OR r.deleted = false) " +
+           "AND r.email.emailSentTime IS NOT NULL")
+    int countFavoriteInboxMails(
+        @Param("emailRecipientAddress") String emailRecipientAddress
+    );
+
     // 전체 메일 수신 데이터: 메일 생성시각 내림차순
     Page<EmailRecipient> findByEmailRecipientAddressAndEmailRecipientTypeInOrderByEmail_EmailSentTimeDesc(
         String emailRecipientAddress,

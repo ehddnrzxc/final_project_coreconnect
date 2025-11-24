@@ -26,6 +26,11 @@ export const fetchUnreadCount = (userEmail) =>
   http.get('/email/inbox/unread-count', { params: { userEmail } })
     .then(res => res.data.data);
 
+// 중요 메일 개수 조회 (Controller의 /email/favorite/count와 매칭)
+export const fetchFavoriteCount = (userEmail) =>
+  http.get('/email/favorite/count', { params: { userEmail } })
+    .then(res => res.data.data);
+
 // 메일 상세 조회 (userEmail 동봉)
 export const getEmailDetail = (emailId, userEmail) => {
   return http.get(`/email/${emailId}`, { params: { userEmail } });
