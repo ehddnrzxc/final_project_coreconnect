@@ -66,6 +66,7 @@ export default function ChatLayout() {
   const [tabIdx, setTabIdx] = useState(0); // 탭 인덱스
   const [toastRooms, setToastRooms] = useState([]); // 토스트 알림 Rooms
   const [createOpen, setCreateOpen] = useState(false); // 방 생성 다이얼로그 열림 여부
+  const [highlightedRoomId, setHighlightedRoomId] = useState(null); // 하이라이팅된 채팅방 ID
 
   const userName = getUserName(); // 유저명
   const accessToken = localStorage.getItem("accessToken"); // 엑세스토큰
@@ -209,10 +210,18 @@ export default function ChatLayout() {
         return sortRoomList(updated);
       });
 
+      // 새로 생성된 방 하이라이팅
+      setHighlightedRoomId(roomId);
+      // 5초 후 하이라이팅 제거
+      setTimeout(() => {
+        setHighlightedRoomId(null);
+      }, 5000);
+
       setSelectedRoomId(roomId); // 방 생성시에만 바로 진입
       setCreateOpen(false);
       // 목록 새로고침하여 최신 상태 유지 (백엔드에서 받은 데이터로 동기화)
-      setTimeout(() => loadRooms(), 500);
+      // 하이라이팅을 유지하기 위해 selectedRoomId를 보존
+      setTimeout(() => loadRooms(true, roomId), 500);
     } catch (error) {
       console.error("채팅방 생성 에러:", error);
       alert("채팅방 생성 에러: " + (error.message || "응답 데이터 없음"));
@@ -1073,6 +1082,30 @@ export default function ChatLayout() {
     }
   }, []);
 
+  // ---------- 채팅방 나가기 핸들러 ----------
+  const handleLeaveRoom = useCallback(async (roomId) => {
+    try {
+      // WebSocket 연결 해제
+      await disconnectStomp();
+      
+      // 채팅방 목록에서 제거
+      setRoomList(prev => prev.filter(room => room.roomId !== roomId));
+      
+      // 선택된 채팅방 해제
+      if (selectedRoomId === roomId) {
+        setSelectedRoomId(null);
+        setMessages([]);
+      }
+      
+      // 채팅방 목록 새로고침
+      await loadRooms();
+      
+      console.log("[ChatLayout] 채팅방 나가기 완료 - roomId:", roomId);
+    } catch (error) {
+      console.error("[ChatLayout] 채팅방 나가기 처리 중 오류:", error);
+    }
+  }, [selectedRoomId, loadRooms]);
+
   // ---------- 채팅방 선택 핸들러 (안읽은 메시지가 있으면 읽음 처리) ----------
   const handleRoomSelect = useCallback(async (roomId) => {
     // 먼저 채팅방 선택 (즉시 UI 반영)
@@ -1737,6 +1770,7 @@ export default function ChatLayout() {
             setSelectedRoomId={handleRoomSelect}
             unreadRoomCount={unreadRoomCount}
             formatTime={formatTime}
+            highlightedRoomId={highlightedRoomId}
           />
           <ChatDetailPane
             selectedRoom={Array.isArray(roomList)
@@ -1803,6 +1837,7 @@ export default function ChatLayout() {
                 }
               }
             }}
+            onLeaveRoom={handleLeaveRoom}
           />
         </Box>
       </Box>

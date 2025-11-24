@@ -21,6 +21,11 @@ export const fetchInbox = (
   return http.get('/email/inbox', { params });
 };
 
+// 받은메일함 전체 개수 조회 (Controller의 /email/inbox/count와 매칭)
+export const fetchInboxCount = (userEmail) =>
+  http.get('/email/inbox/count', { params: { userEmail } })
+    .then(res => res.data.data);
+
 // '안읽은 메일' 개수 조회 (Controller의 /email/inbox/unread-count와 매칭)
 export const fetchUnreadCount = (userEmail) =>
   http.get('/email/inbox/unread-count', { params: { userEmail } })

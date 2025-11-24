@@ -15,12 +15,14 @@ const MailSideBar = () => {
   const { showSnack } = useSnackbarContext();
   const navigate = useNavigate();
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
-  // context 값 받아오기: draftCount, unreadCount, …, refreshDraftCount 등
+  // context 값 받아오기: inboxCount, draftCount, unreadCount, …, refreshDraftCount 등
   const mailCountContext = useContext(MailCountContext);
   const {
+    inboxCount = 0,
     draftCount = 0,
     unreadCount = 0,
     favoriteCount = 0,
+    refreshInboxCount = () => {},
     refreshDraftCount = () => {},
     refreshUnreadCount = () => {},
     refreshFavoriteCount = () => {},
@@ -57,6 +59,7 @@ const MailSideBar = () => {
     setConfirmDialogOpen(false);
     try {
       await emptyTrash();
+      refreshInboxCount();
       refreshDraftCount();
       refreshUnreadCount();
       showSnack("휴지통이 비워졌습니다.", 'success');
@@ -227,9 +230,9 @@ const MailSideBar = () => {
                   primary={
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                       <Typography variant="body2" sx={{ lineHeight: 1.5 }}>받은메일함</Typography>
-                      {unreadCount != null && unreadCount > 0 && (
+                      {inboxCount != null && inboxCount > 0 && (
                         <Badge
-                          badgeContent={unreadCount}
+                          badgeContent={inboxCount}
                           anchorOrigin={{
                             vertical: 'top',
                             horizontal: 'right',

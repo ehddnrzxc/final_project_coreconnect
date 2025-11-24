@@ -2,6 +2,8 @@ package com.goodee.coreconnect.chat.repository;
 
 import java.util.List;
 
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import org.springframework.data.jpa.repository.Query;
@@ -20,4 +22,8 @@ public interface ChatRoomUserRepository extends JpaRepository<ChatRoomUser, Inte
 	// 내가 참여한 모든 채팅방
 	@Query("SELECT cru FROM ChatRoomUser cru JOIN FETCH cru.chatRoom WHERE cru.user.id = :userId")
 	List<ChatRoomUser> findByUserId(@Param("userId") Integer userId);
+	
+	// 특정 채팅방의 특정 사용자 조회
+	@Query("SELECT cru FROM ChatRoomUser cru WHERE cru.chatRoom.id = :roomId AND cru.user.id = :userId")
+	Optional<ChatRoomUser> findByChatRoomIdAndUserId(@Param("roomId") Integer roomId, @Param("userId") Integer userId);
 }

@@ -1063,6 +1063,32 @@ public class ChatMessageController {
         return ResponseEntity.ok(ResponseDTO.success(dtoList, "초대 및 참여 메시지 저장 성공"));
     }
     
+    // 11. 채팅방 나가기
+    @Operation(summary = "채팅방 나가기", description = "채팅방에서 나가고 나가기 메시지를 전송합니다.")
+    @org.springframework.web.bind.annotation.DeleteMapping("/{roomId}/leave")
+    @org.springframework.transaction.annotation.Transactional
+    public ResponseEntity<ResponseDTO<String>> leaveChatRoom(
+            @PathVariable("roomId") Integer roomId,
+            Principal principal
+    ) {
+        try {
+            String userEmail = principal.getName();
+            log.info("[leaveChatRoom] 채팅방 나가기 요청 - roomId: {}, userEmail: {}", roomId, userEmail);
+            
+            chatRoomService.leaveChatRoom(roomId, userEmail);
+            
+            log.info("[leaveChatRoom] 채팅방 나가기 성공 - roomId: {}, userEmail: {}", roomId, userEmail);
+            return ResponseEntity.ok(ResponseDTO.success("채팅방을 나갔습니다.", "채팅방 나가기 성공"));
+        } catch (IllegalArgumentException e) {
+            log.error("[leaveChatRoom] 채팅방 나가기 실패 - roomId: {}, error: {}", roomId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ResponseDTO.error("채팅방 나가기 실패: " + e.getMessage()));
+        } catch (Exception e) {
+            log.error("[leaveChatRoom] 채팅방 나가기 중 예외 발생 - roomId: {}", roomId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ResponseDTO.error("채팅방 나가기 중 오류가 발생했습니다: " + e.getMessage()));
+        }
+    }
 
     // 10. 알림 읽음 처리 (채팅/업무)
     @Operation(summary = "알림 읽음 처리", description = "알림을 읽음 처리합니다.")

@@ -10,6 +10,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.socket.WebSocketSession;
@@ -62,6 +63,7 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	private final MessageFileRepository messageFileRepository;
     private final ChatMessageReadStatusRepository chatMessageReadStatusRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final SimpMessagingTemplate messagingTemplate;
     
 	@Transactional(readOnly = true)
 	@Override
@@ -872,7 +874,59 @@ public class ChatRoomServiceImpl implements ChatRoomService {
 	    // return chatRoomMapper.countByRoomId(roomId) > 0;
 	}
 	
-	
+	@Transactional
+	@Override
+	public void leaveChatRoom(Integer roomId, String userEmail) {
+		log.info("[leaveChatRoom] 채팅방 나가기 시작 - roomId: {}, userEmail: {}", roomId, userEmail);
+		
+		// 1. 사용자 조회
+		User user = findUserByEmail(userEmail);
+		if (user == null) {
+			throw new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userEmail);
+		}
+		
+		// 2. 채팅방 조회
+		ChatRoom chatRoom = chatRoomRepository.findById(roomId)
+				.orElseThrow(() -> new IllegalArgumentException("채팅방 없음: " + roomId));
+		
+		// 3. ChatRoomUser 조회 및 삭제
+		Optional<ChatRoomUser> chatRoomUserOpt = chatRoomUserRepository.findByChatRoomIdAndUserId(roomId, user.getId());
+		if (chatRoomUserOpt.isEmpty()) {
+			log.warn("[leaveChatRoom] 사용자가 채팅방에 참여하지 않았습니다 - roomId: {}, userId: {}", roomId, user.getId());
+			throw new IllegalArgumentException("채팅방에 참여하지 않은 사용자입니다.");
+		}
+		
+		ChatRoomUser chatRoomUser = chatRoomUserOpt.get();
+		
+		// 4. 나가기 메시지 생성
+		String leaveMessage = user.getName() + "님이 채팅방을 나갔습니다";
+		Chat leaveChat = sendChatMessage(roomId, user.getId(), leaveMessage);
+		
+		// 5. ChatRoomUser 삭제
+		chatRoomUserRepository.delete(chatRoomUser);
+		
+		// 6. WebSocket으로 나가기 메시지 브로드캐스트
+		if (leaveChat != null) {
+			ChatResponseDTO responseDto = new ChatResponseDTO();
+			responseDto.setId(leaveChat.getId());
+			responseDto.setMessageContent(leaveChat.getMessageContent());
+			responseDto.setSendAt(leaveChat.getSendAt() != null ? leaveChat.getSendAt() : LocalDateTime.now());
+			responseDto.setRoomId(roomId);
+			responseDto.setSenderId(user.getId());
+			responseDto.setSenderName(user.getName());
+			responseDto.setSenderEmail(user.getEmail());
+			responseDto.setFileYn(leaveChat.getFileYn());
+			responseDto.setUnreadCount(0); // 나가기 메시지는 읽음 처리
+			
+			// 모든 참여자에게 브로드캐스트
+			messagingTemplate.convertAndSend("/topic/chat.room." + roomId, responseDto);
+			log.info("[leaveChatRoom] 나가기 메시지 브로드캐스트 완료 - roomId: {}, userId: {}, chatId: {}", 
+					roomId, user.getId(), leaveChat.getId());
+		}
+		
+		log.info("[leaveChatRoom] 채팅방 나가기 완료 - roomId: {}, userId: {}, userName: {}", 
+				roomId, user.getId(), user.getName());
+	}
 
     
 }

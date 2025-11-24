@@ -168,7 +168,7 @@ const MailTrashPage = () => {
     }
   };
 
-  // 날짜 포맷 함수
+  // 날짜 포맷 함수 (YYYY-MM-DD HH:mm)
   const formatSentTime = (sentTime) => {
     if (!sentTime) return '-';
     try {
@@ -178,8 +178,7 @@ const MailTrashPage = () => {
       const dd = String(d.getDate()).padStart(2, "0");
       const HH = String(d.getHours()).padStart(2, "0");
       const mi = String(d.getMinutes()).padStart(2, "0");
-      const ss = String(d.getSeconds()).padStart(2, "0");
-      return `${yyyy}-${mm}-${dd} ${HH}시 ${mi}분 ${ss}초`;
+      return `${yyyy}-${mm}-${dd} ${HH}:${mi}`;
     } catch {
       return '-';
     }

@@ -548,7 +548,19 @@ const MailSentBoxPage = () => {
                     )}
                   </TableCell>
                   <TableCell>
-                    {mail.sentTime ? new Date(mail.sentTime).toLocaleString() : "-"}
+                    {mail.sentTime ? (() => {
+                      try {
+                        const d = new Date(mail.sentTime);
+                        const yyyy = d.getFullYear();
+                        const mm = String(d.getMonth() + 1).padStart(2, "0");
+                        const dd = String(d.getDate()).padStart(2, "0");
+                        const HH = String(d.getHours()).padStart(2, "0");
+                        const mi = String(d.getMinutes()).padStart(2, "0");
+                        return `${yyyy}-${mm}-${dd} ${HH}:${mi}`;
+                      } catch {
+                        return "-";
+                      }
+                    })() : "-"}
                   </TableCell>
                   <TableCell align="right">
                     <Chip

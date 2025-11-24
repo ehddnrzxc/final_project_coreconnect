@@ -4,6 +4,7 @@ import Topbar from "./components/layout/Topbar/Topbar";
 import Sidebar from "./components/layout/Sidebar";
 import { getMyProfileInfo } from "./features/user/api/userAPI";
 import {
+  fetchInboxCount,
   fetchUnreadCount,
   fetchDraftbox,
   fetchFavoriteCount,
@@ -81,6 +82,7 @@ const themeOptions = {
 function App() {
   const [userProfile, setUserProfile] = useState(null);
 
+  const [inboxCount, setInboxCount] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
   const [draftCount, setDraftCount] = useState(0);
   const [favoriteCount, setFavoriteCount] = useState(0);
@@ -125,6 +127,14 @@ function App() {
       localStorage.setItem("themeMode", newTheme);
     }
   };
+
+  // 받은메일함 전체 개수
+  const refreshInboxCount = useCallback(async () => {
+    const userEmail = userProfile?.email;
+    if (!userEmail) return;
+    const count = await fetchInboxCount(userEmail);
+    setInboxCount(count || 0);
+  }, [userProfile?.email]);
 
   // 받은메일함(안읽은)
   const refreshUnreadCount = useCallback(async () => {
@@ -221,9 +231,10 @@ function App() {
     }
   };
 
-  // 최초 마운트 시 개수 상태 동기화 (안읽은+임시보관+중요메일+채팅+알림)
+  // 최초 마운트 시 개수 상태 동기화 (받은메일함+안읽은+임시보관+중요메일+채팅+알림)
   useEffect(() => {
     if (userProfile?.email) {
+      refreshInboxCount();
       refreshUnreadCount();
       refreshDraftCount();
       refreshFavoriteCount();
@@ -246,13 +257,16 @@ function App() {
   // context value: count, set, refresh 함수
   // useMemo를 사용하여 항상 동일한 객체 참조를 유지하고, userProfile이 없어도 기본값 제공
   const mailCountContextValue = useMemo(() => ({
+    inboxCount: inboxCount || 0,
+    refreshInboxCount,
     unreadCount: unreadCount || 0,
     refreshUnreadCount,
+    setUnreadCountDirectly: setUnreadCount,
     draftCount: draftCount || 0,
     refreshDraftCount,
     favoriteCount: favoriteCount || 0,
     refreshFavoriteCount,
-  }), [unreadCount, draftCount, favoriteCount, refreshUnreadCount, refreshDraftCount, refreshFavoriteCount]);
+  }), [inboxCount, unreadCount, draftCount, favoriteCount, refreshInboxCount, refreshUnreadCount, refreshDraftCount, refreshFavoriteCount]);
 
   const approvalCountContextValue = useMemo(() => ({
     approvalCount: approvalCount || 0,

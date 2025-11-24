@@ -96,13 +96,12 @@ function MailWritePage() {
       if (!date) return '-';
       try {
         const d = typeof date === "string" || typeof date === "number" ? new Date(date) : date;
-        return d.toLocaleString('ko-KR', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit'
-        });
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+        const HH = String(d.getHours()).padStart(2, "0");
+        const mi = String(d.getMinutes()).padStart(2, "0");
+        return `${yyyy}-${mm}-${dd} ${HH}:${mi}`;
       } catch {
         return '-';
       }
@@ -115,7 +114,17 @@ function MailWritePage() {
     info += `일자: ${formatDate(originalEmail.sentTime)}\n`;
     
     if (originalEmail.recipientAddresses && originalEmail.recipientAddresses.length > 0) {
-      info += `받는사람: ${originalEmail.recipientAddresses.join(', ')}\n`;
+      // 받는사람 중복 제거 (대소문자 구분 없이)
+      const seen = new Set();
+      const uniqueRecipients = originalEmail.recipientAddresses.filter(addr => {
+        const normalized = addr?.toLowerCase();
+        if (seen.has(normalized)) {
+          return false;
+        }
+        seen.add(normalized);
+        return true;
+      });
+      info += `받는사람: ${uniqueRecipients.join(', ')}\n`;
     }
     
     if (originalEmail.ccAddresses && originalEmail.ccAddresses.length > 0) {
@@ -129,7 +138,14 @@ function MailWritePage() {
     info += `────────────────────────────────────────\n`;
     
     if (originalEmail.emailContent) {
-      info += `\n${originalEmail.emailContent}\n`;
+      // 원본 메일 내용의 각 줄 앞에 밑줄 문자 추가
+      const contentLines = originalEmail.emailContent.split('\n');
+      const underlinedContent = contentLines.map(line => `─ ${line}`).join('\n');
+      info += `\n${underlinedContent}\n`;
+    }
+
+    if (mode === 'reply') {
+      info += `\n--------------------------------------------------\n`;
     }
     
     if (mode === 'forward') {
@@ -165,15 +181,20 @@ function MailWritePage() {
         addr && addr.trim() && addr.toLowerCase() !== userEmail.toLowerCase()
       );
       
-      // 원본 메일의 받는 사람 중 본인을 제외한 나머지를 참조에 추가
-      const otherRecipients = (original.recipientAddresses || []).filter(addr => 
-        addr && addr.trim() && 
-        addr.toLowerCase() !== userEmail.toLowerCase() &&
-        addr.toLowerCase() !== original.senderEmail?.toLowerCase()
-      );
+      // 원본 메일의 받는 사람 중 본인을 제외한 나머지를 참조에 추가 (중복 제거)
+      const seenCc = new Set(ccAddresses.map(a => a?.toLowerCase()));
+      const otherRecipients = (original.recipientAddresses || []).filter(addr => {
+        if (!addr || !addr.trim()) return false;
+        const normalized = addr.toLowerCase();
+        return normalized !== userEmail.toLowerCase() &&
+               normalized !== original.senderEmail?.toLowerCase() &&
+               !seenCc.has(normalized);
+      });
       otherRecipients.forEach(addr => {
-        if (!ccAddresses.includes(addr)) {
+        const normalized = addr.toLowerCase();
+        if (!seenCc.has(normalized)) {
           ccAddresses.push(addr);
+          seenCc.add(normalized);
         }
       });
       

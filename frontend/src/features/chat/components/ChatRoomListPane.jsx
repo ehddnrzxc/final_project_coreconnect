@@ -4,7 +4,7 @@ import http from "../../../api/http"; // axios 인스턴스 불러오기
 
 // 채팅방 목록(좌측) & 탭
 function ChatRoomListPane({
-  tabIdx, setTabIdx, roomList, selectedRoomId, setSelectedRoomId, formatTime
+  tabIdx, setTabIdx, roomList, selectedRoomId, setSelectedRoomId, formatTime, highlightedRoomId
 }) {
   // 정렬 상태: 기본값은 최신 메시지부터 (내림차순)
   const sortOrder = 'desc';
@@ -135,7 +135,18 @@ function ChatRoomListPane({
                   py: 2.4,
                   px: 1.2,
                   minHeight: "64px",
-                  cursor: "pointer"
+                  cursor: "pointer",
+                  // 새로 생성된 방 하이라이팅
+                  ...(highlightedRoomId === room.roomId && {
+                    background: "#e3f2fd",
+                    borderLeft: "4px solid #1976d2",
+                    animation: "highlightPulse 2s ease-in-out",
+                    "@keyframes highlightPulse": {
+                      "0%": { background: "#e3f2fd" },
+                      "50%": { background: "#bbdefb" },
+                      "100%": { background: "#e3f2fd" }
+                    }
+                  })
                 }}
               >
                 <ListItemAvatar>
