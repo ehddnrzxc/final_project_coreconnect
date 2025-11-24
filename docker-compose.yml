@@ -14,11 +14,10 @@ services:
       - "8080"
     # 5) docker-compose를 사용하면 Dockerfile를 통하지 않아도 환경 변수를 직접 컨테이너(boot-container)로 전달 가능
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://${MYSQL_HOST}:${MYSQL_PORT:-3306}/db_coreconnect?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+      SPRING_DATASOURCE_URL: jdbc:mysql://${MYSQL_HOST}:${MYSQL_PORT}/${MYSQL_DATABASE}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
       SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
-      ALLOWED_ORIGIN: ${ALLOWED_ORIGIN}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
       WEBSOCKET_ALLOWED_ORIGINS: ${WEBSOCKET_ALLOWED_ORIGINS}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
@@ -26,6 +25,7 @@ services:
       AWS_REGION: ${AWS_REGION}
       AWS_BUCKET_NAME: ${AWS_BUCKET_NAME}
       SENDGRID_API_KEY: ${SENDGRID_API_KEY}
+      ALLOWED_ORIGIN: ${ALLOWED_ORIGIN}
   
   # 2. frontend 서비스 생성
   frontend:
@@ -34,11 +34,6 @@ services:
     # 2) ./frontend 경로에 있는 Dockerfile로 도커 이미지를 빌드할 것
     build: 
       context: ./frontend
-      args:
-        # 프론트엔드 빌드 타임 환경 변수
-        # 배포 환경에서는 nginx가 프록시하므로 상대 경로 사용 (기본값)
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1/}
-        VITE_WS_BASE_URL: ${VITE_WS_BASE_URL:-}
     # 3) 포트 포워딩 (외부에서 80 접속 허용)
     ports:
       - 80:80
