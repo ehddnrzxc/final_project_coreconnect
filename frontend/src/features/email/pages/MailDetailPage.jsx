@@ -15,7 +15,7 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import { useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import { useContext } from "react";
-import { UserProfileContext } from "../../../App";
+import { UserProfileContext, MailCountContext } from "../../../App";
 import ConfirmDialog from "../../../components/utils/ConfirmDialog";
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
 
@@ -45,6 +45,8 @@ function MailDetailPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const { refreshUnreadCount } = useOutletContext();
   const { userProfile } = useContext(UserProfileContext) || {};
+  const mailCountContext = useContext(MailCountContext);
+  const { refreshFavoriteCount } = mailCountContext || {};
   const userEmail = userProfile?.email;
 
   
@@ -110,6 +112,13 @@ function MailDetailPage() {
         newStatus ? '중요 메일로 설정되었습니다.' : '중요 메일 해제되었습니다.',
         'success'
       );
+      
+      // 중요 메일 개수 새로고침
+      if (refreshFavoriteCount) {
+        setTimeout(() => {
+          refreshFavoriteCount();
+        }, 100);
+      }
     } catch (err) {
       console.error('handleToggleFavorite error', err);
       showSnack('중요 메일 설정 중 오류가 발생했습니다.', 'error');

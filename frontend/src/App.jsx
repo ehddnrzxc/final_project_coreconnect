@@ -6,6 +6,7 @@ import { getMyProfileInfo } from "./features/user/api/userAPI";
 import {
   fetchUnreadCount,
   fetchDraftbox,
+  fetchFavoriteCount,
 } from "./features/email/api/emailApi";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import { Box, CssBaseline } from "@mui/material";
@@ -82,6 +83,7 @@ function App() {
 
   const [unreadCount, setUnreadCount] = useState(0);
   const [draftCount, setDraftCount] = useState(0);
+  const [favoriteCount, setFavoriteCount] = useState(0);
   const navigate = useNavigate();
 
   // 실시간 알림 구독
@@ -144,6 +146,14 @@ function App() {
         ? res.data.data.totalElements
         : 0;
     setDraftCount(count);
+  }, [userProfile?.email]);
+
+  // 중요 메일 개수
+  const refreshFavoriteCount = useCallback(async () => {
+    const userEmail = userProfile?.email;
+    if (!userEmail) return;
+    const count = await fetchFavoriteCount(userEmail);
+    setFavoriteCount(count || 0);
   }, [userProfile?.email]);
 
   const refreshApprovalCount = useCallback(async () => {
@@ -211,11 +221,12 @@ function App() {
     }
   };
 
-  // 최초 마운트 시 개수 상태 동기화 (안읽은+임시보관+채팅+알림)
+  // 최초 마운트 시 개수 상태 동기화 (안읽은+임시보관+중요메일+채팅+알림)
   useEffect(() => {
     if (userProfile?.email) {
       refreshUnreadCount();
       refreshDraftCount();
+      refreshFavoriteCount();
       refreshApprovalCount();
       refreshChatRooms();
       refreshNotificationCount();
@@ -239,7 +250,9 @@ function App() {
     refreshUnreadCount,
     draftCount: draftCount || 0,
     refreshDraftCount,
-  }), [unreadCount, draftCount, refreshUnreadCount, refreshDraftCount]);
+    favoriteCount: favoriteCount || 0,
+    refreshFavoriteCount,
+  }), [unreadCount, draftCount, favoriteCount, refreshUnreadCount, refreshDraftCount, refreshFavoriteCount]);
 
   const approvalCountContextValue = useMemo(() => ({
     approvalCount: approvalCount || 0,

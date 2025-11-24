@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getMyReferenceDocuments } from '../api/approvalApi';
-import { Alert, Box, CircularProgress, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from '@mui/material';
+import { Alert, Box, CircularProgress, Pagination, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from '@mui/material';
 
 const ReferDocumentPage = () => {
   
@@ -9,6 +9,9 @@ const ReferDocumentPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   useEffect(() => {
     const loadDocuments = async () => {
@@ -28,6 +31,10 @@ const ReferDocumentPage = () => {
     };
     loadDocuments();
   }, []);
+
+  const handlePageChange = (e, value) => {
+    setPage(value - 1);
+  };
 
   const handleRowClick = documentId => {
     navigate(`/e-approval/doc/${documentId}`);
@@ -69,7 +76,9 @@ const ReferDocumentPage = () => {
                  </TableCell>
                </TableRow>
             ) : (
-              documents.map(doc => (
+              documents
+              .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+              .map(doc => (
                 <TableRow
                   key={doc.documentId}
                   hover
@@ -89,6 +98,24 @@ const ReferDocumentPage = () => {
           </TableBody>
         </Table>
       </TableContainer>
+      {documents.length > 0 && (
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 3, mb: 2 }}>
+          <Pagination
+            count={Math.ceil(documents.length / rowsPerPage)}
+            page={page + 1}
+            onChange={handlePageChange}
+            shape="circular"
+            showFirstButton={false}
+            showLastButton={false}
+            sx={{
+              "& .Mui-selected": {
+                backgroundColor: "#00bcd4 !important",
+                color: "#fff",
+              },
+            }}
+          />
+        </Box>
+      )}
     </Box>
   )
 

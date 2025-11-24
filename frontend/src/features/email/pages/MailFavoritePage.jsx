@@ -14,7 +14,7 @@ import StarIcon from '@mui/icons-material/Star';
 
 import { fetchFavoriteMails, moveToTrash, getEmailDetail, toggleFavoriteStatus } from '../api/emailApi';
 import { useNavigate } from 'react-router-dom';
-import { UserProfileContext } from '../../../App';
+import { UserProfileContext, MailCountContext } from '../../../App';
 import ConfirmDialog from '../../../components/utils/ConfirmDialog';
 
 /*
@@ -46,6 +46,8 @@ function getStatusColor(emailStatus) {
 const MailFavoritePage = () => {
   // UserProfileContext에서 userProfile을 가져와 이메일을 추출
   const { userProfile } = useContext(UserProfileContext) || {};
+  const mailCountContext = useContext(MailCountContext);
+  const { refreshFavoriteCount } = mailCountContext || {};
   const userEmail = userProfile?.email;
 
   // 상태 정의: 메일 목록, 페이징, 선택 등
@@ -273,6 +275,13 @@ const MailFavoritePage = () => {
       setSnack({ open: true, severity: 'success', message: `${ids.length}개의 메일을 중요 해제했습니다.` });
       setSelected(new Set());
       await load();
+      
+      // 중요 메일 개수 새로고침
+      if (refreshFavoriteCount) {
+        setTimeout(() => {
+          refreshFavoriteCount();
+        }, 100);
+      }
     } catch (err) {
       console.error('handleUnfavorite error', err);
       setSnack({ open: true, severity: 'error', message: '중요 해제 중 오류가 발생했습니다.' });

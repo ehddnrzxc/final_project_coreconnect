@@ -669,13 +669,23 @@ public class ChatMessageController {
 		String fileUrl;
 		
 		try {
-			// s3에 업로드
-			s3Key = s3Service.uploadProfileImage(uploadFile, sender.getName());
+			// s3에 업로드 (모든 파일 타입 허용)
+			s3Key = s3Service.uploadChatFile(uploadFile, sender.getId());
 			fileUrl = s3Service.getFileUrl(s3Key);
 			
+			log.info("[uploadFileMessage] 파일 업로드 성공 - fileName: {}, fileSize: {}, contentType: {}, s3Key: {}", 
+			        uploadFile.getOriginalFilename(), uploadFile.getSize(), uploadFile.getContentType(), s3Key);
+			
 		} catch (IOException e) {
+			log.error("[uploadFileMessage] 파일 s3 업로드 실패 - fileName: {}, error: {}", 
+			        uploadFile.getOriginalFilename(), e.getMessage(), e);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 					.body(ResponseDTO.internalError("파일 s3 업로드 실패: "+ e.getMessage()));
+		} catch (IllegalArgumentException e) {
+			log.error("[uploadFileMessage] 파일 업로드 검증 실패 - fileName: {}, error: {}", 
+			        uploadFile.getOriginalFilename(), e.getMessage());
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+					.body(ResponseDTO.error(400, "파일 업로드 검증 실패: " + e.getMessage()));
 		}		
 		
 		// ⭐ MessageFile에는 S3 키를 저장 (URL이 아닌 키)
@@ -775,13 +785,17 @@ public class ChatMessageController {
 			String s3Key;
 			String fileUrl;
 			try {
-				// s3에 업로드
-				s3Key = s3Service.uploadProfileImage(uploadFile, sender.getName());
+				// s3에 업로드 (모든 파일 타입 허용)
+				s3Key = s3Service.uploadChatFile(uploadFile, sender.getId());
 				fileUrl = s3Service.getFileUrl(s3Key);
-				log.info("[uploadMultipleFileMessage] 파일 {} S3 업로드 성공: {} -> {}", fileIndex, uploadFile.getOriginalFilename(), s3Key);
+				log.info("[uploadMultipleFileMessage] 파일 {} S3 업로드 성공: {} -> {}, contentType: {}, size: {} bytes", 
+				        fileIndex, uploadFile.getOriginalFilename(), s3Key, uploadFile.getContentType(), uploadFile.getSize());
 			} catch (IOException e) {
 				log.error("[uploadMultipleFileMessage] 파일 {} S3 업로드 실패: {}", fileIndex, e.getMessage(), e);
 				continue; // 개별 파일 업로드 실패 시 건너뛰기
+			} catch (IllegalArgumentException e) {
+				log.error("[uploadMultipleFileMessage] 파일 {} 업로드 검증 실패: {}", fileIndex, e.getMessage());
+				continue; // 개별 파일 업로드 검증 실패 시 건너뛰기
 			}
 			
 			// ⭐ MessageFile에는 S3 키를 저장 (URL이 아닌 키)
@@ -1557,12 +1571,17 @@ public class ChatMessageController {
     // ⭐ 각 메시지의 unreadCount를 -1 감소시키고 WebSocket으로 실시간 업데이트 알림
     @Operation(summary = "나에게 온 안읽은 메시지를 채팅방을 접속해서 다 읽으면 채팅방목록에서 안읽은 메시지 개수가 없어지게 만들기", description = "나에게 온 안읽은 메시지를 채팅방을 접속해서 다 읽으면 채팅방목록에서 안읽은 메시지 개수가 없어지게 만들기")
     @PatchMapping("/rooms/{roomId}/messages/read")
+    @org.springframework.transaction.annotation.Transactional
     public ResponseEntity<?> markRoomMessagesAsRead(@PathVariable Integer roomId, @AuthenticationPrincipal CustomUserDetails customUserDetails) {
       String email = customUserDetails.getEmail();
     	User user = userRepository.findByEmail(email).orElseThrow();
     	
+    	log.info("[markRoomMessagesAsRead] 읽음 처리 요청 - roomId: {}, userId: {}, email: {}", roomId, user.getId(), email);
+    	
     	// ⭐ 메시지 읽음 처리 및 읽음 처리된 메시지 ID 리스트 반환
     	List<Integer> readChatIds = chatRoomService.markMessagesAsRead(roomId, user.getId());
+    	
+    	log.info("[markRoomMessagesAsRead] 읽음 처리 완료 - roomId: {}, userId: {}, 처리된 메시지 수: {}", roomId, user.getId(), readChatIds.size());
     	
     	// ⭐ WebSocket을 통해 실시간으로 unreadCount 업데이트 알림
     	// 각 메시지의 업데이트된 unreadCount를 전송 (발신자에게만 알림)

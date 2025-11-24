@@ -429,7 +429,7 @@ function ChatRoomCreateDialog({ open, onClose, onCreate, presetUsers }) {
                               ? user.profileImageUrl
                               : undefined
                           }
-                          sx={{ bgcolor: "#10c16d", width: 24, height: 24 }}
+                          sx={{ bgcolor: "primary.main", width: 24, height: 24 }}
                           imgProps={{
                             onError: (e) => {
                               // 이미지 로드 실패 시 숨기고 이니셜 표시
@@ -533,7 +533,7 @@ function ChatRoomCreateDialog({ open, onClose, onCreate, presetUsers }) {
                               ? user.profileImageUrl
                               : undefined
                           }
-                          sx={{ bgcolor: "#10c16d", width: 40, height: 40 }}
+                          sx={{ bgcolor: "primary.main", width: 40, height: 40 }}
                           imgProps={{
                             onError: (e) => {
                               // 이미지 로드 실패 시 숨기고 이니셜 표시
