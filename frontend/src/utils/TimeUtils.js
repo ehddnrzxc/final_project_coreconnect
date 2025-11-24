@@ -26,10 +26,44 @@ export function formatKoreanTime(date) {
 /** 출퇴근 시간 표시용 "11:22" 형식의 시간 반환 */
 export function formatTime(timeString) {
   if(!timeString) return "-";
-  const date = new Date(timeString);
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${hours}:${minutes}`;
+  
+  try {
+    let date;
+    
+    // ISO 8601 형식인 경우 (예: "2025-01-15T10:30:00" 또는 "2025-01-15T10:30:00+09:00")
+    if (typeof timeString === 'string' && timeString.includes('T')) {
+      // 시간대 정보가 없으면 한국 시간대(UTC+9)로 가정
+      if (!timeString.includes('+') && !timeString.includes('Z') && !timeString.includes('-', 10)) {
+        // "2025-01-15T10:30:00" 형식인 경우 한국 시간대로 해석
+        date = new Date(timeString + '+09:00');
+      } else {
+        date = new Date(timeString);
+      }
+    } 
+    // "yyyy-MM-dd HH:mm:ss" 형식인 경우 (예: "2025-01-15 10:30:00")
+    else if (typeof timeString === 'string' && timeString.includes(' ')) {
+      // 공백을 T로 변경하고 한국 시간대 추가
+      const isoString = timeString.replace(' ', 'T') + '+09:00';
+      date = new Date(isoString);
+    }
+    // 기타 형식
+    else {
+      date = new Date(timeString);
+    }
+    
+    // 유효한 날짜인지 확인
+    if (isNaN(date.getTime())) {
+      console.warn('[formatTime] 잘못된 날짜 형식:', timeString);
+      return "-";
+    }
+    
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${hours}:${minutes}`;
+  } catch (error) {
+    console.error('[formatTime] 날짜 파싱 오류:', error, 'timeString:', timeString);
+    return "-";
+  }
 }
 
 /** 분 -> "44h 31m" 형식으로 변환 */
