@@ -419,7 +419,6 @@ public class ApprovalServiceImpl implements ApprovalService {
     
     // 1. "진행중" 상태 정의 (임시저장, 진행중)
     List<DocumentStatus> pendingStatuses = Arrays.asList(
-        DocumentStatus.DRAFT, 
         DocumentStatus.IN_PROGRESS
     );
 
