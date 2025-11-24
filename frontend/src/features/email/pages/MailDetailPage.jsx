@@ -18,7 +18,7 @@ import { useContext } from "react";
 import { UserProfileContext, MailCountContext } from "../../../App";
 import ConfirmDialog from "../../../components/utils/ConfirmDialog";
 import { useSnackbarContext } from "../../../components/utils/SnackbarContext";
-import { UNREAD_REFRESH_FLAG, UNREAD_PENDING_IDS_KEY } from "../constants/storageKeys";
+import { UNREAD_REFRESH_FLAG, UNREAD_PENDING_IDS_KEY } from "../constants/storageKeys.js";
 
 // 파일 사이즈 변환
 function formatBytes(bytes) {
