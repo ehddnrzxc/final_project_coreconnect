@@ -1035,7 +1035,8 @@ public class ChatMessageController {
             }
             
             String email = customUserDetails.getEmail();
-            User inviter = userRepository.findByEmail(email)
+            // 초대자 조회 (Department와 함께 로드)
+            User inviter = userRepository.findByEmailWithDepartment(email)
                     .orElseThrow(() -> new IllegalArgumentException("초대자를 찾을 수 없습니다: " + email));
             
             // 2. 채팅방 존재 확인
@@ -1098,26 +1099,50 @@ public class ChatMessageController {
                     log.info("[inviteUsersToChatRoom] ChatRoomUser 저장 완료 - userId: {}, userName: {}", 
                             invited.getId(), invited.getName());
                     
-                    // 초대 메시지 생성
-                    String inviteMsg = invited.getName() + "님이 초대되었습니다";
-                    Chat inviteChat = chatRoomService.sendChatMessage(roomId, inviter.getId(), inviteMsg);
+                    // flush 후 참여자 목록 확인 (디버깅용)
+                    List<Integer> updatedParticipantIds = chatRoomService.getParticipantIds(roomId);
+                    log.info("[inviteUsersToChatRoom] flush 후 참여자 목록 - roomId: {}, 참여자 수: {}, 참여자 IDs: {}", 
+                            roomId, updatedParticipantIds.size(), updatedParticipantIds);
                     
-                    if (inviteChat == null) {
-                        log.warn("[inviteUsersToChatRoom] 초대 메시지 생성 실패 - userId: {}", invited.getId());
+                    // 초대 메시지 생성
+                    Chat inviteChat = null;
+                    try {
+                        String inviteMsg = invited.getName() + "님이 초대되었습니다";
+                        log.info("[inviteUsersToChatRoom] 초대 메시지 생성 시작 - roomId: {}, inviterId: {}, message: {}", 
+                                roomId, inviter.getId(), inviteMsg);
+                        inviteChat = chatRoomService.sendChatMessage(roomId, inviter.getId(), inviteMsg);
+                        
+                        if (inviteChat == null) {
+                            log.warn("[inviteUsersToChatRoom] 초대 메시지 생성 실패 - userId: {}", invited.getId());
+                        } else {
+                            log.info("[inviteUsersToChatRoom] 초대 메시지 생성 성공 - chatId: {}, userId: {}", 
+                                    inviteChat.getId(), invited.getId());
+                        }
+                    } catch (Exception msgException) {
+                        log.error("[inviteUsersToChatRoom] 초대 메시지 생성 중 오류 - userId: {}, error: {}", 
+                                invited.getId(), msgException.getMessage(), msgException);
+                        // 메시지 생성 실패해도 초대는 성공했으므로 계속 진행
                     }
                     
                     // 초대 알림 전송
-                    String notificationMsg = chatRoom.getRoomName() + " 채팅방에 " + invited.getName() + "님이 초대되었습니다";
-                    notificationService.sendNotification(
-                        invited.getId(),
-                        NotificationType.CHAT,
-                        notificationMsg,
-                        inviteChat != null ? inviteChat.getId() : null,
-                        roomId,
-                        inviter.getId(),
-                        inviter.getName(),
-                        null
-                    );
+                    try {
+                        String notificationMsg = chatRoom.getRoomName() + " 채팅방에 " + invited.getName() + "님이 초대되었습니다";
+                        notificationService.sendNotification(
+                            invited.getId(),
+                            NotificationType.CHAT,
+                            notificationMsg,
+                            inviteChat != null ? inviteChat.getId() : null,
+                            roomId,
+                            inviter.getId(),
+                            inviter.getName(),
+                            null
+                        );
+                        log.info("[inviteUsersToChatRoom] 초대 알림 전송 성공 - userId: {}", invited.getId());
+                    } catch (Exception notifException) {
+                        log.error("[inviteUsersToChatRoom] 초대 알림 전송 중 오류 - userId: {}, error: {}", 
+                                invited.getId(), notifException.getMessage(), notifException);
+                        // 알림 전송 실패해도 초대는 성공했으므로 계속 진행
+                    }
                     
                     // DTO 생성 (Department가 이미 로드되어 있으므로 안전)
                     ChatUserResponseDTO dto = null;
