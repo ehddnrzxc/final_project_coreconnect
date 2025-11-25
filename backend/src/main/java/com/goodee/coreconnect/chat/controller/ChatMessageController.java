@@ -34,6 +34,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.goodee.coreconnect.chat.dto.request.CreateRoomRequestDTO;
 import com.goodee.coreconnect.chat.dto.request.InviteUsersRequestDTO;
@@ -1017,50 +1018,139 @@ public class ChatMessageController {
 	  // 10. 채팅방 초대/참여
     @Operation(summary = "채팅방에 사용자 초대", description = "채팅방에 사용자를 초대하고 참여 메시지를 전송합니다.")
     @PostMapping("/{roomId}/invite")
+    @Transactional
     public ResponseEntity<ResponseDTO<List<ChatUserResponseDTO>>> inviteUsersToChatRoom(
             @PathVariable("roomId") Integer roomId,
             @RequestBody InviteUsersRequestDTO req,
             @AuthenticationPrincipal CustomUserDetails customUserDetails
     ) {
-        String email = customUserDetails.getEmail();
-        User inviter = userRepository.findByEmail(email).orElseThrow();
-        
-        ChatRoom chatRoom = chatRoomService.findById(roomId);
-        List<Integer> participantIds = chatRoomService.getParticipantIds(roomId);
-        List<User> nonParticipants = userRepository.findAll()
-                .stream().filter(u -> !participantIds.contains(u.getId())).collect(Collectors.toList());
-        List<User> invitedUsers = nonParticipants.stream()
-                .filter(u -> req.getUserIds().contains(u.getId()))
-                .collect(Collectors.toList());
-
-        for (User invited : invitedUsers) {
-            ChatRoomUser cru = ChatRoomUser.createChatRoomUser(invited, chatRoom);
-            chatRoomUserRepository.save(cru);
+        try {
+            log.info("[inviteUsersToChatRoom] 초대 요청 시작 - roomId: {}, userIds: {}", roomId, req.getUserIds());
             
-            // ⭐ 초대 메시지 생성 (초대받은 사용자에게만 표시, 입장 전까지 유지)
-            String inviteMsg = invited.getName() + "님이 초대되었습니다";
-            Chat inviteChat = chatRoomService.sendChatMessage(roomId, inviter.getId(), inviteMsg);
+            // 1. 요청 검증
+            if (req == null || req.getUserIds() == null || req.getUserIds().isEmpty()) {
+                log.warn("[inviteUsersToChatRoom] 잘못된 요청 - userIds가 null이거나 비어있음");
+                return ResponseEntity.badRequest()
+                        .body(ResponseDTO.error("초대할 사용자를 선택해주세요."));
+            }
             
-            // ⭐ 초대 알림 전송 (초대받은 사용자에게만)
-            String notificationMsg = chatRoom.getRoomName() + " 채팅방에 " + invited.getName() + "님이 초대되었습니다";
-            notificationService.sendNotification(
-                invited.getId(),
-                NotificationType.CHAT,
-                notificationMsg,
-                inviteChat != null ? inviteChat.getId() : null,
-                roomId,
-                inviter.getId(),
-                inviter.getName(),
-                null
-            );
+            String email = customUserDetails.getEmail();
+            User inviter = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new IllegalArgumentException("초대자를 찾을 수 없습니다: " + email));
             
-            log.info("[inviteUsersToChatRoom] 초대 완료 - roomId: {}, invitedUserId: {}, invitedUserName: {}, inviterId: {}, inviterName: {}", 
-                    roomId, invited.getId(), invited.getName(), inviter.getId(), inviter.getName());
+            // 2. 채팅방 존재 확인
+            ChatRoom chatRoom = chatRoomService.findById(roomId);
+            if (chatRoom == null) {
+                log.warn("[inviteUsersToChatRoom] 채팅방을 찾을 수 없음 - roomId: {}", roomId);
+                return ResponseEntity.badRequest()
+                        .body(ResponseDTO.error("채팅방을 찾을 수 없습니다."));
+            }
+            
+            // 3. 참여자 목록 조회
+            List<Integer> participantIds = chatRoomService.getParticipantIds(roomId);
+            log.info("[inviteUsersToChatRoom] 현재 참여자 수: {}, 참여자 IDs: {}", participantIds.size(), participantIds);
+            
+            // 4. 초대할 사용자 조회 및 중복 체크
+            List<User> invitedUsers = new ArrayList<>();
+            for (Integer userId : req.getUserIds()) {
+                // 사용자 존재 확인
+                User user = userRepository.findById(userId)
+                        .orElse(null);
+                
+                if (user == null) {
+                    log.warn("[inviteUsersToChatRoom] 사용자를 찾을 수 없음 - userId: {}", userId);
+                    continue;
+                }
+                
+                // 이미 참여 중인지 확인
+                if (participantIds.contains(userId)) {
+                    log.info("[inviteUsersToChatRoom] 이미 참여 중인 사용자 - userId: {}, userName: {}", userId, user.getName());
+                    continue;
+                }
+                
+                // DB에서도 중복 체크 (동시 요청 방지)
+                Optional<ChatRoomUser> existing = chatRoomUserRepository.findByChatRoomIdAndUserId(roomId, userId);
+                if (existing.isPresent()) {
+                    log.info("[inviteUsersToChatRoom] 이미 참여 중인 사용자 (DB 확인) - userId: {}, userName: {}", userId, user.getName());
+                    continue;
+                }
+                
+                invitedUsers.add(user);
+            }
+            
+            if (invitedUsers.isEmpty()) {
+                log.warn("[inviteUsersToChatRoom] 초대할 사용자가 없음 - 요청된 userIds: {}", req.getUserIds());
+                return ResponseEntity.badRequest()
+                        .body(ResponseDTO.error("초대할 수 있는 사용자가 없습니다. 이미 참여 중이거나 존재하지 않는 사용자입니다."));
+            }
+            
+            log.info("[inviteUsersToChatRoom] 초대할 사용자 수: {}", invitedUsers.size());
+            
+            // 5. 사용자 초대 처리
+            List<ChatUserResponseDTO> dtoList = new ArrayList<>();
+            for (User invited : invitedUsers) {
+                try {
+                    // ChatRoomUser 생성 및 저장
+                    ChatRoomUser cru = ChatRoomUser.createChatRoomUser(invited, chatRoom);
+                    chatRoomUserRepository.save(cru);
+                    chatRoomUserRepository.flush(); // 즉시 DB 반영
+                    
+                    log.info("[inviteUsersToChatRoom] ChatRoomUser 저장 완료 - userId: {}, userName: {}", 
+                            invited.getId(), invited.getName());
+                    
+                    // 초대 메시지 생성
+                    String inviteMsg = invited.getName() + "님이 초대되었습니다";
+                    Chat inviteChat = chatRoomService.sendChatMessage(roomId, inviter.getId(), inviteMsg);
+                    
+                    if (inviteChat == null) {
+                        log.warn("[inviteUsersToChatRoom] 초대 메시지 생성 실패 - userId: {}", invited.getId());
+                    }
+                    
+                    // 초대 알림 전송
+                    String notificationMsg = chatRoom.getRoomName() + " 채팅방에 " + invited.getName() + "님이 초대되었습니다";
+                    notificationService.sendNotification(
+                        invited.getId(),
+                        NotificationType.CHAT,
+                        notificationMsg,
+                        inviteChat != null ? inviteChat.getId() : null,
+                        roomId,
+                        inviter.getId(),
+                        inviter.getName(),
+                        null
+                    );
+                    
+                    // DTO 생성
+                    ChatUserResponseDTO dto = ChatUserResponseDTO.fromEntity(invited, s3Service);
+                    if (dto != null) {
+                        dtoList.add(dto);
+                    }
+                    
+                    log.info("[inviteUsersToChatRoom] 초대 완료 - roomId: {}, invitedUserId: {}, invitedUserName: {}, inviterId: {}, inviterName: {}", 
+                            roomId, invited.getId(), invited.getName(), inviter.getId(), inviter.getName());
+                } catch (Exception e) {
+                    log.error("[inviteUsersToChatRoom] 사용자 초대 중 오류 - userId: {}, userName: {}", 
+                            invited.getId(), invited.getName(), e);
+                    // 개별 사용자 초대 실패는 로그만 남기고 계속 진행
+                }
+            }
+            
+            if (dtoList.isEmpty()) {
+                log.error("[inviteUsersToChatRoom] 모든 사용자 초대 실패");
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(ResponseDTO.error("사용자 초대에 실패했습니다."));
+            }
+            
+            log.info("[inviteUsersToChatRoom] 초대 성공 - roomId: {}, 초대된 사용자 수: {}", roomId, dtoList.size());
+            return ResponseEntity.ok(ResponseDTO.success(dtoList, "초대 및 참여 메시지 저장 성공"));
+        } catch (IllegalArgumentException e) {
+            log.error("[inviteUsersToChatRoom] 잘못된 요청 - roomId: {}", roomId, e);
+            return ResponseEntity.badRequest()
+                    .body(ResponseDTO.error(e.getMessage()));
+        } catch (Exception e) {
+            log.error("[inviteUsersToChatRoom] 초대 처리 중 오류 - roomId: {}", roomId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ResponseDTO.error("사용자 초대 중 오류가 발생했습니다: " + e.getMessage()));
         }
-        List<ChatUserResponseDTO> dtoList = invitedUsers.stream()
-                .map(user -> ChatUserResponseDTO.fromEntity(user, s3Service))
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(ResponseDTO.success(dtoList, "초대 및 참여 메시지 저장 성공"));
     }
     
     // 11. 채팅방 나가기

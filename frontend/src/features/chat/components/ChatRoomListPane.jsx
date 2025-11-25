@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Tabs, Tab, List, ListItem, ListItemButton, ListItemAvatar, ListItemText, Badge, Avatar, Typography, Chip } from "@mui/material";
+import { Box, Tabs, Tab, List, ListItem, ListItemButton, ListItemAvatar, ListItemText, Badge, Avatar, AvatarGroup, Typography, Chip } from "@mui/material";
 import http from "../../../api/http"; // axios 인스턴스 불러오기
 
 // 채팅방 목록(좌측) & 탭
@@ -10,23 +10,30 @@ function ChatRoomListPane({
   const sortOrder = 'desc';
   // 참여자 수 정보를 저장할 state: { [roomId]: 참여자수 }
   const [roomMemberCounts, setRoomMemberCounts] = useState({});
+  // 참여자 목록 정보를 저장할 state: { [roomId]: 참여자배열 }
+  const [roomParticipants, setRoomParticipants] = useState({});
 
-  // roomList가 바뀔 때마다 각 방의 참여자 수 API 호출
+  // roomList가 바뀔 때마다 각 방의 참여자 수 및 목록 API 호출
   useEffect(() => {
     async function fetchAllMemberCounts() {
-      const obj = {};
+      const countObj = {};
+      const participantsObj = {};
       await Promise.all(
         roomList.map(async (room) => {
           try {
             // GET /chat/{roomId}/users → 응답 data.data에 사용자 배열
             const res = await http.get(`/chat/${room.roomId}/users`);
-            obj[room.roomId] = Array.isArray(res.data.data) ? res.data.data.length : 0;
+            const users = Array.isArray(res.data.data) ? res.data.data : [];
+            countObj[room.roomId] = users.length;
+            participantsObj[room.roomId] = users;
           } catch {
-            obj[room.roomId] = 0;
+            countObj[room.roomId] = 0;
+            participantsObj[room.roomId] = [];
           }
         })
       );
-      setRoomMemberCounts(obj);
+      setRoomMemberCounts(countObj);
+      setRoomParticipants(participantsObj);
     }
     if (Array.isArray(roomList) && roomList.length > 0) {
       fetchAllMemberCounts();
@@ -150,9 +157,47 @@ function ChatRoomListPane({
                 }}
               >
                 <ListItemAvatar>
-                  <Avatar sx={{ bgcolor: "primary.main", mr: 1 }}>
-                    {room.roomName?.[0]?.toUpperCase()}
-                  </Avatar>
+                  {/* 참여자 프로필 이미지가 있으면 AvatarGroup으로 표시, 없으면 채팅방 이름 첫 글자 */}
+                  {roomParticipants[room.roomId] && roomParticipants[room.roomId].length > 0 ? (
+                    <AvatarGroup
+                      max={3}
+                      sx={{
+                        "& .MuiAvatar-root": {
+                          width: 40,
+                          height: 40,
+                          fontSize: 14,
+                          border: "2px solid #fff",
+                          bgcolor: "primary.main",
+                        },
+                        "& .MuiAvatarGroup-avatar": {
+                          width: 40,
+                          height: 40,
+                          fontSize: 14,
+                        },
+                      }}
+                    >
+                      {roomParticipants[room.roomId].map((user) => (
+                        <Avatar
+                          key={user.id}
+                          src={user.profileImageUrl && user.profileImageUrl.trim() !== '' && user.profileImageUrl.startsWith('http')
+                            ? user.profileImageUrl
+                            : undefined}
+                          sx={{ bgcolor: "primary.main" }}
+                          imgProps={{
+                            onError: (e) => {
+                              e.target.style.display = "none";
+                            }
+                          }}
+                        >
+                          {user.name?.[0]?.toUpperCase() || "?"}
+                        </Avatar>
+                      ))}
+                    </AvatarGroup>
+                  ) : (
+                    <Avatar sx={{ bgcolor: "primary.main", mr: 1, width: 40, height: 40 }}>
+                      {room.roomName?.[0]?.toUpperCase()}
+                    </Avatar>
+                  )}
                 </ListItemAvatar>
                 <ListItemText
                 primary={

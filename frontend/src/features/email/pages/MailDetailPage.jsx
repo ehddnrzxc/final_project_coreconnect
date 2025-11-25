@@ -132,6 +132,10 @@ function MailDetailPage() {
             if (refreshInboxCount) {
               refreshInboxCount(); // 받은 메일함 전체 개수도 새로고침
             }
+            // mailCountContext의 refreshInboxCount도 명시적으로 호출
+            if (mailCountContext?.refreshInboxCount) {
+              mailCountContext.refreshInboxCount();
+            }
             
             // 안읽은 메일 탭에서 왔다면 목록 새로고침을 위한 이벤트 발생
             if (fromTab === "unread") {
@@ -165,6 +169,10 @@ function MailDetailPage() {
         }
         if (refreshInboxCount) {
           refreshInboxCount(); // 받은 메일함 전체 개수도 새로고침
+        }
+        // mailCountContext의 refreshInboxCount도 명시적으로 호출
+        if (mailCountContext?.refreshInboxCount) {
+          mailCountContext.refreshInboxCount();
         }
         
         // 안읽은 메일 탭에서 왔다면 목록 새로고침을 위한 이벤트 발생
