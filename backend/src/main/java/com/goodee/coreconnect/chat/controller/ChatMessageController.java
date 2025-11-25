@@ -223,7 +223,7 @@ public class ChatMessageController {
 	    // 이렇게 해야 race condition 없이 정확한 unreadCount를 브로드캐스트할 수 있음
 	    
 	    // ⭐ 현재 접속 중인 사용자 수 조회 (실시간 WebSocket 세션 기반)
-	    List<Integer> connectedUserIds = chatRoomService.getConnectedUserIdsInRoom(req.getRoomId());
+	    connectedUserIds = chatRoomService.getConnectedUserIdsInRoom(req.getRoomId());
 	    int connectedUsersCount = connectedUserIds.size();
 	    
 	    // ⭐ 참여자 수 확인 (디버깅용)
