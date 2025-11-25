@@ -72,17 +72,11 @@ const AdminCategoryPage = () => {
   // 저장 버튼 클릭 시 동작 → 수정 내용 백엔드 반영
   const handleSave = async (id) => {
     try {
-      await updateCategory(id, editedData);
+      await updateCategory(id, editedData); // 수정 API 요청
       showSnack("카테고리가 수정되었습니다.", "success");
-      setEditingId(null);
-
-      setCategories((prev) => // 즉시 반영
-        prev
-          .map((c) => (c.id === id ? { ...c, ...editedData } : c))
-          .sort((a, b) => (a.orderNo ?? 0) - (b.orderNo ?? 0))
-      );
-
-      loadCategories(); // 동기화
+      localStorage.setItem("categoryRefresh", Date.now());
+      setEditingId(null); // 수정 모드 종료
+      loadCategories(); // 목록 새로 불러오기
     } catch (err) {
       showSnack("카테고리 수정 중 오류가 발생했습니다.", "error");
     }
@@ -113,12 +107,10 @@ const AdminCategoryPage = () => {
   const handleDelete = async (id) => {
     showSnack("카테고리를 삭제 중입니다...", "info"); // 사용자 확인창 표시
     try {
-      await deleteCategory(id);
+      await deleteCategory(id); // 삭제 API 요청
       showSnack("카테고리가 삭제되었습니다.", "success");
-
-      setCategories((prev) => prev.filter((c) => c.id !== id)); // 즉시 반영
-
-      setTimeout(loadCategories, 200); // 뒤에서 동기화
+      localStorage.setItem("categoryRefresh", Date.now());
+      loadCategories(); // 목록 새로 불러오기
     } catch (err) {
       showSnack("카테고리 삭제 중 오류가 발생했습니다.", "error");
     }
@@ -126,20 +118,17 @@ const AdminCategoryPage = () => {
 
   // 등록 버튼 클릭 시 동작 → 신규 카테고리 생성
   const handleCreate = async () => {
-    if (!newCategory.name.trim()) return showSnack("카테고리명을 입력해주세요.", "error");
+    if (!newCategory.name.trim()) {
+      showSnack("카테고리명을 입력해주세요.", "error");
+      return;
+    }
 
     try {
-      const res = await createCategory(newCategory);
-      const created = res.data.data;
-
-      setCategories((prev) => // ★ 수정: 즉시 반영
-        [...prev, created].sort((a, b) => (a.orderNo ?? 0) - (b.orderNo ?? 0))
-      );
-
-      setNewCategory({ name: "", orderNo: "" });
+      await createCategory(newCategory); // 등록 API 요청
       showSnack("새 카테고리가 등록되었습니다.", "success");
-
-      setTimeout(loadCategories, 200); // ★ 수정: 동기화
+      localStorage.setItem("categoryRefresh", Date.now());
+      setNewCategory({ name: "", orderNo: "" }); // 입력창 초기화
+      loadCategories(); // 목록 새로고침
     } catch (err) {
       showSnack("카테고리 순서번호가 이미 존재합니다.", "error");
     }
@@ -230,10 +219,7 @@ const AdminCategoryPage = () => {
               inputProps={{ min: 0 }}
               value={newCategory.orderNo}
               onChange={(e) =>
-                setNewCategory((prev) => ({
-                  ...prev,
-                  orderNo: e.target.value ? Number(e.target.value) : "" // 숫자 변환
-                }))
+                setNewCategory((prev) => ({ ...prev, orderNo: e.target.value }))
               }
               sx={{ width: 120 }}
             />
@@ -310,7 +296,7 @@ const AdminCategoryPage = () => {
                         onChange={(e) =>
                           setEditedData((prev) => ({
                             ...prev,
-                            orderNo: e.target.value ? Number(e.target.value) : "" // 숫자 변환
+                            orderNo: e.target.value,
                           }))
                         }
                         sx={{ width: 120 }}
