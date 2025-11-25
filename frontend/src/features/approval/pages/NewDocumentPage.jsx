@@ -85,7 +85,7 @@ const getInitialFormData = templateKey => {
     case 'EXPENSE':
       return {
         ...commonData,
-        purpose: " ",
+        purpose: "",
         items: [],
         totalAmount: 0,
       }
