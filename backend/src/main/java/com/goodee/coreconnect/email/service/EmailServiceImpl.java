@@ -757,14 +757,30 @@ public class EmailServiceImpl implements EmailService {
 	@Override
     @Transactional
     public boolean markMailAsRead(Integer emailId, String userEmail) {
+        log.info("markMailAsRead: 시작 - emailId={}, userEmail={}", emailId, userEmail);
+        
         // 특정 이메일의 수신자(본인)에 대해 읽음처리 (이미 읽었으면 false)
         com.goodee.coreconnect.email.entity.Email email = emailRepository.findById(emailId)
-                .orElseThrow(() -> new IllegalArgumentException("메일이 존재하지 않습니다." + emailId));
+                .orElseThrow(() -> {
+                    log.error("markMailAsRead: 메일을 찾을 수 없습니다 - emailId={}, userEmail={}", emailId, userEmail);
+                    return new IllegalArgumentException("메일이 존재하지 않습니다." + emailId);
+                });
+
+        log.info("markMailAsRead: Email 엔티티 조회 완료 - emailId={}, senderId={}", emailId, email.getSenderId());
 
         List<EmailRecipient> recipients = emailRecipientRepository.findByEmail(email);
+        log.info("markMailAsRead: EmailRecipient 목록 조회 완료 - emailId={}, recipientsCount={}", 
+                emailId, recipients.size());
 
         Optional<EmailRecipient> myRecipientOpt = recipients.stream()
-            .filter(r -> userEmail.equals(r.getEmailRecipientAddress()))
+            .filter(r -> {
+                boolean matches = userEmail.equals(r.getEmailRecipientAddress());
+                if (matches) {
+                    log.info("markMailAsRead: 수신자 매칭 발견 - recipientId={}, address={}, emailReadYn={}", 
+                            r.getEmailRecipientId(), r.getEmailRecipientAddress(), r.getEmailReadYn());
+                }
+                return matches;
+            })
             .findFirst();
 
         // emailReadYn이 false이거나 null인 경우 모두 처리
@@ -772,25 +788,38 @@ public class EmailServiceImpl implements EmailService {
             EmailRecipient recipient = myRecipientOpt.get();
             Integer recipientId = recipient.getEmailRecipientId();
             Boolean currentReadYn = recipient.getEmailReadYn();
+            log.info("markMailAsRead: 수신자 정보 - recipientId={}, currentReadYn={}", recipientId, currentReadYn);
+            
             // 안읽은 메일인 경우 (false 또는 null)
             if (currentReadYn == null || Boolean.FALSE.equals(currentReadYn)) {
                 LocalDateTime now = LocalDateTime.now();
+                log.info("markMailAsRead: 읽음 처리 시작 - recipientId={}, emailId={}, userEmail={}", 
+                        recipientId, emailId, userEmail);
+                
                 // 엔티티를 직접 수정하여 DB에 확실히 반영
                 recipient.setEmailReadYn(true);
                 recipient.setEmailReadAt(now);
+                
+                log.info("markMailAsRead: EmailRecipient 엔티티 수정 완료 - recipientId={}, emailReadYn=true, emailReadAt={}", 
+                        recipientId, now);
+                
                 emailRecipientRepository.save(recipient);
+                log.info("markMailAsRead: EmailRecipient save() 호출 완료 - recipientId={}", recipientId);
+                
                 // 즉시 DB에 반영되도록 flush
                 emailRecipientRepository.flush();
-                log.info("markMailAsRead: EmailRecipient updated - emailId={}, userEmail={}, recipientId={}, emailReadYn={} -> true, emailReadAt={}", 
-                        emailId, userEmail, recipientId, currentReadYn, now);
+                log.info("markMailAsRead: EmailRecipient flush() 호출 완료 - recipientId={}", recipientId);
                 
                 // DB에 실제로 반영되었는지 확인 (디버그 로그)
                 emailRecipientRepository.findById(recipientId).ifPresent(savedRecipient -> {
                     Boolean savedReadYn = savedRecipient.getEmailReadYn();
-                    log.info("markMailAsRead: DB 확인 - recipientId={}, 실제 DB의 emailReadYn={}", 
-                            recipientId, savedReadYn);
+                    log.info("markMailAsRead: DB 확인 - recipientId={}, 실제 DB의 emailReadYn={}, emailReadAt={}", 
+                            recipientId, savedReadYn, savedRecipient.getEmailReadAt());
                     if (!Boolean.TRUE.equals(savedReadYn)) {
                         log.error("markMailAsRead: ⚠️ 경고 - DB에 emailReadYn이 true로 저장되지 않았습니다! recipientId={}, emailId={}, userEmail={}", 
+                                recipientId, emailId, userEmail);
+                    } else {
+                        log.info("markMailAsRead: ✅ DB에 emailReadYn=true로 정상 저장됨 - recipientId={}, emailId={}, userEmail={}", 
                                 recipientId, emailId, userEmail);
                     }
                 });
@@ -799,12 +828,23 @@ public class EmailServiceImpl implements EmailService {
                 email.setEmailReadAt(now);
                 emailRepository.save(email);
                 emailRepository.flush();
-                log.info("markMailAsRead: Email updated - emailId={}, emailReadAt={}", emailId, now);
+                log.info("markMailAsRead: Email 엔티티 업데이트 완료 - emailId={}, emailReadAt={}", emailId, now);
                 
+                log.info("markMailAsRead: ✅ 읽음 처리 성공 - emailId={}, userEmail={}, recipientId={}", 
+                        emailId, userEmail, recipientId);
                 return true;
             } else {
-                log.info("markMailAsRead: Email already read - emailId={}, userEmail={}, emailReadYn={}", 
+                log.info("markMailAsRead: 이미 읽은 메일 - emailId={}, userEmail={}, emailReadYn={}", 
                         emailId, userEmail, currentReadYn);
+                return false;
+            }
+        } else {
+            log.warn("markMailAsRead: ⚠️ 수신자를 찾을 수 없습니다 - emailId={}, userEmail={}, recipientsCount={}", 
+                    emailId, userEmail, recipients.size());
+            if (recipients.size() > 0) {
+                log.warn("markMailAsRead: 수신자 목록:");
+                recipients.forEach(r -> log.warn("  - recipientId={}, address={}, type={}", 
+                        r.getEmailRecipientId(), r.getEmailRecipientAddress(), r.getEmailRecipientType()));
             }
         }
         // 이미 읽은 경우나 못찾은 경우
