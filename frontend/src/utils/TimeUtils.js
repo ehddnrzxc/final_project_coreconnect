@@ -28,38 +28,60 @@ export function formatTime(timeString) {
   if(!timeString) return "-";
   
   try {
-    let date;
+    // LocalDateTime은 시간대 정보가 없는 로컬 시간이므로,
+    // 문자열에서 직접 시간 부분을 추출하는 것이 가장 안전합니다.
+    // 백엔드에서 이미 한국 시간대로 저장된 로컬 시간을 전송합니다.
     
-    // ISO 8601 형식인 경우 (예: "2025-01-15T10:30:00" 또는 "2025-01-15T10:30:00+09:00")
-    if (typeof timeString === 'string' && timeString.includes('T')) {
-      // 시간대 정보가 없으면 한국 시간대(UTC+9)로 가정
-      if (!timeString.includes('+') && !timeString.includes('Z') && !timeString.includes('-', 10)) {
-        // "2025-01-15T10:30:00" 형식인 경우 한국 시간대로 해석
-        date = new Date(timeString + '+09:00');
-      } else {
-        date = new Date(timeString);
+    let timeStr = null;
+    
+    // Date 객체인 경우
+    if (timeString instanceof Date) {
+      const hours = String(timeString.getHours()).padStart(2, "0");
+      const minutes = String(timeString.getMinutes()).padStart(2, "0");
+      return `${hours}:${minutes}`;
+    }
+    
+    // 문자열인 경우
+    if (typeof timeString === 'string') {
+      // ISO 8601 형식인 경우 (예: "2025-01-15T09:36:00" 또는 "2025-01-15T09:36:00.123")
+      if (timeString.includes('T')) {
+        // "T" 이후의 시간 부분 추출 (시간대 정보 제거)
+        const timePart = timeString.split('T')[1];
+        if (timePart) {
+          // "+", "-", "Z" 이전까지만 추출 (시간대 정보 제거)
+          timeStr = timePart.split(/[+\-Z]/)[0];
+        }
       }
-    } 
-    // "yyyy-MM-dd HH:mm:ss" 형식인 경우 (예: "2025-01-15 10:30:00")
-    else if (typeof timeString === 'string' && timeString.includes(' ')) {
-      // 공백을 T로 변경하고 한국 시간대 추가
-      const isoString = timeString.replace(' ', 'T') + '+09:00';
-      date = new Date(isoString);
-    }
-    // 기타 형식
-    else {
-      date = new Date(timeString);
+      // "yyyy-MM-dd HH:mm:ss" 형식인 경우 (예: "2025-01-15 09:36:00")
+      else if (timeString.includes(' ')) {
+        timeStr = timeString.split(' ')[1];
+      }
+      // 직접 시간 형식인 경우 (예: "09:36:00" 또는 "09:36")
+      else if (timeString.match(/^\d{1,2}:\d{2}/)) {
+        timeStr = timeString;
+      }
+      
+      // 시간 문자열에서 시:분 추출
+      if (timeStr) {
+        const match = timeStr.match(/^(\d{1,2}):(\d{2})/);
+        if (match) {
+          const hours = match[1].padStart(2, "0");
+          const minutes = match[2].padStart(2, "0");
+          return `${hours}:${minutes}`;
+        }
+      }
+      
+      // 문자열에서 시간을 추출할 수 없으면 Date 객체로 파싱 시도
+      const date = new Date(timeString);
+      if (!isNaN(date.getTime())) {
+        const hours = String(date.getHours()).padStart(2, "0");
+        const minutes = String(date.getMinutes()).padStart(2, "0");
+        return `${hours}:${minutes}`;
+      }
     }
     
-    // 유효한 날짜인지 확인
-    if (isNaN(date.getTime())) {
-      console.warn('[formatTime] 잘못된 날짜 형식:', timeString);
-      return "-";
-    }
-    
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-    return `${hours}:${minutes}`;
+    console.warn('[formatTime] 잘못된 날짜 형식:', timeString);
+    return "-";
   } catch (error) {
     console.error('[formatTime] 날짜 파싱 오류:', error, 'timeString:', timeString);
     return "-";

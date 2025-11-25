@@ -190,6 +190,7 @@ public class AttendanceServiceImpl implements AttendanceService {
     int totalWorkDays = 0;  // 총 근무일수 (주말만 제외, 평일 전체)
     int workDays = 0;
     int lateDays = 0;
+    int leaveEarlyDays = 0;  // 조퇴일수
     int absentDays = 0;
     int leaveDays = 0;  // 휴가일수 (평일 중 휴가인 날짜)
     int totalMinutes = 0;
@@ -229,8 +230,11 @@ public class AttendanceServiceImpl implements AttendanceService {
         absentDays++;
       } else {
         // 출근 기록이 있으면
-        if (attendance.getStatus() == AttendanceStatus.LATE) {
+        AttendanceStatus status = attendance.getStatus();
+        if (status == AttendanceStatus.LATE) {
           lateDays++;
+        } else if (status == AttendanceStatus.LEAVE_EARLY) {
+          leaveEarlyDays++;
         }
         workDays++;
         
@@ -256,7 +260,7 @@ public class AttendanceServiceImpl implements AttendanceService {
       }
     }
     
-    return new AttendanceStatisticsDTO(totalWorkDays, workDays, lateDays, absentDays, leaveDays, totalMinutes);
+    return new AttendanceStatisticsDTO(totalWorkDays, workDays, lateDays, leaveEarlyDays, absentDays, leaveDays, totalMinutes);
   }
 
   /** 월간 근태 통계 조회 */
@@ -292,6 +296,7 @@ public class AttendanceServiceImpl implements AttendanceService {
     int totalWorkDays = 0;  // 총 근무일수 (주말만 제외, 평일 전체)
     int workDays = 0;
     int lateDays = 0;
+    int leaveEarlyDays = 0;  // 조퇴일수
     int absentDays = 0;
     int leaveDays = 0;  // 휴가일수 (평일 중 휴가인 날짜)
     int totalMinutes = 0;
@@ -331,8 +336,11 @@ public class AttendanceServiceImpl implements AttendanceService {
         absentDays++;
       } else {
         // 출근 기록이 있으면
-        if (attendance.getStatus() == AttendanceStatus.LATE) {
+        AttendanceStatus status = attendance.getStatus();
+        if (status == AttendanceStatus.LATE) {
           lateDays++;
+        } else if (status == AttendanceStatus.LEAVE_EARLY) {
+          leaveEarlyDays++;
         }
         workDays++;
         
@@ -358,7 +366,7 @@ public class AttendanceServiceImpl implements AttendanceService {
       }
     }
     
-    return new AttendanceStatisticsDTO(totalWorkDays, workDays, lateDays, absentDays, leaveDays, totalMinutes);
+    return new AttendanceStatisticsDTO(totalWorkDays, workDays, lateDays, leaveEarlyDays, absentDays, leaveDays, totalMinutes);
   }
 
   /** 전사원 오늘 근태 현황 조회 */
