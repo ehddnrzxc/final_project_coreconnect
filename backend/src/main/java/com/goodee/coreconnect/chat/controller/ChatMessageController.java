@@ -221,6 +221,15 @@ public class ChatMessageController {
 	    // ⭐ unreadCount 실시간 재계산: 브로드캐스트 직전에 항상 DB에서 최신 값 조회
 	    // sendChatMessage에서 이미 flush 후 최신 값을 가져왔지만, 브로드캐스트 직전에 다시 한 번 확인
 	    // 이렇게 해야 race condition 없이 정확한 unreadCount를 브로드캐스트할 수 있음
+	    
+	    // ⭐ 현재 접속 중인 사용자 수 조회 (실시간 WebSocket 세션 기반)
+	    List<Integer> connectedUserIds = chatRoomService.getConnectedUserIdsInRoom(req.getRoomId());
+	    int connectedUsersCount = connectedUserIds.size();
+	    
+	    // ⭐ 참여자 수 확인 (디버깅용)
+	    int participantCount = chatRoomUserRepository.findByChatRoomId(req.getRoomId()).size();
+	    
+	    // ⭐ 실시간 unreadCount 계산: DB에서 최신 값 조회 (접속 중인 사용자는 이미 읽음 처리됨)
 	    int realUnreadCount = chatMessageReadStatusRepository.countUnreadByChatId(saved.getId());
 	    
 	    // ⭐ Chat 엔티티의 unreadCount도 최신 값으로 업데이트 (일관성 유지)
@@ -230,15 +239,8 @@ public class ChatMessageController {
 	        chatRepository.flush(); // 브로드캐스트 직전에 flush하여 최신 값 확보
 	    }
 	    
-	    // ⭐ 참여자 수 확인 (디버깅용)
-	    int participantCount = chatRoomUserRepository.findByChatRoomId(req.getRoomId()).size();
-	    
-	    // ⭐ 현재 접속 중인 사용자 수 확인 (디버깅용)
-	    List<Integer> connectedUserIds = chatRoomService.getConnectedUserIdsInRoom(req.getRoomId());
-	    int connectedUsersCount = connectedUserIds.size();
-	    
-	    log.info("[sendMessage] ⭐ unreadCount 실시간 재계산 - chatId: {}, 참여자수: {}, 접속중인사용자수: {}, 실시간unreadCount: {}", 
-	            saved.getId(), participantCount, connectedUsersCount, realUnreadCount);
+	    log.info("[sendMessage] ⭐⭐⭐ 실시간 unreadCount 재계산 ⭐⭐⭐ - chatId: {}, 참여자수: {}, 접속중인사용자수: {}, 실시간unreadCount: {}, 접속중인사용자Ids: {}", 
+	            saved.getId(), participantCount, connectedUsersCount, realUnreadCount, connectedUserIds);
 	    
 	    // ⭐ 실시간 계산된 값을 DTO에 설정
 	    responseDto.setUnreadCount(realUnreadCount);
@@ -305,19 +307,38 @@ public class ChatMessageController {
 	        // ⭐ 이렇게 하면 같은 채팅방에 계속 머물러 있어도 실시간으로 unreadCount가 업데이트됨
 	        // ⭐ 접속 중인 사용자들이 읽음 처리되었으므로, 모든 참여자가 실시간으로 unreadCount 업데이트를 받아야 함
 	        if (saved != null && saved.getId() != null) {
+	            // ⭐ 실시간 접속자 수 재조회 및 unreadCount 재계산 (메시지 전송 직후 최신 상태 반영)
+	            List<Integer> latestConnectedUserIds = chatRoomService.getConnectedUserIdsInRoom(req.getRoomId());
+	            
 	            // ⭐ 브로드캐스트 직전에 다시 한 번 최신 값 확인 (race condition 방지)
+	            // sendChatMessage에서 이미 접속 중인 사용자를 읽음 처리했지만, 
+	            // 메시지 전송 직후 접속 상태가 변경되었을 수 있으므로 재조회
 	            int confirmedUnreadCount = chatMessageReadStatusRepository.countUnreadByChatId(saved.getId());
+	            
+	            // ⭐ 실시간 접속자 수 기반 unreadCount 검증
+	            // unreadCount = 전체 참여자 수 - 발신자 - 접속 중인 사용자 수
+	            int expectedUnreadCount = participantCount - 1 - latestConnectedUserIds.size();
+	            if (expectedUnreadCount < 0) expectedUnreadCount = 0;
+	            
+	            // ⭐ 계산된 값과 DB 값의 차이가 크면 (1 이상) 경고 로그
+	            if (Math.abs(confirmedUnreadCount - expectedUnreadCount) > 1) {
+	                log.warn("[sendMessage] ⚠️ unreadCount 불일치 가능성 - DB값: {}, 예상값: {}, 참여자수: {}, 접속중인사용자수: {}", 
+	                        confirmedUnreadCount, expectedUnreadCount, participantCount, latestConnectedUserIds.size());
+	            }
+	            
+	            log.info("[sendMessage] ⭐⭐⭐ 실시간 unreadCount 최종 확인 ⭐⭐⭐ - chatId: {}, 참여자수: {}, 접속중인사용자수: {}, DB unreadCount: {}, 예상 unreadCount: {}", 
+	                    saved.getId(), participantCount, latestConnectedUserIds.size(), confirmedUnreadCount, expectedUnreadCount);
 	            
 	            Map<String, Object> unreadCountUpdate = new HashMap<>();
 	            unreadCountUpdate.put("type", "UNREAD_COUNT_UPDATE");
 	            unreadCountUpdate.put("chatId", saved.getId());
-	            unreadCountUpdate.put("unreadCount", confirmedUnreadCount);
+	            unreadCountUpdate.put("unreadCount", confirmedUnreadCount); // ⭐ DB에서 조회한 최신 값 사용
 	            unreadCountUpdate.put("roomId", req.getRoomId());
 	            unreadCountUpdate.put("senderId", authUser.getId());
 	            unreadCountUpdate.put("senderEmail", authUser.getEmail());
 	            
-	            log.info("[sendMessage] ⭐⭐⭐ UNREAD_COUNT_UPDATE 메시지 생성 및 브로드캐스트 시작 ⭐⭐⭐ - chatId: {}, unreadCount: {}, topic: {}, 메시지내용: {}", 
-	                    saved.getId(), confirmedUnreadCount, topic, unreadCountUpdate);
+	            log.info("[sendMessage] ⭐⭐⭐ UNREAD_COUNT_UPDATE 메시지 생성 및 브로드캐스트 시작 ⭐⭐⭐ - chatId: {}, unreadCount: {}, topic: {}", 
+	                    saved.getId(), confirmedUnreadCount, topic);
 	            
 	            messagingTemplate.convertAndSend(topic, unreadCountUpdate);
 	            
@@ -346,7 +367,7 @@ public class ChatMessageController {
 	                    saved, saved != null ? saved.getId() : null);
 	        }
 	        
-	        // ⭐ 4. 채팅방 참여자들에게 알림 전송 (발신자 제외)
+	        // ⭐ 4. 채팅방 참여자들에게 알림 전송 (발신자 및 접속 중인 사용자 제외)
 	        try {
 	            log.info("[sendMessage] 알림 전송 시작 - roomId: {}, senderId: {}", req.getRoomId(), authUser.getId());
 	            
@@ -356,14 +377,22 @@ public class ChatMessageController {
 	            if (chatRoomUsers == null || chatRoomUsers.isEmpty()) {
 	                log.warn("[sendMessage] 채팅방 참여자가 없습니다 - roomId: {}", req.getRoomId());
 	            } else {
-	                // 발신자를 제외한 참여자 ID 목록 생성
+	                // ⭐ 현재 채팅방에 접속 중인 사용자 목록 조회 (실시간 WebSocket 세션 기반)
+	                List<Integer> connectedUserIds = chatRoomService.getConnectedUserIdsInRoom(req.getRoomId());
+	                log.info("[sendMessage] 알림 전송 - 접속 중인 사용자 수: {}, 접속자 IDs: {}", 
+	                        connectedUserIds.size(), connectedUserIds);
+	                
+	                // ⭐ 발신자 및 접속 중인 사용자를 제외한 참여자 ID 목록 생성
+	                // 접속 중인 사용자는 실시간으로 메시지를 볼 수 있으므로 알림 불필요
 	                List<Integer> recipientIds = chatRoomUsers.stream()
 	                    .filter(cru -> cru.getUser() != null && !cru.getUser().getId().equals(authUser.getId()))
 	                    .map(cru -> cru.getUser().getId())
+	                    .filter(userId -> !connectedUserIds.contains(userId)) // ⭐ 접속 중인 사용자 제외
 	                    .collect(Collectors.toList());
 	                
 	                if (recipientIds.isEmpty()) {
-	                    log.info("[sendMessage] 알림을 받을 참여자가 없습니다 (발신자만 있음) - roomId: {}", req.getRoomId());
+	                    log.info("[sendMessage] 알림을 받을 참여자가 없습니다 (발신자 및 접속 중인 사용자만 있음) - roomId: {}, 접속중인사용자수: {}", 
+	                            req.getRoomId(), connectedUserIds.size());
 	                } else {
 	                    // 채팅방 이름 가져오기
 	                    String roomName = saved.getChatRoom() != null ? saved.getChatRoom().getRoomName() : "채팅방";
@@ -378,9 +407,10 @@ public class ChatMessageController {
 	                        notificationMessage += " - " + messageContent;
 	                    }
 	                    
-	                    log.info("[sendMessage] 알림 전송 시작 - recipientCount: {}, message: {}", recipientIds.size(), notificationMessage);
+	                    log.info("[sendMessage] 알림 전송 시작 - recipientCount: {} (접속 중 제외), 접속중인사용자수: {}, message: {}", 
+	                            recipientIds.size(), connectedUserIds.size(), notificationMessage);
 	                    
-	                    // 여러 참여자에게 알림 전송
+	                    // 여러 참여자에게 알림 전송 (접속 중인 사용자 제외)
 	                    notificationService.sendNotificationToUsers(
 	                        recipientIds,
 	                        NotificationType.CHAT,
@@ -393,7 +423,7 @@ public class ChatMessageController {
 	                        null   // scheduleId
 	                    );
 	                    
-	                    log.info("[sendMessage] 알림 전송 완료 - recipientCount: {}", recipientIds.size());
+	                    log.info("[sendMessage] 알림 전송 완료 - recipientCount: {} (접속 중인 사용자 제외)", recipientIds.size());
 	                }
 	            }
 	        } catch (Exception notificationException) {
@@ -798,7 +828,7 @@ public class ChatMessageController {
 		    }
 		}
 		
-		// ⭐ 채팅방 참여자들에게 알림 전송 (발신자 제외)
+		// ⭐ 채팅방 참여자들에게 알림 전송 (발신자 및 접속 중인 사용자 제외)
 		try {
 			log.info("[uploadFileMessage] 알림 전송 시작 - roomId: {}, senderId: {}", roomId, sender.getId());
 			
@@ -808,14 +838,22 @@ public class ChatMessageController {
 			if (chatRoomUsers == null || chatRoomUsers.isEmpty()) {
 				log.warn("[uploadFileMessage] 채팅방 참여자가 없습니다 - roomId: {}", roomId);
 			} else {
-				// 발신자를 제외한 참여자 ID 목록 생성
+				// ⭐ 현재 채팅방에 접속 중인 사용자 목록 조회 (실시간 WebSocket 세션 기반)
+				List<Integer> connectedUserIds = chatRoomService.getConnectedUserIdsInRoom(roomId);
+				log.info("[uploadFileMessage] 알림 전송 - 접속 중인 사용자 수: {}, 접속자 IDs: {}", 
+						connectedUserIds.size(), connectedUserIds);
+				
+				// ⭐ 발신자 및 접속 중인 사용자를 제외한 참여자 ID 목록 생성
+				// 접속 중인 사용자는 실시간으로 메시지를 볼 수 있으므로 알림 불필요
 				List<Integer> recipientIds = chatRoomUsers.stream()
 					.filter(cru -> cru.getUser() != null && !cru.getUser().getId().equals(sender.getId()))
 					.map(cru -> cru.getUser().getId())
+					.filter(userId -> !connectedUserIds.contains(userId)) // ⭐ 접속 중인 사용자 제외
 					.collect(Collectors.toList());
 				
 				if (recipientIds.isEmpty()) {
-					log.info("[uploadFileMessage] 알림을 받을 참여자가 없습니다 (발신자만 있음) - roomId: {}", roomId);
+					log.info("[uploadFileMessage] 알림을 받을 참여자가 없습니다 (발신자 및 접속 중인 사용자만 있음) - roomId: {}, 접속중인사용자수: {}", 
+							roomId, connectedUserIds.size());
 				} else {
 					// 채팅방 이름 가져오기
 					String roomName = chat.getChatRoom() != null ? chat.getChatRoom().getRoomName() : "채팅방";
@@ -826,9 +864,10 @@ public class ChatMessageController {
 						notificationMessage += " (" + uploadFile.getOriginalFilename() + ")";
 					}
 					
-					log.info("[uploadFileMessage] 알림 전송 시작 - recipientCount: {}, message: {}", recipientIds.size(), notificationMessage);
+					log.info("[uploadFileMessage] 알림 전송 시작 - recipientCount: {} (접속 중 제외), 접속중인사용자수: {}, message: {}", 
+							recipientIds.size(), connectedUserIds.size(), notificationMessage);
 					
-					// 여러 참여자에게 알림 전송
+					// 여러 참여자에게 알림 전송 (접속 중인 사용자 제외)
 					notificationService.sendNotificationToUsers(
 						recipientIds,
 						NotificationType.CHAT,
@@ -841,7 +880,7 @@ public class ChatMessageController {
 						null   // scheduleId
 					);
 					
-					log.info("[uploadFileMessage] 알림 전송 완료 - recipientCount: {}", recipientIds.size());
+					log.info("[uploadFileMessage] 알림 전송 완료 - recipientCount: {} (접속 중인 사용자 제외)", recipientIds.size());
 				}
 			}
 		} catch (Exception notificationException) {
@@ -1032,7 +1071,7 @@ public class ChatMessageController {
 		messagingTemplate.convertAndSend(topic, dto);
 		log.info("[uploadMultipleFileMessage] ⭐ WebSocket 브로드캐스트 완료");
 		
-		// ⭐ 채팅방 참여자들에게 알림 전송 (발신자 제외)
+		// ⭐ 채팅방 참여자들에게 알림 전송 (발신자 및 접속 중인 사용자 제외)
 		try {
 			log.info("[uploadMultipleFileMessage] 알림 전송 시작 - roomId: {}, senderId: {}", roomId, sender.getId());
 			
@@ -1042,14 +1081,22 @@ public class ChatMessageController {
 			if (chatRoomUsers == null || chatRoomUsers.isEmpty()) {
 				log.warn("[uploadMultipleFileMessage] 채팅방 참여자가 없습니다 - roomId: {}", roomId);
 			} else {
-				// 발신자를 제외한 참여자 ID 목록 생성
+				// ⭐ 현재 채팅방에 접속 중인 사용자 목록 조회 (실시간 WebSocket 세션 기반)
+				List<Integer> connectedUserIds = chatRoomService.getConnectedUserIdsInRoom(roomId);
+				log.info("[uploadMultipleFileMessage] 알림 전송 - 접속 중인 사용자 수: {}, 접속자 IDs: {}", 
+						connectedUserIds.size(), connectedUserIds);
+				
+				// ⭐ 발신자 및 접속 중인 사용자를 제외한 참여자 ID 목록 생성
+				// 접속 중인 사용자는 실시간으로 메시지를 볼 수 있으므로 알림 불필요
 				List<Integer> recipientIds = chatRoomUsers.stream()
 					.filter(cru -> cru.getUser() != null && !cru.getUser().getId().equals(sender.getId()))
 					.map(cru -> cru.getUser().getId())
+					.filter(userId -> !connectedUserIds.contains(userId)) // ⭐ 접속 중인 사용자 제외
 					.collect(Collectors.toList());
 				
 				if (recipientIds.isEmpty()) {
-					log.info("[uploadMultipleFileMessage] 알림을 받을 참여자가 없습니다 (발신자만 있음) - roomId: {}", roomId);
+					log.info("[uploadMultipleFileMessage] 알림을 받을 참여자가 없습니다 (발신자 및 접속 중인 사용자만 있음) - roomId: {}, 접속중인사용자수: {}", 
+							roomId, connectedUserIds.size());
 				} else {
 					// 채팅방 이름 가져오기
 					String roomName = chat.getChatRoom() != null ? chat.getChatRoom().getRoomName() : "채팅방";
@@ -1062,9 +1109,10 @@ public class ChatMessageController {
 						notificationMessage += " (" + fileEntities.get(0).getFileName() + ")";
 					}
 					
-					log.info("[uploadMultipleFileMessage] 알림 전송 시작 - recipientCount: {}, message: {}", recipientIds.size(), notificationMessage);
+					log.info("[uploadMultipleFileMessage] 알림 전송 시작 - recipientCount: {} (접속 중 제외), 접속중인사용자수: {}, message: {}", 
+							recipientIds.size(), connectedUserIds.size(), notificationMessage);
 					
-					// 여러 참여자에게 알림 전송
+					// 여러 참여자에게 알림 전송 (접속 중인 사용자 제외)
 					notificationService.sendNotificationToUsers(
 						recipientIds,
 						NotificationType.CHAT,
@@ -1077,7 +1125,7 @@ public class ChatMessageController {
 						null   // scheduleId
 					);
 					
-					log.info("[uploadMultipleFileMessage] 알림 전송 완료 - recipientCount: {}", recipientIds.size());
+					log.info("[uploadMultipleFileMessage] 알림 전송 완료 - recipientCount: {} (접속 중인 사용자 제외)", recipientIds.size());
 				}
 			}
 		} catch (Exception notificationException) {
