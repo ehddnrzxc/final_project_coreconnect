@@ -290,6 +290,24 @@ function ChatRoomCreateDialog({ open, onClose, onCreate, presetUsers }) {
     }
   }, [open, showSnack]);
 
+  // 직급 라벨 변환 함수 (filteredUsers useMemo에서 사용되므로 먼저 정의)
+  const getJobGradeLabel = (jobGrade) => {
+    if (!jobGrade) return "";
+    const gradeMap = {
+      INTERN: "인턴",
+      STAFF: "사원",
+      ASSISTANT_MANAGER: "대리",
+      MANAGER: "과장",
+      DEPUTY_GENERAL_MANAGER: "차장",
+      GENERAL_MANAGER: "부장",
+      DIRECTOR: "이사",
+      EXECUTIVE_DIRECTOR: "상무",
+      VICE_PRESIDENT: "전무",
+      PRESIDENT: "대표",
+    };
+    return gradeMap[jobGrade] || jobGrade;
+  };
+
   // 검색 필터링
   const filteredUsers = useMemo(() => {
     if (searchTerm.trim() === "") {
@@ -374,24 +392,6 @@ function ChatRoomCreateDialog({ open, onClose, onCreate, presetUsers }) {
   const isUserSelected = (user) => {
     const userId = user.userId || user.id;
     return selectedUsers.some(u => (u.userId || u.id) === userId);
-  };
-
-  // 직급 라벨 변환 함수
-  const getJobGradeLabel = (jobGrade) => {
-    if (!jobGrade) return "";
-    const gradeMap = {
-      INTERN: "인턴",
-      STAFF: "사원",
-      ASSISTANT_MANAGER: "대리",
-      MANAGER: "과장",
-      DEPUTY_GENERAL_MANAGER: "차장",
-      GENERAL_MANAGER: "부장",
-      DIRECTOR: "이사",
-      EXECUTIVE_DIRECTOR: "상무",
-      VICE_PRESIDENT: "전무",
-      PRESIDENT: "대표",
-    };
-    return gradeMap[jobGrade] || jobGrade;
   };
 
   // 생성 버튼 누를 때 유효성 체크 및 전달
