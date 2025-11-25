@@ -223,7 +223,7 @@ public class ChatMessageController {
 	    // 이렇게 해야 race condition 없이 정확한 unreadCount를 브로드캐스트할 수 있음
 	    
 	    // ⭐ 현재 접속 중인 사용자 수 조회 (실시간 WebSocket 세션 기반)
-	    connectedUserIds = chatRoomService.getConnectedUserIdsInRoom(req.getRoomId());
+	    List<Integer> connectedUserIds = chatRoomService.getConnectedUserIdsInRoom(req.getRoomId());
 	    int connectedUsersCount = connectedUserIds.size();
 	    
 	    // ⭐ 참여자 수 확인 (디버깅용)
@@ -378,7 +378,7 @@ public class ChatMessageController {
 	                log.warn("[sendMessage] 채팅방 참여자가 없습니다 - roomId: {}", req.getRoomId());
 	            } else {
 	                // ⭐ 현재 채팅방에 접속 중인 사용자 목록 조회 (실시간 WebSocket 세션 기반)
-	                connectedUserIds = chatRoomService.getConnectedUserIdsInRoom(req.getRoomId());
+	                // 이미 위에서 선언된 connectedUserIds 변수를 재사용 (재조회하지 않아도 됨)
 	                log.info("[sendMessage] 알림 전송 - 접속 중인 사용자 수: {}, 접속자 IDs: {}", 
 	                        connectedUserIds.size(), connectedUserIds);
 	                
@@ -839,7 +839,7 @@ public class ChatMessageController {
 				log.warn("[uploadFileMessage] 채팅방 참여자가 없습니다 - roomId: {}", roomId);
 			} else {
 				// ⭐ 현재 채팅방에 접속 중인 사용자 목록 조회 (실시간 WebSocket 세션 기반)
-				connectedUserIds = chatRoomService.getConnectedUserIdsInRoom(roomId);
+				List<Integer> connectedUserIds = chatRoomService.getConnectedUserIdsInRoom(roomId);
 				log.info("[uploadFileMessage] 알림 전송 - 접속 중인 사용자 수: {}, 접속자 IDs: {}", 
 						connectedUserIds.size(), connectedUserIds);
 				
@@ -1082,7 +1082,7 @@ public class ChatMessageController {
 				log.warn("[uploadMultipleFileMessage] 채팅방 참여자가 없습니다 - roomId: {}", roomId);
 			} else {
 				// ⭐ 현재 채팅방에 접속 중인 사용자 목록 조회 (실시간 WebSocket 세션 기반)
-				connectedUserIds = chatRoomService.getConnectedUserIdsInRoom(roomId);
+				List<Integer> connectedUserIds = chatRoomService.getConnectedUserIdsInRoom(roomId);
 				log.info("[uploadMultipleFileMessage] 알림 전송 - 접속 중인 사용자 수: {}, 접속자 IDs: {}", 
 						connectedUserIds.size(), connectedUserIds);
 				
