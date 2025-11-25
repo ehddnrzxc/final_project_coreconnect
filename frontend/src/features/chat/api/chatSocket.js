@@ -249,15 +249,46 @@ function ensureConnected(roomId, onMessage, onConnect, onError) {
       
       // 재연결 성공 시 resolve
       const originalOnConnect = onConnect;
+      let resolved = false;
+      
       const wrappedOnConnect = () => {
         if (originalOnConnect) originalOnConnect();
-        // 연결 완료 후 약간의 지연을 두고 resolve
-        setTimeout(() => {
-          resolve(stompClient && stompClient.connected);
-        }, 100);
+        // 연결 완료 후 실제 연결 상태 확인
+        const checkConnection = () => {
+          if (stompClient && stompClient.connected) {
+            if (!resolved) {
+              resolved = true;
+              console.log('🔥 [ChatSocket] 재연결 완료 확인 - resolve 호출');
+              resolve(true);
+            }
+          } else {
+            // 아직 연결되지 않았으면 다시 확인
+            setTimeout(checkConnection, 100);
+          }
+        };
+        // 약간의 지연 후 연결 상태 확인 시작
+        setTimeout(checkConnection, 200);
       };
       
-      connectStomp(roomId, onMessage, wrappedOnConnect, onError);
+      const wrappedOnError = (error) => {
+        if (onError) onError(error);
+        if (!resolved) {
+          resolved = true;
+          console.error('🔥 [ChatSocket] 재연결 실패 - resolve(false) 호출');
+          resolve(false);
+        }
+      };
+      
+      connectStomp(roomId, onMessage, wrappedOnConnect, wrappedOnError);
+      
+      // 최대 10초 대기 후 타임아웃
+      setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          console.error('🔥 [ChatSocket] 재연결 타임아웃 - resolve(false) 호출');
+          resolve(false);
+        }
+      }, 10000);
     } else {
       resolve(true);
     }
