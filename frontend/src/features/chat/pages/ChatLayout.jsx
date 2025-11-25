@@ -1048,49 +1048,47 @@ export default function ChatLayout() {
   };
 
   // ---------- 메시지 보내기 ----------
-  const handleSend = () => {
+  const handleSend = async () => {
     const message = inputRef.current.value;
     if (!message.trim()) {
       return;
     }
 
-    if (!socketConnected) {
-      alert("채팅 서버와 연결되어 있지 않습니다. 잠시 후 다시 시도해 주세요.");
+    if (!selectedRoomId) {
+      alert("채팅방을 선택해주세요.");
       return;
     }
 
     // ⭐ WebSocket을 통해 메시지 전송 (서버에서 브로드캐스트된 메시지를 수신하여 표시)
     // ⭐ 재연결이 필요한 경우를 대비해 콜백 전달
-    sendStompMessage(
-      { roomId: selectedRoomId, content: message },
-      {
-        onMessage: msg => handleNewMessage(msg),
-        onConnect: () => {
-          console.log('🔥 [ChatLayout] 재연결 성공 - socketConnected를 true로 설정');
-          setSocketConnected(true);
-        },
-        onError: () => {
-          console.log('🔥 [ChatLayout] 재연결 실패 - socketConnected를 false로 설정');
-          setSocketConnected(false);
+    // ⭐ socketConnected 체크 제거 - sendStompMessage가 자동으로 재연결 처리
+    try {
+      const success = await sendStompMessage(
+        { roomId: selectedRoomId, content: message },
+        {
+          onMessage: msg => handleNewMessage(msg),
+          onConnect: () => {
+            console.log('🔥 [ChatLayout] 재연결 성공 - socketConnected를 true로 설정');
+            setSocketConnected(true);
+          },
+          onError: () => {
+            console.log('🔥 [ChatLayout] 재연결 실패 - socketConnected를 false로 설정');
+            setSocketConnected(false);
+          }
         }
-      }
-    ).then((success) => {
+      );
+      
       if (success) {
         inputRef.current.value = "";
       } else {
-        // ⭐ 연결이 안 되어 있으면 재연결 시도 후 다시 전송 시도
-        if (!socketConnected) {
-          console.warn('🔥 [ChatLayout] 연결이 끊어져 재연결 시도 중...');
-          // 재연결은 connectStomp가 useEffect에서 처리됨
-          alert("채팅 서버와 연결되어 있지 않습니다. 잠시 후 다시 시도해 주세요.");
-        } else {
-          alert("메시지 전송에 실패했습니다. 연결 상태를 확인해주세요.");
-        }
+        // ⭐ 재연결 시도 후에도 실패한 경우
+        console.warn('🔥 [ChatLayout] 메시지 전송 실패 - 재연결 시도 후에도 실패');
+        alert("채팅 서버와 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.");
       }
-    }).catch((error) => {
+    } catch (error) {
       console.error('🔥 [ChatLayout] 메시지 전송 중 예외 발생:', error);
       alert("메시지 전송 중 오류가 발생했습니다.");
-    });
+    }
   };
 
   // ---------- 스크롤로 읽음 처리 ----------

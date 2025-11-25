@@ -58,13 +58,9 @@ function ChatDetailPane({
         borderBottom: "1px solid #e3e8ef", background: "#f8fbfd",
         height: 64, position: "relative",
       }}>
-        <Avatar sx={{
-          bgcolor: "primary.main",
-          mr: 2, width: 33, height: 33, ml: 2
-        }}>{selectedRoom.roomName?.[0]?.toUpperCase()}
-        </Avatar>
         <Typography sx={{
           fontWeight: 700, fontSize: 18, color: "primary.main",
+          ml: 2
         }}>
           {selectedRoom.roomName}
         </Typography>

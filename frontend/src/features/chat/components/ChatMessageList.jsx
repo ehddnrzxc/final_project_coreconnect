@@ -502,7 +502,12 @@ function ChatMessageList({ messages, roomType = "group", onLoadMore, hasMoreAbov
           }
 
           // ========== 시스템 메시지 (가운데 정렬, 회색) ==========
-          const isSystemMessage = msg.messageContent && msg.messageContent.includes("님이 입장했습니다");
+          // 초대, 입장, 나가기 메시지를 시스템 메시지로 처리
+          const isSystemMessage = msg.messageContent && (
+            msg.messageContent.includes("님이 초대되었습니다") ||
+            msg.messageContent.includes("님이 입장했습니다") ||
+            msg.messageContent.includes("님이 채팅방을 나갔습니다")
+          );
           
           if (isSystemMessage) {
             return (
