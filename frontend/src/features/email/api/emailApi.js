@@ -43,7 +43,11 @@ export const getEmailDetail = (emailId, userEmail) => {
 
 // 메일 읽음 처리 API (PATCH)
 export const markMailAsRead = (emailId, userEmail) =>
-  http.patch(`/email/${emailId}/read`, { userEmail });
+  http.patch(`/email/${emailId}/read`, { userEmail }, {
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  });
 
 // 메일 중요 표시 토글 API (PATCH)
 export const toggleFavoriteStatus = (emailId, userEmail) =>

@@ -1,33 +1,58 @@
 // 실시간 시간 생성하는 파일
 
-/** "2025년 11월 5일 (수)" 형식의 날짜 반환 */
+/** "2025년 11월 5일 (수)" 형식의 날짜 반환 (한국 시간 기준) */
 export function formatKoreanDate(date) {
-  // 문자열인 경우 Date 객체로 변환
-  const dateObj = date instanceof Date ? date : new Date(date);
-  return dateObj.toLocaleDateString("ko-KR", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    weekday: "short",
-  });
+  if (!date) return "-";
+  try {
+    // 문자열인 경우 Date 객체로 변환
+    let dateObj = date instanceof Date ? date : new Date(date);
+    
+    // 한국 시간으로 변환
+    const koreaTimeStr = dateObj.toLocaleString('en-US', { timeZone: 'Asia/Seoul' });
+    dateObj = new Date(koreaTimeStr);
+    
+    return dateObj.toLocaleDateString("ko-KR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      weekday: "short",
+      timeZone: 'Asia/Seoul'
+    });
+  } catch (error) {
+    console.error('[formatKoreanDate] 에러:', error, date);
+    return "-";
+  }
 }
 
-/** "11:22:31" 형식의 시간 반환 */
+/** "11:22:31" 형식의 시간 반환 (한국 시간 기준) */
 export function formatKoreanTime(date) {
-  // 문자열인 경우 Date 객체로 변환
-  const dateObj = date instanceof Date ? date : new Date(date);
-  return dateObj.toLocaleTimeString("ko-KR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
+  if (!date) return "-";
+  try {
+    // 문자열인 경우 Date 객체로 변환
+    let dateObj = date instanceof Date ? date : new Date(date);
+    
+    // 한국 시간으로 변환
+    const koreaTimeStr = dateObj.toLocaleString('en-US', { timeZone: 'Asia/Seoul' });
+    dateObj = new Date(koreaTimeStr);
+    
+    return dateObj.toLocaleTimeString("ko-KR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      timeZone: 'Asia/Seoul'
+    });
+  } catch (error) {
+    console.error('[formatKoreanTime] 에러:', error, date);
+    return "-";
+  }
 }
 
-/** 출퇴근 시간 표시용 "11:22" 형식의 시간 반환 */
+/** 출퇴근 시간 표시용 "11:22" 형식의 시간 반환 (한국 시간 기준) */
 export function formatTime(timeString) {
   if(!timeString) return "-";
   
   try {
+
     // LocalDateTime은 시간대 정보가 없는 로컬 시간이므로,
     // 문자열에서 직접 시간 부분을 추출하는 것이 가장 안전합니다.
     // 백엔드에서 이미 한국 시간대로 저장된 로컬 시간을 전송합니다.
@@ -39,6 +64,7 @@ export function formatTime(timeString) {
       const hours = String(timeString.getHours()).padStart(2, "0");
       const minutes = String(timeString.getMinutes()).padStart(2, "0");
       return `${hours}:${minutes}`;
+
     }
     
     // 문자열인 경우
@@ -82,6 +108,7 @@ export function formatTime(timeString) {
     
     console.warn('[formatTime] 잘못된 날짜 형식:', timeString);
     return "-";
+
   } catch (error) {
     console.error('[formatTime] 날짜 파싱 오류:', error, 'timeString:', timeString);
     return "-";
@@ -95,18 +122,27 @@ export function formatHM(totalMinutes) {
   return `${h}h ${m}m`;
 }
 
-/** "2025.11.21 11:22:31" 형식의 날짜/시간 반환 */
+/** "2025.11.21 11:22:31" 형식의 날짜/시간 반환 (한국 시간 기준) */
 export function formatDateTime(date) {
   if (!date) return "-";
-  // 문자열인 경우 Date 객체로 변환
-  const dateObj = date instanceof Date ? date : new Date(date);
-  
-  const year = dateObj.getFullYear();
-  const month = String(dateObj.getMonth() + 1).padStart(2, "0");
-  const day = String(dateObj.getDate()).padStart(2, "0");
-  const hours = String(dateObj.getHours()).padStart(2, "0");
-  const minutes = String(dateObj.getMinutes()).padStart(2, "0");
-  const seconds = String(dateObj.getSeconds()).padStart(2, "0");
-  
-  return `${year}.${month}.${day} ${hours}:${minutes}:${seconds}`;
+  try {
+    // 문자열인 경우 Date 객체로 변환
+    let dateObj = date instanceof Date ? date : new Date(date);
+    
+    // 한국 시간으로 변환
+    const koreaTimeStr = dateObj.toLocaleString('en-US', { timeZone: 'Asia/Seoul' });
+    dateObj = new Date(koreaTimeStr);
+    
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+    const day = String(dateObj.getDate()).padStart(2, "0");
+    const hours = String(dateObj.getHours()).padStart(2, "0");
+    const minutes = String(dateObj.getMinutes()).padStart(2, "0");
+    const seconds = String(dateObj.getSeconds()).padStart(2, "0");
+    
+    return `${year}.${month}.${day} ${hours}:${minutes}:${seconds}`;
+  } catch (error) {
+    console.error('[formatDateTime] 에러:', error, date);
+    return "-";
+  }
 }
