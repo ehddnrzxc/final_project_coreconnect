@@ -1053,8 +1053,8 @@ public class ChatMessageController {
             // 4. 초대할 사용자 조회 및 중복 체크
             List<User> invitedUsers = new ArrayList<>();
             for (Integer userId : req.getUserIds()) {
-                // 사용자 존재 확인
-                User user = userRepository.findById(userId)
+                // 사용자 존재 확인 (Department와 함께 로드하여 LazyInitializationException 방지)
+                User user = userRepository.findByIdWithDepartment(userId)
                         .orElse(null);
                 
                 if (user == null) {
@@ -1119,17 +1119,27 @@ public class ChatMessageController {
                         null
                     );
                     
-                    // DTO 생성
-                    ChatUserResponseDTO dto = ChatUserResponseDTO.fromEntity(invited, s3Service);
-                    if (dto != null) {
-                        dtoList.add(dto);
+                    // DTO 생성 (Department가 이미 로드되어 있으므로 안전)
+                    ChatUserResponseDTO dto = null;
+                    try {
+                        dto = ChatUserResponseDTO.fromEntity(invited, s3Service);
+                        if (dto != null) {
+                            dtoList.add(dto);
+                        } else {
+                            log.warn("[inviteUsersToChatRoom] DTO 생성 실패 - userId: {}, userName: {}", 
+                                    invited.getId(), invited.getName());
+                        }
+                    } catch (Exception dtoException) {
+                        log.error("[inviteUsersToChatRoom] DTO 생성 중 오류 - userId: {}, userName: {}, error: {}", 
+                                invited.getId(), invited.getName(), dtoException.getMessage(), dtoException);
+                        // DTO 생성 실패해도 초대는 성공했으므로 계속 진행
                     }
                     
                     log.info("[inviteUsersToChatRoom] 초대 완료 - roomId: {}, invitedUserId: {}, invitedUserName: {}, inviterId: {}, inviterName: {}", 
                             roomId, invited.getId(), invited.getName(), inviter.getId(), inviter.getName());
                 } catch (Exception e) {
-                    log.error("[inviteUsersToChatRoom] 사용자 초대 중 오류 - userId: {}, userName: {}", 
-                            invited.getId(), invited.getName(), e);
+                    log.error("[inviteUsersToChatRoom] 사용자 초대 중 오류 - userId: {}, userName: {}, error: {}", 
+                            invited.getId(), invited != null ? invited.getName() : "unknown", e.getMessage(), e);
                     // 개별 사용자 초대 실패는 로그만 남기고 계속 진행
                 }
             }
