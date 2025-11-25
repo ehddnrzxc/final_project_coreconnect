@@ -9,12 +9,13 @@ import ReplyIcon from '@mui/icons-material/Reply';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ForwardIcon from '@mui/icons-material/Forward';
 import SyncIcon from '@mui/icons-material/Sync';
-import ViewListIcon from '@mui/icons-material/ViewList';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import StarIcon from '@mui/icons-material/Star';
 
 import { fetchFavoriteMails, moveToTrash, getEmailDetail, toggleFavoriteStatus } from '../api/emailApi';
 import { useNavigate } from 'react-router-dom';
-import { UserProfileContext } from '../../../App';
+import { UserProfileContext, MailCountContext } from '../../../App';
 import ConfirmDialog from '../../../components/utils/ConfirmDialog';
 
 /*
@@ -46,6 +47,8 @@ function getStatusColor(emailStatus) {
 const MailFavoritePage = () => {
   // UserProfileContext에서 userProfile을 가져와 이메일을 추출
   const { userProfile } = useContext(UserProfileContext) || {};
+  const mailCountContext = useContext(MailCountContext);
+  const { refreshFavoriteCount } = mailCountContext || {};
   const userEmail = userProfile?.email;
 
   // 상태 정의: 메일 목록, 페이징, 선택 등
@@ -273,6 +276,13 @@ const MailFavoritePage = () => {
       setSnack({ open: true, severity: 'success', message: `${ids.length}개의 메일을 중요 해제했습니다.` });
       setSelected(new Set());
       await load();
+      
+      // 중요 메일 개수 새로고침
+      if (refreshFavoriteCount) {
+        setTimeout(() => {
+          refreshFavoriteCount();
+        }, 100);
+      }
     } catch (err) {
       console.error('handleUnfavorite error', err);
       setSnack({ open: true, severity: 'error', message: '중요 해제 중 오류가 발생했습니다.' });
@@ -305,7 +315,7 @@ const MailFavoritePage = () => {
     });
   };
 
-  // 날짜 포맷 (YYYY-MM-DD HH시 mm분 ss초)
+  // 날짜 포맷 (YYYY-MM-DD HH:mm)
   const formatSentTime = (sentTime) => {
     if (!sentTime) return '-';
     try {
@@ -315,8 +325,7 @@ const MailFavoritePage = () => {
       const dd = String(d.getDate()).padStart(2, "0");
       const HH = String(d.getHours()).padStart(2, "0");
       const mi = String(d.getMinutes()).padStart(2, "0");
-      const ss = String(d.getSeconds()).padStart(2, "0");
-      return `${yyyy}-${mm}-${dd} ${HH}시 ${mi}분 ${ss}초`;
+      return `${yyyy}-${mm}-${dd} ${HH}:${mi}`;
     } catch {
       return '-';
     }
@@ -395,8 +404,11 @@ const MailFavoritePage = () => {
 
           {/* 툴바 버튼들 */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, position: 'relative' }}>
-            <IconButton onClick={handleSortByDate} title={sortOrder === "asc" ? "내림차순 정렬" : "오름차순 정렬"}>
-              <ViewListIcon />
+            <IconButton 
+              onClick={handleSortByDate} 
+              title={sortOrder === "asc" ? "날짜순 내림차순 (최신순)" : "날짜순 오름차순 (오래된순)"}
+            >
+              {sortOrder === "asc" ? <ArrowDownwardIcon /> : <ArrowUpwardIcon />}
             </IconButton>
             <IconButton onClick={handleRefresh}>
               <SyncIcon />

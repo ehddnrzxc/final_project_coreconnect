@@ -4,7 +4,7 @@ import http from "../../../api/http"; // axios 인스턴스 불러오기
 
 // 채팅방 목록(좌측) & 탭
 function ChatRoomListPane({
-  tabIdx, setTabIdx, roomList, selectedRoomId, setSelectedRoomId, formatTime
+  tabIdx, setTabIdx, roomList, selectedRoomId, setSelectedRoomId, formatTime, highlightedRoomId
 }) {
   // 정렬 상태: 기본값은 최신 메시지부터 (내림차순)
   const sortOrder = 'desc';
@@ -61,7 +61,7 @@ function ChatRoomListPane({
     if (count === 2)
       return <Chip label="1:1" size="small" color="primary" sx={{ fontWeight: 700, ml: 0.5, flexShrink: 0 }} />;
     if (count > 2)
-      return <Chip label="단체 채팅" size="small" color="success" sx={{ fontWeight: 700, ml: 0.5, flexShrink: 0 }} />;
+      return <Chip label="단체 채팅" size="small" color="primary" sx={{ fontWeight: 700, ml: 0.5, flexShrink: 0 }} />;
     return null;
   }
 
@@ -135,11 +135,22 @@ function ChatRoomListPane({
                   py: 2.4,
                   px: 1.2,
                   minHeight: "64px",
-                  cursor: "pointer"
+                  cursor: "pointer",
+                  // 새로 생성된 방 하이라이팅
+                  ...(highlightedRoomId === room.roomId && {
+                    background: "#e3f2fd",
+                    borderLeft: "4px solid #1976d2",
+                    animation: "highlightPulse 2s ease-in-out",
+                    "@keyframes highlightPulse": {
+                      "0%": { background: "#e3f2fd" },
+                      "50%": { background: "#bbdefb" },
+                      "100%": { background: "#e3f2fd" }
+                    }
+                  })
                 }}
               >
                 <ListItemAvatar>
-                  <Avatar sx={{ bgcolor: "#10c16d", mr: 1 }}>
+                  <Avatar sx={{ bgcolor: "primary.main", mr: 1 }}>
                     {room.roomName?.[0]?.toUpperCase()}
                   </Avatar>
                 </ListItemAvatar>
