@@ -28,22 +28,41 @@ function ChatRoomCreateDialog({ open, onClose, onCreate, presetUsers }) {
 
   // 다이얼로그가 열릴 때 현재 로그인된 사용자를 자동으로 선택
   useEffect(() => {
-    if (open && allUsers.length > 0 && currentUserId) {
-      // 현재 사용자를 allUsers에서 찾기
-      const currentUser = allUsers.find(u => (u.userId || u.id) === currentUserId);
-      if (currentUser) {
-        setSelectedUsers((prev) => {
-          // 이미 선택되어 있는지 확인
-          const isAlreadySelected = prev.some(u => (u.userId || u.id) === currentUserId);
-          if (!isAlreadySelected) {
+    if (open && currentUserId && userProfile) {
+      setSelectedUsers((prev) => {
+        // 이미 선택되어 있는지 확인
+        const isAlreadySelected = prev.some(u => (u.userId || u.id) === currentUserId);
+        if (isAlreadySelected) {
+          return prev;
+        }
+
+        // allUsers에서 현재 사용자 찾기
+        if (allUsers.length > 0) {
+          const currentUser = allUsers.find(u => (u.userId || u.id) === currentUserId);
+          if (currentUser) {
             // 현재 사용자를 맨 앞에 추가
             return [currentUser, ...prev];
           }
-          return prev;
-        });
-      }
+        }
+
+        // allUsers에 없으면 userProfile에서 직접 생성
+        // userProfile의 구조를 allUsers 형식에 맞게 변환
+        const currentUserFromProfile = {
+          userId: userProfile.id || userProfile.userId,
+          id: userProfile.id || userProfile.userId,
+          name: userProfile.name,
+          email: userProfile.email,
+          profileImageUrl: userProfile.profileImageUrl,
+          jobGrade: userProfile.jobGrade,
+          positionName: userProfile.positionName,
+          deptName: userProfile.deptName,
+          departmentName: userProfile.departmentName
+        };
+        
+        return [currentUserFromProfile, ...prev];
+      });
     }
-  }, [open, allUsers, currentUserId]);
+  }, [open, allUsers, currentUserId, userProfile]);
 
   // 조직도에서 넘어온 presetUsers 적용 (현재 사용자 제외)
   useEffect(() => {
