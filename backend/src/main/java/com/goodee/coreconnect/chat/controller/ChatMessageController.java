@@ -378,7 +378,7 @@ public class ChatMessageController {
 	                log.warn("[sendMessage] 채팅방 참여자가 없습니다 - roomId: {}", req.getRoomId());
 	            } else {
 	                // ⭐ 현재 채팅방에 접속 중인 사용자 목록 조회 (실시간 WebSocket 세션 기반)
-	                List<Integer> connectedUserIds = chatRoomService.getConnectedUserIdsInRoom(req.getRoomId());
+	                connectedUserIds = chatRoomService.getConnectedUserIdsInRoom(req.getRoomId());
 	                log.info("[sendMessage] 알림 전송 - 접속 중인 사용자 수: {}, 접속자 IDs: {}", 
 	                        connectedUserIds.size(), connectedUserIds);
 	                
@@ -839,7 +839,7 @@ public class ChatMessageController {
 				log.warn("[uploadFileMessage] 채팅방 참여자가 없습니다 - roomId: {}", roomId);
 			} else {
 				// ⭐ 현재 채팅방에 접속 중인 사용자 목록 조회 (실시간 WebSocket 세션 기반)
-				List<Integer> connectedUserIds = chatRoomService.getConnectedUserIdsInRoom(roomId);
+				connectedUserIds = chatRoomService.getConnectedUserIdsInRoom(roomId);
 				log.info("[uploadFileMessage] 알림 전송 - 접속 중인 사용자 수: {}, 접속자 IDs: {}", 
 						connectedUserIds.size(), connectedUserIds);
 				
@@ -1082,7 +1082,7 @@ public class ChatMessageController {
 				log.warn("[uploadMultipleFileMessage] 채팅방 참여자가 없습니다 - roomId: {}", roomId);
 			} else {
 				// ⭐ 현재 채팅방에 접속 중인 사용자 목록 조회 (실시간 WebSocket 세션 기반)
-				List<Integer> connectedUserIds = chatRoomService.getConnectedUserIdsInRoom(roomId);
+				connectedUserIds = chatRoomService.getConnectedUserIdsInRoom(roomId);
 				log.info("[uploadMultipleFileMessage] 알림 전송 - 접속 중인 사용자 수: {}, 접속자 IDs: {}", 
 						connectedUserIds.size(), connectedUserIds);
 				
