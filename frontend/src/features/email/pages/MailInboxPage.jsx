@@ -645,17 +645,25 @@ const MailInboxPage = () => {
             if (mailCountContext?.refreshUnreadCount) {
               await mailCountContext.refreshUnreadCount();
             }
+            // 받은 메일함 전체 개수도 업데이트
+            if (mailCountContext?.refreshInboxCount) {
+              await mailCountContext.refreshInboxCount();
+            }
           } catch (err) {
             console.error("loadInbox error after mark as read", err);
           }
         }, 800);
       } else {
-        // 다른 탭에서는 안읽은 메일 개수만 업데이트
+        // 다른 탭에서는 안읽은 메일 개수와 받은 메일함 개수 업데이트
         setTimeout(async () => {
           await loadUnreadCount();
           // 사이드바 뱃지 업데이트
           if (mailCountContext?.refreshUnreadCount) {
             await mailCountContext.refreshUnreadCount();
+          }
+          // 받은 메일함 전체 개수도 업데이트
+          if (mailCountContext?.refreshInboxCount) {
+            await mailCountContext.refreshInboxCount();
           }
         }, 500);
       }
@@ -807,17 +815,25 @@ const MailInboxPage = () => {
               if (mailCountContext?.refreshUnreadCount) {
                 await mailCountContext.refreshUnreadCount();
               }
+              // 받은 메일함 전체 개수도 업데이트
+              if (mailCountContext?.refreshInboxCount) {
+                await mailCountContext.refreshInboxCount();
+              }
             } catch (err) {
               console.error("loadInbox error after read", err);
             }
           }, 800); // DB 트랜잭션 커밋/반영 딜레이를 고려한 충분한 대기 시간
         } else {
-          // 다른 탭에서는 안읽은 메일 개수만 업데이트
+          // 다른 탭에서는 안읽은 메일 개수와 받은 메일함 개수 업데이트
           setTimeout(async () => {
             await loadUnreadCount();
             // 사이드바 뱃지 업데이트
             if (mailCountContext?.refreshUnreadCount) {
               await mailCountContext.refreshUnreadCount();
+            }
+            // 받은 메일함 전체 개수도 업데이트
+            if (mailCountContext?.refreshInboxCount) {
+              await mailCountContext.refreshInboxCount();
             }
           }, 500);
         }
