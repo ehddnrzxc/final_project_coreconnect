@@ -345,6 +345,62 @@ public class ChatMessageController {
 	            log.warn("[sendMessage] ⚠️ saved 또는 saved.getId()가 null이어서 UNREAD_COUNT_UPDATE 브로드캐스트 불가 - saved: {}, saved.getId(): {}", 
 	                    saved, saved != null ? saved.getId() : null);
 	        }
+	        
+	        // ⭐ 4. 채팅방 참여자들에게 알림 전송 (발신자 제외)
+	        try {
+	            log.info("[sendMessage] 알림 전송 시작 - roomId: {}, senderId: {}", req.getRoomId(), authUser.getId());
+	            
+	            // 채팅방 참여자 목록 가져오기
+	            List<ChatRoomUser> chatRoomUsers = chatRoomUserRepository.findByChatRoomId(req.getRoomId());
+	            
+	            if (chatRoomUsers == null || chatRoomUsers.isEmpty()) {
+	                log.warn("[sendMessage] 채팅방 참여자가 없습니다 - roomId: {}", req.getRoomId());
+	            } else {
+	                // 발신자를 제외한 참여자 ID 목록 생성
+	                List<Integer> recipientIds = chatRoomUsers.stream()
+	                    .filter(cru -> cru.getUser() != null && !cru.getUser().getId().equals(authUser.getId()))
+	                    .map(cru -> cru.getUser().getId())
+	                    .collect(Collectors.toList());
+	                
+	                if (recipientIds.isEmpty()) {
+	                    log.info("[sendMessage] 알림을 받을 참여자가 없습니다 (발신자만 있음) - roomId: {}", req.getRoomId());
+	                } else {
+	                    // 채팅방 이름 가져오기
+	                    String roomName = saved.getChatRoom() != null ? saved.getChatRoom().getRoomName() : "채팅방";
+	                    
+	                    // 알림 메시지 생성 (메시지 내용이 너무 길면 잘라서 표시)
+	                    String messageContent = saved.getMessageContent();
+	                    if (messageContent != null && messageContent.length() > 50) {
+	                        messageContent = messageContent.substring(0, 50) + "...";
+	                    }
+	                    String notificationMessage = roomName + " 채팅방: " + authUser.getName() + "님의 메시지";
+	                    if (messageContent != null && !messageContent.trim().isEmpty()) {
+	                        notificationMessage += " - " + messageContent;
+	                    }
+	                    
+	                    log.info("[sendMessage] 알림 전송 시작 - recipientCount: {}, message: {}", recipientIds.size(), notificationMessage);
+	                    
+	                    // 여러 참여자에게 알림 전송
+	                    notificationService.sendNotificationToUsers(
+	                        recipientIds,
+	                        NotificationType.CHAT,
+	                        notificationMessage,
+	                        saved.getId(),  // chatId
+	                        req.getRoomId(),  // roomId
+	                        authUser.getId(),  // senderId
+	                        authUser.getName(),  // senderName
+	                        null,  // boardId
+	                        null   // scheduleId
+	                    );
+	                    
+	                    log.info("[sendMessage] 알림 전송 완료 - recipientCount: {}", recipientIds.size());
+	                }
+	            }
+	        } catch (Exception notificationException) {
+	            // 알림 전송 실패해도 메시지 전송은 성공했으므로 로그만 남기고 계속 진행
+	            log.error("[sendMessage] 알림 전송 중 오류 발생 - roomId: {}, error: {}", 
+	                    req.getRoomId(), notificationException.getMessage(), notificationException);
+	        }
 	    } catch (Exception e) {
 	        log.error("[sendMessage] 메시지 브로드캐스트 실패 - topic: {}, error: {}", topic, e.getMessage(), e);
 	    }
@@ -741,6 +797,59 @@ public class ChatMessageController {
 		        dto.setSenderDeptName("");
 		    }
 		}
+		
+		// ⭐ 채팅방 참여자들에게 알림 전송 (발신자 제외)
+		try {
+			log.info("[uploadFileMessage] 알림 전송 시작 - roomId: {}, senderId: {}", roomId, sender.getId());
+			
+			// 채팅방 참여자 목록 가져오기
+			List<ChatRoomUser> chatRoomUsers = chatRoomUserRepository.findByChatRoomId(roomId);
+			
+			if (chatRoomUsers == null || chatRoomUsers.isEmpty()) {
+				log.warn("[uploadFileMessage] 채팅방 참여자가 없습니다 - roomId: {}", roomId);
+			} else {
+				// 발신자를 제외한 참여자 ID 목록 생성
+				List<Integer> recipientIds = chatRoomUsers.stream()
+					.filter(cru -> cru.getUser() != null && !cru.getUser().getId().equals(sender.getId()))
+					.map(cru -> cru.getUser().getId())
+					.collect(Collectors.toList());
+				
+				if (recipientIds.isEmpty()) {
+					log.info("[uploadFileMessage] 알림을 받을 참여자가 없습니다 (발신자만 있음) - roomId: {}", roomId);
+				} else {
+					// 채팅방 이름 가져오기
+					String roomName = chat.getChatRoom() != null ? chat.getChatRoom().getRoomName() : "채팅방";
+					
+					// 알림 메시지 생성
+					String notificationMessage = roomName + " 채팅방: " + sender.getName() + "님이 파일을 전송했습니다";
+					if (uploadFile.getOriginalFilename() != null) {
+						notificationMessage += " (" + uploadFile.getOriginalFilename() + ")";
+					}
+					
+					log.info("[uploadFileMessage] 알림 전송 시작 - recipientCount: {}, message: {}", recipientIds.size(), notificationMessage);
+					
+					// 여러 참여자에게 알림 전송
+					notificationService.sendNotificationToUsers(
+						recipientIds,
+						NotificationType.CHAT,
+						notificationMessage,
+						chat.getId(),  // chatId
+						roomId,  // roomId
+						sender.getId(),  // senderId
+						sender.getName(),  // senderName
+						null,  // boardId
+						null   // scheduleId
+					);
+					
+					log.info("[uploadFileMessage] 알림 전송 완료 - recipientCount: {}", recipientIds.size());
+				}
+			}
+		} catch (Exception notificationException) {
+			// 알림 전송 실패해도 파일 업로드는 성공했으므로 로그만 남기고 계속 진행
+			log.error("[uploadFileMessage] 알림 전송 중 오류 발생 - roomId: {}, error: {}", 
+					roomId, notificationException.getMessage(), notificationException);
+		}
+		
 		return ResponseEntity.status(HttpStatus.CREATED).body(ResponseDTO.success(dto, "파일/이미지 업로드 성공"));
 	}
 	
@@ -922,6 +1031,60 @@ public class ChatMessageController {
 		log.info("[uploadMultipleFileMessage] ⭐ 브로드캐스트할 DTO의 fileUrls.size(): {}", dto.getFileUrls() != null ? dto.getFileUrls().size() : 0);
 		messagingTemplate.convertAndSend(topic, dto);
 		log.info("[uploadMultipleFileMessage] ⭐ WebSocket 브로드캐스트 완료");
+		
+		// ⭐ 채팅방 참여자들에게 알림 전송 (발신자 제외)
+		try {
+			log.info("[uploadMultipleFileMessage] 알림 전송 시작 - roomId: {}, senderId: {}", roomId, sender.getId());
+			
+			// 채팅방 참여자 목록 가져오기
+			List<ChatRoomUser> chatRoomUsers = chatRoomUserRepository.findByChatRoomId(roomId);
+			
+			if (chatRoomUsers == null || chatRoomUsers.isEmpty()) {
+				log.warn("[uploadMultipleFileMessage] 채팅방 참여자가 없습니다 - roomId: {}", roomId);
+			} else {
+				// 발신자를 제외한 참여자 ID 목록 생성
+				List<Integer> recipientIds = chatRoomUsers.stream()
+					.filter(cru -> cru.getUser() != null && !cru.getUser().getId().equals(sender.getId()))
+					.map(cru -> cru.getUser().getId())
+					.collect(Collectors.toList());
+				
+				if (recipientIds.isEmpty()) {
+					log.info("[uploadMultipleFileMessage] 알림을 받을 참여자가 없습니다 (발신자만 있음) - roomId: {}", roomId);
+				} else {
+					// 채팅방 이름 가져오기
+					String roomName = chat.getChatRoom() != null ? chat.getChatRoom().getRoomName() : "채팅방";
+					
+					// 알림 메시지 생성
+					String notificationMessage = roomName + " 채팅방: " + sender.getName() + "님이 파일을 전송했습니다";
+					if (fileEntities.size() > 1) {
+						notificationMessage += " (" + fileEntities.size() + "개 파일)";
+					} else if (!fileEntities.isEmpty()) {
+						notificationMessage += " (" + fileEntities.get(0).getFileName() + ")";
+					}
+					
+					log.info("[uploadMultipleFileMessage] 알림 전송 시작 - recipientCount: {}, message: {}", recipientIds.size(), notificationMessage);
+					
+					// 여러 참여자에게 알림 전송
+					notificationService.sendNotificationToUsers(
+						recipientIds,
+						NotificationType.CHAT,
+						notificationMessage,
+						chat.getId(),  // chatId
+						roomId,  // roomId
+						sender.getId(),  // senderId
+						sender.getName(),  // senderName
+						null,  // boardId
+						null   // scheduleId
+					);
+					
+					log.info("[uploadMultipleFileMessage] 알림 전송 완료 - recipientCount: {}", recipientIds.size());
+				}
+			}
+		} catch (Exception notificationException) {
+			// 알림 전송 실패해도 파일 업로드는 성공했으므로 로그만 남기고 계속 진행
+			log.error("[uploadMultipleFileMessage] 알림 전송 중 오류 발생 - roomId: {}, error: {}", 
+					roomId, notificationException.getMessage(), notificationException);
+		}
 		
 		return ResponseEntity.ok(ResponseDTO.success(dto, "다중 파일 업로드 성공"));
 	}
