@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "prebuild": "node scripts/copy-favicon.js",
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
