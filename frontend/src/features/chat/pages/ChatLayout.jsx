@@ -465,28 +465,56 @@ export default function ChatLayout() {
     // ⭐ ROOM_UNREAD_COUNT_UPDATE 메시지 처리 (채팅방 목록의 unreadCount 업데이트용)
     // ⭐ 백엔드에서 새로운 메시지가 왔을 때 채팅방 목록의 unreadCount를 업데이트하기 위해 브로드캐스트
     // ⭐ 자신이 해당 채팅방에 접속 중이 아닌 경우, 채팅방 목록의 unreadCount를 증가시켜야 함
-    // ⭐ 중요: 자신이 보낸 메시지인 경우 채팅방 목록의 unreadCount를 업데이트하지 않음
+    // ⭐ 중요: 접속 중인 사용자가 메시지를 보낼 때는 채팅방 목록의 unreadCount를 0으로 설정해야 함
     if (msg && msg.type === "ROOM_UNREAD_COUNT_UPDATE") {
       // ⭐ 자신이 보낸 메시지인지 확인
       const isMyMessage = msg.senderEmail && userProfile?.email &&
         msg.senderEmail.trim().toLowerCase() === userProfile.email.trim().toLowerCase();
 
-      if (isMyMessage) {
-        console.log("📊 [ChatLayout] ROOM_UNREAD_COUNT_UPDATE 무시 - 자신이 보낸 메시지:", {
-          roomId: msg.roomId,
-          chatId: msg.chatId,
-          senderEmail: msg.senderEmail,
-          myEmail: userProfile?.email
-        });
-        return; // 자신이 보낸 메시지는 채팅방 목록의 unreadCount를 업데이트하지 않음
-      }
-
-      console.log("📊 [ChatLayout] ⭐ ROOM_UNREAD_COUNT_UPDATE 조건 만족! 처리 시작");
       const { roomId, chatId } = msg;
-
       const roomIdNum = Number(roomId);
       const isCurrentlySelected = Number(selectedRoomId) === roomIdNum;
 
+      // ⭐ 자신이 보낸 메시지이고 현재 선택된 방인 경우, unreadCount를 0으로 설정
+      // (접속 중인 사용자는 이미 읽음 처리되었으므로 unreadCount는 0이어야 함)
+      if (isMyMessage && isCurrentlySelected) {
+        console.log("📊 [ChatLayout] ROOM_UNREAD_COUNT_UPDATE - 자신이 보낸 메시지이고 접속 중: unreadCount를 0으로 설정", {
+          roomId: roomIdNum,
+          chatId: chatId,
+          senderEmail: msg.senderEmail,
+          myEmail: userProfile?.email
+        });
+        
+        // ⭐ 채팅방 목록에서 해당 방의 unreadCount를 0으로 설정
+        setRoomList((prevRoomList) => {
+          return prevRoomList.map((room) => {
+            if (Number(room.roomId) === roomIdNum) {
+              return {
+                ...room,
+                unreadCount: 0 // 접속 중인 사용자는 읽음 처리되므로 0
+              };
+            }
+            return room;
+          });
+        });
+        
+        return;
+      }
+
+      // ⭐ 자신이 보낸 메시지이지만 다른 방인 경우는 무시 (일반적으로 발생하지 않음)
+      if (isMyMessage) {
+        console.log("📊 [ChatLayout] ROOM_UNREAD_COUNT_UPDATE 무시 - 자신이 보낸 메시지 (다른 방):", {
+          roomId: roomIdNum,
+          chatId: chatId,
+          selectedRoomId: selectedRoomId,
+          senderEmail: msg.senderEmail,
+          myEmail: userProfile?.email
+        });
+        return;
+      }
+
+      console.log("📊 [ChatLayout] ⭐ ROOM_UNREAD_COUNT_UPDATE 조건 만족! 처리 시작");
+      
       // ⭐ 현재 선택된 방이 아닌 경우에만 채팅방 목록의 unreadCount 증가
       // (현재 선택된 방이면 이미 메시지를 보고 있으므로 읽음 처리됨)
       if (!isCurrentlySelected) {
@@ -501,10 +529,23 @@ export default function ChatLayout() {
         // ⭐ 또는 프론트엔드에서 직접 +1 증가시킬 수도 있지만, 백엔드에서 정확한 값을 가져오는 것이 더 정확함
         loadRooms();
       } else {
-        console.log("📊 [ChatLayout] ROOM_UNREAD_COUNT_UPDATE 수신 (현재 선택된 방):", {
+        // ⭐ 현재 선택된 방이면 접속 중이므로 unreadCount를 0으로 설정
+        console.log("📊 [ChatLayout] ROOM_UNREAD_COUNT_UPDATE 수신 (현재 선택된 방): unreadCount를 0으로 설정", {
           roomId: roomIdNum,
           chatId: chatId,
           selectedRoomId: selectedRoomId
+        });
+        
+        setRoomList((prevRoomList) => {
+          return prevRoomList.map((room) => {
+            if (Number(room.roomId) === roomIdNum) {
+              return {
+                ...room,
+                unreadCount: 0 // 접속 중이므로 읽음 처리됨
+              };
+            }
+            return room;
+          });
         });
       }
 
@@ -1058,6 +1099,25 @@ export default function ChatLayout() {
       alert("채팅방을 선택해주세요.");
       return;
     }
+
+    // ⭐ 메시지 전송 전: 접속 중인 사용자가 메시지를 보내므로 채팅방 목록의 unreadCount를 0으로 설정
+    // (백엔드에서 WebSocket 메시지를 받기 전에 먼저 UI를 업데이트하여 즉시 피드백 제공)
+    setRoomList((prevRoomList) => {
+      return prevRoomList.map((room) => {
+        if (Number(room.roomId) === Number(selectedRoomId)) {
+          console.log("📊 [ChatLayout] 메시지 전송 전: 채팅방 목록의 unreadCount를 0으로 설정", {
+            roomId: room.roomId,
+            roomName: room.roomName,
+            이전unreadCount: room.unreadCount
+          });
+          return {
+            ...room,
+            unreadCount: 0 // 접속 중인 사용자가 메시지를 보내므로 읽음 처리됨
+          };
+        }
+        return room;
+      });
+    });
 
     // ⭐ WebSocket을 통해 메시지 전송 (서버에서 브로드캐스트된 메시지를 수신하여 표시)
     // ⭐ 재연결이 필요한 경우를 대비해 콜백 전달
