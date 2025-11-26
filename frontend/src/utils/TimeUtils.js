@@ -52,57 +52,63 @@ export function formatTime(timeString) {
   if(!timeString) return "-";
   
   try {
-    let date;
-    const dateStr = String(timeString);
+
+    // LocalDateTime은 시간대 정보가 없는 로컬 시간이므로,
+    // 문자열에서 직접 시간 부분을 추출하는 것이 가장 안전합니다.
+    // 백엔드에서 이미 한국 시간대로 저장된 로컬 시간을 전송합니다.
     
-    // ISO 8601 형식인 경우 (서버에서 "2025-11-25T00:42:00" 형식으로 보냄)
-    if (dateStr.includes('T')) {
-      // 타임존 정보가 없으면 한국 시간(UTC+9)으로 간주하여 파싱
-      if (!dateStr.includes('Z') && !dateStr.includes('+') && !dateStr.match(/-\d{2}:\d{2}$/)) {
-        // "2025-11-25T00:42:00" 형식을 한국 시간으로 파싱
-        const [datePart, timePart] = dateStr.split('T');
-        const [year, month, day] = datePart.split('-');
-        const [timeOnly] = (timePart || '').split('.');
-        const [hour, minute, second = '00'] = (timeOnly || '').split(':');
-        
-        // UTC로 Date 객체 생성 후 한국 시간(UTC+9)으로 변환
-        date = new Date(Date.UTC(
-          parseInt(year, 10),
-          parseInt(month, 10) - 1,
-          parseInt(day, 10),
-          parseInt(hour, 10),
-          parseInt(minute, 10),
-          parseInt(second, 10)
-        ));
-        // 한국 시간은 UTC+9이므로 9시간을 빼서 UTC로 변환
-        date = new Date(date.getTime() - (9 * 60 * 60 * 1000));
-      } else {
-        date = new Date(dateStr);
+    let timeStr = null;
+    
+    // Date 객체인 경우
+    if (timeString instanceof Date) {
+      const hours = String(timeString.getHours()).padStart(2, "0");
+      const minutes = String(timeString.getMinutes()).padStart(2, "0");
+      return `${hours}:${minutes}`;
+
+    }
+    
+    // 문자열인 경우
+    if (typeof timeString === 'string') {
+      // ISO 8601 형식인 경우 (예: "2025-01-15T09:36:00" 또는 "2025-01-15T09:36:00.123")
+      if (timeString.includes('T')) {
+        // "T" 이후의 시간 부분 추출 (시간대 정보 제거)
+        const timePart = timeString.split('T')[1];
+        if (timePart) {
+          // "+", "-", "Z" 이전까지만 추출 (시간대 정보 제거)
+          timeStr = timePart.split(/[+\-Z]/)[0];
+        }
       }
-    } 
-    // "yyyy-MM-dd HH:mm:ss" 형식인 경우 (예: "2025-01-15 10:30:00")
-    else if (dateStr.includes(' ')) {
-      // 공백을 T로 변경하고 한국 시간대 추가
-      const isoString = dateStr.replace(' ', 'T') + '+09:00';
-      date = new Date(isoString);
-    }
-    // 기타 형식
-    else {
-      date = new Date(timeString);
+      // "yyyy-MM-dd HH:mm:ss" 형식인 경우 (예: "2025-01-15 09:36:00")
+      else if (timeString.includes(' ')) {
+        timeStr = timeString.split(' ')[1];
+      }
+      // 직접 시간 형식인 경우 (예: "09:36:00" 또는 "09:36")
+      else if (timeString.match(/^\d{1,2}:\d{2}/)) {
+        timeStr = timeString;
+      }
+      
+      // 시간 문자열에서 시:분 추출
+      if (timeStr) {
+        const match = timeStr.match(/^(\d{1,2}):(\d{2})/);
+        if (match) {
+          const hours = match[1].padStart(2, "0");
+          const minutes = match[2].padStart(2, "0");
+          return `${hours}:${minutes}`;
+        }
+      }
+      
+      // 문자열에서 시간을 추출할 수 없으면 Date 객체로 파싱 시도
+      const date = new Date(timeString);
+      if (!isNaN(date.getTime())) {
+        const hours = String(date.getHours()).padStart(2, "0");
+        const minutes = String(date.getMinutes()).padStart(2, "0");
+        return `${hours}:${minutes}`;
+      }
     }
     
-    // 유효한 날짜인지 확인
-    if (isNaN(date.getTime())) {
-      console.warn('[formatTime] 잘못된 날짜 형식:', timeString);
-      return "-";
-    }
-    
-    // 한국 시간으로 변환하여 포맷팅
-    const koreaTimeStr = date.toLocaleString('en-US', { timeZone: 'Asia/Seoul' });
-    const koreaTime = new Date(koreaTimeStr);
-    const hours = String(koreaTime.getHours()).padStart(2, "0");
-    const minutes = String(koreaTime.getMinutes()).padStart(2, "0");
-    return `${hours}:${minutes}`;
+    console.warn('[formatTime] 잘못된 날짜 형식:', timeString);
+    return "-";
+
   } catch (error) {
     console.error('[formatTime] 날짜 파싱 오류:', error, 'timeString:', timeString);
     return "-";
