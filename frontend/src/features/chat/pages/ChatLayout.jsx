@@ -449,6 +449,26 @@ export default function ChatLayout() {
             targetChatId: chatId
           });
         }, 0);
+
+        // ⭐ 현재 선택된 방의 채팅방 목록 unreadCount도 업데이트 (실시간 반영)
+        // ⭐ 접속 중인 사용자는 읽음 처리되므로 unreadCount를 0으로 설정
+        setRoomList((prevRoomList) => {
+          return prevRoomList.map((room) => {
+            if (Number(room.roomId) === Number(roomId)) {
+              console.log("📊 [ChatLayout] UNREAD_COUNT_UPDATE - 채팅방 목록 unreadCount 업데이트 (접속 중이므로 0으로 설정):", {
+                roomId: room.roomId,
+                roomName: room.roomName,
+                이전unreadCount: room.unreadCount,
+                새로운unreadCount: 0
+              });
+              return {
+                ...room,
+                unreadCount: 0 // 접속 중이므로 읽음 처리됨
+              };
+            }
+            return room;
+          });
+        });
       } else {
         // ⭐ 다른 방의 메시지인 경우 로그만 출력
         console.log("📊 [ChatLayout] UNREAD_COUNT_UPDATE 수신 (다른 방):", {
@@ -822,9 +842,12 @@ export default function ChatLayout() {
         }
       }
 
+      // ⭐ 현재 선택된 방에서 메시지를 받는 경우, 접속 중인 사용자는 이미 읽음 처리되므로 unreadCount를 0으로 설정
+      // ⭐ 백엔드에서 계산한 전체 unreadCount는 다른 접속하지 않은 사용자들의 수이지만,
+      // ⭐ 현재 접속 중인 사용자 입장에서는 자신이 읽었으므로 0으로 표시
       const newMessage = {
         ...msg,
-        unreadCount: msg.unreadCount != null ? msg.unreadCount : 0,
+        unreadCount: 0, // 현재 선택된 방이므로 접속 중인 사용자는 읽음 처리됨
         fileUrls: fileUrls, // fileUrls 명시적으로 설정
         fileUrl: msg.fileUrl, // 하위 호환성을 위해 fileUrl도 유지
         fileYn: msg.fileYn
@@ -891,10 +914,11 @@ export default function ChatLayout() {
       });
 
       // ⭐ 현재 선택된 방에서 다른 사람이 보낸 메시지인 경우에도 채팅방 목록의 메시지 내용과 시간을 업데이트해야 함
+      // ⭐ 중요: 현재 선택된 방이므로 접속 중인 사용자는 읽음 처리되므로 unreadCount를 0으로 설정
       setRoomList((prevRoomList) => {
         const updated = prevRoomList.map(room => {
           if (Number(room.roomId) === roomIdNum) {
-            // ⭐ 현재 선택된 방이므로 unreadCount는 업데이트하지 않지만, 메시지 내용과 시간은 업데이트
+            // ⭐ 현재 선택된 방이므로 접속 중인 사용자는 이미 읽음 처리되므로 unreadCount를 0으로 설정
             return {
               ...room,
               lastMessageContent: msg.messageContent,
@@ -902,8 +926,8 @@ export default function ChatLayout() {
               lastMessageFileYn: msg.fileYn || false, // 마지막 메시지의 파일 첨부 여부
               fileYn: msg.fileYn,
               sendAt: msg.sendAt,
-              // ⭐ 현재 선택된 방이므로 unreadCount는 유지 (이미 읽고 있으므로)
-              unreadCount: room.unreadCount || 0
+              // ⭐ 현재 선택된 방이므로 접속 중인 사용자는 읽음 처리되므로 unreadCount를 0으로 설정
+              unreadCount: 0
             };
           }
           return room;
