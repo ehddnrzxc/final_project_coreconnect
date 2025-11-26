@@ -18,6 +18,9 @@ ARG VITE_WS_BASE_URL=
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 ENV VITE_WS_BASE_URL=${VITE_WS_BASE_URL}
 
+# 파비콘 파일을 public 폴더로 복사 (빌드 전에 실행)
+RUN cp src/assets/coreconnect-logo.png public/coreconnect-logo.png || echo "⚠️ 파비콘 파일 복사 실패 (계속 진행)"
+
 RUN npm run build
 
 # 2. 배포 스테이지
