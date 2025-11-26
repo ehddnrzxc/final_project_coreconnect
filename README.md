@@ -122,7 +122,7 @@
 │            Spring Boot Backend                          │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │
 │  │   REST API   │  │  WebSocket   │  │   Security   │   │
-│  │   (Controller)│  │  (STOMP)     │  │   (JWT)      │  │
+│  │  (Controller)│  │  (STOMP)     │  │   (JWT)      │   │
 │  └──────────────┘  └──────────────┘  └──────────────┘   │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │
 │  │   Service    │  │  Repository  │  │   Entity     │   │
