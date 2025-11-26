@@ -183,10 +183,6 @@
 - **HTTP Client**: Axios 1.12.2
 - **Real-time**: SockJS + STOMP.js
 - **Calendar**: FullCalendar
-- **Styling**: 
-  - Styled Components
-  - Emotion
-  - Bootstrap 5.3.8
 - **Utilities**:
   - date-fns, dayjs (날짜 처리)
   - html2canvas, jspdf (PDF 생성)
@@ -196,7 +192,7 @@
 - **Containerization**: Docker, Docker Compose
 - **Web Server**: Nginx
 - **Cloud**: AWS (EC2, S3, RDS)
-- **CI/CD**: (선택사항) GitHub Actions
+- **CI/CD**: GitHub Actions
 
 ### Development Tools
 - **Version Control**: Git
