@@ -402,7 +402,7 @@ coreconnect/
 
 ## 👥 팀원 (Contributors)
 
-### Backend Developer
+### Backend & Frontend Developer
 - **최미영** - 채팅(1:N / 1:1), 알림, 이메일
   - GitHub: [@meeyoungchoi94](https://github.com/choimeeyoung94)
 - **이유천** - 대시보드, 관리자, 로그인, 휴가, 근태
@@ -414,29 +414,15 @@ coreconnect/
 - **이동욱** - 일정관리, 캘린더 
   - [@ehddnrzxc](https://github.com/ehddnrzxc)
 
-### Frontend Developer
-- (팀원 정보 추가)
-
-### 역할 분담
-- **Backend**: REST API 개발, WebSocket 구현, 데이터베이스 설계
-- **Frontend**: UI/UX 구현, 상태 관리, 실시간 통신 연동
 
 ---
 
 ## 📚 추가 자료
 
-### 문서
-- [백엔드 성장 학습 가이드](./백엔드_성장_학습_가이드.md) - 코드 학습 방법론
-- [배포 파일 연관관계 가이드](./배포_파일_연관관계_가이드.md) - 배포 구조 이해
-- [설정 파일 관계 가이드](./설정_파일_관계_완벽_가이드.md) - 환경 변수 관리
-
-### API 문서
-- Swagger UI: http://localhost:8080/swagger-ui.html (로컬 실행 시)
-
 ### 프로젝트 관련 링크
-- GitHub Repository: (추가 예정)
-- 배포 링크: (추가 예정)
-- 데모 영상: (추가 예정)
+- GitHub Repository: https://github.com/choimeeyoung94/final_project_coreconnect
+- 배포 링크: http://54.180.98.131/home
+- 데모 영상: https://youtu.be/qk5ntPlkdxY?si=bBmCznKjtsi8-Exu
 
 ---
 
